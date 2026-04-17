@@ -1,0 +1,22 @@
+{
+  "id": "task_20260415T064942_bootstrap_guidelines",
+  "title": "Bootstrap project guidance",
+  "description": "Create baseline AIOS project guidance before feature work",
+  "type": "analysis",
+  "status": "pending",
+  "params": {
+    "bootstrap": true,
+    "project": "specos-ai",
+    "agent": "codex-cli",
+    "checklist": [
+      "Read AGENTS.md and repository guidelines",
+      "Document project-specific conventions in docs/plans",
+      "Run first scoped task with ContextDB checkpoint evidence"
+    ]
+  },
+  "result": {},
+  "created_at": "2026-04-15T06:49:42.750Z",
+  "started_at": "",
+  "completed_at": "",
+  "error": null
+}
