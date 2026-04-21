@@ -1,0 +1,403 @@
+[
+  {
+    "id": "rule-backend-governance",
+    "type": "rule",
+    "title": "Go Backend Governance",
+    "summary": "Shared backend rules for Go services, API changes, migrations, and delivery checks.",
+    "direction": "backend",
+    "stacks": ["go", "python"],
+    "tags": ["ci", "errors", "logging", "auth"],
+    "appliesTo": ["backend"],
+    "dependsOn": [],
+    "conflictsWith": [],
+    "sourcePath": "rules/backend/go-backend-governance.md",
+    "files": [
+      "rules/backend/go-backend-governance.md",
+      "spec/_rules/README.md"
+    ],
+    "version": "1.0.0",
+    "draftHints": [
+      "补充幂等、审计和回滚要求",
+      "明确错误码和日志策略"
+    ],
+    "sampleOutput": "包含 API 约束、审计线索和可回滚的工程规则包。"
+  },
+  {
+    "id": "rule-redis-governance",
+    "type": "rule",
+    "title": "Redis Key Governance",
+    "summary": "Defines Redis key naming, TTL, invalidation, and recovery expectations for backend specs.",
+    "direction": "backend",
+    "stacks": ["go", "python"],
+    "tags": ["redis", "cache", "idempotency"],
+    "appliesTo": ["backend"],
+    "dependsOn": ["rule-backend-governance"],
+    "conflictsWith": [],
+    "sourcePath": "rules/backend/redis-key-governance.md",
+    "files": ["rules/backend/redis-key-governance.md"],
+    "version": "1.0.0",
+    "draftHints": [
+      "补充 Redis Key 前缀、TTL 和回收策略",
+      "说明缓存失效后的降级路径"
+    ],
+    "sampleOutput": "一套带 key 前缀、TTL 和回收说明的缓存治理规则。"
+  },
+  {
+    "id": "rule-goose-migration",
+    "type": "rule",
+    "title": "Goose Migration Standards",
+    "summary": "Schema change and rollout guidance for database migrations in spec-driven delivery.",
+    "direction": "backend",
+    "stacks": ["go", "python"],
+    "tags": ["db", "migration", "rollback"],
+    "appliesTo": ["backend"],
+    "dependsOn": ["rule-backend-governance"],
+    "conflictsWith": [],
+    "sourcePath": "rules/backend/goose-migration-standards.md",
+    "files": ["rules/backend/goose-migration-standards.md"],
+    "version": "1.0.0",
+    "draftHints": [
+      "标出是否需要历史数据回填",
+      "说明上线顺序、回滚条件和兼容窗口"
+    ],
+    "sampleOutput": "Migration 设计、兼容窗口和回滚要求。"
+  },
+  {
+    "id": "rule-error-code-governance",
+    "type": "rule",
+    "title": "Error Code Governance",
+    "summary": "Aligns machine-readable failures, user-facing copy, and remediation decisions.",
+    "direction": "fullstack",
+    "stacks": ["go", "react", "python"],
+    "tags": ["errors", "ux", "contract"],
+    "appliesTo": ["backend", "frontend"],
+    "dependsOn": [],
+    "conflictsWith": [],
+    "sourcePath": "rules/shared/error-code-governance.md",
+    "files": ["rules/shared/error-code-governance.md"],
+    "version": "1.0.0",
+    "draftHints": [
+      "为主要异常场景补充错误码和处理动作",
+      "区分用户可重试与人工介入场景"
+    ],
+    "sampleOutput": "稳定错误码、用户提示和修复动作说明。"
+  },
+  {
+    "id": "rule-ci-release-gates",
+    "type": "rule",
+    "title": "Spec Release Gates",
+    "summary": "Release check guidance that keeps tests, contracts, and bundles aligned with the spec.",
+    "direction": "fullstack",
+    "stacks": ["go", "react", "python"],
+    "tags": ["ci", "release", "workflow"],
+    "appliesTo": ["backend", "frontend"],
+    "dependsOn": ["template-normalized-spec"],
+    "conflictsWith": [],
+    "sourcePath": "rules/ci/spec-release-gates.md",
+    "files": ["rules/ci/spec-release-gates.md"],
+    "version": "1.0.0",
+    "draftHints": [
+      "说明哪些测试是发布阻断项",
+      "记录本次功能对应的 spec version 或 bundle id"
+    ],
+    "sampleOutput": "发布阻断项和人工确认节点。"
+  },
+  {
+    "id": "rule-frontend-react",
+    "type": "rule",
+    "title": "React Workbench Rules",
+    "summary": "Frontend delivery rules for React workspaces and observable user flows.",
+    "direction": "frontend",
+    "stacks": ["react", "next"],
+    "tags": ["react", "ui", "observability"],
+    "appliesTo": ["frontend"],
+    "dependsOn": [],
+    "conflictsWith": [],
+    "sourcePath": "rules/frontend/react-workbench-delivery.md",
+    "files": ["rules/frontend/react-workbench-delivery.md"],
+    "version": "1.0.0",
+    "draftHints": [
+      "补充前端指标与日志采集方案",
+      "说明关键界面的空态、错态和加载态"
+    ],
+    "sampleOutput": "包含界面状态约束、交互反馈和监控要求。"
+  },
+  {
+    "id": "rule-ui-pencil",
+    "type": "rule",
+    "title": "Pencil Prototype Rules",
+    "summary": "Aligns UI-first prototype work with downstream spec and frontend delivery.",
+    "direction": "ui",
+    "stacks": ["react", "flutter"],
+    "tags": ["pencil", "ui", "prototype"],
+    "appliesTo": ["frontend", "ui"],
+    "dependsOn": [],
+    "conflictsWith": [],
+    "sourcePath": "rules/ui/pencil-prototype-ui.md",
+    "files": ["rules/ui/pencil-prototype-ui.md"],
+    "version": "1.0.0",
+    "draftHints": [
+      "把原型页面映射到 User Flow 和 System Flow",
+      "标记依赖 API 的界面假设"
+    ],
+    "sampleOutput": "把原型交互和正式 spec 结构关联起来的 UI 规则说明。"
+  },
+  {
+    "id": "template-feature-draft",
+    "type": "spec_template",
+    "title": "15-Section Feature Draft",
+    "summary": "Human-readable draft studio template covering flow, state, model, rules, and testing.",
+    "direction": "fullstack",
+    "stacks": ["go", "react", "python"],
+    "tags": ["draft", "workflow", "template"],
+    "appliesTo": ["backend", "frontend", "ui"],
+    "dependsOn": [],
+    "conflictsWith": [],
+    "sourcePath": "spec-draft/_template/feature/product-ui.template.md",
+    "files": ["spec-draft/_template/feature/product-ui.template.md"],
+    "version": "1.0.0",
+    "draftHints": [
+      "先补业务背景与非目标，再补流程",
+      "测试场景至少覆盖主路径、边界和异常"
+    ],
+    "sampleOutput": "一份带 15 个章节的 Feature Draft Markdown。"
+  },
+  {
+    "id": "template-backend-domain",
+    "type": "spec_template",
+    "title": "Backend Domain Draft",
+    "summary": "Draft template for backend domain features with model, state, migration, and rollout focus.",
+    "direction": "backend",
+    "stacks": ["go", "python"],
+    "tags": ["backend", "domain", "draft"],
+    "appliesTo": ["backend"],
+    "dependsOn": ["rule-backend-governance"],
+    "conflictsWith": [],
+    "sourcePath": "spec-draft/_template/feature/backend-domain.template.md",
+    "files": ["spec-draft/_template/feature/backend-domain.template.md"],
+    "version": "1.0.0",
+    "draftHints": [
+      "把迁移、回滚和异步编排写清楚",
+      "为关键聚合补充状态和约束"
+    ],
+    "sampleOutput": "后端域能力草稿模板。"
+  },
+  {
+    "id": "template-ui-handoff",
+    "type": "spec_template",
+    "title": "UI Handoff Draft",
+    "summary": "Draft template for UI-facing workbench flows, state coverage, and handoff constraints.",
+    "direction": "frontend",
+    "stacks": ["react", "next"],
+    "tags": ["ui", "handoff", "draft"],
+    "appliesTo": ["frontend", "ui"],
+    "dependsOn": ["rule-frontend-react", "rule-ui-pencil"],
+    "conflictsWith": [],
+    "sourcePath": "spec-draft/_template/feature/ui-handoff.template.md",
+    "files": ["spec-draft/_template/feature/ui-handoff.template.md"],
+    "version": "1.0.0",
+    "draftHints": [
+      "补齐页面状态、空态和异常态",
+      "把原型交付和 API 假设串起来"
+    ],
+    "sampleOutput": "偏 UI handoff 的结构化 draft。"
+  },
+  {
+    "id": "template-normalized-spec",
+    "type": "spec_template",
+    "title": "Normalized Spec Bundle",
+    "summary": "Formalized spec shape for accepted features and downstream automation.",
+    "direction": "fullstack",
+    "stacks": ["go", "react", "python"],
+    "tags": ["spec", "template", "bundle"],
+    "appliesTo": ["backend", "frontend"],
+    "dependsOn": ["template-feature-draft"],
+    "conflictsWith": [],
+    "sourcePath": "spec/_template/feature/spec.example.md",
+    "files": [
+      "spec/_template/feature/spec.example.md",
+      "spec/_template/feature/model.example.md",
+      "spec/_template/feature/changelog.example.md"
+    ],
+    "version": "1.0.0",
+    "draftHints": [
+      "把业务规则映射到规范化章节",
+      "确认 Data Model、Security 和 Observability 都已覆盖"
+    ],
+    "sampleOutput": "一套正式 spec、模型和变更记录模板。"
+  },
+  {
+    "id": "agent-spec-editor",
+    "type": "agent_role",
+    "title": "Spec Editor",
+    "summary": "Compiles draft intent into normalized spec artifacts and bundle structure.",
+    "direction": "fullstack",
+    "stacks": ["go", "react", "python"],
+    "tags": ["spec", "compiler", "openapi"],
+    "appliesTo": ["backend", "frontend"],
+    "dependsOn": ["template-feature-draft"],
+    "conflictsWith": [],
+    "sourcePath": "ai/agents/spec-editor.md",
+    "files": ["ai/agents/spec-editor.md"],
+    "version": "1.0.0",
+    "draftHints": [
+      "检查 Draft 中是否缺少边界、状态、权限和观测性内容"
+    ],
+    "sampleOutput": "标准化 spec bundle 和待确认差异项。"
+  },
+  {
+    "id": "agent-ddd-domain",
+    "type": "agent_role",
+    "title": "DDD Domain Agent",
+    "summary": "Shapes domain boundaries, aggregate responsibilities, and anti-corruption seams.",
+    "direction": "backend",
+    "stacks": ["go", "python"],
+    "tags": ["ddd", "domain", "architecture"],
+    "appliesTo": ["backend"],
+    "dependsOn": ["template-backend-domain"],
+    "conflictsWith": [],
+    "sourcePath": "ai/agents/ddd-domain-agent.md",
+    "files": ["ai/agents/ddd-domain-agent.md", "ai/reviewers/architect-reviewer.md"],
+    "version": "1.0.0",
+    "draftHints": [
+      "明确聚合边界、命令职责和上下文映射"
+    ],
+    "sampleOutput": "聚合边界、领域职责和待确认架构问题。"
+  },
+  {
+    "id": "agent-db-migration",
+    "type": "agent_role",
+    "title": "DB Migration Agent",
+    "summary": "Turns accepted model changes into rollout-aware migration tasks and notes.",
+    "direction": "backend",
+    "stacks": ["go", "python"],
+    "tags": ["db", "migration", "rollout"],
+    "appliesTo": ["backend"],
+    "dependsOn": ["rule-goose-migration", "template-backend-domain"],
+    "conflictsWith": [],
+    "sourcePath": "ai/agents/db-migration-agent.md",
+    "files": ["ai/agents/db-migration-agent.md"],
+    "version": "1.0.0",
+    "draftHints": [
+      "说明 schema 变更顺序、回填和回滚要求"
+    ],
+    "sampleOutput": "迁移步骤、回填策略和兼容窗口。"
+  },
+  {
+    "id": "agent-test-editor",
+    "type": "agent_role",
+    "title": "Test Editor",
+    "summary": "Generates and maintains spec-driven scenario and boundary tests.",
+    "direction": "fullstack",
+    "stacks": ["go", "react"],
+    "tags": ["tests", "bruno", "scenario"],
+    "appliesTo": ["backend", "frontend"],
+    "dependsOn": ["template-normalized-spec"],
+    "conflictsWith": [],
+    "sourcePath": "ai/agents/test-editor.md",
+    "files": ["ai/agents/test-editor.md", "tests/_template/feature/scenarios.example.md"],
+    "version": "1.0.0",
+    "draftHints": [
+      "为每个主流程准备至少一条端到端测试路径",
+      "补上异常和边界案例的断言"
+    ],
+    "sampleOutput": "Bruno / 场景测试模板和覆盖建议。"
+  },
+  {
+    "id": "agent-bruno-test",
+    "type": "agent_role",
+    "title": "Bruno Test Agent",
+    "summary": "Generates Bruno collections and spec-aligned API scenario assertions.",
+    "direction": "backend",
+    "stacks": ["go", "python"],
+    "tags": ["bruno", "api", "scenario"],
+    "appliesTo": ["backend"],
+    "dependsOn": ["agent-openapi", "template-normalized-spec"],
+    "conflictsWith": [],
+    "sourcePath": "ai/agents/bruno-test-agent.md",
+    "files": ["ai/agents/bruno-test-agent.md", "tests/bruno/README.md"],
+    "version": "1.0.0",
+    "draftHints": [
+      "为主流程补齐请求、响应和断言"
+    ],
+    "sampleOutput": "Bruno collection 和接口场景断言。"
+  },
+  {
+    "id": "agent-playwright-test",
+    "type": "agent_role",
+    "title": "Playwright Test Agent",
+    "summary": "Covers UI workflows, screen states, and browser-level regressions from accepted drafts.",
+    "direction": "frontend",
+    "stacks": ["react", "next"],
+    "tags": ["playwright", "ui", "e2e"],
+    "appliesTo": ["frontend", "ui"],
+    "dependsOn": ["template-ui-handoff", "rule-frontend-react"],
+    "conflictsWith": [],
+    "sourcePath": "ai/agents/playwright-test-agent.md",
+    "files": ["ai/agents/playwright-test-agent.md", "tests/scenarios/README.md"],
+    "version": "1.0.0",
+    "draftHints": [
+      "覆盖页面空态、加载态、成功态和失败态"
+    ],
+    "sampleOutput": "UI 流程 E2E 覆盖和页面状态断言。"
+  },
+  {
+    "id": "agent-openapi",
+    "type": "agent_role",
+    "title": "OpenAPI Agent",
+    "summary": "Transforms accepted spec decisions into stable API contracts and examples.",
+    "direction": "fullstack",
+    "stacks": ["go", "react"],
+    "tags": ["openapi", "api", "contract"],
+    "appliesTo": ["backend", "frontend"],
+    "dependsOn": ["agent-spec-editor"],
+    "conflictsWith": [],
+    "sourcePath": "ai/agents/openapi-agent.md",
+    "files": ["ai/agents/openapi-agent.md", "spec/_template/feature/openapi.example.yaml"],
+    "version": "1.0.0",
+    "draftHints": [
+      "为 API 草案补 request/response 示例",
+      "标明哪些字段和状态仍待确认"
+    ],
+    "sampleOutput": "OpenAPI 合同、字段说明和待确认 schema 列表。"
+  },
+  {
+    "id": "agent-risk-reviewer",
+    "type": "agent_role",
+    "title": "Risk Reviewer",
+    "summary": "Checks for ambiguity, blind spots, and fragile assumptions before execution.",
+    "direction": "fullstack",
+    "stacks": ["go", "react", "python"],
+    "tags": ["review", "risk", "quality"],
+    "appliesTo": ["backend", "frontend"],
+    "dependsOn": ["agent-spec-editor"],
+    "conflictsWith": [],
+    "sourcePath": "ai/reviewers/risk-reviewer.md",
+    "files": ["ai/reviewers/risk-reviewer.md"],
+    "version": "1.0.0",
+    "draftHints": [
+      "列出业务规则里的模糊点和冲突点",
+      "补充失败分析和回退策略"
+    ],
+    "sampleOutput": "高风险缺口、歧义项和确认建议。"
+  },
+  {
+    "id": "agent-architect-reviewer",
+    "type": "agent_role",
+    "title": "Architect Reviewer",
+    "summary": "Reviews context boundaries, integration seams, and long-term shape before implementation.",
+    "direction": "fullstack",
+    "stacks": ["go", "react", "python"],
+    "tags": ["review", "architecture", "boundaries"],
+    "appliesTo": ["backend", "frontend"],
+    "dependsOn": ["agent-spec-editor"],
+    "conflictsWith": [],
+    "sourcePath": "ai/reviewers/architect-reviewer.md",
+    "files": ["ai/reviewers/architect-reviewer.md"],
+    "version": "1.0.0",
+    "draftHints": [
+      "确认边界划分、系统职责和集成方式"
+    ],
+    "sampleOutput": "架构边界评审和演进建议。"
+  }
+]
