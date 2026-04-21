@@ -1,0 +1,28 @@
+{
+  "id": "reward-engine",
+  "name": "Reward Engine",
+  "projectType": "mixed",
+  "architecture": "event-driven",
+  "stacks": ["go", "react"],
+  "selectedAssets": [
+    {
+      "assetId": "rule-backend-governance",
+      "enabled": true
+    },
+    {
+      "assetId": "template-feature-draft",
+      "enabled": true
+    },
+    {
+      "assetId": "agent-spec-editor",
+      "enabled": true
+    },
+    {
+      "assetId": "agent-openapi",
+      "enabled": true
+    }
+  ],
+  "draftTemplateId": "template-feature-draft",
+  "draftPath": "spec-web-ui/workspace/projects/reward-engine/draft.md",
+  "exportTargets": ["rules/", "spec/_template/", "ai/agents/", "project-manifest.yaml"]
+}
