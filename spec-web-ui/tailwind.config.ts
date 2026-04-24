@@ -1,5 +1,7 @@
 import type { Config } from "tailwindcss";
 
+const withOpacity = (variable: string) => `rgb(var(${variable}) / <alpha-value>)`;
+
 const config: Config = {
   content: [
     "./app/**/*.{ts,tsx}",
@@ -9,20 +11,37 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: "#e5e7eb",
-        canvas: "#0b0b0c",
-        panel: "#111111",
-        accent: {
-          DEFAULT: "#60a5fa",
-          strong: "#93c5fd",
-          soft: "#172554"
+        inherit: "inherit",
+        current: "currentColor",
+        transparent: "transparent",
+        black: "#000",
+        white: "#fff",
+        slate: {
+          50: withOpacity("--color-slate-50"),
+          100: withOpacity("--color-slate-100"),
+          200: withOpacity("--color-slate-200"),
+          300: withOpacity("--color-slate-300"),
+          400: withOpacity("--color-slate-400"),
+          500: withOpacity("--color-slate-500"),
+          600: withOpacity("--color-slate-600"),
+          700: withOpacity("--color-slate-700"),
+          800: withOpacity("--color-slate-800"),
+          900: withOpacity("--color-slate-900")
         },
-        coral: "#34d399",
-        sand: "#18181b",
-        line: "#27272a"
+        ink: withOpacity("--color-ink"),
+        canvas: withOpacity("--color-canvas"),
+        panel: withOpacity("--color-panel"),
+        accent: {
+          DEFAULT: withOpacity("--color-accent"),
+          strong: withOpacity("--color-accent-strong"),
+          soft: withOpacity("--color-accent-soft")
+        },
+        coral: withOpacity("--color-coral"),
+        sand: withOpacity("--color-sand"),
+        line: withOpacity("--color-line")
       },
       boxShadow: {
-        panel: "0 0 0 1px rgba(39, 39, 42, 0.65)"
+        panel: "0 0 0 1px rgb(var(--color-line) / 0.65)"
       },
       fontFamily: {
         sans: ["'Inter'", "system-ui", "sans-serif"],

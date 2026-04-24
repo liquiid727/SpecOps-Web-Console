@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { loadGeneratedExportBundle } from "@/lib/export";
 import { listProjects } from "@/lib/projects";
 import { buildShellCommandTitle } from "@/lib/shell";
+import { buildGlassSurfaceClassName } from "@/lib/theme";
 
 export default async function ExportsPage() {
   const projects = await listProjects();
@@ -17,7 +18,7 @@ export default async function ExportsPage() {
 
   return (
     <div className="space-y-8">
-      <section className="rounded-2xl border border-line bg-panel p-6">
+      <section className={`${buildGlassSurfaceClassName("hero")} rounded-[30px] p-6`}>
         <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">
           {buildShellCommandTitle("ls", "exports/")}
         </p>

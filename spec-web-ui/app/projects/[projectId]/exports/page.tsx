@@ -17,6 +17,7 @@ import {
 } from "@/lib/export";
 import { loadProjectWorkspace } from "@/lib/projects";
 import { buildShellCommandTitle } from "@/lib/shell";
+import { buildGlassSurfaceClassName } from "@/lib/theme";
 
 export default async function ProjectExportsPage({
   params
@@ -65,7 +66,7 @@ export default async function ProjectExportsPage({
 
     return (
       <div className="space-y-8">
-        <section className="rounded-2xl border border-line bg-panel p-6">
+        <section className={`${buildGlassSurfaceClassName("hero")} rounded-[30px] p-6`}>
           <div className="flex flex-wrap items-start justify-between gap-6">
             <div className="space-y-3">
               <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">

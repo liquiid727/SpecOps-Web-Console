@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { loadCatalogAssets, getCatalogFilterOptions } from "@/lib/catalog";
 import { buildShellCommandTitle } from "@/lib/shell";
+import { buildGlassInteractiveClassName, buildGlassSurfaceClassName } from "@/lib/theme";
 import { listProjects } from "@/lib/projects";
 
 export default async function HomePage() {
@@ -12,7 +13,7 @@ export default async function HomePage() {
   return (
     <div className="space-y-8">
       <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="rounded-2xl border border-line bg-panel p-6">
+        <div className={`${buildGlassSurfaceClassName("hero")} rounded-[30px] p-6`}>
           <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">
             {buildShellCommandTitle("cat", "README.md")}
           </p>
@@ -33,7 +34,7 @@ export default async function HomePage() {
               <input
                 name="q"
                 placeholder="$ search rules, spec templates, agent roles..."
-                className="w-full rounded-xl border border-line bg-canvas px-4 py-4 text-base text-ink outline-none transition placeholder:text-slate-600 focus:border-accent"
+                className={`${buildGlassSurfaceClassName("input")} w-full rounded-[22px] px-4 py-4 text-base text-ink outline-none transition placeholder:text-slate-500 focus:border-emerald-300/30`}
               />
             </label>
             <div className="flex flex-wrap gap-3">
@@ -45,7 +46,7 @@ export default async function HomePage() {
               </button>
               <Link
                 href="/projects"
-                className="rounded-md border border-line px-4 py-2 text-sm font-medium text-slate-300 hover:bg-sand"
+                className={`${buildGlassInteractiveClassName("neutral")} rounded-[16px] px-4 py-2 text-sm font-medium`}
               >
                 Open projects
               </Link>
@@ -66,7 +67,7 @@ export default async function HomePage() {
               value: String(catalog.filter((asset) => asset.type === "agent_role").length)
             }
           ].map((stat) => (
-            <div key={stat.label} className="rounded-2xl border border-line bg-panel p-5">
+            <div key={stat.label} className={`${buildGlassSurfaceClassName("panel")} rounded-[24px] p-5`}>
               <p className="font-mono text-xs uppercase tracking-[0.14em] text-slate-500">
                 {buildShellCommandTitle("echo", stat.label)}
               </p>
@@ -78,7 +79,7 @@ export default async function HomePage() {
 
       <section className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)_320px]">
         <aside className="space-y-6">
-          <div className="rounded-2xl border border-line bg-panel p-5">
+          <div className={`${buildGlassSurfaceClassName("panel")} rounded-[24px] p-5`}>
             <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">
               {buildShellCommandTitle("ls", "filters/")}
             </p>
@@ -89,7 +90,7 @@ export default async function HomePage() {
                 </span>
                 <select
                   name="direction"
-                  className="w-full rounded-xl border border-line bg-canvas px-4 py-3 text-sm text-ink outline-none focus:border-accent"
+                  className={`${buildGlassSurfaceClassName("input")} w-full rounded-[18px] px-4 py-3 text-sm text-ink outline-none`}
                 >
                   <option value="">all</option>
                   {options.directions.map((value) => (
@@ -105,7 +106,7 @@ export default async function HomePage() {
                 </span>
                 <select
                   name="type"
-                  className="w-full rounded-xl border border-line bg-canvas px-4 py-3 text-sm text-ink outline-none focus:border-accent"
+                  className={`${buildGlassSurfaceClassName("input")} w-full rounded-[18px] px-4 py-3 text-sm text-ink outline-none`}
                 >
                   <option value="">all</option>
                   {options.types.map((value) => (
@@ -121,7 +122,7 @@ export default async function HomePage() {
                 </span>
                 <select
                   name="stack"
-                  className="w-full rounded-xl border border-line bg-canvas px-4 py-3 text-sm text-ink outline-none focus:border-accent"
+                  className={`${buildGlassSurfaceClassName("input")} w-full rounded-[18px] px-4 py-3 text-sm text-ink outline-none`}
                 >
                   <option value="">all</option>
                   {options.stacks.map((value) => (
@@ -137,7 +138,7 @@ export default async function HomePage() {
                 </span>
                 <select
                   name="tag"
-                  className="w-full rounded-xl border border-line bg-canvas px-4 py-3 text-sm text-ink outline-none focus:border-accent"
+                  className={`${buildGlassSurfaceClassName("input")} w-full rounded-[18px] px-4 py-3 text-sm text-ink outline-none`}
                 >
                   <option value="">all</option>
                   {options.tags.slice(0, 12).map((value) => (
@@ -149,14 +150,14 @@ export default async function HomePage() {
               </label>
               <button
                 type="submit"
-                className="w-full rounded-md border border-line px-4 py-2 text-sm font-medium text-slate-300 hover:bg-sand"
+                className={`${buildGlassInteractiveClassName("neutral")} rounded-[16px] px-4 py-2 text-sm font-medium`}
               >
                 Run query
               </button>
             </form>
           </div>
 
-          <div className="rounded-2xl border border-line bg-panel p-5">
+          <div className={`${buildGlassSurfaceClassName("panel")} rounded-[24px] p-5`}>
             <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">
               {buildShellCommandTitle("ls", "tags/")}
             </p>
@@ -174,7 +175,7 @@ export default async function HomePage() {
           </div>
         </aside>
 
-        <section className="rounded-2xl border border-line bg-panel p-5">
+        <section className={`${buildGlassSurfaceClassName("panel")} rounded-[24px] p-5`}>
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">
@@ -191,7 +192,7 @@ export default async function HomePage() {
               <Link
                 key={asset.id}
                 href={`/discover/${asset.id}`}
-                className="block py-4 transition hover:bg-sand/60"
+                className={`${buildGlassSurfaceClassName("result")} block rounded-[24px] px-5 py-4 transition`}
               >
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-accent-strong">
@@ -220,7 +221,7 @@ export default async function HomePage() {
         </section>
 
         <aside className="space-y-6">
-          <div className="rounded-2xl border border-line bg-panel p-5">
+          <div className={`${buildGlassSurfaceClassName("panel")} rounded-[24px] p-5`}>
             <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">
               {buildShellCommandTitle("ls", "resources/")}
             </p>
@@ -240,17 +241,17 @@ export default async function HomePage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-line bg-panel p-5">
+          <div className={`${buildGlassSurfaceClassName("panel")} rounded-[24px] p-5`}>
             <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">
               {buildShellCommandTitle("ls", "projects/")}
             </p>
             <div className="mt-4 space-y-4">
               {projects.map((project) => (
-                <Link
-                  key={project.id}
-                  href={`/projects/${project.id}`}
-                  className="block border-b border-line pb-4 last:border-b-0 last:pb-0"
-                >
+              <Link
+                key={project.id}
+                href={`/projects/${project.id}`}
+                className={`${buildGlassSurfaceClassName("result")} block rounded-[22px] px-4 py-4`}
+              >
                   <p className="text-sm font-medium text-ink">{project.name}</p>
                   <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.12em] text-slate-500">
                     {project.projectType} / {project.architecture}
@@ -263,7 +264,7 @@ export default async function HomePage() {
         </aside>
       </section>
 
-      <section className="rounded-2xl border border-line bg-panel p-6">
+      <section className={`${buildGlassSurfaceClassName("hero")} rounded-[30px] p-6`}>
         <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">
           {buildShellCommandTitle("cat", "workflow.md")}
         </p>
