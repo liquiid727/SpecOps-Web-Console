@@ -3,7 +3,10 @@
   "name": "Merchant Console",
   "projectType": "frontend",
   "architecture": "next-app-router",
-  "stacks": ["react", "next"],
+  "stacks": [
+    "react",
+    "next"
+  ],
   "selectedAssets": [
     {
       "assetId": "rule-frontend-react",
@@ -16,9 +19,18 @@
     {
       "assetId": "agent-playwright-test",
       "enabled": true
+    },
+    {
+      "assetId": "rule-backend-governance",
+      "enabled": true
     }
   ],
   "draftTemplateId": "template-ui-handoff",
   "draftPath": "spec-web-ui/workspace/projects/merchant-console/draft.md",
-  "exportTargets": ["rules/", "spec/_template/", "ai/agents/", "project-manifest.yaml"]
+  "exportTargets": [
+    "rules/",
+    "spec/_template/",
+    "ai/agents/",
+    "project-manifest.yaml"
+  ]
 }

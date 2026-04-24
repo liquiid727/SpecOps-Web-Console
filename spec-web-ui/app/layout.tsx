@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { buildThemeBootScript } from "@/lib/theme";
 
 import "./globals.css";
 
@@ -12,7 +13,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html className="dark" data-theme="dark" data-theme-mode="system" lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: buildThemeBootScript() }} />
+      </head>
       <body>
         <AppShell>{children}</AppShell>
       </body>

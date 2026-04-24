@@ -7,6 +7,7 @@ import { loadAssetSourcePreview, loadCatalogAsset, loadCatalogAssets } from "@/l
 import { buildExportDiffPreview } from "@/lib/export";
 import { buildAssetCompositionPreview, listProjects, loadProjectWorkspace } from "@/lib/projects";
 import { buildShellCommandTitle } from "@/lib/shell";
+import { buildGlassSurfaceClassName } from "@/lib/theme";
 
 export default async function AssetDetailPage({
   params,
@@ -42,7 +43,7 @@ export default async function AssetDetailPage({
 
   return (
     <div className="space-y-8">
-      <section className="rounded-2xl border border-line bg-panel p-6">
+      <section className={`${buildGlassSurfaceClassName("hero")} rounded-[30px] p-6`}>
         <div className="flex flex-wrap gap-2">
           <Badge>{asset.type.replace("_", " ")}</Badge>
           <Badge>{asset.direction}</Badge>
@@ -122,7 +123,7 @@ export default async function AssetDetailPage({
               <select
                 name="projectId"
                 defaultValue={activeProject?.id ?? ""}
-                className="w-full rounded-xl border border-line bg-canvas px-4 py-3 text-sm text-ink outline-none focus:border-accent"
+                className={`${buildGlassSurfaceClassName("input")} w-full rounded-[18px] px-4 py-3 text-sm text-ink outline-none`}
               >
                 {projects.map((project) => (
                   <option key={project.id} value={project.id}>

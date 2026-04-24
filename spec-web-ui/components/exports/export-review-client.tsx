@@ -16,6 +16,7 @@ import {
   summarizeExportReviewNotes
 } from "@/lib/export-client";
 import { buildShellCommandTitle } from "@/lib/shell";
+import { buildGlassSurfaceClassName } from "@/lib/theme";
 import type { ExportReviewDecision, ExportReviewGroup, ExportTreeNode } from "@/lib/types";
 
 function toAnchorId(path: string) {
@@ -210,7 +211,7 @@ export function ExportReviewClient({
   return (
     <div className="grid gap-6 xl:grid-cols-[300px_1fr]">
       <div className="space-y-6">
-        <div className="rounded-2xl border border-line bg-panel p-5">
+        <div className={`${buildGlassSurfaceClassName("panel")} rounded-[24px] p-5`}>
           <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">
             {buildShellCommandTitle("ls", "review.controls/")}
           </p>
@@ -270,7 +271,7 @@ export function ExportReviewClient({
           </div>
         </div>
 
-        <div className="rounded-2xl border border-line bg-panel p-5">
+        <div className={`${buildGlassSurfaceClassName("panel")} rounded-[24px] p-5`}>
           <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">
             {buildShellCommandTitle("tree", "bundle/")}
           </p>
@@ -279,7 +280,7 @@ export function ExportReviewClient({
           </div>
         </div>
 
-        <div className="rounded-2xl border border-line bg-panel p-5">
+        <div className={`${buildGlassSurfaceClassName("panel")} rounded-[24px] p-5`}>
           <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">
             {buildShellCommandTitle("cat", "todos.md")}
           </p>
@@ -327,7 +328,7 @@ export function ExportReviewClient({
           </div>
         </div>
 
-        <div className="rounded-2xl border border-line bg-panel p-5">
+        <div className={`${buildGlassSurfaceClassName("panel")} rounded-[24px] p-5`}>
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">
@@ -562,7 +563,7 @@ export function ExportReviewClient({
                             }
                             rows={3}
                             placeholder={"Use markdown. Example:\n# Follow-up\n- [ ] Add request example"}
-                            className="w-full rounded-xl border border-line bg-panel px-4 py-3 text-sm text-ink outline-none focus:border-accent"
+                            className={`${buildGlassSurfaceClassName("input")} w-full rounded-[18px] px-4 py-3 text-sm text-ink outline-none`}
                           />
                         </label>
                         <div className="flex flex-wrap items-center justify-between gap-3">

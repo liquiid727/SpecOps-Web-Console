@@ -11,6 +11,7 @@ import {
   updateFavoriteEntryAction,
   updatePresetDisplayAction
 } from "@/app/actions";
+import { CatalogResultRow } from "@/components/discover/catalog-result-row";
 import { SortableCollectionItem } from "@/components/discover/sortable-collection-item";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -29,8 +30,10 @@ import {
   loadDiscoverPreferences,
   loadPresetBundles
 } from "@/lib/discover";
+import { buildDiscoverSectionToolClassName } from "@/lib/discover-ui";
 import { listProjects, loadProjectWorkspace } from "@/lib/projects";
 import { buildShellCommandTitle } from "@/lib/shell";
+import { buildGlassSurfaceClassName } from "@/lib/theme";
 import type { CatalogAsset, CatalogFilters, FavoriteEntry } from "@/lib/types";
 
 const discoverFeedbackKeys = [
@@ -265,6 +268,97 @@ export default async function DiscoverPage({
     }
   } as const;
   const redirectTo = buildDiscoverHref(searchParamsWithoutFeedback, {});
+  const discoverProjectHref = activeProject ? `/discover?projectId=${activeProject.id}` : "/discover";
+  const sectionToolbarClassName =
+    "flex flex-wrap items-center gap-1 rounded-full border border-line/45 bg-canvas/55 px-1.5 py-1";
+  const sectionToolClassName = buildDiscoverSectionToolClassName();
+  const sectionAccentToolClassName = buildDiscoverSectionToolClassName("accent");
+  const sectionDangerToolClassName = buildDiscoverSectionToolClassName("danger");
+  const catalogRowAsideClassName =
+    "rounded-[14px] border border-line/70 bg-canvas/65 px-3 py-2.5 text-xs text-slate-400";
+  const railSurfaceClassNames = {
+    filters: buildGlassSurfaceClassName("rail", "blue"),
+    tags: buildGlassSurfaceClassName("rail", "mint"),
+    workspace: buildGlassSurfaceClassName("rail", "emerald"),
+    favorites: buildGlassSurfaceClassName("rail", "lime"),
+    presets: buildGlassSurfaceClassName("rail", "violet"),
+    compare: buildGlassSurfaceClassName("rail", "amber")
+  } as const;
+  const collectionRowSurfaceClassNames = {
+    favorites: buildGlassSurfaceClassName("row", "lime"),
+    presets: buildGlassSurfaceClassName("row", "violet"),
+    compareSets: buildGlassSurfaceClassName("row", "amber")
+  } as const;
+  const buildAssetDetailHref = (assetId: string) =>
+    `/discover/${assetId}${activeProject ? `?projectId=${activeProject.id}` : ""}`;
+  const buildAssetCompareHref = (assetId: string, inCompare: boolean) =>
+    buildDiscoverHref(searchParamsWithoutFeedback, {
+      compare: inCompare
+        ? comparison.assets
+            .filter((candidate) => candidate.id !== assetId)
+            .map((candidate) => candidate.id)
+            .join(",") || null
+        : [...comparison.assets.map((candidate) => candidate.id), assetId].slice(0, 3).join(",")
+    });
+  const renderCatalogRowAside = (asset: CatalogAsset) => (
+    <div className={catalogRowAsideClassName}>
+      <p>
+        <span className="font-medium text-slate-300">stacks:</span>{" "}
+        {asset.stacks.length ? asset.stacks.join(", ") : "none"}
+      </p>
+      <p className="mt-1.5">
+        <span className="font-medium text-slate-300">depends:</span>{" "}
+        {asset.dependsOn.length ? asset.dependsOn.join(", ") : "none"}
+      </p>
+      <p className="mt-1.5">
+        <span className="font-medium text-slate-300">conflicts:</span>{" "}
+        {asset.conflictsWith.length ? asset.conflictsWith.join(", ") : "none"}
+      </p>
+    </div>
+  );
+  const renderCatalogRowActions = (asset: CatalogAsset, state: keyof typeof statusCopy) => {
+    const inCompare = comparison.assets.some((candidate) => candidate.id === asset.id);
+
+    return (
+      <>
+        <Link href={buildAssetDetailHref(asset.id)} className={sectionToolClassName}>
+          detail
+        </Link>
+        {activeProject ? (
+          state === "selected" ? (
+            <Link href={`/projects/${activeProject.id}`} className={sectionToolClassName}>
+              open project
+            </Link>
+          ) : (
+            <form action={setProjectAssetSelectionAction}>
+              <input type="hidden" name="projectId" value={activeProject.id} />
+              <input type="hidden" name="assetId" value={asset.id} />
+              <input type="hidden" name="enabled" value="true" />
+              <input type="hidden" name="redirectTo" value={discoverProjectHref} />
+              <button type="submit" className={sectionAccentToolClassName}>
+                {state === "required" ? "resolve dependency" : "add to project"}
+              </button>
+            </form>
+          )
+        ) : null}
+        <details className="group">
+          <summary className={`cursor-pointer list-none ${sectionToolClassName}`}>more</summary>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <form action={toggleFavoriteAssetAction}>
+              <input type="hidden" name="assetId" value={asset.id} />
+              <input type="hidden" name="redirectTo" value={redirectTo} />
+              <button type="submit" className={sectionToolClassName}>
+                {favoriteAssetIds.has(asset.id) ? "unfavorite" : "favorite"}
+              </button>
+            </form>
+            <Link href={buildAssetCompareHref(asset.id, inCompare)} className={sectionToolClassName}>
+              {inCompare ? "remove compare" : "add compare"}
+            </Link>
+          </div>
+        </details>
+      </>
+    );
+  };
   const discoverFeedback =
     typeof resolvedSearchParams.toastTitle === "string" &&
     typeof resolvedSearchParams.toastDescription === "string" &&
@@ -284,30 +378,31 @@ export default async function DiscoverPage({
 
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl border border-line bg-panel p-6">
-        <div className="flex flex-wrap items-start justify-between gap-6">
-          <div className="space-y-3">
-            <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">
+      <section className="rounded-[22px] border border-line/30 bg-panel/18 px-4 py-3 backdrop-blur-xl">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="space-y-1.5">
+            <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-accent">
               {buildShellCommandTitle("find", "catalog/")}
             </p>
-            <h1 className="text-4xl font-semibold tracking-tight text-ink">discover</h1>
-            <p className="max-w-3xl text-sm leading-7 text-slate-400">
-              Search reusable rules, spec templates, and agent roles, then compose them into the
-              active project workspace.
+            <h1 className="text-[26px] font-semibold tracking-tight text-ink">discover</h1>
+            <p className="text-[13px] text-slate-400">
+              Search reusable rules, spec templates, and agent roles for the active workspace.
             </p>
           </div>
-          <div className="min-w-[260px] space-y-2 font-mono text-xs text-slate-500">
-            <p>catalog: {catalog.length}</p>
-            <p>projects: {projects.length}</p>
-            <p>active: {activeProject?.name ?? "none"}</p>
+          <div className="hidden font-mono text-[11px] uppercase tracking-[0.14em] text-slate-500 xl:flex xl:flex-wrap xl:items-center xl:gap-2">
+            <span className="rounded-full border border-line/35 px-2.5 py-1">catalog {catalog.length}</span>
+            <span className="rounded-full border border-line/35 px-2.5 py-1">projects {projects.length}</span>
+            <span className="rounded-full border border-line/35 px-2.5 py-1">
+              active {activeProject?.name ?? "none"}
+            </span>
           </div>
         </div>
 
-        <form action="/discover" className="mt-6 grid gap-3 xl:grid-cols-[220px_minmax(0,1fr)_180px_160px]">
+        <form action="/discover" className="mt-3 grid gap-2.5 xl:grid-cols-[198px_minmax(0,1fr)_156px_138px]">
           <select
             name="projectId"
             defaultValue={activeProject?.id ?? ""}
-            className="rounded-xl border border-line bg-canvas px-4 py-3 text-sm text-ink outline-none focus:border-accent"
+            className={`${buildGlassSurfaceClassName("input")} rounded-[16px] px-3.5 py-2.5 text-sm text-ink outline-none`}
           >
             {projects.map((project) => (
               <option key={project.id} value={project.id}>
@@ -319,12 +414,12 @@ export default async function DiscoverPage({
             name="q"
             defaultValue={filters.query}
             placeholder="$ search title, tags, stacks..."
-            className="rounded-xl border border-line bg-canvas px-4 py-3 text-sm text-ink outline-none focus:border-accent"
+            className={`${buildGlassSurfaceClassName("input")} rounded-[16px] px-3.5 py-2.5 text-sm text-ink outline-none`}
           />
           <select
             name="sort"
             defaultValue={sort}
-            className="rounded-xl border border-line bg-canvas px-4 py-3 text-sm text-ink outline-none focus:border-accent"
+            className={`${buildGlassSurfaceClassName("input")} rounded-[16px] px-3.5 py-2.5 text-sm text-ink outline-none`}
           >
             <option value="workspace">workspace fit</option>
             <option value="title">title</option>
@@ -333,11 +428,18 @@ export default async function DiscoverPage({
           </select>
           <button
             type="submit"
-            className="rounded-md border border-accent bg-accent/10 px-4 py-3 text-sm font-medium text-accent-strong hover:bg-accent/15"
+            className="glass-interactive glass-interactive-accent rounded-[16px] border border-emerald-300/25 px-3.5 py-2.5 text-sm font-medium text-emerald-50"
           >
             Run search
           </button>
         </form>
+        <div className="mt-2.5 flex flex-wrap items-center gap-2 font-mono text-[11px] uppercase tracking-[0.14em] text-slate-500 xl:hidden">
+          <span className="rounded-full border border-line/35 px-2.5 py-1">catalog {catalog.length}</span>
+          <span className="rounded-full border border-line/35 px-2.5 py-1">projects {projects.length}</span>
+          <span className="rounded-full border border-line/35 px-2.5 py-1">
+            active {activeProject?.name ?? "none"}
+          </span>
+        </div>
       </section>
 
       {discoverFeedback ? (
@@ -377,23 +479,23 @@ export default async function DiscoverPage({
         </div>
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
-        <aside className="space-y-6">
-          <Card>
+      <div className="grid gap-5 xl:grid-cols-[296px_minmax(0,1fr)]">
+        <aside className="space-y-4">
+          <section className={`${railSurfaceClassNames.filters} rounded-[18px] px-4 py-3`}>
             <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">
               {buildShellCommandTitle("ls", "filters/")}
             </p>
-            <form className="mt-4 space-y-4" action="/discover">
+            <form className="mt-3 space-y-3" action="/discover">
               <input type="hidden" name="projectId" value={activeProject?.id ?? ""} />
               {filterGroups.map((group) => (
-                <label key={group.name} className="block space-y-2">
-                  <span className="font-mono text-xs uppercase tracking-[0.14em] text-slate-500">
+                <label key={group.name} className="block space-y-1.5">
+                  <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-slate-500">
                     {group.label}
                   </span>
                   <select
                     name={group.name}
                     defaultValue={selectedFilterValues[group.name]}
-                    className="w-full rounded-xl border border-line bg-canvas px-4 py-3 text-sm text-ink outline-none focus:border-accent"
+                    className={`${buildGlassSurfaceClassName("input")} w-full rounded-[14px] px-3 py-2.5 text-sm text-ink outline-none`}
                   >
                     <option value="">all</option>
                     {group.values.map((value) => (
@@ -406,18 +508,18 @@ export default async function DiscoverPage({
               ))}
               <button
                 type="submit"
-                className="w-full rounded-md border border-line px-4 py-2 text-sm font-medium text-slate-300 hover:bg-sand"
+                className="w-full rounded-md border border-line/70 px-3 py-2 text-sm font-medium text-slate-300 hover:bg-sand"
               >
                 Apply filters
               </button>
             </form>
-          </Card>
+          </section>
 
-          <Card>
+          <section className={`${railSurfaceClassNames.tags} rounded-[18px] px-4 py-3`}>
             <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">
               {buildShellCommandTitle("ls", "tags/")}
             </p>
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-3 flex flex-wrap gap-1.5">
               {quickTags.map((tag) => {
                 const active = filters.tags?.includes(tag);
 
@@ -427,8 +529,8 @@ export default async function DiscoverPage({
                     href={buildDiscoverHref(searchParamsWithoutFeedback, { tag: active ? null : tag })}
                     className={
                       active
-                        ? "rounded-md border border-accent bg-accent/10 px-3 py-1 font-mono text-[11px] uppercase tracking-[0.12em] text-accent-strong"
-                        : "rounded-md border border-line px-3 py-1 font-mono text-[11px] uppercase tracking-[0.12em] text-slate-300 hover:bg-sand"
+                        ? "rounded-md border border-accent bg-accent/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-accent-strong"
+                        : "rounded-md border border-line/70 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-slate-300 hover:bg-sand"
                     }
                   >
                     {tag}
@@ -436,42 +538,42 @@ export default async function DiscoverPage({
                 );
               })}
             </div>
-          </Card>
+          </section>
 
           {activeWorkspace ? (
-            <Card>
+            <section className={`${railSurfaceClassNames.workspace} rounded-[18px] px-4 py-3`}>
               <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">
                 {buildShellCommandTitle("cat", "workspace.context")}
               </p>
-              <div className="mt-4 space-y-4">
+              <div className="mt-3 space-y-3">
                 <div>
-                  <h2 className="text-lg font-medium text-ink">{activeWorkspace.project.name}</h2>
+                  <h2 className="text-base font-medium text-ink">{activeWorkspace.project.name}</h2>
                   <p className="mt-1 text-sm text-slate-400">{activeWorkspace.project.architecture}</p>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-                  <div className="rounded-xl border border-line bg-canvas p-4">
+                <div className="grid gap-2 sm:grid-cols-3 xl:grid-cols-1">
+                  <div className="rounded-[14px] border border-line/70 bg-canvas/65 px-3 py-2.5">
                     <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-slate-500">
                       selected
                     </p>
-                    <p className="mt-2 text-2xl font-semibold text-ink">{activeWorkspace.selectedAssets.length}</p>
+                    <p className="mt-1.5 text-xl font-semibold text-ink">{activeWorkspace.selectedAssets.length}</p>
                   </div>
-                  <div className="rounded-xl border border-line bg-canvas p-4">
+                  <div className="rounded-[14px] border border-line/70 bg-canvas/65 px-3 py-2.5">
                     <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-slate-500">
                       missing deps
                     </p>
-                    <p className="mt-2 text-2xl font-semibold text-ink">
+                    <p className="mt-1.5 text-xl font-semibold text-ink">
                       {activeWorkspace.missingDependencies.length}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-line bg-canvas p-4">
+                  <div className="rounded-[14px] border border-line/70 bg-canvas/65 px-3 py-2.5">
                     <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-slate-500">
                       conflicts
                     </p>
-                    <p className="mt-2 text-2xl font-semibold text-ink">{activeWorkspace.conflicts.length}</p>
+                    <p className="mt-1.5 text-xl font-semibold text-ink">{activeWorkspace.conflicts.length}</p>
                   </div>
                 </div>
                 {workspaceMix ? (
-                  <div className="space-y-2 text-sm text-slate-400">
+                  <div className="space-y-1.5 text-sm text-slate-400">
                     {Object.entries(workspaceMix).map(([type, count]) => (
                       <p key={type} className="font-mono text-xs uppercase tracking-[0.12em]">
                         {type}: {count}
@@ -479,33 +581,33 @@ export default async function DiscoverPage({
                     ))}
                   </div>
                 ) : null}
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1.5">
                   {previewExportDirectories.map((directory) => (
                     <span
                       key={directory}
-                      className="rounded-md border border-line px-2.5 py-1 font-mono text-[11px] text-slate-300"
+                      className="rounded-md border border-line/70 px-2 py-0.5 font-mono text-[10px] text-slate-300"
                     >
                       {directory}/
                     </span>
                   ))}
                 </div>
               </div>
-            </Card>
+            </section>
           ) : null}
 
           {favoriteAssets.length ? (
-            <section className="space-y-4">
+            <section className={`${railSurfaceClassNames.favorites} space-y-3 rounded-[18px] px-4 py-3`}>
               <div className="flex items-end justify-between gap-4">
                 <div>
                   <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">
                     {buildShellCommandTitle("ls", "favorites/")}
                   </p>
-                  <p className="mt-2 text-sm text-slate-400">pinned assets and renamed shortcuts</p>
+                  <p className="mt-1 text-xs text-slate-400">pinned assets and renamed shortcuts</p>
                 </div>
                 <form
                   id="favorite-batch-form"
                   action={batchUpdateDiscoverCollectionAction}
-                  className="flex flex-wrap gap-2"
+                  className={sectionToolbarClassName}
                 >
                   <input type="hidden" name="scope" value="favorites" />
                   <input type="hidden" name="redirectTo" value={redirectTo} />
@@ -513,7 +615,7 @@ export default async function DiscoverPage({
                     type="submit"
                     name="intent"
                     value="promote"
-                    className="rounded-md border border-line px-3 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-300 hover:bg-sand"
+                    className={sectionToolClassName}
                   >
                     top
                   </button>
@@ -521,13 +623,13 @@ export default async function DiscoverPage({
                     type="submit"
                     name="intent"
                     value="remove"
-                    className="rounded-md border border-line px-3 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-rose-300 hover:bg-sand"
+                    className={sectionDangerToolClassName}
                   >
                     remove
                   </button>
                 </form>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {favoriteAssets.map(({ asset, entry }, index) => (
                   <SortableCollectionItem
                     key={asset.id}
@@ -537,8 +639,11 @@ export default async function DiscoverPage({
                     dragLabel={entry.label?.trim() || asset.title}
                     undoBeforeId={favoriteAssets[index + 1]?.asset.id}
                     redirectTo={redirectTo}
+                    compact
                   >
-                    <Card className="space-y-3 p-4">
+                    <div
+                      className={`${collectionRowSurfaceClassNames.favorites} space-y-2 rounded-[16px] px-3 py-2.5`}
+                    >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3">
                           <input
@@ -549,9 +654,7 @@ export default async function DiscoverPage({
                             className="mt-1 h-4 w-4 rounded border-line bg-canvas"
                           />
                           <div>
-                            <p className="text-sm font-medium text-ink">
-                              {entry.label?.trim() || asset.title}
-                            </p>
+                            <p className="text-sm font-medium text-ink">{entry.label?.trim() || asset.title}</p>
                             {entry.label?.trim() ? (
                               <p className="mt-1 text-xs text-slate-500">{asset.title}</p>
                             ) : null}
@@ -559,55 +662,68 @@ export default async function DiscoverPage({
                         </div>
                         <Badge>{asset.type.replace("_", " ")}</Badge>
                       </div>
-                      <p className="text-sm leading-6 text-slate-400">{asset.summary}</p>
-                      <form action={updateFavoriteEntryAction} className="space-y-3">
-                        <input type="hidden" name="assetId" value={asset.id} />
-                        <input type="hidden" name="redirectTo" value={redirectTo} />
-                        <input
-                          type="text"
-                          name="label"
-                          defaultValue={entry.label ?? ""}
-                          placeholder="$ rename favorite"
-                          className="w-full rounded-xl border border-line bg-canvas px-4 py-3 text-sm text-ink outline-none focus:border-accent"
-                        />
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            type="submit"
-                            name="intent"
-                            value="rename"
-                            className="rounded-md border border-line px-3 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-300 hover:bg-sand"
-                          >
-                            rename
-                          </button>
-                          <button
-                            type="submit"
-                            name="intent"
-                            value="remove"
-                            className="rounded-md border border-line px-3 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-rose-300 hover:bg-sand"
-                          >
-                            remove
-                          </button>
-                        </div>
-                      </form>
-                    </Card>
+                      <p className="text-xs leading-5 text-slate-400">{asset.summary}</p>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Link
+                          href={buildAssetDetailHref(asset.id)}
+                          className={sectionToolClassName}
+                        >
+                          detail
+                        </Link>
+                        <details className="group">
+                          <summary className={`cursor-pointer list-none ${sectionToolClassName}`}>
+                            manage
+                          </summary>
+                          <form action={updateFavoriteEntryAction} className="mt-2 space-y-2">
+                            <input type="hidden" name="assetId" value={asset.id} />
+                            <input type="hidden" name="redirectTo" value={redirectTo} />
+                            <input
+                              type="text"
+                              name="label"
+                              defaultValue={entry.label ?? ""}
+                              placeholder="$ rename favorite"
+                              className={`${buildGlassSurfaceClassName("input")} w-full rounded-[14px] px-3 py-2 text-sm text-ink outline-none`}
+                            />
+                            <div className="flex flex-wrap gap-1.5">
+                              <button
+                                type="submit"
+                                name="intent"
+                                value="rename"
+                                className={sectionToolClassName}
+                              >
+                                rename
+                              </button>
+                              <button
+                                type="submit"
+                                name="intent"
+                                value="remove"
+                                className={sectionDangerToolClassName}
+                              >
+                                remove
+                              </button>
+                            </div>
+                          </form>
+                        </details>
+                      </div>
+                    </div>
                   </SortableCollectionItem>
                 ))}
               </div>
             </section>
           ) : null}
 
-          <section className="space-y-4">
+          <section className={`${railSurfaceClassNames.presets} space-y-3 rounded-[18px] px-4 py-3`}>
             <div className="flex items-end justify-between gap-4">
               <div>
                 <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">
                   {buildShellCommandTitle("ls", "presets/")}
                 </p>
-                <p className="mt-2 text-sm text-slate-400">starter bundles for the active project</p>
+                <p className="mt-1 text-xs text-slate-400">starter bundles for the active project</p>
               </div>
               <form
                 id="preset-visible-batch-form"
                 action={batchUpdateDiscoverCollectionAction}
-                className="flex flex-wrap gap-2"
+                className={sectionToolbarClassName}
               >
                 <input type="hidden" name="scope" value="presets" />
                 <input type="hidden" name="redirectTo" value={redirectTo} />
@@ -615,7 +731,7 @@ export default async function DiscoverPage({
                   type="submit"
                   name="intent"
                   value="promote"
-                  className="rounded-md border border-line px-3 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-300 hover:bg-sand"
+                  className={sectionToolClassName}
                 >
                   top
                 </button>
@@ -623,14 +739,14 @@ export default async function DiscoverPage({
                   type="submit"
                   name="intent"
                   value="hide"
-                  className="rounded-md border border-line px-3 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-rose-300 hover:bg-sand"
+                  className={sectionDangerToolClassName}
                 >
                   hide
                 </button>
               </form>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2">
               {visiblePresetPreviews.map(({ bundle, rawBundle, preview }, index) => (
                 <SortableCollectionItem
                   key={bundle.id}
@@ -640,8 +756,11 @@ export default async function DiscoverPage({
                   dragLabel={bundle.title}
                   undoBeforeId={visiblePresetPreviews[index + 1]?.rawBundle.id}
                   redirectTo={redirectTo}
+                  compact
                 >
-                  <Card className="space-y-3 p-4">
+                  <div
+                    className={`${collectionRowSurfaceClassNames.presets} space-y-2 rounded-[16px] px-3 py-2.5`}
+                  >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3">
                         <input
@@ -658,77 +777,84 @@ export default async function DiscoverPage({
                       </div>
                       <Badge>{bundle.featured ? "featured" : "preset"}</Badge>
                     </div>
-                    <p className="text-sm leading-6 text-slate-400">{bundle.summary}</p>
-                    <div className="flex flex-wrap gap-2">
+                    <p className="text-xs leading-5 text-slate-400">{bundle.summary}</p>
+                    <div className="flex flex-wrap gap-1.5">
                       {preview.exportDirectories.map((directory) => (
                         <span
                           key={directory}
-                          className="rounded-md border border-line px-2 py-0.5 font-mono text-[11px] text-slate-300"
+                          className="rounded-md border border-line/70 px-2 py-0.5 font-mono text-[10px] text-slate-300"
                         >
                           {directory}/
                         </span>
                       ))}
                     </div>
-                    {activeProject ? (
-                      <form action={applyPresetBundleAction}>
-                        <input type="hidden" name="projectId" value={activeProject.id} />
-                        <input type="hidden" name="presetId" value={rawBundle.id} />
-                        <input type="hidden" name="redirectTo" value={`/discover?projectId=${activeProject.id}`} />
-                        <button
-                          type="submit"
-                          className="rounded-md border border-accent bg-accent/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-accent-strong hover:bg-accent/15"
-                        >
-                          apply
-                        </button>
-                      </form>
-                    ) : null}
-                    <form action={updatePresetDisplayAction} className="space-y-3">
-                      <input type="hidden" name="presetId" value={rawBundle.id} />
-                      <input type="hidden" name="redirectTo" value={redirectTo} />
-                      <input
-                        type="text"
-                        name="label"
-                        defaultValue={bundle.title !== rawBundle.title ? bundle.title : ""}
-                        placeholder="$ rename preset"
-                        className="w-full rounded-xl border border-line bg-canvas px-4 py-3 text-sm text-ink outline-none focus:border-accent"
-                      />
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="submit"
-                          name="intent"
-                          value="rename"
-                          className="rounded-md border border-line px-3 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-300 hover:bg-sand"
-                        >
-                          rename
-                        </button>
-                        <button
-                          type="submit"
-                          name="intent"
-                          value="hide"
-                          className="rounded-md border border-line px-3 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-rose-300 hover:bg-sand"
-                        >
-                          hide
-                        </button>
-                      </div>
-                    </form>
-                  </Card>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {activeProject ? (
+                        <form action={applyPresetBundleAction}>
+                          <input type="hidden" name="projectId" value={activeProject.id} />
+                          <input type="hidden" name="presetId" value={rawBundle.id} />
+                          <input type="hidden" name="redirectTo" value={`/discover?projectId=${activeProject.id}`} />
+                          <button
+                            type="submit"
+                            className={sectionAccentToolClassName}
+                          >
+                            apply
+                          </button>
+                        </form>
+                      ) : null}
+                      <details className="group">
+                        <summary className={`cursor-pointer list-none ${sectionToolClassName}`}>
+                          manage
+                        </summary>
+                        <form action={updatePresetDisplayAction} className="mt-2 space-y-2">
+                          <input type="hidden" name="presetId" value={rawBundle.id} />
+                          <input type="hidden" name="redirectTo" value={redirectTo} />
+                          <input
+                            type="text"
+                            name="label"
+                            defaultValue={bundle.title !== rawBundle.title ? bundle.title : ""}
+                            placeholder="$ rename preset"
+                            className={`${buildGlassSurfaceClassName("input")} w-full rounded-[14px] px-3 py-2 text-sm text-ink outline-none`}
+                          />
+                          <div className="flex flex-wrap gap-1.5">
+                            <button
+                              type="submit"
+                              name="intent"
+                              value="rename"
+                              className={sectionToolClassName}
+                            >
+                              rename
+                            </button>
+                            <button
+                              type="submit"
+                              name="intent"
+                              value="hide"
+                              className={sectionDangerToolClassName}
+                            >
+                              hide
+                            </button>
+                          </div>
+                        </form>
+                      </details>
+                    </div>
+                  </div>
                 </SortableCollectionItem>
               ))}
             </div>
 
             {hiddenPresetPreviews.length ? (
-              <Card className="space-y-3">
+              <div className="space-y-2 rounded-[16px] border border-line/60 bg-canvas/55 px-3 py-2.5">
                 <div className="flex items-end justify-between gap-4">
                   <div>
                     <p className="font-mono text-xs uppercase tracking-[0.14em] text-slate-500">
                       hidden
                     </p>
-                    <p className="mt-1 text-sm text-slate-400">restore hidden bundles</p>
+                    <p className="mt-1 text-xs text-slate-400">restore hidden bundles</p>
                   </div>
                   <form
                     id="preset-hidden-batch-form"
                     action={batchUpdateDiscoverCollectionAction}
-                    className="flex flex-wrap gap-2"
+                    className={sectionToolbarClassName}
                   >
                     <input type="hidden" name="scope" value="presets" />
                     <input type="hidden" name="redirectTo" value={redirectTo} />
@@ -736,15 +862,15 @@ export default async function DiscoverPage({
                       type="submit"
                       name="intent"
                       value="restore"
-                      className="rounded-md border border-line px-3 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-300 hover:bg-sand"
+                      className={sectionToolClassName}
                     >
                       restore
                     </button>
                   </form>
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {hiddenPresetPreviews.map(({ rawBundle }) => (
-                    <form key={rawBundle.id} action={updatePresetDisplayAction} className="rounded-xl border border-line bg-canvas p-4">
+                    <form key={rawBundle.id} action={updatePresetDisplayAction} className="rounded-[14px] border border-line/70 bg-canvas/70 px-3 py-2.5">
                       <div className="flex items-start gap-3">
                         <input
                           type="checkbox"
@@ -755,7 +881,7 @@ export default async function DiscoverPage({
                         />
                         <div className="flex-1">
                           <p className="text-sm font-medium text-ink">{rawBundle.title}</p>
-                          <p className="mt-2 text-sm leading-6 text-slate-400">{rawBundle.summary}</p>
+                          <p className="mt-1.5 text-xs leading-5 text-slate-400">{rawBundle.summary}</p>
                         </div>
                       </div>
                       <input type="hidden" name="presetId" value={rawBundle.id} />
@@ -763,29 +889,29 @@ export default async function DiscoverPage({
                       <input type="hidden" name="redirectTo" value={redirectTo} />
                       <button
                         type="submit"
-                        className="mt-4 rounded-md border border-line px-3 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-300 hover:bg-sand"
+                        className={`mt-2 ${sectionToolClassName}`}
                       >
                         restore
                       </button>
                     </form>
                   ))}
                 </div>
-              </Card>
+              </div>
             ) : null}
           </section>
 
-          <section className="space-y-4">
+          <section className={`${railSurfaceClassNames.compare} space-y-3 rounded-[18px] px-4 py-3`}>
             <div className="flex items-end justify-between gap-4">
               <div>
                 <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">
                   {buildShellCommandTitle("ls", "compare-sets/")}
                 </p>
-                <p className="mt-2 text-sm text-slate-400">saved compare combinations</p>
+                <p className="mt-1 text-xs text-slate-400">saved compare combinations</p>
               </div>
               <form
                 id="compare-batch-form"
                 action={batchUpdateDiscoverCollectionAction}
-                className="flex flex-wrap gap-2"
+                className={sectionToolbarClassName}
               >
                 <input type="hidden" name="scope" value="compareSets" />
                 <input type="hidden" name="redirectTo" value={redirectTo} />
@@ -793,7 +919,7 @@ export default async function DiscoverPage({
                   type="submit"
                   name="intent"
                   value="promote"
-                  className="rounded-md border border-line px-3 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-300 hover:bg-sand"
+                  className={sectionToolClassName}
                 >
                   top
                 </button>
@@ -801,7 +927,7 @@ export default async function DiscoverPage({
                   type="submit"
                   name="intent"
                   value="remove"
-                  className="rounded-md border border-line px-3 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-rose-300 hover:bg-sand"
+                  className={sectionDangerToolClassName}
                 >
                   delete
                 </button>
@@ -809,7 +935,7 @@ export default async function DiscoverPage({
             </div>
 
             {comparison.assets.length >= 2 ? (
-              <form action={saveCompareSetAction} className="rounded-xl border border-line bg-panel p-4">
+              <form action={saveCompareSetAction} className="rounded-[14px] border border-line/70 bg-canvas/55 px-3 py-2.5">
                 <input type="hidden" name="projectId" value={activeProject?.id ?? ""} />
                 <input
                   type="hidden"
@@ -817,17 +943,14 @@ export default async function DiscoverPage({
                   value={comparison.assets.map((asset) => asset.id).join(",")}
                 />
                 <input type="hidden" name="redirectTo" value={redirectTo} />
-                <button
-                  type="submit"
-                  className="rounded-md border border-accent bg-accent/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-accent-strong hover:bg-accent/15"
-                >
+                <button type="submit" className={sectionAccentToolClassName}>
                   save current compare
                 </button>
               </form>
             ) : null}
 
             {savedCompareSets.length ? (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {savedCompareSets.map((compareSet, index) => (
                   <SortableCollectionItem
                     key={compareSet.id}
@@ -837,8 +960,11 @@ export default async function DiscoverPage({
                     dragLabel={compareSet.name}
                     undoBeforeId={savedCompareSets[index + 1]?.id}
                     redirectTo={redirectTo}
+                    compact
                   >
-                    <Card className="space-y-3 p-4">
+                    <div
+                      className={`${collectionRowSurfaceClassNames.compareSets} space-y-2 rounded-[16px] px-3 py-2.5`}
+                    >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3">
                           <input
@@ -859,69 +985,81 @@ export default async function DiscoverPage({
                           {compareSet.assetIds.length} assets
                         </span>
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        {compareSet.assetIds.map((assetId) => (
+                      <div className="flex flex-wrap gap-1.5">
+                        {compareSet.assetIds.slice(0, 4).map((assetId) => (
                           <span
                             key={assetId}
-                            className="rounded-md border border-line px-2 py-0.5 font-mono text-[11px] text-slate-300"
+                            className="rounded-md border border-line/70 px-2 py-0.5 font-mono text-[10px] text-slate-300"
                           >
                             {catalog.find((asset) => asset.id === assetId)?.title ?? assetId}
                           </span>
                         ))}
+                        {compareSet.assetIds.length > 4 ? (
+                          <span className="rounded-md border border-line/70 px-2 py-0.5 font-mono text-[10px] text-slate-500">
+                            +{compareSet.assetIds.length - 4}
+                          </span>
+                        ) : null}
                       </div>
-                      <form action={updateCompareSetAction} className="space-y-3">
-                        <input type="hidden" name="compareSetId" value={compareSet.id} />
-                        <input type="hidden" name="redirectTo" value={redirectTo} />
-                        <input
-                          type="text"
-                          name="name"
-                          defaultValue={compareSet.name}
-                          placeholder="$ rename compare set"
-                          className="w-full rounded-xl border border-line bg-canvas px-4 py-3 text-sm text-ink outline-none focus:border-accent"
-                        />
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            type="submit"
-                            name="intent"
-                            value="rename"
-                            className="rounded-md border border-line px-3 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-300 hover:bg-sand"
-                          >
-                            rename
-                          </button>
-                          <button
-                            type="submit"
-                            name="intent"
-                            value="remove"
-                            className="rounded-md border border-line px-3 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-rose-300 hover:bg-sand"
-                          >
-                            delete
-                          </button>
-                          <Link
-                            href={buildDiscoverHref(searchParamsWithoutFeedback, {
-                              compare: compareSet.assetIds.join(","),
-                              projectId: compareSet.projectId ?? activeProject?.id ?? null
-                            })}
-                            className="rounded-md border border-line px-3 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-300 hover:bg-sand"
-                          >
-                            load
-                          </Link>
-                        </div>
-                      </form>
-                    </Card>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Link
+                          href={buildDiscoverHref(searchParamsWithoutFeedback, {
+                            compare: compareSet.assetIds.join(","),
+                            projectId: compareSet.projectId ?? activeProject?.id ?? null
+                          })}
+                          className={sectionToolClassName}
+                        >
+                          load
+                        </Link>
+                        <details className="group">
+                          <summary className={`cursor-pointer list-none ${sectionToolClassName}`}>
+                            manage
+                          </summary>
+                          <form action={updateCompareSetAction} className="mt-2 space-y-2">
+                            <input type="hidden" name="compareSetId" value={compareSet.id} />
+                            <input type="hidden" name="redirectTo" value={redirectTo} />
+                            <input
+                              type="text"
+                              name="name"
+                              defaultValue={compareSet.name}
+                              placeholder="$ rename compare set"
+                              className={`${buildGlassSurfaceClassName("input")} w-full rounded-[14px] px-3 py-2 text-sm text-ink outline-none`}
+                            />
+                            <div className="flex flex-wrap gap-1.5">
+                              <button
+                                type="submit"
+                                name="intent"
+                                value="rename"
+                                className={sectionToolClassName}
+                              >
+                                rename
+                              </button>
+                              <button
+                                type="submit"
+                                name="intent"
+                                value="remove"
+                                className={sectionDangerToolClassName}
+                              >
+                                delete
+                              </button>
+                            </div>
+                          </form>
+                        </details>
+                      </div>
+                    </div>
                   </SortableCollectionItem>
                 ))}
               </div>
             ) : (
-              <Card>
+              <div className="rounded-[14px] border border-line/70 bg-canvas/55 px-3 py-2.5">
                 <p className="font-mono text-xs text-slate-500">no compare sets found</p>
-              </Card>
+              </div>
             )}
           </section>
         </aside>
 
         <main className="space-y-6">
           {comparison.assets.length ? (
-            <Card>
+            <Card tint="amber">
               <div className="flex flex-wrap items-end justify-between gap-4">
                 <div>
                   <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">
@@ -974,7 +1112,7 @@ export default async function DiscoverPage({
           ) : null}
 
           <div className="grid gap-6 xl:grid-cols-2">
-            <Card>
+            <Card tint="mint">
               <div className="flex items-end justify-between gap-4">
                 <div>
                   <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">
@@ -984,28 +1122,41 @@ export default async function DiscoverPage({
                 </div>
               </div>
               <div className="mt-4 divide-y divide-line">
-                {featuredAssets.map((asset) => (
-                  <Link
-                    key={asset.id}
-                    href={`/discover/${asset.id}${activeProject ? `?projectId=${activeProject.id}` : ""}`}
-                    className="block py-4 transition hover:bg-sand/60"
-                  >
-                    <div className="flex flex-wrap items-center gap-3">
-                      <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-accent-strong">
-                        {asset.type}
-                      </span>
-                      <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-slate-500">
-                        {asset.direction}
-                      </span>
-                    </div>
-                    <p className="mt-2 text-sm font-medium text-ink">{asset.title}</p>
-                    <p className="mt-1 text-sm leading-6 text-slate-400">{asset.summary}</p>
-                  </Link>
-                ))}
+                {featuredAssets.map((asset) => {
+                  const state = getWorkspaceAssetState(asset, workspaceContext);
+
+                  return (
+                    <CatalogResultRow
+                      key={asset.id}
+                      asset={asset}
+                      href={buildAssetDetailHref(asset.id)}
+                      badges={
+                        <>
+                          <span
+                            className={`rounded-md border px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.12em] ${statusCopy[state].tone}`}
+                          >
+                            {statusCopy[state].label}
+                          </span>
+                          <Badge>{asset.type.replace("_", " ")}</Badge>
+                        </>
+                      }
+                      meta={
+                        <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-slate-500">
+                          {asset.direction}
+                        </span>
+                      }
+                      favorite={favoriteAssetIds.has(asset.id)}
+                      detail="team-picked reusable asset"
+                      rightContent={renderCatalogRowAside(asset)}
+                      actions={renderCatalogRowActions(asset, state)}
+                      tint="mint"
+                    />
+                  );
+                })}
               </div>
             </Card>
 
-            <Card>
+            <Card tint="blue">
               <div className="flex items-end justify-between gap-4">
                 <div>
                   <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">
@@ -1015,24 +1166,37 @@ export default async function DiscoverPage({
                 </div>
               </div>
               <div className="mt-4 divide-y divide-line">
-                {marketplaceRecommendations.map((asset) => (
-                  <Link
-                    key={asset.id}
-                    href={`/discover/${asset.id}${activeProject ? `?projectId=${activeProject.id}` : ""}`}
-                    className="block py-4 transition hover:bg-sand/60"
-                  >
-                    <div className="flex flex-wrap items-center gap-3">
-                      <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-accent-strong">
-                        {asset.type}
-                      </span>
-                      <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-slate-500">
-                        {asset.stacks.join(", ")}
-                      </span>
-                    </div>
-                    <p className="mt-2 text-sm font-medium text-ink">{asset.title}</p>
-                    <p className="mt-1 text-sm leading-6 text-slate-400">{asset.summary}</p>
-                  </Link>
-                ))}
+                {marketplaceRecommendations.map((asset) => {
+                  const state = getWorkspaceAssetState(asset, workspaceContext);
+
+                  return (
+                    <CatalogResultRow
+                      key={asset.id}
+                      asset={asset}
+                      href={buildAssetDetailHref(asset.id)}
+                      badges={
+                        <>
+                          <span
+                            className={`rounded-md border px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.12em] ${statusCopy[state].tone}`}
+                          >
+                            {statusCopy[state].label}
+                          </span>
+                          <Badge>{asset.type.replace("_", " ")}</Badge>
+                        </>
+                      }
+                      meta={
+                        <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-slate-500">
+                          {asset.direction}
+                        </span>
+                      }
+                      favorite={favoriteAssetIds.has(asset.id)}
+                      detail="workspace-aware catalog pick"
+                      rightContent={renderCatalogRowAside(asset)}
+                      actions={renderCatalogRowActions(asset, state)}
+                      tint="blue"
+                    />
+                  );
+                })}
               </div>
             </Card>
           </div>
@@ -1054,113 +1218,33 @@ export default async function DiscoverPage({
               <div className="mt-4 divide-y divide-line">
                 {filteredAssets.map((asset) => {
                   const state = getWorkspaceAssetState(asset, workspaceContext);
-                  const inCompare = comparison.assets.some((candidate) => candidate.id === asset.id);
 
                   return (
-                    <div key={asset.id} className="py-5">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className={`rounded-md border px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.12em] ${statusCopy[state].tone}`}>
-                          {statusCopy[state].label}
-                        </span>
-                        <Badge>{asset.type.replace("_", " ")}</Badge>
+                    <CatalogResultRow
+                      key={asset.id}
+                      asset={asset}
+                      href={buildAssetDetailHref(asset.id)}
+                      badges={
+                        <>
+                          <span
+                            className={`rounded-md border px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.12em] ${statusCopy[state].tone}`}
+                          >
+                            {statusCopy[state].label}
+                          </span>
+                          <Badge>{asset.type.replace("_", " ")}</Badge>
+                        </>
+                      }
+                      meta={
                         <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-slate-500">
                           {asset.direction}
                         </span>
-                        {favoriteAssetIds.has(asset.id) ? (
-                          <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-emerald-300">
-                            favorite
-                          </span>
-                        ) : null}
-                      </div>
-
-                      <div className="mt-3 flex flex-wrap items-start justify-between gap-6">
-                        <div className="max-w-3xl">
-                          <p className="font-mono text-[11px] text-slate-600">{asset.sourcePath}</p>
-                          <h3 className="mt-2 text-xl font-medium text-ink">{asset.title}</h3>
-                          <p className="mt-2 text-sm leading-7 text-slate-400">{asset.summary}</p>
-                          <p className="mt-2 text-sm text-slate-500">{statusCopy[state].detail}</p>
-                        </div>
-                        <div className="min-w-[220px] rounded-xl border border-line bg-canvas p-4 text-sm text-slate-400">
-                          <p>
-                            <span className="font-medium text-slate-300">stacks:</span> {asset.stacks.join(", ")}
-                          </p>
-                          <p className="mt-2">
-                            <span className="font-medium text-slate-300">depends:</span>{" "}
-                            {asset.dependsOn.length ? asset.dependsOn.join(", ") : "none"}
-                          </p>
-                          <p className="mt-2">
-                            <span className="font-medium text-slate-300">conflicts:</span>{" "}
-                            {asset.conflictsWith.length ? asset.conflictsWith.join(", ") : "none"}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {asset.tags.map((tag) => (
-                          <span
-                            key={tag}
-                            className="rounded-md border border-line px-2 py-0.5 font-mono text-[11px] text-slate-400"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        <Link
-                          href={`/discover/${asset.id}${activeProject ? `?projectId=${activeProject.id}` : ""}`}
-                          className="rounded-md border border-line px-3 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-300 hover:bg-sand"
-                        >
-                          detail
-                        </Link>
-                        <form action={toggleFavoriteAssetAction}>
-                          <input type="hidden" name="assetId" value={asset.id} />
-                          <input type="hidden" name="redirectTo" value={redirectTo} />
-                          <button
-                            type="submit"
-                            className="rounded-md border border-line px-3 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-300 hover:bg-sand"
-                          >
-                            {favoriteAssetIds.has(asset.id) ? "unfavorite" : "favorite"}
-                          </button>
-                        </form>
-                        <Link
-                          href={buildDiscoverHref(searchParamsWithoutFeedback, {
-                            compare: inCompare
-                              ? comparison.assets
-                                  .filter((candidate) => candidate.id !== asset.id)
-                                  .map((candidate) => candidate.id)
-                                  .join(",") || null
-                              : [...comparison.assets.map((candidate) => candidate.id), asset.id].slice(0, 3).join(",")
-                          })}
-                          className="rounded-md border border-line px-3 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-300 hover:bg-sand"
-                        >
-                          {inCompare ? "remove compare" : "add compare"}
-                        </Link>
-                        {activeProject ? (
-                          state === "selected" ? (
-                            <Link
-                              href={`/projects/${activeProject.id}`}
-                              className="rounded-md border border-line px-3 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-300 hover:bg-sand"
-                            >
-                              open project
-                            </Link>
-                          ) : (
-                            <form action={setProjectAssetSelectionAction}>
-                              <input type="hidden" name="projectId" value={activeProject.id} />
-                              <input type="hidden" name="assetId" value={asset.id} />
-                              <input type="hidden" name="enabled" value="true" />
-                              <input type="hidden" name="redirectTo" value={`/discover?projectId=${activeProject.id}`} />
-                              <button
-                                type="submit"
-                                className="rounded-md border border-accent bg-accent/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-accent-strong hover:bg-accent/15"
-                              >
-                                {state === "required" ? "resolve dependency" : "add to project"}
-                              </button>
-                            </form>
-                          )
-                        ) : null}
-                      </div>
-                    </div>
+                      }
+                      favorite={favoriteAssetIds.has(asset.id)}
+                      detail={statusCopy[state].detail}
+                      rightContent={renderCatalogRowAside(asset)}
+                      actions={renderCatalogRowActions(asset, state)}
+                      tagLimit={6}
+                    />
                   );
                 })}
               </div>

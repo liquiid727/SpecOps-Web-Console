@@ -23,6 +23,7 @@ export function SortableCollectionItem({
   dragLabel,
   undoBeforeId,
   redirectTo,
+  compact = false,
   children
 }: {
   scope: "favorites" | "compareSets" | "presets";
@@ -31,6 +32,7 @@ export function SortableCollectionItem({
   dragLabel: string;
   undoBeforeId?: string;
   redirectTo: string;
+  compact?: boolean;
   children: React.ReactNode;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
@@ -174,9 +176,11 @@ export function SortableCollectionItem({
             ghostRef.current?.remove();
             ghostRef.current = null;
           }}
-          className="mb-2 inline-flex cursor-grab rounded-md border border-line bg-canvas px-3 py-1 font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-slate-400 active:cursor-grabbing"
+          className={`inline-flex cursor-grab rounded-md border border-line bg-canvas font-mono font-medium uppercase tracking-[0.12em] text-slate-400 active:cursor-grabbing ${
+            compact ? "mb-1.5 px-2 py-0.5 text-[10px]" : "mb-2 px-3 py-1 text-[11px]"
+          }`}
         >
-          drag to reorder
+          {compact ? "drag" : "drag to reorder"}
         </div>
         {children}
         <form ref={formRef} action={moveDiscoverCollectionItemAction} className="hidden">
