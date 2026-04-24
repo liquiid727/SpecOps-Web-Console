@@ -1,0 +1,122 @@
+version: 1
+project: specos-ai
+purpose: Spec-driven AI IDE orchestration
+
+defaults:
+  language: zh-CN
+  output_style: concise
+  require_traceability: true
+  require_open_questions: true
+  protect_human_authored_files: true
+
+context_order:
+  - readme.md
+  - README.md
+  - .rules/project.md
+  - rules/
+  - spec-draft/
+  - spec/
+  - tests/
+  - ai/agents/
+
+roles:
+  spec-editor:
+    file: roles/spec-editor.md
+    canonical: ai/agents/spec-editor.md
+    owns:
+      - spec-draft/
+      - spec/
+    outputs:
+      - normalized spec bundle
+      - assumptions and unresolved questions
+
+  ui-design-agent:
+    file: roles/ui-design-agent.md
+    canonical: ai/agents/ui-design-agent.md
+    owns:
+      - spec-web-ui/
+      - UI design notes
+      - screen state coverage
+    outputs:
+      - UI design plan
+      - state coverage notes
+      - component and responsive behavior notes
+
+  ddd-domain-agent:
+    file: roles/ddd-domain-agent.md
+    canonical: ai/agents/ddd-domain-agent.md
+    owns:
+      - domain boundary notes
+      - aggregate and invariant proposals
+    outputs:
+      - domain model notes
+      - boundary risks
+
+  openapi-agent:
+    file: roles/openapi-agent.md
+    canonical: ai/agents/openapi-agent.md
+    owns:
+      - API contracts
+      - request and response examples
+    outputs:
+      - OpenAPI contract updates
+      - schema questions
+
+  db-migration-agent:
+    file: roles/db-migration-agent.md
+    canonical: ai/agents/db-migration-agent.md
+    owns:
+      - migration planning
+      - rollout and rollback notes
+    outputs:
+      - migration checklist
+      - compatibility risks
+
+  bruno-test-agent:
+    file: roles/bruno-test-agent.md
+    canonical: ai/agents/bruno-test-agent.md
+    owns:
+      - tests/bruno/
+      - API scenario assertions
+    outputs:
+      - Bruno collections
+      - environment notes
+
+  playwright-test-agent:
+    file: roles/playwright-test-agent.md
+    canonical: ai/agents/playwright-test-agent.md
+    owns:
+      - browser scenario plans
+      - UI state coverage
+    outputs:
+      - Playwright scenario list
+      - flaky risk notes
+
+  ci-editor:
+    file: roles/ci-editor.md
+    canonical: ai/agents/ci-editor.md
+    owns:
+      - .github/workflows/
+      - scripts/checks/
+    outputs:
+      - release gate updates
+      - validation command notes
+
+  execution-editor:
+    file: roles/execution-editor.md
+    canonical: ai/agents/execution-editor.md
+    owns:
+      - scripts/
+      - ai/workflows/
+    outputs:
+      - workflow wiring
+      - local command documentation
+
+  test-editor:
+    file: roles/test-editor.md
+    canonical: ai/agents/test-editor.md
+    owns:
+      - tests/
+    outputs:
+      - scenario coverage
+      - test gaps

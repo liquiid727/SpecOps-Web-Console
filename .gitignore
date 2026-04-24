@@ -1,0 +1,10 @@
+.*
+todo/*
+docs/
+!.gitignore
+!.agents/
+!.agents/**
+!.rules/
+!.rules/**
+!.skills/
+!.skills/**
