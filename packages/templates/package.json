@@ -1,0 +1,9 @@
+{
+  "name": "@specos/templates",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "files": [
+    "fullstack"
+  ]
+}
