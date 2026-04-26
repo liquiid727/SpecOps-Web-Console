@@ -15,6 +15,7 @@ export async function copyTemplateDirectory(
   target: string,
   options: CopyTemplateOptions = {},
 ): Promise<CopyTemplateResult> {
+  await assertNotSymlink(target, target);
   const files = await listFiles(source);
   const result: CopyTemplateResult = { written: [], skipped: [] };
 
@@ -74,22 +75,26 @@ function toPosixPath(path: string): string {
   return path.split(sep).join("/");
 }
 
+async function assertNotSymlink(targetRoot: string, path: string): Promise<void> {
+  try {
+    const stat = await lstat(path);
+    if (stat.isSymbolicLink()) {
+      throw new Error(`Refusing to write through symlink: ${toPosixPath(relative(targetRoot, path)) || "."}`);
+    }
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      return;
+    }
+    throw error;
+  }
+}
+
 async function assertNoSymlinkTargetSegments(targetRoot: string, relativePath: string): Promise<void> {
   const segments = relativePath.split("/");
   let current = targetRoot;
 
   for (const segment of segments) {
     current = join(current, segment);
-    try {
-      const stat = await lstat(current);
-      if (stat.isSymbolicLink()) {
-        throw new Error(`Refusing to write through symlink: ${toPosixPath(relative(targetRoot, current))}`);
-      }
-    } catch (error) {
-      if (error instanceof Error && "code" in error && error.code === "ENOENT") {
-        return;
-      }
-      throw error;
-    }
+    await assertNotSymlink(targetRoot, current);
   }
 }

@@ -75,4 +75,16 @@ describe("copyTemplateDirectory", () => {
     await expect(copyTemplateDirectory(source, target)).rejects.toThrow("Refusing to write through symlink");
     await expect(readFile(join(outside, "manifest.yaml"), "utf8")).rejects.toThrow();
   });
+
+  it("rejects a symlinked target root before writing", async () => {
+    const source = await tempProject();
+    const target = await tempProject();
+    const outside = await tempProject();
+    const targetLink = join(target, "linked-target");
+    await writeFile(join(source, "AGENTS.md"), "template agents\n");
+    await symlink(outside, targetLink);
+
+    await expect(copyTemplateDirectory(source, targetLink)).rejects.toThrow("Refusing to write through symlink");
+    await expect(readFile(join(outside, "AGENTS.md"), "utf8")).rejects.toThrow();
+  });
 });
