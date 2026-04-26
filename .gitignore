@@ -1,6 +1,9 @@
 .*
 todo/*
 docs/
+node_modules/
+dist/
+packages/*/dist/
 !.gitignore
 !.agents/
 !.agents/**

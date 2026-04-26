@@ -18,11 +18,33 @@ describe("artifact validation", () => {
         testsDir: "tests",
         resultsDir: "tests/results",
       },
+      rulePacks: ["fullstack-base"],
+      agentTemplates: ["spec-editor"],
       workflows: ["default-fullstack"],
       ci: { checkCommand: "npx specos check" },
     });
 
     expect(result.ok).toBe(true);
+  });
+
+  it("rejects a manifest without rule packs and agent templates", () => {
+    const result = validateManifest({
+      project: { name: "demo", type: "fullstack" },
+      stacks: { frontend: "next", backend: "node-api" },
+      artifacts: {
+        draftsDir: "spec-draft",
+        specsDir: "spec",
+        testsDir: "tests",
+        resultsDir: "tests/results",
+      },
+      workflows: ["default-fullstack"],
+      ci: { checkCommand: "npx specos check" },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errors.map((error) => error.path)).toEqual(
+      expect.arrayContaining(["rulePacks", "agentTemplates"]),
+    );
   });
 
   it("rejects specs without required coverage fields", () => {
@@ -34,6 +56,27 @@ describe("artifact validation", () => {
 
     expect(result.ok).toBe(false);
     expect(result.errors.map((error) => error.code)).toContain("SPECOS_SPEC_INVALID");
+  });
+
+  it("rejects specs missing happy, limit, error, and flow coverage", () => {
+    const result = validateSpec({
+      id: "reward-order",
+      version: "1.0.0",
+      title: "Reward Order",
+      goals: ["Create reward orders"],
+      nonGoals: ["Payment"],
+      actors: ["member"],
+      userFlows: [{ name: "Claim reward", steps: ["Open page", "Click claim", "View result"] }],
+      systemFlows: [{ name: "Create order", steps: ["Validate", "Persist", "Respond"] }],
+      rules: [{ id: "reward.order.create", description: "Create one order per claim" }],
+      edgeCases: ["stock is zero"],
+      observability: ["trace_id"],
+      tests: { requiredBranches: ["happy"] },
+      traceability: { draft: "spec-draft/reward-order.md" },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errors.map((error) => error.path)).toContain("tests.requiredBranches");
   });
 
   it("builds deterministic happy, limit, error, and flow scenarios from a spec", () => {
@@ -60,6 +103,15 @@ describe("artifact validation", () => {
 
     expect(validation.ok).toBe(true);
     expect(plan.specId).toBe("reward-order");
+    expect(plan.featureName).toBe("Reward Order");
+    expect(plan.source).toBe("accepted-spec");
+    expect(plan.endpoints[0]).toMatchObject({
+      name: "Create reward order",
+      method: "POST",
+      path: "/api/reward-orders",
+      branches: ["happy", "limit", "error", "flow"],
+      relatedRule: "reward.order.create",
+    });
     expect(plan.scenarios.map((scenario) => scenario.branches[0])).toEqual([
       "happy",
       "limit",
@@ -74,10 +126,13 @@ describe("artifact validation", () => {
       specId: "reward-order",
       specVersion: "1.0.0",
       featureName: "Reward Order",
-      status: "pending",
+      status: "warning",
       releaseDecision: "blocked",
       startedAt: "2026-04-26T00:00:00.000Z",
       endedAt: "2026-04-26T00:00:00.000Z",
+      blockers: [],
+      highRiskScenarios: [],
+      coverageGaps: [],
       summary: { apiPassRate: 0, scenarioPassRate: 0, totalEndpoints: 0, totalScenarios: 0 },
       flowResults: [],
       items: [],
