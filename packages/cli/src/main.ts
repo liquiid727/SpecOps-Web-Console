@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { access, mkdir, readFile, readdir } from "node:fs/promises";
-import { createRequire } from "node:module";
+import { realpathSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { copyTemplateDirectory, validateManifest, type SpecosManifest } from "@specos/core";
@@ -19,7 +19,6 @@ export interface RunCliResult {
 
 type ManifestRecord = Record<string, unknown>;
 const supportedCommands = "Supported commands: init, check";
-const require = createRequire(import.meta.url);
 
 export async function runCli(args: string[], options: RunCliOptions): Promise<RunCliResult> {
   const [command] = args;
@@ -40,7 +39,7 @@ export async function runCli(args: string[], options: RunCliOptions): Promise<Ru
 }
 
 async function initProject(cwd: string): Promise<RunCliResult> {
-  const templateDir = dirname(require.resolve("@specos/templates/fullstack/AGENTS.md"));
+  const templateDir = resolve(dirname(fileURLToPath(import.meta.url)), "../templates/fullstack");
   const result = await copyTemplateDirectory(templateDir, cwd);
 
   await mkdir(join(cwd, "tests/results"), { recursive: true });
@@ -182,9 +181,18 @@ function toPosixPath(path: string): string {
   return path.split(sep).join("/");
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (isCliEntrypoint()) {
   const result = await runCli(process.argv.slice(2), { cwd: process.cwd() });
   process.stdout.write(result.stdout);
   process.stderr.write(result.stderr);
   process.exitCode = result.exitCode;
+}
+
+function isCliEntrypoint(): boolean {
+  if (!process.argv[1]) return false;
+  try {
+    return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return process.argv[1] === fileURLToPath(import.meta.url);
+  }
 }

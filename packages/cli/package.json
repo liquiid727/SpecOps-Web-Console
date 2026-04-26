@@ -15,19 +15,20 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "templates"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && esbuild src/main.ts --bundle --platform=node --format=esm --outfile=dist/main.js --banner:js='import { createRequire as __createRequire } from \"node:module\"; const require = __createRequire(import.meta.url);'",
     "test": "vitest run --root ../.. packages/cli/src"
   },
   "dependencies": {
-    "@specos/core": "file:../core",
-    "@specos/templates": "file:../templates",
     "yaml": "^2.8.1"
   },
   "devDependencies": {
+    "@specos/core": "file:../core",
     "@types/node": "^24.6.0",
+    "esbuild": "^0.25.0",
     "typescript": "^5.4.0",
     "vitest": "^1.6.0"
   }
