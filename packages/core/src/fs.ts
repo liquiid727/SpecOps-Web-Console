@@ -1,6 +1,4 @@
-// @ts-ignore Task 1 has not installed @types/node yet; these are Node built-ins at runtime.
 import { access, copyFile, lstat, mkdir, readdir } from "node:fs/promises";
-// @ts-ignore Task 1 has not installed @types/node yet; these are Node built-ins at runtime.
 import { dirname, join, relative, sep } from "node:path";
 
 export interface CopyTemplateOptions {

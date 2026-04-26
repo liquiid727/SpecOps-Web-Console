@@ -8,6 +8,8 @@ packages/*/dist/
 !.codex/
 !.codex/README.md
 !.codex/instructions.md
+.codex/config.toml
+.codex/skills/
 !.agents/
 !.agents/**
 !.rules/

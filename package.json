@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "workspaces": [
-    "packages/core"
+    "packages/*"
   ],
   "scripts": {
     "test": "npm test --workspaces --if-present"
