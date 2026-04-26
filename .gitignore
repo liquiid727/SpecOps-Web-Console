@@ -5,6 +5,9 @@ node_modules/
 dist/
 packages/*/dist/
 !.gitignore
+!.codex/
+!.codex/README.md
+!.codex/instructions.md
 !.agents/
 !.agents/**
 !.rules/

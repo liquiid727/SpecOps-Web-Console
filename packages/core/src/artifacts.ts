@@ -115,7 +115,7 @@ export interface TestPlanEndpoint {
 export interface TestPlanScenario {
   name: string;
   priority: Priority;
-  branches: string[];
+  branches: BranchType[];
   preconditions: string[];
   expectedResults: string[];
   steps: string[];
@@ -151,8 +151,59 @@ export interface ScenarioResult {
     totalEndpoints: number;
     totalScenarios: number;
   };
-  flowResults: unknown[];
-  items: unknown[];
+  flowResults: FlowResult[];
+  items: ResultItem[];
+}
+
+export interface FlowResult {
+  name: string;
+  status: "pass" | "warning" | "fail" | "pending";
+  stages: FlowResultStage[];
+}
+
+export interface FlowResultStage {
+  name: string;
+  status: "pass" | "warning" | "fail" | "pending";
+  scenarios: FlowResultScenario[];
+  endpoints: FlowResultEndpoint[];
+}
+
+export interface FlowResultScenario {
+  name: string;
+  status: "pass" | "warning" | "fail" | "pending";
+  branchType?: BranchType;
+  currentStepName?: string;
+  relatedEndpointTargets: string[];
+  steps: Array<{
+    name: string;
+    status: "pass" | "warning" | "fail" | "pending";
+    note?: string;
+    traceId?: string;
+  }>;
+}
+
+export interface FlowResultEndpoint {
+  target: string;
+  name: string;
+  method: string;
+  path: string;
+  status: "pass" | "warning" | "fail" | "pending";
+  avgMs?: number;
+  p95Ms?: number;
+  errorRate?: number;
+  relatedRule?: string;
+  summary: string;
+}
+
+export interface ResultItem {
+  runId: string;
+  specId: string;
+  specVersion: string;
+  testType: "api" | "scenario" | "unit" | "specialized";
+  target: string;
+  status: Exclude<RunStatus, "draft-only" | "pending">;
+  durationMs: number;
+  summary: string;
 }
 
 type MutableValidation = {
@@ -182,6 +233,7 @@ export function validateManifest(value: unknown): ValidationResult {
   requireString(state, manifest?.ci, "checkCommand", "SPECOS_MANIFEST_INVALID", "ci.checkCommand");
   if (manifest?.providers !== undefined) {
     requireString(state, manifest.providers, "configPath", "SPECOS_MANIFEST_INVALID", "providers.configPath");
+    rejectUnknownKeys(state, manifest.providers, ["configPath"], "SPECOS_MANIFEST_INVALID", "providers");
   }
 
   return result(state.errors);
@@ -279,7 +331,7 @@ export function validateTestPlan(value: unknown): ValidationResult {
     plan.scenarios.forEach((scenario, index) => {
       const path = `scenarios[${index}]`;
       requireString(state, scenario, "name", "SPECOS_TEST_PLAN_INVALID", `${path}.name`);
-      requireStringArray(state, scenario?.branches, "SPECOS_TEST_PLAN_INVALID", `${path}.branches`);
+      requireBranchArray(state, scenario?.branches, "SPECOS_TEST_PLAN_INVALID", `${path}.branches`);
       requireOneOf(state, scenario?.priority, ["P0", "P1", "P2"], "SPECOS_TEST_PLAN_INVALID", `${path}.priority`);
       requireStringArray(state, scenario?.preconditions, "SPECOS_TEST_PLAN_INVALID", `${path}.preconditions`);
       requireStringArray(state, scenario?.expectedResults, "SPECOS_TEST_PLAN_INVALID", `${path}.expectedResults`);
@@ -347,13 +399,8 @@ export function validateScenarioResult(value: unknown): ValidationResult {
     "summary.totalScenarios",
   );
 
-  if (!Array.isArray(scenario?.flowResults)) {
-    state.errors.push(makeError("SPECOS_SCENARIO_RESULT_INVALID", "flowResults"));
-  }
-
-  if (!Array.isArray(scenario?.items)) {
-    state.errors.push(makeError("SPECOS_SCENARIO_RESULT_INVALID", "items"));
-  }
+  requireFlowResultArray(state, scenario?.flowResults);
+  requireResultItemArray(state, scenario?.items);
 
   return result(state.errors);
 }
@@ -421,6 +468,19 @@ function requireOneOf(
   }
 }
 
+function rejectUnknownKeys(
+  state: MutableValidation,
+  object: Record<string, any> | undefined,
+  allowed: string[],
+  code: SpecosErrorCode,
+  path: string,
+): void {
+  if (!object || typeof object !== "object" || Array.isArray(object)) return;
+  Object.keys(object)
+    .filter((key) => !allowed.includes(key))
+    .forEach((key) => state.errors.push(makeError(code, `${path}.${key}`)));
+}
+
 function requireStringArray(
   state: MutableValidation,
   value: unknown,
@@ -453,6 +513,17 @@ function requireRequiredBranches(
   const branches = new Set(value);
   const required = ["happy", "limit", "error", "flow"];
   if (required.some((branch) => !branches.has(branch))) {
+    state.errors.push(makeError(code, path));
+  }
+}
+
+function requireBranchArray(state: MutableValidation, value: unknown, code: SpecosErrorCode, path: string): void {
+  const allowed = ["happy", "error", "edge", "limit", "flow"];
+  if (!Array.isArray(value) || value.length === 0) {
+    state.errors.push(makeError(code, path));
+    return;
+  }
+  if (value.some((item) => typeof item !== "string" || !allowed.includes(item))) {
     state.errors.push(makeError(code, path));
   }
 }
@@ -497,10 +568,140 @@ function requireEndpointPlanArray(state: MutableValidation, value: unknown): voi
     requireString(state, endpoint, "method", "SPECOS_TEST_PLAN_INVALID", `${path}.method`);
     requireString(state, endpoint, "path", "SPECOS_TEST_PLAN_INVALID", `${path}.path`);
     requireOneOf(state, endpoint?.priority, ["P0", "P1", "P2"], "SPECOS_TEST_PLAN_INVALID", `${path}.priority`);
-    requireStringArray(state, endpoint?.branches, "SPECOS_TEST_PLAN_INVALID", `${path}.branches`);
+    requireBranchArray(state, endpoint?.branches, "SPECOS_TEST_PLAN_INVALID", `${path}.branches`);
     requireStringArray(state, endpoint?.preconditions, "SPECOS_TEST_PLAN_INVALID", `${path}.preconditions`);
     requireStringArray(state, endpoint?.expectedResults, "SPECOS_TEST_PLAN_INVALID", `${path}.expectedResults`);
     requireString(state, endpoint, "relatedRule", "SPECOS_TEST_PLAN_INVALID", `${path}.relatedRule`);
+  });
+}
+
+function requireFlowResultArray(state: MutableValidation, value: unknown): void {
+  if (!Array.isArray(value)) {
+    state.errors.push(makeError("SPECOS_SCENARIO_RESULT_INVALID", "flowResults"));
+    return;
+  }
+
+  value.forEach((flow, index) => {
+    const path = `flowResults[${index}]`;
+    requireString(state, flow, "name", "SPECOS_SCENARIO_RESULT_INVALID", `${path}.name`);
+    requireOneOf(state, flow?.status, ["pass", "warning", "fail", "pending"], "SPECOS_SCENARIO_RESULT_INVALID", `${path}.status`);
+    if (!Array.isArray(flow?.stages)) {
+      state.errors.push(makeError("SPECOS_SCENARIO_RESULT_INVALID", `${path}.stages`));
+      return;
+    }
+    flow.stages.forEach((stage: Record<string, any>, stageIndex: number) => {
+      const stagePath = `${path}.stages[${stageIndex}]`;
+      requireString(state, stage, "name", "SPECOS_SCENARIO_RESULT_INVALID", `${stagePath}.name`);
+      requireOneOf(
+        state,
+        stage?.status,
+        ["pass", "warning", "fail", "pending"],
+        "SPECOS_SCENARIO_RESULT_INVALID",
+        `${stagePath}.status`,
+      );
+      requireFlowResultScenarioArray(state, stage?.scenarios, `${stagePath}.scenarios`);
+      requireFlowResultEndpointArray(state, stage?.endpoints, `${stagePath}.endpoints`);
+    });
+  });
+}
+
+function requireFlowResultScenarioArray(state: MutableValidation, value: unknown, path: string): void {
+  if (!Array.isArray(value)) {
+    state.errors.push(makeError("SPECOS_SCENARIO_RESULT_INVALID", path));
+    return;
+  }
+  value.forEach((scenario, index) => {
+    const itemPath = `${path}[${index}]`;
+    requireString(state, scenario, "name", "SPECOS_SCENARIO_RESULT_INVALID", `${itemPath}.name`);
+    requireOneOf(
+      state,
+      scenario?.status,
+      ["pass", "warning", "fail", "pending"],
+      "SPECOS_SCENARIO_RESULT_INVALID",
+      `${itemPath}.status`,
+    );
+    if (scenario?.branchType !== undefined) {
+      requireOneOf(
+        state,
+        scenario.branchType,
+        ["happy", "error", "edge", "limit", "flow"],
+        "SPECOS_SCENARIO_RESULT_INVALID",
+        `${itemPath}.branchType`,
+      );
+    }
+    requireStringArrayAllowEmpty(
+      state,
+      scenario?.relatedEndpointTargets,
+      "SPECOS_SCENARIO_RESULT_INVALID",
+      `${itemPath}.relatedEndpointTargets`,
+    );
+    if (!Array.isArray(scenario?.steps)) {
+      state.errors.push(makeError("SPECOS_SCENARIO_RESULT_INVALID", `${itemPath}.steps`));
+      return;
+    }
+    scenario.steps.forEach((step: Record<string, any>, stepIndex: number) => {
+      const stepPath = `${itemPath}.steps[${stepIndex}]`;
+      requireString(state, step, "name", "SPECOS_SCENARIO_RESULT_INVALID", `${stepPath}.name`);
+      requireOneOf(
+        state,
+        step?.status,
+        ["pass", "warning", "fail", "pending"],
+        "SPECOS_SCENARIO_RESULT_INVALID",
+        `${stepPath}.status`,
+      );
+    });
+  });
+}
+
+function requireFlowResultEndpointArray(state: MutableValidation, value: unknown, path: string): void {
+  if (!Array.isArray(value)) {
+    state.errors.push(makeError("SPECOS_SCENARIO_RESULT_INVALID", path));
+    return;
+  }
+  value.forEach((endpoint, index) => {
+    const itemPath = `${path}[${index}]`;
+    requireString(state, endpoint, "target", "SPECOS_SCENARIO_RESULT_INVALID", `${itemPath}.target`);
+    requireString(state, endpoint, "name", "SPECOS_SCENARIO_RESULT_INVALID", `${itemPath}.name`);
+    requireString(state, endpoint, "method", "SPECOS_SCENARIO_RESULT_INVALID", `${itemPath}.method`);
+    requireString(state, endpoint, "path", "SPECOS_SCENARIO_RESULT_INVALID", `${itemPath}.path`);
+    requireOneOf(
+      state,
+      endpoint?.status,
+      ["pass", "warning", "fail", "pending"],
+      "SPECOS_SCENARIO_RESULT_INVALID",
+      `${itemPath}.status`,
+    );
+    requireString(state, endpoint, "summary", "SPECOS_SCENARIO_RESULT_INVALID", `${itemPath}.summary`);
+  });
+}
+
+function requireResultItemArray(state: MutableValidation, value: unknown): void {
+  if (!Array.isArray(value)) {
+    state.errors.push(makeError("SPECOS_SCENARIO_RESULT_INVALID", "items"));
+    return;
+  }
+  value.forEach((item, index) => {
+    const path = `items[${index}]`;
+    requireString(state, item, "runId", "SPECOS_SCENARIO_RESULT_INVALID", `${path}.runId`);
+    requireString(state, item, "specId", "SPECOS_SCENARIO_RESULT_INVALID", `${path}.specId`);
+    requireString(state, item, "specVersion", "SPECOS_SCENARIO_RESULT_INVALID", `${path}.specVersion`);
+    requireOneOf(
+      state,
+      item?.testType,
+      ["api", "scenario", "unit", "specialized"],
+      "SPECOS_SCENARIO_RESULT_INVALID",
+      `${path}.testType`,
+    );
+    requireString(state, item, "target", "SPECOS_SCENARIO_RESULT_INVALID", `${path}.target`);
+    requireOneOf(
+      state,
+      item?.status,
+      ["pass", "warning", "fail", "running"],
+      "SPECOS_SCENARIO_RESULT_INVALID",
+      `${path}.status`,
+    );
+    requireNumber(state, item, "durationMs", "SPECOS_SCENARIO_RESULT_INVALID", `${path}.durationMs`);
+    requireString(state, item, "summary", "SPECOS_SCENARIO_RESULT_INVALID", `${path}.summary`);
   });
 }
 

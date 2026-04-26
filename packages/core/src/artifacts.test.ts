@@ -47,6 +47,27 @@ describe("artifact validation", () => {
     );
   });
 
+  it("rejects provider secret fields in manifest", () => {
+    const result = validateManifest({
+      project: { name: "demo", type: "fullstack" },
+      stacks: { frontend: "next", backend: "node-api" },
+      artifacts: {
+        draftsDir: "spec-draft",
+        specsDir: "spec",
+        testsDir: "tests",
+        resultsDir: "tests/results",
+      },
+      rulePacks: ["fullstack-base"],
+      agentTemplates: ["spec-editor"],
+      workflows: ["default-fullstack"],
+      ci: { checkCommand: "npx specos check" },
+      providers: { configPath: ".specos/providers.yaml", apiKey: "secret" },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errors.map((error) => error.path)).toContain("providers.apiKey");
+  });
+
   it("rejects specs without required coverage fields", () => {
     const result = validateSpec({
       id: "reward-order",
@@ -120,6 +141,46 @@ describe("artifact validation", () => {
     ]);
   });
 
+  it("rejects test plans with unknown branch names", () => {
+    const result = validateTestPlan({
+      specId: "reward-order",
+      specVersion: "1.0.0",
+      featureName: "Reward Order",
+      source: "accepted-spec",
+      flows: [
+        {
+          name: "Claim reward",
+          stages: [{ name: "Open", scenarioNames: ["Happy"], stepNames: ["Open"] }],
+        },
+      ],
+      endpoints: [
+        {
+          name: "Create reward order",
+          method: "POST",
+          path: "/api/reward-orders",
+          priority: "P0",
+          branches: ["happy", "limit", "error", "flow", "typo"],
+          preconditions: ["user logged in"],
+          expectedResults: ["order created"],
+          relatedRule: "reward.order.create",
+        },
+      ],
+      scenarios: [
+        {
+          name: "Happy",
+          priority: "P0",
+          branches: ["happy"],
+          preconditions: ["user logged in"],
+          expectedResults: ["order created"],
+          steps: ["Open"],
+        },
+      ],
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errors.map((error) => error.path)).toContain("endpoints[0].branches");
+  });
+
   it("accepts a normalized empty scenario result", () => {
     const result = validateScenarioResult({
       runId: "run-demo",
@@ -139,5 +200,29 @@ describe("artifact validation", () => {
     });
 
     expect(result.ok).toBe(true);
+  });
+
+  it("rejects scenario result arrays that would break the console", () => {
+    const result = validateScenarioResult({
+      runId: "run-demo",
+      specId: "reward-order",
+      specVersion: "1.0.0",
+      featureName: "Reward Order",
+      status: "warning",
+      releaseDecision: "blocked",
+      startedAt: "2026-04-26T00:00:00.000Z",
+      endedAt: "2026-04-26T00:00:00.000Z",
+      blockers: [],
+      highRiskScenarios: [],
+      coverageGaps: [],
+      summary: { apiPassRate: 0, scenarioPassRate: 0, totalEndpoints: 0, totalScenarios: 0 },
+      flowResults: [{}],
+      items: [{}],
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errors.map((error) => error.path)).toEqual(
+      expect.arrayContaining(["flowResults[0].name", "flowResults[0].stages", "items[0].testType"]),
+    );
   });
 });
