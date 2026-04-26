@@ -1,0 +1,230 @@
+#!/usr/bin/env node
+
+import { access, mkdir, readFile, readdir } from "node:fs/promises";
+import { dirname, join, resolve, sep } from "node:path";
+import { fileURLToPath } from "node:url";
+import { copyTemplateDirectory, validateManifest, type SpecosManifest } from "@specos/core";
+
+export interface RunCliOptions {
+  cwd: string;
+}
+
+export interface RunCliResult {
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+}
+
+type ManifestRecord = Record<string, unknown>;
+
+export async function runCli(args: string[], options: RunCliOptions): Promise<RunCliResult> {
+  const [command] = args;
+
+  if (command === "init") {
+    return initProject(options.cwd);
+  }
+
+  if (command === "check") {
+    return checkProject(options.cwd);
+  }
+
+  return {
+    exitCode: 1,
+    stdout: "",
+    stderr: `SPECOS_COMMAND_UNKNOWN Unknown command: ${command ?? ""}\n`,
+  };
+}
+
+async function initProject(cwd: string): Promise<RunCliResult> {
+  const templateDir = resolve(dirname(fileURLToPath(import.meta.url)), "../../templates/fullstack");
+  const result = await copyTemplateDirectory(templateDir, cwd);
+
+  await mkdir(join(cwd, "tests/results"), { recursive: true });
+
+  const lines = [
+    "SPECOS_INIT_OK",
+    `written ${result.written.length}`,
+    `skipped ${result.skipped.length}`,
+  ];
+
+  return {
+    exitCode: 0,
+    stdout: `${lines.join("\n")}\n`,
+    stderr: "",
+  };
+}
+
+async function checkProject(cwd: string): Promise<RunCliResult> {
+  const manifestPath = join(cwd, ".specos/manifest.yaml");
+
+  if (!(await pathExists(manifestPath))) {
+    return failure("SPECOS_MANIFEST_MISSING", ".specos/manifest.yaml is required");
+  }
+
+  const manifestSource = await readFile(manifestPath, "utf8");
+  const manifest = parseKnownManifestYaml(manifestSource);
+  const validation = validateManifest(manifest);
+
+  if (!validation.ok) {
+    return failure(
+      "SPECOS_MANIFEST_INVALID",
+      validation.errors.map((error) => `${error.path ?? "manifest"} ${error.message}`).join("; "),
+    );
+  }
+
+  const validManifest = manifest as unknown as SpecosManifest;
+  const missingDirs = await missingRequiredDirs(cwd, validManifest);
+
+  if (missingDirs.length > 0) {
+    return failure("SPECOS_DIRECTORY_MISSING", `Missing required directories: ${missingDirs.join(", ")}`);
+  }
+
+  const specs = await discoverYamlFiles(join(cwd, validManifest.artifacts.specsDir));
+
+  return {
+    exitCode: 0,
+    stdout: `SPECOS_CHECK_OK manifest valid; directories valid; specs ${specs.length}\n`,
+    stderr: "",
+  };
+}
+
+function failure(code: string, message: string): RunCliResult {
+  return {
+    exitCode: 1,
+    stdout: "",
+    stderr: `${code} ${message}\n`,
+  };
+}
+
+async function missingRequiredDirs(cwd: string, manifest: SpecosManifest): Promise<string[]> {
+  const dirs = [
+    manifest.artifacts.draftsDir,
+    manifest.artifacts.specsDir,
+    manifest.artifacts.testsDir,
+    manifest.artifacts.resultsDir,
+  ];
+  const missing: string[] = [];
+
+  for (const dir of dirs) {
+    const absolutePath = join(cwd, dir);
+    if (!(await pathExists(absolutePath))) {
+      missing.push(dir);
+    }
+  }
+
+  return missing;
+}
+
+async function discoverYamlFiles(root: string): Promise<string[]> {
+  if (!(await pathExists(root))) {
+    return [];
+  }
+
+  const files: string[] = [];
+
+  async function visit(current: string) {
+    const entries = await readdir(current, { withFileTypes: true });
+
+    for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
+      const absolutePath = join(current, entry.name);
+
+      if (entry.isDirectory()) {
+        await visit(absolutePath);
+        continue;
+      }
+
+      if (entry.isFile() && (entry.name.endsWith(".yaml") || entry.name.endsWith(".yml"))) {
+        files.push(toPosixPath(absolutePath.slice(root.length + 1)));
+      }
+    }
+  }
+
+  await visit(root);
+  return files;
+}
+
+async function pathExists(path: string): Promise<boolean> {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function parseKnownManifestYaml(source: string): ManifestRecord {
+  const root: ManifestRecord = {};
+  const stack: Array<{ indent: number; value: ManifestRecord | unknown[] }> = [{ indent: -1, value: root }];
+  const lines = source.split(/\r?\n/);
+
+  for (const [index, rawLine] of lines.entries()) {
+    const lineWithoutComment = rawLine.replace(/\s+#.*$/, "");
+
+    if (lineWithoutComment.trim() === "") {
+      continue;
+    }
+
+    const indent = lineWithoutComment.match(/^ */)?.[0].length ?? 0;
+    const content = lineWithoutComment.trim();
+
+    while (stack.length > 1 && indent <= stack[stack.length - 1].indent) {
+      stack.pop();
+    }
+
+    const parent = stack[stack.length - 1].value;
+
+    if (content.startsWith("- ")) {
+      if (!Array.isArray(parent)) {
+        continue;
+      }
+      parent.push(parseScalar(content.slice(2)));
+      continue;
+    }
+
+    const separator = content.indexOf(":");
+    if (separator === -1 || Array.isArray(parent)) {
+      continue;
+    }
+
+    const key = content.slice(0, separator).trim();
+    const rawValue = content.slice(separator + 1).trim();
+
+    if (rawValue === "") {
+      const child = nextMeaningfulLineIsList(lines, index) ? [] : {};
+      parent[key] = child;
+      stack.push({ indent, value: child });
+      continue;
+    }
+
+    parent[key] = parseScalar(rawValue);
+  }
+
+  return root;
+}
+
+function nextMeaningfulLineIsList(lines: string[], index: number): boolean {
+  for (const line of lines.slice(index + 1)) {
+    const trimmed = line.trim();
+    if (trimmed === "" || trimmed.startsWith("#")) {
+      continue;
+    }
+    return trimmed.startsWith("- ");
+  }
+
+  return false;
+}
+
+function parseScalar(value: string): string {
+  return value.replace(/^["']|["']$/g, "");
+}
+
+function toPosixPath(path: string): string {
+  return path.split(sep).join("/");
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const result = await runCli(process.argv.slice(2), { cwd: process.cwd() });
+  process.stdout.write(result.stdout);
+  process.stderr.write(result.stderr);
+  process.exitCode = result.exitCode;
+}
