@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -62,5 +62,17 @@ describe("copyTemplateDirectory", () => {
       skipped: [],
     });
     await expect(readFile(join(target, "AGENTS.md"), "utf8")).resolves.toBe("template agents\n");
+  });
+
+  it("rejects symlinked target path segments before writing", async () => {
+    const source = await tempProject();
+    const target = await tempProject();
+    const outside = await tempProject();
+    await mkdir(join(source, ".specos"), { recursive: true });
+    await writeFile(join(source, ".specos", "manifest.yaml"), "project:\n  name: demo\n");
+    await symlink(outside, join(target, ".specos"));
+
+    await expect(copyTemplateDirectory(source, target)).rejects.toThrow("Refusing to write through symlink");
+    await expect(readFile(join(outside, "manifest.yaml"), "utf8")).rejects.toThrow();
   });
 });

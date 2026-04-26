@@ -27,6 +27,7 @@ export async function copyTemplateDirectory(
       continue;
     }
 
+    await assertNoSymlinkTargetSegments(target, relativePath);
     await mkdir(dirname(targetPath), { recursive: true });
     await copyFile(sourcePath, targetPath);
     result.written.push(relativePath);
@@ -71,4 +72,24 @@ async function pathExists(path: string): Promise<boolean> {
 
 function toPosixPath(path: string): string {
   return path.split(sep).join("/");
+}
+
+async function assertNoSymlinkTargetSegments(targetRoot: string, relativePath: string): Promise<void> {
+  const segments = relativePath.split("/");
+  let current = targetRoot;
+
+  for (const segment of segments) {
+    current = join(current, segment);
+    try {
+      const stat = await lstat(current);
+      if (stat.isSymbolicLink()) {
+        throw new Error(`Refusing to write through symlink: ${toPosixPath(relative(targetRoot, current))}`);
+      }
+    } catch (error) {
+      if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+        return;
+      }
+      throw error;
+    }
+  }
 }
