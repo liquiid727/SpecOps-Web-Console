@@ -1,0 +1,363 @@
+{
+  "runId": "run-2026-04-24-001",
+  "specId": "reward-order",
+  "specVersion": "1.2.0",
+  "featureName": "奖励订单发放",
+  "status": "warning",
+  "releaseDecision": "blocked",
+  "startedAt": "2026-04-24T10:00:00Z",
+  "endedAt": "2026-04-24T10:06:20Z",
+  "blockers": ["场景“库存不足时领取失败”未完全通过", "POST /api/reward-orders p95 超过阈值"],
+  "highRiskScenarios": ["库存不足时领取失败"],
+  "coverageGaps": ["查询奖励订单缺少 limit 分支校验"],
+  "summary": {
+    "apiPassRate": 0.5,
+    "scenarioPassRate": 0.5,
+    "totalEndpoints": 2,
+    "totalScenarios": 2
+  },
+  "flowResults": [
+    {
+      "name": "奖励领取业务流",
+      "status": "fail",
+      "stages": [
+        {
+          "name": "进入场景",
+          "status": "fail",
+          "scenarios": [
+            {
+              "name": "用户成功领取奖励",
+              "status": "pass",
+              "branchType": "happy",
+              "currentStepName": "查看结果",
+              "relatedEndpointTargets": ["POST /api/reward-orders", "GET /api/reward-orders/:id"],
+              "steps": [
+                { "name": "打开奖励页", "status": "pass" },
+                { "name": "点击领取", "status": "pass" },
+                { "name": "提交订单", "status": "pass" },
+                { "name": "查看结果", "status": "pass", "note": "主路径 4 步全部通过", "traceId": "trace-scenario-happy-001" }
+              ]
+            },
+            {
+              "name": "库存不足时领取失败",
+              "status": "fail",
+              "branchType": "limit",
+              "currentStepName": "查看失败提示",
+              "relatedEndpointTargets": ["POST /api/reward-orders", "GET /api/reward-orders/:id"],
+              "steps": [
+                { "name": "打开奖励页", "status": "pass" },
+                { "name": "点击领取", "status": "pass" },
+                { "name": "提交订单", "status": "pass" },
+                { "name": "查看失败提示", "status": "fail", "note": "页面提示文案正确，但错误码映射断言失败", "traceId": "trace-scenario-limit-001" }
+              ]
+            }
+          ],
+          "endpoints": [
+            {
+              "target": "POST /api/reward-orders",
+              "name": "创建奖励订单",
+              "method": "POST",
+              "path": "/api/reward-orders",
+              "status": "warning",
+              "avgMs": 210,
+              "p95Ms": 641,
+              "errorRate": 0.02,
+              "relatedRule": "reward.order.create",
+              "summary": "happy/error 断言通过，limit 分支通过但 p95 偏高"
+            },
+            {
+              "target": "GET /api/reward-orders/:id",
+              "name": "查询奖励订单",
+              "method": "GET",
+              "path": "/api/reward-orders/:id",
+              "status": "pass",
+              "avgMs": 84,
+              "p95Ms": 140,
+              "errorRate": 0,
+              "relatedRule": "reward.order.read",
+              "summary": "happy/error/edge 全部通过"
+            }
+          ]
+        },
+        {
+          "name": "触发动作",
+          "status": "fail",
+          "scenarios": [
+            {
+              "name": "用户成功领取奖励",
+              "status": "pass",
+              "branchType": "happy",
+              "currentStepName": "查看结果",
+              "relatedEndpointTargets": ["POST /api/reward-orders", "GET /api/reward-orders/:id"],
+              "steps": [
+                { "name": "打开奖励页", "status": "pass" },
+                { "name": "点击领取", "status": "pass" },
+                { "name": "提交订单", "status": "pass" },
+                { "name": "查看结果", "status": "pass", "note": "主路径 4 步全部通过", "traceId": "trace-scenario-happy-001" }
+              ]
+            },
+            {
+              "name": "库存不足时领取失败",
+              "status": "fail",
+              "branchType": "limit",
+              "currentStepName": "查看失败提示",
+              "relatedEndpointTargets": ["POST /api/reward-orders", "GET /api/reward-orders/:id"],
+              "steps": [
+                { "name": "打开奖励页", "status": "pass" },
+                { "name": "点击领取", "status": "pass" },
+                { "name": "提交订单", "status": "pass" },
+                { "name": "查看失败提示", "status": "fail", "note": "页面提示文案正确，但错误码映射断言失败", "traceId": "trace-scenario-limit-001" }
+              ]
+            }
+          ],
+          "endpoints": [
+            {
+              "target": "POST /api/reward-orders",
+              "name": "创建奖励订单",
+              "method": "POST",
+              "path": "/api/reward-orders",
+              "status": "warning",
+              "avgMs": 210,
+              "p95Ms": 641,
+              "errorRate": 0.02,
+              "relatedRule": "reward.order.create",
+              "summary": "happy/error 断言通过，limit 分支通过但 p95 偏高"
+            },
+            {
+              "target": "GET /api/reward-orders/:id",
+              "name": "查询奖励订单",
+              "method": "GET",
+              "path": "/api/reward-orders/:id",
+              "status": "pass",
+              "avgMs": 84,
+              "p95Ms": 140,
+              "errorRate": 0,
+              "relatedRule": "reward.order.read",
+              "summary": "happy/error/edge 全部通过"
+            }
+          ]
+        },
+        {
+          "name": "提交请求",
+          "status": "fail",
+          "scenarios": [
+            {
+              "name": "用户成功领取奖励",
+              "status": "pass",
+              "branchType": "happy",
+              "currentStepName": "查看结果",
+              "relatedEndpointTargets": ["POST /api/reward-orders", "GET /api/reward-orders/:id"],
+              "steps": [
+                { "name": "打开奖励页", "status": "pass" },
+                { "name": "点击领取", "status": "pass" },
+                { "name": "提交订单", "status": "pass" },
+                { "name": "查看结果", "status": "pass", "note": "主路径 4 步全部通过", "traceId": "trace-scenario-happy-001" }
+              ]
+            },
+            {
+              "name": "库存不足时领取失败",
+              "status": "fail",
+              "branchType": "limit",
+              "currentStepName": "查看失败提示",
+              "relatedEndpointTargets": ["POST /api/reward-orders", "GET /api/reward-orders/:id"],
+              "steps": [
+                { "name": "打开奖励页", "status": "pass" },
+                { "name": "点击领取", "status": "pass" },
+                { "name": "提交订单", "status": "pass" },
+                { "name": "查看失败提示", "status": "fail", "note": "页面提示文案正确，但错误码映射断言失败", "traceId": "trace-scenario-limit-001" }
+              ]
+            }
+          ],
+          "endpoints": [
+            {
+              "target": "POST /api/reward-orders",
+              "name": "创建奖励订单",
+              "method": "POST",
+              "path": "/api/reward-orders",
+              "status": "warning",
+              "avgMs": 210,
+              "p95Ms": 641,
+              "errorRate": 0.02,
+              "relatedRule": "reward.order.create",
+              "summary": "happy/error 断言通过，limit 分支通过但 p95 偏高"
+            },
+            {
+              "target": "GET /api/reward-orders/:id",
+              "name": "查询奖励订单",
+              "method": "GET",
+              "path": "/api/reward-orders/:id",
+              "status": "pass",
+              "avgMs": 84,
+              "p95Ms": 140,
+              "errorRate": 0,
+              "relatedRule": "reward.order.read",
+              "summary": "happy/error/edge 全部通过"
+            }
+          ]
+        },
+        {
+          "name": "确认结果",
+          "status": "fail",
+          "scenarios": [
+            {
+              "name": "用户成功领取奖励",
+              "status": "pass",
+              "branchType": "happy",
+              "currentStepName": "查看结果",
+              "relatedEndpointTargets": ["POST /api/reward-orders", "GET /api/reward-orders/:id"],
+              "steps": [
+                { "name": "打开奖励页", "status": "pass" },
+                { "name": "点击领取", "status": "pass" },
+                { "name": "提交订单", "status": "pass" },
+                { "name": "查看结果", "status": "pass", "note": "主路径 4 步全部通过", "traceId": "trace-scenario-happy-001" }
+              ]
+            },
+            {
+              "name": "库存不足时领取失败",
+              "status": "fail",
+              "branchType": "limit",
+              "currentStepName": "查看失败提示",
+              "relatedEndpointTargets": ["POST /api/reward-orders", "GET /api/reward-orders/:id"],
+              "steps": [
+                { "name": "打开奖励页", "status": "pass" },
+                { "name": "点击领取", "status": "pass" },
+                { "name": "提交订单", "status": "pass" },
+                { "name": "查看失败提示", "status": "fail", "note": "页面提示文案正确，但错误码映射断言失败", "traceId": "trace-scenario-limit-001" }
+              ]
+            }
+          ],
+          "endpoints": [
+            {
+              "target": "POST /api/reward-orders",
+              "name": "创建奖励订单",
+              "method": "POST",
+              "path": "/api/reward-orders",
+              "status": "warning",
+              "avgMs": 210,
+              "p95Ms": 641,
+              "errorRate": 0.02,
+              "relatedRule": "reward.order.create",
+              "summary": "happy/error 断言通过，limit 分支通过但 p95 偏高"
+            },
+            {
+              "target": "GET /api/reward-orders/:id",
+              "name": "查询奖励订单",
+              "method": "GET",
+              "path": "/api/reward-orders/:id",
+              "status": "pass",
+              "avgMs": 84,
+              "p95Ms": 140,
+              "errorRate": 0,
+              "relatedRule": "reward.order.read",
+              "summary": "happy/error/edge 全部通过"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "items": [
+    {
+      "runId": "run-2026-04-24-001",
+      "specId": "reward-order",
+      "specVersion": "1.2.0",
+      "testType": "api",
+      "target": "POST /api/reward-orders",
+      "flowName": "奖励领取业务流",
+      "stageName": "进入场景",
+      "status": "warning",
+      "durationMs": 421,
+      "summary": "happy/error 断言通过，limit 分支通过但 p95 偏高",
+      "endpoint": {
+        "name": "创建奖励订单",
+        "method": "POST",
+        "path": "/api/reward-orders",
+        "coverage": ["happy", "error", "limit", "flow"],
+        "avgMs": 210,
+        "p95Ms": 641,
+        "errorRate": 0.02,
+        "relatedRule": "reward.order.create",
+        "failureReason": "p95 超过 500ms 目标"
+      },
+      "evidence": {
+        "traceId": "trace-reward-create-001",
+        "logUrl": "https://example.local/logs/reward-create-001",
+        "requestSummary": "创建奖励订单，请求包含 reward_id 和 user_id",
+        "responseSummary": "返回 order_id 与 status=queued"
+      }
+    },
+    {
+      "runId": "run-2026-04-24-001",
+      "specId": "reward-order",
+      "specVersion": "1.2.0",
+      "testType": "api",
+      "target": "GET /api/reward-orders/:id",
+      "flowName": "奖励领取业务流",
+      "stageName": "进入场景",
+      "status": "pass",
+      "durationMs": 132,
+      "summary": "happy/error/edge 全部通过",
+      "endpoint": {
+        "name": "查询奖励订单",
+        "method": "GET",
+        "path": "/api/reward-orders/:id",
+        "coverage": ["happy", "error", "edge"],
+        "avgMs": 84,
+        "p95Ms": 140,
+        "errorRate": 0,
+        "relatedRule": "reward.order.read"
+      },
+      "evidence": {
+        "traceId": "trace-reward-read-001",
+        "logUrl": "https://example.local/logs/reward-read-001",
+        "requestSummary": "查询订单详情",
+        "responseSummary": "返回订单详情和发奖状态"
+      }
+    },
+    {
+      "runId": "run-2026-04-24-001",
+      "specId": "reward-order",
+      "specVersion": "1.2.0",
+      "testType": "scenario",
+      "target": "用户成功领取奖励",
+      "flowName": "奖励领取业务流",
+      "stageName": "进入场景",
+      "scenarioName": "用户成功领取奖励",
+      "branchType": "happy",
+      "stepName": "查看结果",
+      "relatedEndpointTargets": ["POST /api/reward-orders", "GET /api/reward-orders/:id"],
+      "status": "pass",
+      "durationMs": 1830,
+      "summary": "主路径 4 步全部通过",
+      "evidence": {
+        "traceId": "trace-scenario-happy-001",
+        "screenshotUrl": "https://example.local/screenshots/happy.png",
+        "videoUrl": "https://example.local/videos/happy.mp4",
+        "note": "页面成功态与接口回调一致"
+      }
+    },
+    {
+      "runId": "run-2026-04-24-001",
+      "specId": "reward-order",
+      "specVersion": "1.2.0",
+      "testType": "scenario",
+      "target": "库存不足时领取失败",
+      "flowName": "奖励领取业务流",
+      "stageName": "进入场景",
+      "scenarioName": "库存不足时领取失败",
+      "branchType": "limit",
+      "stepName": "查看失败提示",
+      "relatedEndpointTargets": ["POST /api/reward-orders", "GET /api/reward-orders/:id"],
+      "status": "fail",
+      "durationMs": 1490,
+      "summary": "页面提示文案正确，但错误码映射断言失败",
+      "evidence": {
+        "traceId": "trace-scenario-limit-001",
+        "screenshotUrl": "https://example.local/screenshots/limit-fail.png",
+        "logUrl": "https://example.local/logs/limit-fail",
+        "responseSummary": "后端返回 ERR_REWARD_409，前端映射为通用失败提示",
+        "note": "需要统一错误码映射"
+      }
+    }
+  ]
+}
