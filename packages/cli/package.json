@@ -22,7 +22,9 @@
     "test": "vitest run --root ../.. packages/cli/src"
   },
   "dependencies": {
-    "@specos/core": "file:../core"
+    "@specos/core": "file:../core",
+    "@specos/templates": "file:../templates",
+    "yaml": "^2.8.1"
   },
   "devDependencies": {
     "@types/node": "^24.6.0",

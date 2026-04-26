@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -45,5 +45,30 @@ describe("specos cli", () => {
 
     expect(check.exitCode).toBe(1);
     expect(check.stderr).toContain("SPECOS_MANIFEST_MISSING");
+  });
+
+  it("rejects manifest artifact paths that escape the project", async () => {
+    const cwd = await tempProject();
+    await runCli(["init"], { cwd });
+    const manifest = await readFile(join(cwd, ".specos/manifest.yaml"), "utf8");
+    await writeFile(
+      join(cwd, ".specos/manifest.yaml"),
+      manifest.replace("specsDir: spec", "specsDir: ../outside"),
+    );
+
+    const check = await runCli(["check"], { cwd });
+
+    expect(check.exitCode).toBe(1);
+    expect(check.stderr).toContain("SPECOS_MANIFEST_INVALID");
+    expect(check.stderr).toContain("artifacts.specsDir");
+  });
+
+  it("prints supported commands for unknown commands", async () => {
+    const cwd = await tempProject();
+
+    const result = await runCli([], { cwd });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("Supported commands: init, check");
   });
 });

@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 
 import { access, mkdir, readFile, readdir } from "node:fs/promises";
-import { dirname, join, resolve, sep } from "node:path";
+import { createRequire } from "node:module";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { copyTemplateDirectory, validateManifest, type SpecosManifest } from "@specos/core";
+import { parse } from "yaml";
 
 export interface RunCliOptions {
   cwd: string;
@@ -16,6 +18,8 @@ export interface RunCliResult {
 }
 
 type ManifestRecord = Record<string, unknown>;
+const supportedCommands = "Supported commands: init, check";
+const require = createRequire(import.meta.url);
 
 export async function runCli(args: string[], options: RunCliOptions): Promise<RunCliResult> {
   const [command] = args;
@@ -31,12 +35,12 @@ export async function runCli(args: string[], options: RunCliOptions): Promise<Ru
   return {
     exitCode: 1,
     stdout: "",
-    stderr: `SPECOS_COMMAND_UNKNOWN Unknown command: ${command ?? ""}\n`,
+    stderr: `SPECOS_COMMAND_UNKNOWN Unknown command: ${command ?? ""}\n${supportedCommands}\n`,
   };
 }
 
 async function initProject(cwd: string): Promise<RunCliResult> {
-  const templateDir = resolve(dirname(fileURLToPath(import.meta.url)), "../../templates/fullstack");
+  const templateDir = dirname(require.resolve("@specos/templates/fullstack/AGENTS.md"));
   const result = await copyTemplateDirectory(templateDir, cwd);
 
   await mkdir(join(cwd, "tests/results"), { recursive: true });
@@ -62,7 +66,7 @@ async function checkProject(cwd: string): Promise<RunCliResult> {
   }
 
   const manifestSource = await readFile(manifestPath, "utf8");
-  const manifest = parseKnownManifestYaml(manifestSource);
+  const manifest = parseManifestYaml(manifestSource);
   const validation = validateManifest(manifest);
 
   if (!validation.ok) {
@@ -73,6 +77,11 @@ async function checkProject(cwd: string): Promise<RunCliResult> {
   }
 
   const validManifest = manifest as unknown as SpecosManifest;
+  const pathValidation = validateArtifactPaths(validManifest);
+  if (pathValidation.length > 0) {
+    return failure("SPECOS_MANIFEST_INVALID", `Invalid artifact paths: ${pathValidation.join(", ")}`);
+  }
+
   const missingDirs = await missingRequiredDirs(cwd, validManifest);
 
   if (missingDirs.length > 0) {
@@ -86,6 +95,18 @@ async function checkProject(cwd: string): Promise<RunCliResult> {
     stdout: `SPECOS_CHECK_OK manifest valid; directories valid; specs ${specs.length}\n`,
     stderr: "",
   };
+}
+
+function validateArtifactPaths(manifest: SpecosManifest): string[] {
+  return Object.entries(manifest.artifacts)
+    .filter(([, path]) => isUnsafeProjectRelativePath(path))
+    .map(([key]) => `artifacts.${key}`);
+}
+
+function isUnsafeProjectRelativePath(path: string): boolean {
+  if (isAbsolute(path)) return true;
+  const normalized = relative(".", path);
+  return normalized === ".." || normalized.startsWith(`..${sep}`) || normalized.split(sep).includes("..");
 }
 
 function failure(code: string, message: string): RunCliResult {
@@ -152,70 +173,9 @@ async function pathExists(path: string): Promise<boolean> {
   }
 }
 
-function parseKnownManifestYaml(source: string): ManifestRecord {
-  const root: ManifestRecord = {};
-  const stack: Array<{ indent: number; value: ManifestRecord | unknown[] }> = [{ indent: -1, value: root }];
-  const lines = source.split(/\r?\n/);
-
-  for (const [index, rawLine] of lines.entries()) {
-    const lineWithoutComment = rawLine.replace(/\s+#.*$/, "");
-
-    if (lineWithoutComment.trim() === "") {
-      continue;
-    }
-
-    const indent = lineWithoutComment.match(/^ */)?.[0].length ?? 0;
-    const content = lineWithoutComment.trim();
-
-    while (stack.length > 1 && indent <= stack[stack.length - 1].indent) {
-      stack.pop();
-    }
-
-    const parent = stack[stack.length - 1].value;
-
-    if (content.startsWith("- ")) {
-      if (!Array.isArray(parent)) {
-        continue;
-      }
-      parent.push(parseScalar(content.slice(2)));
-      continue;
-    }
-
-    const separator = content.indexOf(":");
-    if (separator === -1 || Array.isArray(parent)) {
-      continue;
-    }
-
-    const key = content.slice(0, separator).trim();
-    const rawValue = content.slice(separator + 1).trim();
-
-    if (rawValue === "") {
-      const child = nextMeaningfulLineIsList(lines, index) ? [] : {};
-      parent[key] = child;
-      stack.push({ indent, value: child });
-      continue;
-    }
-
-    parent[key] = parseScalar(rawValue);
-  }
-
-  return root;
-}
-
-function nextMeaningfulLineIsList(lines: string[], index: number): boolean {
-  for (const line of lines.slice(index + 1)) {
-    const trimmed = line.trim();
-    if (trimmed === "" || trimmed.startsWith("#")) {
-      continue;
-    }
-    return trimmed.startsWith("- ");
-  }
-
-  return false;
-}
-
-function parseScalar(value: string): string {
-  return value.replace(/^["']|["']$/g, "");
+function parseManifestYaml(source: string): ManifestRecord {
+  const parsed = parse(source, { prettyErrors: false, uniqueKeys: true });
+  return typeof parsed === "object" && parsed !== null ? (parsed as ManifestRecord) : {};
 }
 
 function toPosixPath(path: string): string {
