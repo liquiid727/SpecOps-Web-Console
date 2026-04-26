@@ -1,0 +1,11 @@
+{
+  "name": "specos-ai",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/core"
+  ],
+  "scripts": {
+    "test": "npm test --workspaces --if-present"
+  }
+}
