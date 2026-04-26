@@ -20,4 +20,5 @@ Create and maintain Bruno API scenario coverage derived from accepted specs.
 
 - Do not create tests that depend on hidden local state.
 - Keep scenario names aligned with business flow names.
+- Treat `.agents/manifest.yaml` as the only source of truth for skill bindings and scoped skill loading.
 - Document any required seed data or credentials without storing secrets.

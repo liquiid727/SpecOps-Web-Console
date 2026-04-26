@@ -16,4 +16,5 @@ Review outputs for spec alignment, maintainability, risk, and test coverage.
 
 - Prefer concrete findings with file paths and line numbers.
 - Separate correctness issues from improvement suggestions.
+- Treat `.agents/manifest.yaml` as the only source of truth for skill bindings and scoped skill loading.
 - Do not request broad rewrites unless the current approach is unsafe or unmaintainable.

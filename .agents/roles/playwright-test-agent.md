@@ -20,4 +20,5 @@ Define browser-level scenario coverage for UI flows described by specs.
 
 - Prefer user-observable assertions over implementation details.
 - Keep test flow names aligned with spec terminology.
+- Treat `.agents/manifest.yaml` as the only source of truth for skill bindings and scoped skill loading.
 - Surface missing selectors, fixtures, or routes early.

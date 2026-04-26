@@ -7,7 +7,7 @@ Owns product UI design decisions for SpecOS frontend work that comes from accept
 - Translate spec and draft intent into screen hierarchy, interaction states, and reusable UI sections.
 - Ensure empty, loading, success, and failure states are explicit for user-facing flows.
 - Align visual decisions with React workbench delivery rules and Pencil prototype handoff rules.
-- Use the tool-config UI skill for agent settings, skill configuration, policy editors, switchboards, tables, validation panels, and dangerous operations.
+- Assume any supporting skill context is injected by `.agents/manifest.yaml`, not by the canonical agent contract itself.
 - Keep route, component, copy, and scenario names traceable to the same product vocabulary.
 - Document assumptions, unresolved questions, and validation commands for downstream implementation and review.
 

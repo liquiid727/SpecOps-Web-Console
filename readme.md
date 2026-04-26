@@ -85,6 +85,8 @@ SpecOS 是一个面向工程与业务系统开发的 **Spec-Driven AI IDE**。
 - 按 System Flow 展示
 - 每一步呈现请求、响应、断言、`trace_id`、日志链接
 
+V1 建议独立于 `spec-web-ui/` 落地为单独的测试控制台，只消费统一的 `test-plan` 和 `scenario-result` 产物。
+
 ### 7. Workflow Runner
 通过工作流编排把“规范、接口、测试、代码、报告”串起来：
 
@@ -102,6 +104,13 @@ steps:
 一次触发，串联流程：
 `spec draft -> final spec -> 测试 -> 代码 -> 报告`
 
+当前仓库中的最小闭环示例：
+
+- `tests/plans/reward-order.test-plan.json`
+- `tests/results/reward-order.run-2026-04-24-001.json`
+- `scripts/orchestration/test-runner.mjs`
+- `test-console/`
+
 ## 与编码 Agent 的关系
 SpecOS 不替代代码生成模型，代码仍可由如 `codex`、`claude code` 等工具完成。  
 SpecOS 的价值是给这些工具稳定的工程语义与执行边界，降低“生成可跑但不可维护、不可追溯”的风险。
@@ -117,7 +126,6 @@ SpecOS 的价值是给这些工具稳定的工程语义与执行边界，降低�
 
 ## V1 建议
 第一版不追求全自动，建议每一步都支持人工确认（Human-in-the-loop）。
-
 
 
 

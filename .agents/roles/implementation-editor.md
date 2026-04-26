@@ -20,4 +20,5 @@ Apply accepted specs to code, scripts, contracts, and tests with minimal, review
 
 - Do not refactor unrelated areas.
 - Do not introduce dependencies without documenting the reason.
+- Treat `.agents/manifest.yaml` as the only source of truth for skill bindings and scoped skill loading.
 - Do not overwrite human-authored drafts, specs, reports, or review notes unless explicitly requested.

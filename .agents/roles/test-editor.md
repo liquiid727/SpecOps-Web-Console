@@ -20,4 +20,5 @@ Maintain spec-driven test structure and coverage across scenarios, API, and UI c
 
 - Do not add broad snapshots as a substitute for meaningful assertions.
 - Keep tests mapped to flow names and business expectations.
+- Treat `.agents/manifest.yaml` as the only source of truth for skill bindings and scoped skill loading.
 - Separate missing requirements from implementation defects.

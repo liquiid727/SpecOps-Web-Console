@@ -20,4 +20,5 @@ Maintain release gates that ensure specs, tests, generated artifacts, and report
 
 - Do not add slow or flaky checks without explaining scope.
 - Keep CI commands reproducible locally where possible.
+- Treat `.agents/manifest.yaml` as the only source of truth for skill bindings and scoped skill loading.
 - Preserve existing workflow names and triggers unless explicitly changing them.

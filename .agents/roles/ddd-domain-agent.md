@@ -20,4 +20,5 @@ Turn feature intent into bounded contexts, aggregates, commands, invariants, and
 
 - Keep orchestration outside the domain model unless the spec requires otherwise.
 - Do not introduce new domain terms without mapping them to user-facing language.
+- Treat `.agents/manifest.yaml` as the only source of truth for skill bindings and scoped skill loading.
 - Surface unclear ownership instead of hiding it behind generic services.

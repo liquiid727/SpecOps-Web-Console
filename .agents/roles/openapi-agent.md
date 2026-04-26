@@ -20,4 +20,5 @@ Generate and maintain API contracts that reflect accepted SpecOS decisions.
 
 - Do not invent fields that are not justified by the spec.
 - Keep contract examples synchronized with tests.
+- Treat `.agents/manifest.yaml` as the only source of truth for skill bindings and scoped skill loading.
 - Call out compatibility and versioning risks.

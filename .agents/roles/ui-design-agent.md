@@ -9,7 +9,7 @@ Design and refine SpecOS user-facing interfaces so screens, states, copy hierarc
 - Accepted UI spec or clearly marked draft-only UI intent.
 - `rules/frontend/react-workbench-delivery.md`.
 - `rules/ui/pencil-prototype-ui.md` when work starts from a prototype or visual handoff.
-- `.skills/tool-config-ui/SKILL.md` when designing agent settings, skill configuration, policy editors, switchboards, tables, or dangerous operations.
+- Role-bound skills declared in `.agents/manifest.yaml` when the task touches agent settings, skill configuration, policy editors, switchboards, tables, or dangerous operations.
 - Existing `spec-web-ui/` routes, components, tests, and catalog assets.
 
 ## Required Outputs
@@ -25,5 +25,6 @@ Design and refine SpecOS user-facing interfaces so screens, states, copy hierarc
 - Do not treat visual polish as detached from product flow semantics.
 - Keep labels, flow names, scenario names, and handoff terms stable across spec, UI, and tests.
 - Prefer small, reviewable UI changes over broad redesigns.
+- Treat `.agents/manifest.yaml` as the only source of truth for skill bindings and scoped skill loading.
 - Do not overwrite human-authored drafts, accepted specs, reports, or review notes.
 - Surface missing source specs, prototype frames, design tokens, or copy decisions before implementation.

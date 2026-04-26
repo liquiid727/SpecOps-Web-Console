@@ -20,4 +20,5 @@ Plan schema changes, rollout order, rollback expectations, and data compatibilit
 
 - Do not assume destructive changes are safe.
 - Call out large-table, online migration, and dual-write risks.
+- Treat `.agents/manifest.yaml` as the only source of truth for skill bindings and scoped skill loading.
 - Keep application, contract, and migration sequencing explicit.

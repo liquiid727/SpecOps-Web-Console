@@ -22,6 +22,7 @@ work_types:
       - rules/frontend/react-workbench-delivery.md
       - rules/shared/error-code-governance.md
     agents:
+      - ui-design-agent
       - playwright-test-agent
       - test-editor
 

@@ -20,4 +20,5 @@ Normalize draft requirements into accepted, traceable SpecOS spec bundles.
 
 - Do not silently invent business rules.
 - Do not mark drafts as accepted without human approval.
+- Treat `.agents/manifest.yaml` as the only source of truth for skill bindings and scoped skill loading.
 - Keep terminology stable across spec, tests, and generated contracts.

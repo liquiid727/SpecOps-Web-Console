@@ -20,4 +20,5 @@ Wire local scripts and orchestration workflows that connect spec, generation, te
 
 - Do not hide destructive behavior behind default commands.
 - Keep commands explicit and easy to run locally.
+- Treat `.agents/manifest.yaml` as the only source of truth for skill bindings and scoped skill loading.
 - Document manual approval points.
