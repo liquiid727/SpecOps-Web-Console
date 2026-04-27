@@ -1,6 +1,7 @@
 export type GlassSurfaceVariant = "panel" | "hero" | "input" | "result" | "rail" | "row";
 export type GlassSurfaceTint = "neutral" | "blue" | "emerald" | "lime" | "violet" | "amber" | "mint";
 export type GlassInteractiveVariant = "accent" | "neutral";
+export type TrafficLightTone = "red" | "yellow" | "green";
 
 export type ThemeMode = "light" | "dark" | "system" | "auto";
 export type ResolvedThemeMode = "light" | "dark";
@@ -8,6 +9,7 @@ export type ResolvedThemeMode = "light" | "dark";
 export const THEME_MODE_STORAGE_KEY = "specos-theme-mode";
 export const THEME_CHANGE_EVENT = "specos-theme-change";
 export const DEFAULT_THEME_MODE: ThemeMode = "system";
+export const WINDOW_TRAFFIC_LIGHTS: TrafficLightTone[] = ["red", "yellow", "green"];
 
 const VALID_THEME_MODES = ["light", "dark", "system", "auto"] as const;
 
@@ -23,33 +25,37 @@ export function buildGlassSurfaceClassName(
   variant: GlassSurfaceVariant,
   tint: GlassSurfaceTint = "neutral"
 ) {
-  const tintClassName = `glass-tint-${tint}`;
+  const tintClassName = `surface-tone-${tint}`;
 
   switch (variant) {
     case "hero":
-      return `glass-surface glass-surface-hero ${tintClassName} border border-white/14 bg-white/[0.08] backdrop-blur-3xl ring-1 ring-white/10 shadow-[0_28px_120px_rgba(4,10,24,0.52)]`;
+      return `surface-base surface-window ${tintClassName}`;
     case "input":
-      return `glass-input ${tintClassName} border border-white/12 bg-white/[0.07] backdrop-blur-2xl focus-within:ring-2 focus-within:ring-emerald-300/30`;
+      return `surface-field ${tintClassName}`;
     case "rail":
-      return `glass-surface glass-surface-rail ${tintClassName} border border-white/8 bg-white/[0.04] backdrop-blur-xl`;
+      return `surface-base surface-panel surface-rail ${tintClassName}`;
     case "row":
-      return `glass-surface glass-surface-row ${tintClassName} border border-white/10 bg-white/[0.04] backdrop-blur-xl`;
+      return `surface-base surface-row ${tintClassName}`;
     case "result":
-      return `glass-surface glass-surface-result ${tintClassName} perspective-[1400px] border border-white/12 bg-white/[0.06] backdrop-blur-2xl`;
+      return `surface-base surface-result ${tintClassName}`;
     case "panel":
     default:
-      return `glass-surface glass-surface-panel ${tintClassName} border border-white/12 bg-white/[0.06] backdrop-blur-2xl`;
+      return `surface-base surface-panel ${tintClassName}`;
   }
 }
 
 export function buildGlassInteractiveClassName(variant: GlassInteractiveVariant) {
   switch (variant) {
     case "accent":
-      return "glass-interactive glass-interactive-accent border border-emerald-300/25 bg-gradient-to-br from-emerald-400/24 via-cyan-400/16 to-lime-300/18 text-emerald-50 hover:border-emerald-200/40 hover:from-emerald-300/30 hover:via-cyan-300/22 hover:to-lime-200/24";
+      return "control control-primary";
     case "neutral":
     default:
-      return "glass-interactive glass-interactive-neutral border border-white/10 bg-white/[0.05] text-slate-200 hover:border-white/18 hover:bg-white/[0.08]";
+      return "control control-secondary";
   }
+}
+
+export function buildTrafficLightClassName(tone: TrafficLightTone) {
+  return `traffic-light traffic-light-${tone}`;
 }
 
 export function normalizeThemeMode(value: unknown): ThemeMode {

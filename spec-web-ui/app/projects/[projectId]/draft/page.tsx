@@ -3,9 +3,10 @@ import Link from "next/link";
 
 import { saveDraftAction } from "@/app/actions";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { WindowSection } from "@/components/ui/window-section";
 import { analyzeDraftProgress, collectDraftAdvice, getDefaultSections } from "@/lib/draft";
 import { loadProjectDraft, loadProjectWorkspace } from "@/lib/projects";
+import { buildShellCommandTitle } from "@/lib/shell";
 
 export default async function ProjectDraftPage({
   params
@@ -22,78 +23,76 @@ export default async function ProjectDraftPage({
     const progress = analyzeDraftProgress(draft);
 
     return (
-      <div className="space-y-8">
-        <div className="space-y-3">
-          <Badge>Draft Studio</Badge>
-          <h1 className="text-4xl font-extrabold tracking-tight text-ink">
-            {workspace.project.name}
-          </h1>
-          <p className="max-w-3xl text-base leading-7 text-slate-600">
-            Edit the Git-backed markdown draft while reviewing rule injections, missing sections,
-            and selected asset guidance.
-          </p>
-        </div>
-
-        <Card className="overflow-hidden bg-ink text-white">
+      <div className="space-y-6 md:space-y-8">
+        <WindowSection
+          eyebrow={buildShellCommandTitle("edit", workspace.project.draftPath)}
+          title={workspace.project.name}
+          description="Edit the Git-backed markdown draft while reviewing rule injections, missing sections, and selected asset guidance."
+          actions={<Badge>Draft Studio</Badge>}
+          contentClassName="space-y-5"
+        >
           <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
             <div className="space-y-4">
-              <Badge className="bg-white/10 text-white">Draft progress</Badge>
+              <Badge>Draft progress</Badge>
               <div>
-                <h2 className="text-3xl font-extrabold tracking-tight">
+                <h2 className="text-3xl font-extrabold tracking-tight text-ink">
                   {progress.completionPercent}% complete
                 </h2>
-                <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">
+                <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-400">
                   This draft currently has {progress.completedSections.length} completed sections and{" "}
                   {progress.incompleteSections.length} sections that still need content or are missing.
                 </p>
               </div>
-              <div className="h-3 overflow-hidden rounded-full bg-white/10">
+              <div className="h-3 overflow-hidden rounded-full border border-line bg-sand">
                 <div
-                  className="h-full rounded-full bg-white transition-all"
+                  className="h-full rounded-full bg-ink transition-all"
                   style={{ width: `${progress.completionPercent}%` }}
                 />
               </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-              <div className="rounded-3xl bg-white/10 p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">
+              <div className="surface-base surface-field rounded-3xl p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                   Completed
                 </p>
-                <p className="mt-3 text-3xl font-extrabold">{progress.completedSections.length}</p>
+                <p className="mt-3 text-3xl font-extrabold text-ink">{progress.completedSections.length}</p>
               </div>
-              <div className="rounded-3xl bg-white/10 p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">
+              <div className="surface-base surface-field rounded-3xl p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                   Missing
                 </p>
-                <p className="mt-3 text-3xl font-extrabold">{advice.missingSections.length}</p>
+                <p className="mt-3 text-3xl font-extrabold text-ink">{advice.missingSections.length}</p>
               </div>
-              <div className="rounded-3xl bg-white/10 p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">
+              <div className="surface-base surface-field rounded-3xl p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                   Rule hints
                 </p>
-                <p className="mt-3 text-3xl font-extrabold">{advice.ruleHints.length}</p>
+                <p className="mt-3 text-3xl font-extrabold text-ink">{advice.ruleHints.length}</p>
               </div>
             </div>
           </div>
-        </Card>
+        </WindowSection>
 
-        <div className="grid gap-6 xl:grid-cols-[220px_1fr_320px]">
-          <Card className="h-fit space-y-4">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Sections
-            </p>
+        <div className="grid gap-4 md:gap-6 xl:grid-cols-[220px_1fr_320px]">
+          <WindowSection
+            eyebrow={buildShellCommandTitle("ls", "sections/")}
+            title="Sections"
+            description="Default sections and completion status."
+            className="h-fit"
+            contentClassName="pt-0"
+          >
             <ol className="space-y-2 text-sm text-slate-700">
               {sections.map((section) => (
                 <li
                   key={section}
-                  className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2 font-medium"
+                  className="surface-base surface-row flex items-center justify-between rounded-2xl px-3 py-2 font-medium"
                 >
                   <span>{section}</span>
                   <span
                     className={
                       progress.completedSections.includes(section)
-                        ? "text-xs font-semibold uppercase tracking-[0.14em] text-accent-strong"
-                        : "text-xs font-semibold uppercase tracking-[0.14em] text-coral"
+                        ? "text-xs font-semibold uppercase tracking-[0.14em] text-ink"
+                        : "text-xs font-semibold uppercase tracking-[0.14em] text-slate-500"
                     }
                   >
                     {progress.completedSections.includes(section) ? "done" : "needs work"}
@@ -101,107 +100,120 @@ export default async function ProjectDraftPage({
                 </li>
               ))}
             </ol>
-          </Card>
+          </WindowSection>
 
-          <Card>
-            <form action={saveDraftAction} className="space-y-4">
-              <input type="hidden" name="projectId" value={projectId} />
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    Markdown draft
-                  </p>
-                  <h2 className="mt-2 text-2xl font-bold text-ink">
-                    Structured, human-editable spec draft
-                  </h2>
-                </div>
-                <button
-                  type="submit"
-                  className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white"
-                >
-                  Save draft
-                </button>
-              </div>
+          <WindowSection
+            eyebrow={buildShellCommandTitle("cat", "draft.md")}
+            title="Structured, human-editable spec draft"
+            description="Primary editing surface for the project markdown draft."
+            actions={
               <div className="flex flex-wrap gap-3 text-sm">
                 <Link
                   href={`/projects/${projectId}`}
-                  className="rounded-full border border-line px-4 py-2 font-semibold text-ink"
+                  className="control control-secondary rounded-full px-4 py-2 font-semibold"
                 >
                   Back to workspace
                 </Link>
                 <Link
                   href={`/projects/${projectId}/exports`}
-                  className="rounded-full border border-line px-4 py-2 font-semibold text-ink"
+                  className="control control-secondary rounded-full px-4 py-2 font-semibold"
                 >
                   Review exports
                 </Link>
               </div>
+            }
+          >
+            <form action={saveDraftAction} className="space-y-4">
+              <input type="hidden" name="projectId" value={projectId} />
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Markdown draft
+                  </p>
+                  <h2 className="mt-2 text-2xl font-bold text-ink">Ready for direct editing</h2>
+                </div>
+                <button
+                  type="submit"
+                  className="control control-primary w-full rounded-full px-4 py-2 text-sm font-semibold sm:w-auto"
+                >
+                  Save draft
+                </button>
+              </div>
               <textarea
                 name="content"
                 defaultValue={draft}
-                className="min-h-[900px] w-full rounded-[28px] border border-line bg-[#fffefb] p-5 font-mono text-sm leading-7 text-slate-800 shadow-inner"
+                className="surface-field min-h-[70vh] w-full rounded-[28px] p-4 font-mono text-sm leading-7 text-ink outline-none md:min-h-[900px] md:p-5"
               />
             </form>
-          </Card>
+          </WindowSection>
 
-          <div className="space-y-6">
-            <Card className="space-y-4">
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Next actions
-              </p>
-              <div className="space-y-2">
-                {progress.incompleteSections.slice(0, 4).map((section) => (
-                  <div key={section} className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-700">
+          <WindowSection
+            eyebrow={buildShellCommandTitle("cat", "draft.guidance")}
+            title="Guidance"
+            description="Priority next steps, rule hints, and selected asset context while editing."
+            contentClassName="space-y-5"
+          >
+            <div className="space-y-2">
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Next actions</p>
+              {progress.incompleteSections.slice(0, 4).length ? (
+                progress.incompleteSections.slice(0, 4).map((section) => (
+                  <div key={section} className="surface-base surface-row rounded-2xl px-4 py-3 text-sm text-slate-400">
                     Complete section: {section}
                   </div>
-                ))}
-              </div>
-            </Card>
-
-            <Card className="space-y-4">
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Missing sections
-              </p>
-              {advice.missingSections.length ? (
-                <div className="space-y-2">
-                  {advice.missingSections.map((section) => (
-                    <div key={section} className="rounded-2xl bg-coral/10 px-4 py-3 text-sm">
-                      {section}
-                    </div>
-                  ))}
-                </div>
+                ))
               ) : (
-                <p className="text-sm text-slate-600">All default sections are present.</p>
+                <div className="surface-base surface-field rounded-2xl px-4 py-3 text-sm text-slate-400">
+                  all default sections currently have content.
+                </div>
               )}
-            </Card>
+            </div>
 
-            <Card className="space-y-4">
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Rule injections
-              </p>
-              <div className="space-y-2">
-                {advice.ruleHints.map((hint) => (
-                  <div key={hint} className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-700">
+            <div className="space-y-2">
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Missing sections</p>
+              {advice.missingSections.length ? (
+                advice.missingSections.map((section) => (
+                  <div key={section} className="rounded-2xl border border-emerald-500/30 px-4 py-3 text-sm text-slate-300">
+                    {section}
+                  </div>
+                ))
+              ) : (
+                <div className="surface-base surface-field rounded-2xl px-4 py-3 text-sm text-slate-400">
+                  all default sections are present.
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Rule injections</p>
+              {advice.ruleHints.length ? (
+                advice.ruleHints.map((hint) => (
+                  <div key={hint} className="surface-base surface-row rounded-2xl px-4 py-3 text-sm text-slate-400">
                     {hint}
                   </div>
-                ))}
-              </div>
-            </Card>
+                ))
+              ) : (
+                <div className="surface-base surface-field rounded-2xl px-4 py-3 text-sm text-slate-400">
+                  no additional rule hints right now.
+                </div>
+              )}
+            </div>
 
-            <Card className="space-y-4">
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Selected assets
-              </p>
-              <div className="space-y-3">
-                {workspace.selectedAssets.map((asset) => (
-                  <div key={asset.id} className="rounded-2xl border border-line/70 p-4">
+            <div className="space-y-3">
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Selected assets</p>
+              {workspace.selectedAssets.length ? (
+                workspace.selectedAssets.map((asset) => (
+                  <div key={asset.id} className="surface-base surface-row rounded-2xl p-4">
                     <p className="text-sm font-semibold text-ink">{asset.title}</p>
-                    <p className="mt-2 text-sm text-slate-600">{asset.summary}</p>
+                    <p className="mt-2 text-sm text-slate-400">{asset.summary}</p>
                   </div>
-                ))}
-              </div>
-            </Card>
-          </div>
+                ))
+              ) : (
+                <div className="surface-base surface-field rounded-2xl px-4 py-3 text-sm text-slate-400">
+                  no assets selected yet.
+                </div>
+              )}
+            </div>
+          </WindowSection>
         </div>
       </div>
     );

@@ -27,6 +27,25 @@ describe("artifact validation", () => {
     expect(result.ok).toBe(true);
   });
 
+  it("accepts a minimal spec-only manifest", () => {
+    const result = validateManifest({
+      project: { name: "demo", type: "spec-only" },
+      stacks: { frontend: "none", backend: "none" },
+      artifacts: {
+        draftsDir: "spec-draft",
+        specsDir: "spec",
+        testsDir: "tests",
+        resultsDir: "tests/results",
+      },
+      rulePacks: ["spec-driven-delivery"],
+      agentTemplates: ["spec-editor"],
+      workflows: ["default-spec-only"],
+      ci: { checkCommand: "npx specos check" },
+    });
+
+    expect(result.ok).toBe(true);
+  });
+
   it("rejects a manifest without rule packs and agent templates", () => {
     const result = validateManifest({
       project: { name: "demo", type: "fullstack" },

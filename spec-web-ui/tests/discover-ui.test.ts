@@ -6,11 +6,11 @@ import {
 } from "@/lib/discover-ui";
 
 describe("buildDiscoverSectionToolClassName", () => {
-  it("returns lightweight toolbar button recipes instead of heavy card actions", () => {
-    expect(buildDiscoverSectionToolClassName("default")).toContain("border-line/60");
-    expect(buildDiscoverSectionToolClassName("default")).toContain("text-slate-500");
-    expect(buildDiscoverSectionToolClassName("danger")).toContain("text-rose-300");
-    expect(buildDiscoverSectionToolClassName("accent")).toContain("border-accent/50");
+  it("returns compact monochrome tool controls for rail actions", () => {
+    expect(buildDiscoverSectionToolClassName("default")).toContain("control-secondary");
+    expect(buildDiscoverSectionToolClassName("default")).toContain("border");
+    expect(buildDiscoverSectionToolClassName("danger")).toContain("text-rose-400");
+    expect(buildDiscoverSectionToolClassName("accent")).toContain("control-primary");
   });
 });
 

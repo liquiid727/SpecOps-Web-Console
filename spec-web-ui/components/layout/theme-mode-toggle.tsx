@@ -1,28 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import {
   THEME_CHANGE_EVENT,
-  buildGlassInteractiveClassName,
   buildThemeState,
   normalizeThemeMode,
   THEME_MODE_STORAGE_KEY,
+  type ResolvedThemeMode,
   type ThemeMode
 } from "@/lib/theme";
+import { cn } from "@/lib/utils";
 
-const THEME_MODE_OPTIONS: ThemeMode[] = ["light", "dark", "system", "auto"];
-const COMPACT_LABELS: Record<ThemeMode, string> = {
-  light: "L",
-  dark: "D",
-  system: "S",
-  auto: "A"
-};
+function readSystemPrefersDark() {
+  return window.matchMedia("(prefers-color-scheme: dark)").matches;
+}
 
 function applyThemeMode(mode: ThemeMode) {
   const state = buildThemeState(mode, {
     hour: new Date().getHours(),
-    systemPrefersDark: window.matchMedia("(prefers-color-scheme: dark)").matches
+    systemPrefersDark: readSystemPrefersDark()
   });
   const root = document.documentElement;
 
@@ -42,6 +39,7 @@ function applyThemeMode(mode: ThemeMode) {
 
 export function ThemeModeToggle({ compact = false }: { compact?: boolean }) {
   const [mode, setMode] = useState<ThemeMode>("system");
+  const [resolvedMode, setResolvedMode] = useState<ResolvedThemeMode>("dark");
 
   useEffect(() => {
     let storedMode: ThemeMode = "system";
@@ -50,16 +48,22 @@ export function ThemeModeToggle({ compact = false }: { compact?: boolean }) {
       storedMode = normalizeThemeMode(window.localStorage.getItem(THEME_MODE_STORAGE_KEY));
     } catch {}
 
+    const state = applyThemeMode(storedMode);
     setMode(storedMode);
-    applyThemeMode(storedMode);
+    setResolvedMode(state.resolvedMode);
   }, []);
 
   useEffect(() => {
-    applyThemeMode(mode);
+    const syncTheme = () => {
+      const state = applyThemeMode(mode);
+      setResolvedMode(state.resolvedMode);
 
-    try {
-      window.localStorage.setItem(THEME_MODE_STORAGE_KEY, mode);
-    } catch {}
+      try {
+        window.localStorage.setItem(THEME_MODE_STORAGE_KEY, mode);
+      } catch {}
+    };
+
+    syncTheme();
 
     if (mode !== "system") {
       return;
@@ -67,7 +71,7 @@ export function ThemeModeToggle({ compact = false }: { compact?: boolean }) {
 
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const handleChange = () => {
-      applyThemeMode(mode);
+      syncTheme();
     };
 
     mediaQuery.addEventListener("change", handleChange);
@@ -83,7 +87,8 @@ export function ThemeModeToggle({ compact = false }: { compact?: boolean }) {
     }
 
     const intervalId = window.setInterval(() => {
-      applyThemeMode(mode);
+      const state = applyThemeMode(mode);
+      setResolvedMode(state.resolvedMode);
     }, 60_000);
 
     return () => {
@@ -91,37 +96,30 @@ export function ThemeModeToggle({ compact = false }: { compact?: boolean }) {
     };
   }, [mode]);
 
+  const isDark = resolvedMode === "dark";
+
   return (
     <div className={compact ? "space-y-0" : "space-y-2"}>
-      <div
-        aria-label="Theme mode"
-        className={`inline-flex items-center gap-1.5 rounded-[16px] border border-line/35 bg-panel/20 ${
-          compact ? "px-1 py-1" : "p-2"
-        }`}
-        role="toolbar"
+      <button
+        aria-checked={isDark}
+        aria-label="Theme"
+        className={cn(
+          "theme-switch control control-secondary inline-flex items-center rounded-full",
+          compact ? "theme-switch-compact" : "theme-switch-regular"
+        )}
+        onClick={() => setMode(isDark ? "light" : "dark")}
+        role="switch"
+        type="button"
       >
-        {THEME_MODE_OPTIONS.map((option) => {
-          const isActive = option === mode;
-
-          return (
-            <button
-              key={option}
-              aria-label={option[0].toUpperCase() + option.slice(1)}
-              aria-pressed={isActive}
-              className={`${buildGlassInteractiveClassName(isActive ? "accent" : "neutral")} rounded-[12px] ${
-                compact ? "min-w-8 px-2 py-1 text-[10px]" : "px-3 py-2 text-xs"
-              } font-mono uppercase tracking-[0.14em] transition`}
-              onClick={() => setMode(option)}
-              type="button"
-            >
-              {compact ? COMPACT_LABELS[option] : option}
-            </button>
-          );
-        })}
-      </div>
+        <span className={cn("theme-switch-label", !isDark && "theme-switch-label-active")}>Day</span>
+        <span className="theme-switch-track" aria-hidden="true">
+          <span className={cn("theme-switch-thumb", isDark && "theme-switch-thumb-dark")} />
+        </span>
+        <span className={cn("theme-switch-label", isDark && "theme-switch-label-active")}>Night</span>
+      </button>
       {compact ? null : (
-        <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-slate-400">
-          theme mode: {mode}
+        <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-slate-500">
+          theme: {isDark ? "dark" : "light"}
         </p>
       )}
     </div>

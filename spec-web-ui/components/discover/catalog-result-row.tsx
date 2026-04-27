@@ -59,13 +59,13 @@ export function CatalogResultRow({
             {tagPreview.visibleTags.map((tag) => (
               <span
                 key={tag}
-                className="rounded-md border border-line/70 px-2 py-0.5 font-mono text-[10px] text-slate-400"
+                className="rounded-md border border-line px-2 py-0.5 font-mono text-[10px] text-slate-500"
               >
                 {tag}
               </span>
             ))}
             {tagPreview.hiddenCount ? (
-              <Badge className="border-line/70 bg-transparent px-2 py-0.5 text-[10px] text-slate-500">
+              <Badge className="border-line bg-transparent px-2 py-0.5 text-[10px] text-slate-500">
                 +{tagPreview.hiddenCount}
               </Badge>
             ) : null}

@@ -18,13 +18,37 @@ export interface RunCliResult {
 }
 
 type ManifestRecord = Record<string, unknown>;
+interface InitOptions {
+  template: string;
+}
+
+interface CliContext {
+  cwd: string;
+}
+
+interface TemplateDefinition {
+  name: string;
+  relativePath: string;
+}
+
+const templates: TemplateDefinition[] = [
+  { name: "fullstack", relativePath: "../templates/fullstack" },
+  { name: "spec-only", relativePath: "../templates/spec-only" },
+];
+const templateNames = templates.map((template) => template.name).join(", ");
 const supportedCommands = "Supported commands: init, check";
+const commandHelp = `${supportedCommands}\nTemplates: ${templateNames}`;
 
 export async function runCli(args: string[], options: RunCliOptions): Promise<RunCliResult> {
   const [command] = args;
+  const context: CliContext = { cwd: options.cwd };
 
   if (command === "init") {
-    return initProject(options.cwd);
+    const parsedInit = parseInitArgs(args.slice(1));
+    if (!parsedInit.ok) {
+      return parsedInit.error;
+    }
+    return initProject(context, parsedInit.value);
   }
 
   if (command === "check") {
@@ -34,18 +58,24 @@ export async function runCli(args: string[], options: RunCliOptions): Promise<Ru
   return {
     exitCode: 1,
     stdout: "",
-    stderr: `SPECOS_COMMAND_UNKNOWN Unknown command: ${command ?? ""}\n${supportedCommands}\n`,
+    stderr: `SPECOS_COMMAND_UNKNOWN Unknown command: ${command ?? ""}\n${commandHelp}\n`,
   };
 }
 
-async function initProject(cwd: string): Promise<RunCliResult> {
-  const templateDir = resolve(dirname(fileURLToPath(import.meta.url)), "../templates/fullstack");
-  const result = await copyTemplateDirectory(templateDir, cwd);
+async function initProject(context: CliContext, options: InitOptions): Promise<RunCliResult> {
+  const template = resolveTemplate(options.template);
+  if (!template) {
+    return failure("SPECOS_TEMPLATE_UNKNOWN", `Unknown template: ${options.template}\nAvailable templates: ${templateNames}`);
+  }
 
-  await mkdir(join(cwd, "tests/results"), { recursive: true });
+  const templateDir = resolve(dirname(fileURLToPath(import.meta.url)), template.relativePath);
+  const result = await copyTemplateDirectory(templateDir, context.cwd);
+
+  await mkdir(join(context.cwd, "tests/results"), { recursive: true });
 
   const lines = [
     "SPECOS_INIT_OK",
+    `template ${template.name}`,
     `written ${result.written.length}`,
     `skipped ${result.skipped.length}`,
   ];
@@ -179,6 +209,32 @@ function parseManifestYaml(source: string): ManifestRecord {
 
 function toPosixPath(path: string): string {
   return path.split(sep).join("/");
+}
+
+function parseInitArgs(args: string[]): { ok: true; value: InitOptions } | { ok: false; error: RunCliResult } {
+  let template = "fullstack";
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+
+    if (arg === "--template") {
+      const value = args[index + 1];
+      if (!value) {
+        return { ok: false, error: failure("SPECOS_TEMPLATE_REQUIRED", "--template requires a value") };
+      }
+      template = value;
+      index += 1;
+      continue;
+    }
+
+    return { ok: false, error: failure("SPECOS_ARGUMENT_INVALID", `Unsupported init argument: ${arg}\n${commandHelp}`) };
+  }
+
+  return { ok: true, value: { template } };
+}
+
+function resolveTemplate(name: string): TemplateDefinition | undefined {
+  return templates.find((template) => template.name === name);
 }
 
 if (isCliEntrypoint()) {

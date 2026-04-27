@@ -2,10 +2,10 @@ import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { WindowSection } from "@/components/ui/window-section";
 import { loadGeneratedExportBundle } from "@/lib/export";
 import { listProjects } from "@/lib/projects";
 import { buildShellCommandTitle } from "@/lib/shell";
-import { buildGlassSurfaceClassName } from "@/lib/theme";
 
 export default async function ExportsPage() {
   const projects = await listProjects();
@@ -18,18 +18,19 @@ export default async function ExportsPage() {
 
   return (
     <div className="space-y-8">
-      <section className={`${buildGlassSurfaceClassName("hero")} rounded-[30px] p-6`}>
-        <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">
-          {buildShellCommandTitle("ls", "exports/")}
-        </p>
-        <h1 className="mt-3 text-4xl font-semibold tracking-tight text-ink">export snapshots</h1>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400">
-          Review which project workspaces already generated bundle snapshots and jump into their
-          detailed export previews.
-        </p>
-      </section>
+      <WindowSection
+        eyebrow={buildShellCommandTitle("ls", "exports/")}
+        title="Export snapshots"
+        description="Review which project workspaces already generated bundle snapshots and jump into their detailed export previews."
+        contentClassName="pt-0"
+      />
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <WindowSection
+        eyebrow={buildShellCommandTitle("ls", "bundle-reviews/")}
+        title="Workspace exports"
+        description="Generated bundles and preview-only workspaces in one place."
+        contentClassName="grid gap-4 lg:grid-cols-2"
+      >
         {exports.map(({ project, bundle }) => (
           <Link key={project.id} href={`/projects/${project.id}/exports`}>
             <Card className="space-y-4 transition hover:bg-sand">
@@ -52,7 +53,7 @@ export default async function ExportsPage() {
             </Card>
           </Link>
         ))}
-      </div>
+      </WindowSection>
     </div>
   );
 }

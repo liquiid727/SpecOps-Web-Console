@@ -11,8 +11,7 @@ const buttonVariants = cva(
       variant: {
         primary: buildGlassInteractiveClassName("accent"),
         secondary: buildGlassInteractiveClassName("neutral"),
-        ghost:
-          "glass-interactive glass-interactive-neutral border border-line/60 bg-panel/30 text-slate-300 hover:border-line hover:bg-panel/55"
+        ghost: "border border-transparent bg-transparent text-slate-500 hover:border-line hover:bg-panel hover:text-ink"
       }
     },
     defaultVariants: {

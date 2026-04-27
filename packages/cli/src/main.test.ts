@@ -38,6 +38,35 @@ describe("specos cli", () => {
     expect(check.stdout).toContain("SPECOS_CHECK_OK");
   });
 
+  it("accepts an explicit fullstack template selector", async () => {
+    const cwd = await tempProject();
+
+    const init = await runCli(["init", "--template", "fullstack"], { cwd });
+
+    expect(init.exitCode).toBe(0);
+    await expect(readFile(join(cwd, ".specos/manifest.yaml"), "utf8")).resolves.toContain("type: fullstack");
+  });
+
+  it("initializes a spec-only project from the template registry", async () => {
+    const cwd = await tempProject();
+
+    const init = await runCli(["init", "--template", "spec-only"], { cwd });
+
+    expect(init.exitCode).toBe(0);
+    await expect(readFile(join(cwd, ".specos/manifest.yaml"), "utf8")).resolves.toContain("type: spec-only");
+    await expect(readFile(join(cwd, "spec/README.md"), "utf8")).resolves.toContain("Spec bundle");
+  });
+
+  it("rejects unknown templates with a stable error code", async () => {
+    const cwd = await tempProject();
+
+    const init = await runCli(["init", "--template", "unknown"], { cwd });
+
+    expect(init.exitCode).toBe(1);
+    expect(init.stderr).toContain("SPECOS_TEMPLATE_UNKNOWN");
+    expect(init.stderr).toContain("Available templates: fullstack, spec-only");
+  });
+
   it("reports a stable error code when manifest is missing", async () => {
     const cwd = await tempProject();
 
@@ -70,5 +99,6 @@ describe("specos cli", () => {
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain("Supported commands: init, check");
+    expect(result.stderr).toContain("Templates: fullstack, spec-only");
   });
 });

@@ -8,7 +8,7 @@ export function Badge({ className, ...props }: HTMLAttributes<HTMLSpanElement>) 
     <span
       className={cn(
         buildGlassInteractiveClassName("neutral"),
-        "inline-flex items-center rounded-[14px] px-2.5 py-1 font-mono text-[11px] font-medium uppercase tracking-[0.12em]",
+        "inline-flex items-center rounded-full px-2.5 py-1 font-mono text-[11px] font-medium uppercase tracking-[0.12em]",
         className
       )}
       {...props}

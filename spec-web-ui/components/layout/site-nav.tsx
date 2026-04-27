@@ -19,15 +19,15 @@ export function SiteNav() {
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5">
-      <div className="flex min-w-0 flex-wrap items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500/80">
+      <div className="flex min-w-0 flex-wrap items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">
         {breadcrumbs.map((segment, index) => (
           <span key={segment.href} className="inline-flex items-center gap-1.5">
-            {index > 0 ? <span className="text-slate-700">/</span> : null}
+            {index > 0 ? <span className="text-slate-400">/</span> : null}
             <Link
               href={segment.href}
               className={cn(
                 "transition",
-                segment.href === pathname ? "text-ink" : "text-slate-400 hover:text-slate-200"
+                segment.href === pathname ? "text-ink" : "text-slate-500 hover:text-ink"
               )}
             >
               {segment.label}
@@ -35,7 +35,7 @@ export function SiteNav() {
           </span>
         ))}
       </div>
-      <nav className="flex flex-wrap items-center gap-1 font-mono text-[10px] uppercase tracking-[0.14em] text-slate-400/90">
+      <nav className="flex flex-wrap items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">
         {navItems.map((item) => {
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
 
@@ -44,10 +44,10 @@ export function SiteNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                "rounded-[999px] px-2 py-0.5 transition",
+                "rounded-full border px-2.5 py-1 transition",
                 active
-                  ? "bg-panel/55 text-ink shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]"
-                  : "text-slate-500/85 hover:bg-panel/30 hover:text-slate-200"
+                  ? "border-line bg-panel text-ink"
+                  : "border-transparent text-slate-500 hover:border-line hover:bg-panel hover:text-ink"
               )}
             >
               {item.href.replace("/", "")}/

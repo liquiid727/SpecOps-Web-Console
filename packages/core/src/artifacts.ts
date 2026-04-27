@@ -22,7 +22,7 @@ export type ValidationResult =
 export interface SpecosManifest {
   project: {
     name: string;
-    type: "backend" | "frontend" | "fullstack";
+    type: "backend" | "frontend" | "fullstack" | "spec-only";
   };
   stacks: {
     frontend?: string;
@@ -218,7 +218,7 @@ export function validateManifest(value: unknown): ValidationResult {
   requireOneOf(
     state,
     manifest?.project?.type,
-    ["backend", "frontend", "fullstack"],
+    ["backend", "frontend", "fullstack", "spec-only"],
     "SPECOS_MANIFEST_INVALID",
     "project.type",
   );

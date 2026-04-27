@@ -10,6 +10,226 @@ SpecOS 是一个面向工程与业务系统开发的 **Spec-Driven AI IDE**。
 - 把 Agent 从“随意发挥”变成“职责明确、上下文受控”。
 - 把测试和报告纳入同一条业务链路，支持回溯和审计。
 
+## 当前仓库怎么用
+如果你只想知道“今天这个仓库实际能怎么跑起来”，可以直接按下面三条路线理解：
+
+1. `CLI`：初始化或检查一个 SpecOS 项目骨架。
+2. `spec-web-ui`：选择规则/模板/Agent，创建项目工作区，编辑 draft，导出 bundle 快照。
+3. `test-console`：读取现成的 `test-plan`，触发 runner，生成规范化测试结果并可视化。
+
+当前实现流程图见：
+- [todo/specos-current-implemented-flow.md](/Users/liquiid/code/specos-ai/todo/specos-current-implemented-flow.md)
+
+### 0. 环境准备
+
+根目录安装和构建：
+
+```bash
+npm install
+npm run build
+```
+
+说明：
+- 根目录的 `npm install` / `npm run build` 主要服务于 `packages/core` 和 `packages/cli`
+- `spec-web-ui/` 和 `test-console/` 是独立 Next.js 应用，需要各自安装依赖
+
+### 1. 用 CLI 初始化一个 SpecOS 项目
+
+当前仓库提供一个最小可用的 `specos` CLI，用来初始化和检查 SpecOS 项目骨架。
+
+推荐在一个单独目录里试用，不要直接在本仓库根目录执行 `init`：
+
+```bash
+mkdir -p /tmp/specos-demo
+cd /tmp/specos-demo
+node /Users/liquiid/code/specos-ai/packages/cli/dist/main.js init --template fullstack
+node /Users/liquiid/code/specos-ai/packages/cli/dist/main.js check
+```
+
+如果你想用轻量模板：
+
+```bash
+node /Users/liquiid/code/specos-ai/packages/cli/dist/main.js init --template spec-only
+```
+
+当前支持命令：
+- `specos init`
+- `specos init --template fullstack`
+- `specos init --template spec-only`
+- `specos check`
+
+当前内置模板：
+- `fullstack`
+- `spec-only`
+
+初始化后会写入：
+- `.specos/manifest.yaml`
+- `.specos/workflows/default-fullstack.yaml`
+- `spec/`
+- `spec-draft/`
+- `tests/`
+- `ai/agents/`
+
+`spec-only` 模板会保留更轻的骨架：
+- `.specos/manifest.yaml`
+- `.specos/workflows/default-spec-only.yaml`
+- `spec/`
+- `spec-draft/`
+- `tests/`
+
+`check` 当前会验证：
+- `.specos/manifest.yaml` 存在且结构合法
+- artifact 目录路径不越出项目根目录
+- `spec-draft`、`spec`、`tests`、`tests/results` 等基础目录存在
+
+### 2. 用 `spec-web-ui` 组织项目资产
+
+`spec-web-ui` 当前不是完整 workflow runner，它更像一个“catalog-first workspace”：
+- 浏览 rules / templates / agent roles
+- 创建项目工作区
+- 维护项目 draft
+- 导出当前选择资产的 bundle 快照
+
+启动方式：
+
+```bash
+cd spec-web-ui
+npm install
+npm run dev -- --port 3001
+```
+
+打开浏览器访问：
+
+- [http://localhost:3001](http://localhost:3001)
+
+建议使用路径：
+
+1. 进入 `discover`，浏览规则、模板、agent 资产
+2. 进入 `projects`，创建一个项目工作区
+3. 进入项目 draft 页面，编辑结构化草稿
+4. 进入 export 页面，生成导出快照并做差异评审
+
+你会看到的主要数据位置：
+- 项目工作区：`spec-web-ui/workspace/projects/`
+- 导出快照：`spec-web-ui/workspace/exports/`
+
+注意：
+- 当前导出默认写到 `spec-web-ui/workspace/exports/<projectId>/`
+- 它不会自动把内容回写到仓库根目录的 `spec/`、`tests/`、`ai/agents/`
+
+### 3. 准备 `test-plan`
+
+当前仓库里，`test-console` 不会直接从 `spec-draft/` 或 `spec/` 自动生成测试计划。
+
+它需要你先准备好：
+
+- `tests/plans/<spec>.test-plan.json`
+
+可以先参考现成示例：
+
+- [tests/plans/reward-order.test-plan.json](/Users/liquiid/code/specos-ai/tests/plans/reward-order.test-plan.json)
+
+当前真实情况是：
+- `packages/core` 里已经有 `spec`、`test-plan`、`scenario-result` 的 schema 和校验逻辑
+- 但仓库里还没有统一命令把 `accepted spec` 自动落成 `tests/plans/*.json`
+- 所以这一步目前需要人工准备，或通过你自己的脚本/Agent 生成
+
+### 4. 跑 runner，生成规范化测试结果
+
+当你准备好 `tests/plans/<spec>.test-plan.json` 后，可以从仓库根目录运行：
+
+```bash
+node scripts/orchestration/test-runner.mjs reward-order 1.2.0 all
+```
+
+参数格式：
+
+```bash
+node scripts/orchestration/test-runner.mjs <specId> [specVersion] [api|scenario|all]
+```
+
+例如：
+
+```bash
+node scripts/orchestration/test-runner.mjs reward-order latest api
+node scripts/orchestration/test-runner.mjs reward-order latest scenario
+node scripts/orchestration/test-runner.mjs reward-order latest all
+```
+
+输出结果会写到：
+
+- `tests/results/<spec>.<run_id>.json`
+
+注意：
+- 这个 runner 当前是“模拟/归一化脚本”
+- 它会读取 `test-plan` 并拼出标准化 `scenario-result`
+- 它当前不会真的去调用 Bruno 或 Playwright 执行测试
+
+### 5. 用 `test-console` 查看结果
+
+启动方式：
+
+```bash
+cd test-console
+npm install
+npm run dev -- --port 3002
+```
+
+打开浏览器访问：
+
+- [http://localhost:3002](http://localhost:3002)
+
+你可以做的事：
+- 查看最近一次 run 摘要
+- 按 spec 查看业务流、场景链、接口拓扑
+- 查看 run detail 里的证据摘要
+- 通过表单重新触发 runner
+
+`test-console` 当前只消费两类输入：
+- `tests/plans/*.json`
+- `tests/results/*.json`
+
+### 6. 一条最短可运行闭环
+
+如果你只是想最快体验一遍当前实现，按这个顺序即可：
+
+```bash
+# 1) 根目录
+npm install
+npm run build
+
+# 2) 直接生成一份规范化结果
+node scripts/orchestration/test-runner.mjs reward-order 1.2.0 all
+
+# 3) 打开测试控制台
+cd test-console
+npm install
+npm run dev -- --port 3002
+```
+
+然后打开：
+
+- [http://localhost:3002](http://localhost:3002)
+
+这会让你看到当前仓库里最完整、最可演示的一条实现链路：
+
+`现成 test-plan -> runner 生成 normalized result -> test-console 可视化`
+
+### 7. 当前还没有自动化打通的部分
+
+下面这些能力在仓库里“有设计、有 schema、有角色定义”，但按当前实现还没有串成统一执行链：
+
+- `spec-draft -> accepted spec` 自动 refine
+- `accepted spec -> tests/plans/*.json` 自动生成
+- Bruno / Playwright 真实执行并自动归一化
+- `spec-web-ui` 一键串联到 `test-console`
+- workflow yaml 直接驱动整个运行时
+
+所以更准确地说，当前版本是：
+
+- 已实现 MVP：`项目骨架 -> 资产编排 -> 手工准备 test-plan -> runner 产出 normalized result -> console 展示`
+- 未完全实现的大闭环：`draft -> accepted spec -> 自动测试生成 -> 真执行 -> 自动汇总 -> CI 门禁`
+
 ## 解决什么问题
 - Feature 如何稳定进入 Spec，而不是停留在口头描述。
 - Agent 应该读取哪些上下文，如何避免跑偏。
@@ -126,6 +346,3 @@ SpecOS 的价值是给这些工具稳定的工程语义与执行边界，降低�
 
 ## V1 建议
 第一版不追求全自动，建议每一步都支持人工确认（Human-in-the-loop）。
-
-
-

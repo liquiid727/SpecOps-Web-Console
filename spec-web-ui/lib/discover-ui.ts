@@ -2,16 +2,16 @@ export type DiscoverSectionToolTone = "default" | "accent" | "danger";
 
 export function buildDiscoverSectionToolClassName(tone: DiscoverSectionToolTone = "default") {
   const base =
-    "rounded-md border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em] transition hover:bg-sand";
+    "rounded-md border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em] transition";
 
   switch (tone) {
     case "accent":
-      return `${base} border-accent/50 bg-accent/10 text-accent-strong hover:bg-accent/15`;
+      return `control control-primary ${base}`;
     case "danger":
-      return `${base} border-line/60 text-rose-300`;
+      return `control control-secondary ${base} text-rose-400 hover:border-rose-300/40`;
     case "default":
     default:
-      return `${base} border-line/60 text-slate-500`;
+      return `control control-secondary ${base}`;
   }
 }
 

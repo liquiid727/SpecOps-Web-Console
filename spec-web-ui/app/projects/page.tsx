@@ -3,6 +3,8 @@ import Link from "next/link";
 import { createProjectAction } from "@/app/actions";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { WindowSection } from "@/components/ui/window-section";
+import { buildShellCommandTitle } from "@/lib/shell";
 import { loadCatalogAssets } from "@/lib/catalog";
 import { listProjects, resolveProjectWorkspace } from "@/lib/projects";
 
@@ -10,38 +12,35 @@ export default async function ProjectsPage() {
   const [projects, catalog] = await Promise.all([listProjects(), loadCatalogAssets()]);
 
   return (
-    <div className="space-y-8">
-      <div className="space-y-3">
-        <Badge>Projects</Badge>
-        <h1 className="text-4xl font-extrabold tracking-tight text-ink">Workspace assembly</h1>
-        <p className="max-w-3xl text-base leading-7 text-slate-600">
-          Each project collects selected assets, draft bindings, and export expectations in a
-          Git-backed manifest.
-        </p>
-      </div>
+    <div className="space-y-6 md:space-y-8">
+      <WindowSection
+        eyebrow={buildShellCommandTitle("ls", "projects/")}
+        title="Workspace assembly"
+        description="Each project collects selected assets, draft bindings, and export expectations in a Git-backed manifest."
+        contentClassName="pt-0"
+      />
 
-      <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
-        <Card className="space-y-5">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
-              New project
-            </p>
-            <h2 className="mt-2 text-2xl font-bold text-ink">Create a workspace</h2>
-          </div>
+      <div className="grid gap-4 md:gap-6 lg:grid-cols-[360px_1fr]">
+        <WindowSection
+          eyebrow={buildShellCommandTitle("touch", "workspace/")}
+          title="Create a workspace"
+          description="Start a project container for rules, templates, and export review."
+          contentClassName="space-y-5"
+        >
           <form action={createProjectAction} className="space-y-4">
             <label className="block space-y-2">
               <span className="text-sm font-semibold text-slate-700">Name</span>
               <input
                 name="name"
                 placeholder="Fraud Review Console"
-                className="w-full rounded-2xl border border-line bg-white px-4 py-3 text-sm shadow-sm"
+                className="surface-field w-full rounded-2xl px-4 py-3 text-sm text-ink outline-none"
               />
             </label>
             <label className="block space-y-2">
               <span className="text-sm font-semibold text-slate-700">Project type</span>
               <select
                 name="projectType"
-                className="w-full rounded-2xl border border-line bg-white px-4 py-3 text-sm shadow-sm"
+                className="surface-field w-full rounded-2xl px-4 py-3 text-sm text-ink outline-none"
                 defaultValue="mixed"
               >
                 <option value="backend">backend</option>
@@ -54,7 +53,7 @@ export default async function ProjectsPage() {
               <input
                 name="architecture"
                 defaultValue="modular-monolith"
-                className="w-full rounded-2xl border border-line bg-white px-4 py-3 text-sm shadow-sm"
+                className="surface-field w-full rounded-2xl px-4 py-3 text-sm text-ink outline-none"
               />
             </label>
             <label className="block space-y-2">
@@ -62,19 +61,24 @@ export default async function ProjectsPage() {
               <input
                 name="stacks"
                 defaultValue="go, react"
-                className="w-full rounded-2xl border border-line bg-white px-4 py-3 text-sm shadow-sm"
+                className="surface-field w-full rounded-2xl px-4 py-3 text-sm text-ink outline-none"
               />
             </label>
             <button
               type="submit"
-              className="w-full rounded-full bg-ink px-4 py-3 text-sm font-bold text-white"
+              className="control control-primary w-full rounded-full px-4 py-3 text-sm font-bold"
             >
               Create project
             </button>
           </form>
-        </Card>
+        </WindowSection>
 
-        <div className="grid gap-4">
+        <WindowSection
+          eyebrow={buildShellCommandTitle("ls", "workspace-list/")}
+          title="Existing workspaces"
+          description="Review current project containers and jump into the one you need."
+          contentClassName="grid gap-4"
+        >
           {projects.map((project) => {
             const workspace = resolveProjectWorkspace(project, catalog);
 
@@ -98,8 +102,8 @@ export default async function ProjectsPage() {
                       </span>
                     ))}
                   </div>
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-2xl bg-slate-50 p-4">
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    <div className="rounded-2xl border border-line bg-canvas p-4">
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                         Selected
                       </p>
@@ -107,7 +111,7 @@ export default async function ProjectsPage() {
                         {workspace.selectedAssets.length}
                       </p>
                     </div>
-                    <div className="rounded-2xl bg-slate-50 p-4">
+                    <div className="rounded-2xl border border-line bg-canvas p-4">
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                         Missing deps
                       </p>
@@ -115,7 +119,7 @@ export default async function ProjectsPage() {
                         {workspace.missingDependencies.length}
                       </p>
                     </div>
-                    <div className="rounded-2xl bg-slate-50 p-4">
+                    <div className="rounded-2xl border border-line bg-canvas p-4">
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                         Conflicts
                       </p>
@@ -126,7 +130,7 @@ export default async function ProjectsPage() {
               </Link>
             );
           })}
-        </div>
+        </WindowSection>
       </div>
     </div>
   );

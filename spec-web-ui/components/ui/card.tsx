@@ -12,7 +12,7 @@ export function Card({
     <div
       className={cn(
         buildGlassSurfaceClassName("panel", tint),
-        "rounded-[26px] p-5 transition-transform duration-200 ease-out",
+        "rounded-[24px] p-5",
         className
       )}
       {...props}

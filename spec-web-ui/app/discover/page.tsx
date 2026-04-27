@@ -15,6 +15,7 @@ import { CatalogResultRow } from "@/components/discover/catalog-result-row";
 import { SortableCollectionItem } from "@/components/discover/sortable-collection-item";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { WindowSection } from "@/components/ui/window-section";
 import {
   buildCatalogComparison,
   filterCatalogAssets,
@@ -243,39 +244,39 @@ export default async function DiscoverPage({
   const statusCopy = {
     selected: {
       label: "selected",
-      tone: "border-accent/40 bg-accent/10 text-accent-strong",
+      tone: "border-line bg-canvas text-ink",
       detail: "already part of the active workspace"
     },
     required: {
       label: "required",
-      tone: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
+      tone: "border-emerald-500/35 bg-transparent text-emerald-300",
       detail: "needed to resolve a missing dependency"
     },
     recommended: {
       label: "recommended",
-      tone: "border-line bg-sand text-slate-300",
+      tone: "border-line bg-transparent text-slate-400",
       detail: "fits the current project composition"
     },
     conflict: {
       label: "conflict",
-      tone: "border-amber-500/40 bg-amber-500/10 text-amber-300",
+      tone: "border-amber-500/35 bg-transparent text-amber-300",
       detail: "may collide with something already selected"
     },
     available: {
       label: "available",
-      tone: "border-line bg-sand text-slate-300",
+      tone: "border-line bg-transparent text-slate-400",
       detail: "ready to add to the active project"
     }
   } as const;
   const redirectTo = buildDiscoverHref(searchParamsWithoutFeedback, {});
   const discoverProjectHref = activeProject ? `/discover?projectId=${activeProject.id}` : "/discover";
   const sectionToolbarClassName =
-    "flex flex-wrap items-center gap-1 rounded-full border border-line/45 bg-canvas/55 px-1.5 py-1";
+    "flex flex-wrap items-center gap-1 rounded-full border border-line bg-panel px-1.5 py-1";
   const sectionToolClassName = buildDiscoverSectionToolClassName();
   const sectionAccentToolClassName = buildDiscoverSectionToolClassName("accent");
   const sectionDangerToolClassName = buildDiscoverSectionToolClassName("danger");
   const catalogRowAsideClassName =
-    "rounded-[14px] border border-line/70 bg-canvas/65 px-3 py-2.5 text-xs text-slate-400";
+    "surface-base surface-field rounded-[14px] px-3 py-2.5 text-xs text-slate-400";
   const railSurfaceClassNames = {
     filters: buildGlassSurfaceClassName("rail", "blue"),
     tags: buildGlassSurfaceClassName("rail", "mint"),
@@ -377,26 +378,21 @@ export default async function DiscoverPage({
       : null;
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-[22px] border border-line/30 bg-panel/18 px-4 py-3 backdrop-blur-xl">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div className="space-y-1.5">
-            <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-accent">
-              {buildShellCommandTitle("find", "catalog/")}
-            </p>
-            <h1 className="text-[26px] font-semibold tracking-tight text-ink">discover</h1>
-            <p className="text-[13px] text-slate-400">
-              Search reusable rules, spec templates, and agent roles for the active workspace.
-            </p>
-          </div>
+    <div className="space-y-5 md:space-y-6">
+      <WindowSection
+        eyebrow={buildShellCommandTitle("find", "catalog/")}
+        title="Discover"
+        description="Search reusable rules, spec templates, and agent roles for the active workspace."
+        actions={
           <div className="hidden font-mono text-[11px] uppercase tracking-[0.14em] text-slate-500 xl:flex xl:flex-wrap xl:items-center xl:gap-2">
-            <span className="rounded-full border border-line/35 px-2.5 py-1">catalog {catalog.length}</span>
-            <span className="rounded-full border border-line/35 px-2.5 py-1">projects {projects.length}</span>
-            <span className="rounded-full border border-line/35 px-2.5 py-1">
+            <span className="rounded-full border border-line px-2.5 py-1">catalog {catalog.length}</span>
+            <span className="rounded-full border border-line px-2.5 py-1">projects {projects.length}</span>
+            <span className="rounded-full border border-line px-2.5 py-1">
               active {activeProject?.name ?? "none"}
             </span>
           </div>
-        </div>
+        }
+      >
 
         <form action="/discover" className="mt-3 grid gap-2.5 xl:grid-cols-[198px_minmax(0,1fr)_156px_138px]">
           <select
@@ -428,19 +424,19 @@ export default async function DiscoverPage({
           </select>
           <button
             type="submit"
-            className="glass-interactive glass-interactive-accent rounded-[16px] border border-emerald-300/25 px-3.5 py-2.5 text-sm font-medium text-emerald-50"
+            className="control control-primary rounded-[16px] px-3.5 py-2.5 text-sm font-medium"
           >
             Run search
           </button>
         </form>
         <div className="mt-2.5 flex flex-wrap items-center gap-2 font-mono text-[11px] uppercase tracking-[0.14em] text-slate-500 xl:hidden">
-          <span className="rounded-full border border-line/35 px-2.5 py-1">catalog {catalog.length}</span>
-          <span className="rounded-full border border-line/35 px-2.5 py-1">projects {projects.length}</span>
-          <span className="rounded-full border border-line/35 px-2.5 py-1">
+          <span className="rounded-full border border-line px-2.5 py-1">catalog {catalog.length}</span>
+          <span className="rounded-full border border-line px-2.5 py-1">projects {projects.length}</span>
+          <span className="rounded-full border border-line px-2.5 py-1">
             active {activeProject?.name ?? "none"}
           </span>
         </div>
-      </section>
+      </WindowSection>
 
       {discoverFeedback ? (
         <div className="rounded-2xl border border-emerald-500/35 bg-emerald-500/10 px-5 py-4">
@@ -463,14 +459,14 @@ export default async function DiscoverPage({
                 <input type="hidden" name="redirectTo" value={redirectTo} />
                 <button
                   type="submit"
-                  className="rounded-md border border-line px-4 py-2 text-xs font-medium uppercase tracking-[0.12em] text-slate-200 hover:bg-sand"
+                  className="control control-secondary rounded-md px-4 py-2 text-xs font-medium uppercase tracking-[0.12em]"
                 >
                   Undo
                 </button>
               </form>
               <Link
                 href={redirectTo}
-                className="rounded-md border border-line px-4 py-2 text-xs font-medium uppercase tracking-[0.12em] text-slate-400 hover:bg-sand"
+                className="control control-secondary rounded-md px-4 py-2 text-xs font-medium uppercase tracking-[0.12em] text-slate-400"
               >
                 Clear
               </Link>
@@ -479,8 +475,14 @@ export default async function DiscoverPage({
         </div>
       ) : null}
 
-      <div className="grid gap-5 xl:grid-cols-[296px_minmax(0,1fr)]">
-        <aside className="space-y-4">
+      <div className="grid gap-4 md:gap-5 xl:grid-cols-[296px_minmax(0,1fr)]">
+        <WindowSection
+          eyebrow={buildShellCommandTitle("ls", "workspace-rails/")}
+          title="Workspace rails"
+          description="Filters, tags, pinned assets, presets, and compare sets for the active workspace."
+          className="order-2 h-fit xl:order-1"
+          contentClassName="space-y-4"
+        >
           <section className={`${railSurfaceClassNames.filters} rounded-[18px] px-4 py-3`}>
             <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">
               {buildShellCommandTitle("ls", "filters/")}
@@ -508,7 +510,7 @@ export default async function DiscoverPage({
               ))}
               <button
                 type="submit"
-                className="w-full rounded-md border border-line/70 px-3 py-2 text-sm font-medium text-slate-300 hover:bg-sand"
+                className="control control-primary w-full rounded-md px-3 py-2 text-sm font-medium"
               >
                 Apply filters
               </button>
@@ -529,8 +531,8 @@ export default async function DiscoverPage({
                     href={buildDiscoverHref(searchParamsWithoutFeedback, { tag: active ? null : tag })}
                     className={
                       active
-                        ? "rounded-md border border-accent bg-accent/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-accent-strong"
-                        : "rounded-md border border-line/70 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-slate-300 hover:bg-sand"
+                        ? "control control-primary rounded-md px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em]"
+                        : "control control-secondary rounded-md px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-slate-300"
                     }
                   >
                     {tag}
@@ -550,14 +552,14 @@ export default async function DiscoverPage({
                   <h2 className="text-base font-medium text-ink">{activeWorkspace.project.name}</h2>
                   <p className="mt-1 text-sm text-slate-400">{activeWorkspace.project.architecture}</p>
                 </div>
-                <div className="grid gap-2 sm:grid-cols-3 xl:grid-cols-1">
-                  <div className="rounded-[14px] border border-line/70 bg-canvas/65 px-3 py-2.5">
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-1">
+                  <div className="surface-base surface-field rounded-[14px] px-3 py-2.5">
                     <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-slate-500">
                       selected
                     </p>
                     <p className="mt-1.5 text-xl font-semibold text-ink">{activeWorkspace.selectedAssets.length}</p>
                   </div>
-                  <div className="rounded-[14px] border border-line/70 bg-canvas/65 px-3 py-2.5">
+                  <div className="surface-base surface-field rounded-[14px] px-3 py-2.5">
                     <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-slate-500">
                       missing deps
                     </p>
@@ -565,7 +567,7 @@ export default async function DiscoverPage({
                       {activeWorkspace.missingDependencies.length}
                     </p>
                   </div>
-                  <div className="rounded-[14px] border border-line/70 bg-canvas/65 px-3 py-2.5">
+                  <div className="surface-base surface-field rounded-[14px] px-3 py-2.5">
                     <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-slate-500">
                       conflicts
                     </p>
@@ -585,7 +587,7 @@ export default async function DiscoverPage({
                   {previewExportDirectories.map((directory) => (
                     <span
                       key={directory}
-                      className="rounded-md border border-line/70 px-2 py-0.5 font-mono text-[10px] text-slate-300"
+                      className="rounded-md border border-line px-2 py-0.5 font-mono text-[10px] text-slate-300"
                     >
                       {directory}/
                     </span>
@@ -782,7 +784,7 @@ export default async function DiscoverPage({
                       {preview.exportDirectories.map((directory) => (
                         <span
                           key={directory}
-                          className="rounded-md border border-line/70 px-2 py-0.5 font-mono text-[10px] text-slate-300"
+                          className="rounded-md border border-line px-2 py-0.5 font-mono text-[10px] text-slate-300"
                         >
                           {directory}/
                         </span>
@@ -843,7 +845,7 @@ export default async function DiscoverPage({
             </div>
 
             {hiddenPresetPreviews.length ? (
-              <div className="space-y-2 rounded-[16px] border border-line/60 bg-canvas/55 px-3 py-2.5">
+              <div className="surface-base surface-panel space-y-2 rounded-[16px] px-3 py-2.5">
                 <div className="flex items-end justify-between gap-4">
                   <div>
                     <p className="font-mono text-xs uppercase tracking-[0.14em] text-slate-500">
@@ -870,7 +872,11 @@ export default async function DiscoverPage({
                 </div>
                 <div className="space-y-2">
                   {hiddenPresetPreviews.map(({ rawBundle }) => (
-                    <form key={rawBundle.id} action={updatePresetDisplayAction} className="rounded-[14px] border border-line/70 bg-canvas/70 px-3 py-2.5">
+                    <form
+                      key={rawBundle.id}
+                      action={updatePresetDisplayAction}
+                      className="surface-base surface-row rounded-[14px] px-3 py-2.5"
+                    >
                       <div className="flex items-start gap-3">
                         <input
                           type="checkbox"
@@ -935,7 +941,7 @@ export default async function DiscoverPage({
             </div>
 
             {comparison.assets.length >= 2 ? (
-              <form action={saveCompareSetAction} className="rounded-[14px] border border-line/70 bg-canvas/55 px-3 py-2.5">
+              <form action={saveCompareSetAction} className="surface-base surface-field rounded-[14px] px-3 py-2.5">
                 <input type="hidden" name="projectId" value={activeProject?.id ?? ""} />
                 <input
                   type="hidden"
@@ -989,13 +995,13 @@ export default async function DiscoverPage({
                         {compareSet.assetIds.slice(0, 4).map((assetId) => (
                           <span
                             key={assetId}
-                            className="rounded-md border border-line/70 px-2 py-0.5 font-mono text-[10px] text-slate-300"
+                            className="rounded-md border border-line px-2 py-0.5 font-mono text-[10px] text-slate-300"
                           >
                             {catalog.find((asset) => asset.id === assetId)?.title ?? assetId}
                           </span>
                         ))}
                         {compareSet.assetIds.length > 4 ? (
-                          <span className="rounded-md border border-line/70 px-2 py-0.5 font-mono text-[10px] text-slate-500">
+                          <span className="rounded-md border border-line px-2 py-0.5 font-mono text-[10px] text-slate-500">
                             +{compareSet.assetIds.length - 4}
                           </span>
                         ) : null}
@@ -1050,14 +1056,20 @@ export default async function DiscoverPage({
                 ))}
               </div>
             ) : (
-              <div className="rounded-[14px] border border-line/70 bg-canvas/55 px-3 py-2.5">
+              <div className="surface-base surface-field rounded-[14px] px-3 py-2.5">
                 <p className="font-mono text-xs text-slate-500">no compare sets found</p>
               </div>
             )}
           </section>
-        </aside>
+        </WindowSection>
 
-        <main className="space-y-6">
+        <WindowSection
+          eyebrow={buildShellCommandTitle("ls", "catalog-results/")}
+          title="Catalog results"
+          description="Featured assets, recommendations, and search results for the current workspace."
+          className="order-1 xl:order-2"
+          contentClassName="space-y-5 md:space-y-6"
+        >
           {comparison.assets.length ? (
             <Card tint="amber">
               <div className="flex flex-wrap items-end justify-between gap-4">
@@ -1069,7 +1081,10 @@ export default async function DiscoverPage({
                     {comparison.assets.length} assets in comparison
                   </h2>
                 </div>
-                <Link href={buildDiscoverHref(searchParamsWithoutFeedback, { compare: null })} className="text-sm font-medium text-accent-strong">
+                <Link
+                  href={buildDiscoverHref(searchParamsWithoutFeedback, { compare: null })}
+                  className={sectionToolClassName}
+                >
                   clear compare
                 </Link>
               </div>
@@ -1083,8 +1098,8 @@ export default async function DiscoverPage({
                   </span>
                 ))}
               </div>
-              <div className="mt-4 grid gap-4 xl:grid-cols-2">
-                <div className="rounded-xl border border-line bg-canvas p-4">
+              <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-2">
+                <div className="surface-base surface-field rounded-xl p-4">
                   <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-slate-500">
                     shared stacks
                   </p>
@@ -1092,7 +1107,7 @@ export default async function DiscoverPage({
                     {comparison.sharedStacks.length ? comparison.sharedStacks.join(", ") : "none"}
                   </p>
                 </div>
-                <div className="rounded-xl border border-line bg-canvas p-4">
+                <div className="surface-base surface-field rounded-xl p-4">
                   <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-slate-500">
                     export directories
                   </p>
@@ -1111,7 +1126,7 @@ export default async function DiscoverPage({
             </Card>
           ) : null}
 
-          <div className="grid gap-6 xl:grid-cols-2">
+          <div className="grid gap-4 md:gap-6 xl:grid-cols-2">
             <Card tint="mint">
               <div className="flex items-end justify-between gap-4">
                 <div>
@@ -1249,7 +1264,7 @@ export default async function DiscoverPage({
                 })}
               </div>
             ) : (
-              <div className="mt-4 rounded-xl border border-dashed border-line bg-canvas px-4 py-6">
+              <div className="surface-base surface-field mt-4 rounded-xl border-dashed px-4 py-6">
                 <p className="font-mono text-sm text-slate-500">no results found</p>
                 <p className="mt-2 text-sm text-slate-400">
                   try clearing a filter or removing one of the more specific tags/stacks.
@@ -1257,7 +1272,7 @@ export default async function DiscoverPage({
               </div>
             )}
           </Card>
-        </main>
+        </WindowSection>
       </div>
     </div>
   );

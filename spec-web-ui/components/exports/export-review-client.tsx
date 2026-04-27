@@ -209,7 +209,7 @@ export function ExportReviewClient({
   };
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[300px_1fr]">
+    <div className="grid gap-4 md:gap-6 xl:grid-cols-[300px_1fr]">
       <div className="space-y-6">
         <div className={`${buildGlassSurfaceClassName("panel")} rounded-[24px] p-5`}>
           <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">
@@ -329,7 +329,7 @@ export function ExportReviewClient({
         </div>
 
         <div className={`${buildGlassSurfaceClassName("panel")} rounded-[24px] p-5`}>
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">
                 {buildShellCommandTitle("cat", "handoff.md")}
@@ -370,14 +370,14 @@ export function ExportReviewClient({
               key={group.directory}
               className="rounded-2xl border border-line bg-panel p-5"
             >
-              <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                   <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">
                     {buildShellCommandTitle("ls", `${group.directory}/`)}
                   </p>
                   <h3 className="mt-2 text-xl font-semibold text-ink">{group.directory}/</h3>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
                   <span className="rounded-md border border-line px-3 py-1 font-mono text-[11px] text-slate-400">
                     {group.files.length} files
                   </span>

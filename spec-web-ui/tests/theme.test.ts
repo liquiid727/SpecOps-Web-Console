@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildGlassInteractiveClassName,
   buildGlassSurfaceClassName,
+  buildTrafficLightClassName,
   buildThemeBootScript,
   coerceThemeMode,
   resolveThemeMode
@@ -36,33 +37,38 @@ describe("buildThemeBootScript", () => {
   });
 });
 
-describe("glass theme helpers", () => {
-  it("returns stable glass surface recipes for the neon mint theme", () => {
-    expect(buildGlassSurfaceClassName("panel")).toContain("backdrop-blur");
-    expect(buildGlassSurfaceClassName("panel")).toContain("bg-white/[0.06]");
+describe("workbench theme helpers", () => {
+  it("returns stable monochrome surface recipes for shared workbench sections", () => {
+    expect(buildGlassSurfaceClassName("panel")).toContain("surface-panel");
+    expect(buildGlassSurfaceClassName("panel")).toContain("surface-tone-neutral");
     expect((buildGlassSurfaceClassName as (...args: unknown[]) => string)("panel", "neutral")).toContain(
-      "glass-tint-neutral"
+      "surface-tone-neutral"
     );
     expect((buildGlassSurfaceClassName as (...args: unknown[]) => string)("rail", "blue")).toContain(
-      "glass-tint-blue"
+      "surface-tone-blue"
     );
     expect((buildGlassSurfaceClassName as (...args: unknown[]) => string)("rail", "emerald")).toContain(
-      "glass-tint-emerald"
+      "surface-tone-emerald"
     );
     expect((buildGlassSurfaceClassName as (...args: unknown[]) => string)("row", "amber")).toContain(
-      "glass-tint-amber"
+      "surface-tone-amber"
     );
-    expect(buildGlassSurfaceClassName("rail")).toContain("glass-surface-rail");
-    expect(buildGlassSurfaceClassName("rail")).toContain("bg-white/[0.04]");
-    expect(buildGlassSurfaceClassName("hero")).toContain("shadow-[0_28px_120px");
-    expect(buildGlassSurfaceClassName("input")).toContain("focus-within:ring-2");
-    expect(buildGlassSurfaceClassName("result")).toContain("glass-surface-result");
-    expect(buildGlassSurfaceClassName("row")).toContain("glass-surface-row");
-    expect(buildGlassSurfaceClassName("row")).toContain("backdrop-blur-xl");
+    expect(buildGlassSurfaceClassName("rail")).toContain("surface-rail");
+    expect(buildGlassSurfaceClassName("hero")).toContain("surface-window");
+    expect(buildGlassSurfaceClassName("input")).toContain("surface-field");
+    expect(buildGlassSurfaceClassName("result")).toContain("surface-result");
+    expect(buildGlassSurfaceClassName("row")).toContain("surface-row");
   });
 
-  it("returns richer button and chip treatments for accent and neutral states", () => {
-    expect(buildGlassInteractiveClassName("accent")).toContain("from-emerald-400/24");
-    expect(buildGlassInteractiveClassName("neutral")).toContain("hover:border-white/18");
+  it("returns restrained system-tool button treatments", () => {
+    expect(buildGlassInteractiveClassName("accent")).toContain("control-primary");
+    expect(buildGlassInteractiveClassName("neutral")).toContain("control-secondary");
+  });
+
+  it("returns mac-style traffic light markers for major section titlebars", () => {
+    expect(buildTrafficLightClassName("red")).toContain("traffic-light");
+    expect(buildTrafficLightClassName("red")).toContain("traffic-light-red");
+    expect(buildTrafficLightClassName("yellow")).toContain("traffic-light-yellow");
+    expect(buildTrafficLightClassName("green")).toContain("traffic-light-green");
   });
 });

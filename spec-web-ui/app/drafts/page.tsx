@@ -2,7 +2,9 @@ import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { WindowSection } from "@/components/ui/window-section";
 import { loadProjectDraft, listProjects } from "@/lib/projects";
+import { buildShellCommandTitle } from "@/lib/shell";
 
 export default async function DraftsPage() {
   const projects = await listProjects();
@@ -15,16 +17,19 @@ export default async function DraftsPage() {
 
   return (
     <div className="space-y-8">
-      <div className="space-y-3">
-        <Badge>Draft Studio</Badge>
-        <h1 className="text-4xl font-extrabold tracking-tight text-ink">Project drafts</h1>
-        <p className="max-w-3xl text-base leading-7 text-slate-600">
-          Open any workspace draft, continue editing its structured markdown, and review rule-based
-          guidance.
-        </p>
-      </div>
+      <WindowSection
+        eyebrow={buildShellCommandTitle("ls", "drafts/")}
+        title="Project drafts"
+        description="Open any workspace draft, continue editing its structured markdown, and review rule-based guidance."
+        contentClassName="pt-0"
+      />
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <WindowSection
+        eyebrow={buildShellCommandTitle("cat", "draft-preview/")}
+        title="Draft previews"
+        description="Scan the current structured markdown before opening a workspace."
+        contentClassName="grid gap-4 lg:grid-cols-2"
+      >
         {drafts.map(({ project, draft }) => (
           <Link key={project.id} href={`/projects/${project.id}/draft`}>
             <Card className="space-y-4 transition hover:-translate-y-0.5">
@@ -35,13 +40,13 @@ export default async function DraftsPage() {
                 </div>
                 <Badge className="bg-coral/10 text-coral">{project.projectType}</Badge>
               </div>
-              <pre className="line-clamp-6 rounded-3xl bg-slate-50 p-4 font-mono text-sm leading-7 text-slate-700">
+              <pre className="line-clamp-6 rounded-3xl border border-line bg-canvas p-4 font-mono text-sm leading-7 text-slate-600">
                 {draft}
               </pre>
             </Card>
           </Link>
         ))}
-      </div>
+      </WindowSection>
     </div>
   );
 }
