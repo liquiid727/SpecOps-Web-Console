@@ -114,6 +114,43 @@ export interface ExportFile {
   targetPath: string;
 }
 
+export type BundleProjectType = "backend" | "frontend" | "mixed" | "fullstack" | "spec-only";
+
+export interface SpecosBundleInstall {
+  target: string;
+  from: string;
+}
+
+export interface SpecosBundleManifest {
+  id: string;
+  name: string;
+  version: string;
+  specosVersion: string;
+  projectTypes: BundleProjectType[];
+  installs: SpecosBundleInstall[];
+  workflow: {
+    default: string;
+    available: string[];
+  };
+  entrypoints: {
+    draftTemplate: string;
+    specTemplate: string;
+    workflowId: string;
+  };
+  capabilities: {
+    refineSpec: boolean;
+    generateTestPlan: boolean;
+    runApiTests: boolean;
+    runUiTests: boolean;
+    normalizeResults: boolean;
+  };
+}
+
+export interface GeneratedExportFile {
+  targetPath: string;
+  content: string;
+}
+
 export interface ExportFileGroup {
   directory: string;
   files: ExportFile[];
@@ -171,4 +208,7 @@ export interface ExportBundle {
   summary: string;
   manifestYaml: string;
   files: ExportFile[];
+  bundleManifest: SpecosBundleManifest;
+  bundleManifestYaml: string;
+  bundleFiles: GeneratedExportFile[];
 }

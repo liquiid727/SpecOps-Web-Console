@@ -1,3 +1,5 @@
+import { isAbsolute } from "node:path";
+
 export type SpecosErrorCode =
   | "SPECOS_MANIFEST_INVALID"
   | "SPECOS_SPEC_INVALID"
@@ -5,6 +7,7 @@ export type SpecosErrorCode =
   | "SPECOS_TEST_PLAN_INVALID"
   | "SPECOS_SCENARIO_RESULT_INVALID"
   | "SPECOS_WORKFLOW_INVALID"
+  | "SPECOS_BUNDLE_INVALID"
   | "SPECOS_PROVIDER_MISSING"
   | "SPECOS_ARTIFACT_EXISTS";
 
@@ -42,6 +45,38 @@ export interface SpecosManifest {
   };
   providers?: {
     configPath: string;
+  };
+}
+
+export type BundleProjectType = "backend" | "frontend" | "mixed" | "fullstack" | "spec-only";
+
+export interface SpecosBundleInstall {
+  target: string;
+  from: string;
+}
+
+export interface SpecosBundleManifest {
+  id: string;
+  name: string;
+  version: string;
+  specosVersion: string;
+  projectTypes: BundleProjectType[];
+  installs: SpecosBundleInstall[];
+  workflow: {
+    default: string;
+    available: string[];
+  };
+  entrypoints: {
+    draftTemplate: string;
+    specTemplate: string;
+    workflowId: string;
+  };
+  capabilities: {
+    refineSpec: boolean;
+    generateTestPlan: boolean;
+    runApiTests: boolean;
+    runUiTests: boolean;
+    normalizeResults: boolean;
   };
 }
 
@@ -153,6 +188,17 @@ export interface ScenarioResult {
   };
   flowResults: FlowResult[];
   items: ResultItem[];
+}
+
+export interface SpecosWorkflowStep {
+  id: string;
+  run: string;
+}
+
+export interface SpecosWorkflow {
+  id: string;
+  name: string;
+  steps: SpecosWorkflowStep[];
 }
 
 export interface FlowResult {
@@ -405,6 +451,92 @@ export function validateScenarioResult(value: unknown): ValidationResult {
   return result(state.errors);
 }
 
+export function validateBundle(value: unknown): ValidationResult {
+  const state: MutableValidation = { errors: [] };
+  const bundle = asRecord(value);
+
+  requireString(state, bundle, "id", "SPECOS_BUNDLE_INVALID", "id");
+  requireString(state, bundle, "name", "SPECOS_BUNDLE_INVALID", "name");
+  requireString(state, bundle, "version", "SPECOS_BUNDLE_INVALID", "version");
+  requireString(state, bundle, "specosVersion", "SPECOS_BUNDLE_INVALID", "specosVersion");
+  requireOneOfArray(
+    state,
+    bundle?.projectTypes,
+    ["backend", "frontend", "mixed", "fullstack", "spec-only"],
+    "SPECOS_BUNDLE_INVALID",
+    "projectTypes",
+  );
+
+  if (!Array.isArray(bundle?.installs) || bundle.installs.length === 0) {
+    state.errors.push(makeError("SPECOS_BUNDLE_INVALID", "installs"));
+  } else {
+    bundle.installs.forEach((install, index) => {
+      const path = `installs[${index}]`;
+      requireString(state, install, "target", "SPECOS_BUNDLE_INVALID", `${path}.target`);
+      requireString(state, install, "from", "SPECOS_BUNDLE_INVALID", `${path}.from`);
+
+      if (isNonEmptyString(install?.target) && !isSafeRelativePath(install.target)) {
+        state.errors.push(makeError("SPECOS_BUNDLE_INVALID", `${path}.target`));
+      }
+
+      if (isNonEmptyString(install?.from)) {
+        if (!isSafeRelativePath(install.from) || !install.from.startsWith("files/")) {
+          state.errors.push(makeError("SPECOS_BUNDLE_INVALID", `${path}.from`));
+        }
+      }
+    });
+  }
+
+  requireString(state, bundle?.workflow, "default", "SPECOS_BUNDLE_INVALID", "workflow.default");
+  requireStringArray(state, bundle?.workflow?.available, "SPECOS_BUNDLE_INVALID", "workflow.available");
+  requireString(state, bundle?.entrypoints, "draftTemplate", "SPECOS_BUNDLE_INVALID", "entrypoints.draftTemplate");
+  requireString(state, bundle?.entrypoints, "specTemplate", "SPECOS_BUNDLE_INVALID", "entrypoints.specTemplate");
+  requireString(state, bundle?.entrypoints, "workflowId", "SPECOS_BUNDLE_INVALID", "entrypoints.workflowId");
+  requireBoolean(state, bundle?.capabilities, "refineSpec", "SPECOS_BUNDLE_INVALID", "capabilities.refineSpec");
+  requireBoolean(state, bundle?.capabilities, "generateTestPlan", "SPECOS_BUNDLE_INVALID", "capabilities.generateTestPlan");
+  requireBoolean(state, bundle?.capabilities, "runApiTests", "SPECOS_BUNDLE_INVALID", "capabilities.runApiTests");
+  requireBoolean(state, bundle?.capabilities, "runUiTests", "SPECOS_BUNDLE_INVALID", "capabilities.runUiTests");
+  requireBoolean(
+    state,
+    bundle?.capabilities,
+    "normalizeResults",
+    "SPECOS_BUNDLE_INVALID",
+    "capabilities.normalizeResults",
+  );
+
+  if (Array.isArray(bundle?.workflow?.available)) {
+    const available = new Set(bundle.workflow.available);
+    if (isNonEmptyString(bundle?.workflow?.default) && !available.has(bundle.workflow.default)) {
+      state.errors.push(makeError("SPECOS_BUNDLE_INVALID", "workflow.default"));
+    }
+    if (isNonEmptyString(bundle?.entrypoints?.workflowId) && !available.has(bundle.entrypoints.workflowId)) {
+      state.errors.push(makeError("SPECOS_BUNDLE_INVALID", "entrypoints.workflowId"));
+    }
+  }
+
+  return result(state.errors);
+}
+
+export function validateWorkflow(value: unknown): ValidationResult {
+  const state: MutableValidation = { errors: [] };
+  const workflow = asRecord(value);
+
+  requireString(state, workflow, "id", "SPECOS_WORKFLOW_INVALID", "id");
+  requireString(state, workflow, "name", "SPECOS_WORKFLOW_INVALID", "name");
+
+  if (!Array.isArray(workflow?.steps) || workflow.steps.length === 0) {
+    state.errors.push(makeError("SPECOS_WORKFLOW_INVALID", "steps"));
+  } else {
+    workflow.steps.forEach((step, index) => {
+      const path = `steps[${index}]`;
+      requireString(state, step, "id", "SPECOS_WORKFLOW_INVALID", `${path}.id`);
+      requireString(state, step, "run", "SPECOS_WORKFLOW_INVALID", `${path}.run`);
+    });
+  }
+
+  return result(state.errors);
+}
+
 function asRecord(value: unknown): Record<string, any> | undefined {
   return typeof value === "object" && value !== null ? (value as Record<string, any>) : undefined;
 }
@@ -456,6 +588,18 @@ function requireNumber(
   }
 }
 
+function requireBoolean(
+  state: MutableValidation,
+  object: Record<string, any> | undefined,
+  key: string,
+  code: SpecosErrorCode,
+  path: string,
+): void {
+  if (typeof object?.[key] !== "boolean") {
+    state.errors.push(makeError(code, path));
+  }
+}
+
 function requireOneOf(
   state: MutableValidation,
   value: unknown,
@@ -492,6 +636,18 @@ function requireStringArray(
   }
 }
 
+function requireOneOfArray(
+  state: MutableValidation,
+  value: unknown,
+  allowed: string[],
+  code: SpecosErrorCode,
+  path: string,
+): void {
+  if (!Array.isArray(value) || value.length === 0 || value.some((item) => typeof item !== "string" || !allowed.includes(item))) {
+    state.errors.push(makeError(code, path));
+  }
+}
+
 function requireStringArrayAllowEmpty(
   state: MutableValidation,
   value: unknown,
@@ -515,6 +671,14 @@ function requireRequiredBranches(
   if (required.some((branch) => !branches.has(branch))) {
     state.errors.push(makeError(code, path));
   }
+}
+
+function isSafeRelativePath(path: string): boolean {
+  if (!isNonEmptyString(path)) return false;
+  const normalized = path.replaceAll("\\", "/");
+  if (isAbsolute(normalized)) return false;
+  if (/^[a-zA-Z]:\//.test(normalized)) return false;
+  return !normalized.split("/").includes("..");
 }
 
 function requireBranchArray(state: MutableValidation, value: unknown, code: SpecosErrorCode, path: string): void {

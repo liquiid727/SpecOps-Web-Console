@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -10,6 +10,58 @@ async function tempProject() {
   const dir = await mkdtemp(join(tmpdir(), "specos-cli-"));
   tempDirs.push(dir);
   return dir;
+}
+
+async function writeBundleFixture(root: string) {
+  await mkdir(join(root, ".specos-bundle", "files", "rules", "backend"), { recursive: true });
+  await mkdir(join(root, ".specos-bundle", "files", ".specos", "workflows"), { recursive: true });
+
+  await writeFile(
+    join(root, ".specos-bundle", "bundle.yaml"),
+    [
+      "id: reward-center-bundle",
+      "name: Reward Center Bundle",
+      "version: 0.1.0",
+      'specosVersion: ">=0.1.0"',
+      "projectTypes:",
+      "  - mixed",
+      "installs:",
+      "  - target: rules/",
+      "    from: files/rules/",
+      "  - target: .specos/workflows/",
+      "    from: files/.specos/workflows/",
+      "workflow:",
+      "  default: spec-driven-default",
+      "  available:",
+      "    - spec-driven-default",
+      "entrypoints:",
+      "  draftTemplate: template-feature-draft",
+      "  specTemplate: feature-spec-v1",
+      "  workflowId: spec-driven-default",
+      "capabilities:",
+      "  refineSpec: true",
+      "  generateTestPlan: true",
+      "  runApiTests: false",
+      "  runUiTests: false",
+      "  normalizeResults: true",
+      "",
+    ].join("\n"),
+  );
+  await writeFile(
+    join(root, ".specos-bundle", "files", "rules", "backend", "go-backend-governance.md"),
+    "# Go Backend Governance\n",
+  );
+  await writeFile(
+    join(root, ".specos-bundle", "files", ".specos", "workflows", "spec-driven-default.yaml"),
+    [
+      "id: spec-driven-default",
+      "name: Spec Driven Default",
+      "steps:",
+      '  - id: smoke',
+      '    run: "node -e \\"console.log(\'bundle-step-ok\')\\""',
+      "",
+    ].join("\n"),
+  );
 }
 
 afterEach(async () => {
@@ -100,5 +152,34 @@ describe("specos cli", () => {
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain("Supported commands: init, check");
     expect(result.stderr).toContain("Templates: fullstack, spec-only");
+  });
+
+  it("validates, installs, lists, and runs bundle workflows", async () => {
+    const bundleRoot = await tempProject();
+    const projectRoot = await tempProject();
+    await writeBundleFixture(bundleRoot);
+
+    const validation = await runCli(["validate-bundle", bundleRoot], { cwd: projectRoot });
+    expect(validation.exitCode).toBe(0);
+    expect(validation.stdout).toContain("SPECOS_BUNDLE_OK");
+
+    const install = await runCli(["install-bundle", bundleRoot], { cwd: projectRoot });
+    expect(install.exitCode).toBe(0);
+    expect(install.stdout).toContain("SPECOS_BUNDLE_INSTALL_OK");
+    await expect(readFile(join(projectRoot, "rules", "backend", "go-backend-governance.md"), "utf8")).resolves.toContain(
+      "Go Backend Governance",
+    );
+    await expect(readFile(join(projectRoot, ".specos", "workflows", "spec-driven-default.yaml"), "utf8")).resolves.toContain(
+      "bundle-step-ok",
+    );
+
+    const workflows = await runCli(["list-workflows"], { cwd: projectRoot });
+    expect(workflows.exitCode).toBe(0);
+    expect(workflows.stdout).toContain("spec-driven-default");
+
+    const run = await runCli(["run-workflow", "spec-driven-default"], { cwd: projectRoot });
+    expect(run.exitCode).toBe(0);
+    expect(run.stdout).toContain("bundle-step-ok");
+    expect(run.stdout).toContain("SPECOS_WORKFLOW_RUN_OK");
   });
 });

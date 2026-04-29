@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildDeterministicTestPlan,
+  validateBundle,
   validateManifest,
   validateScenarioResult,
   validateSpec,
@@ -242,6 +243,103 @@ describe("artifact validation", () => {
     expect(result.ok).toBe(false);
     expect(result.errors.map((error) => error.path)).toEqual(
       expect.arrayContaining(["flowResults[0].name", "flowResults[0].stages", "items[0].testType"]),
+    );
+  });
+
+  it("accepts a valid installable bundle manifest", () => {
+    const result = validateBundle({
+      id: "reward-center-bundle",
+      name: "Reward Center Bundle",
+      version: "0.1.0",
+      specosVersion: ">=0.1.0",
+      projectTypes: ["backend", "frontend", "mixed"],
+      installs: [
+        { target: "rules/", from: "files/rules/" },
+        { target: "ai/agents/", from: "files/ai/agents/" },
+        { target: ".specos/workflows/", from: "files/.specos/workflows/" },
+      ],
+      workflow: {
+        default: "spec-driven-default",
+        available: ["spec-driven-default"],
+      },
+      entrypoints: {
+        draftTemplate: "template-feature-draft",
+        specTemplate: "feature-spec-v1",
+        workflowId: "spec-driven-default",
+      },
+      capabilities: {
+        refineSpec: true,
+        generateTestPlan: true,
+        runApiTests: false,
+        runUiTests: false,
+        normalizeResults: true,
+      },
+    });
+
+    expect(result.ok).toBe(true);
+  });
+
+  it("rejects bundles whose default workflow is not installable", () => {
+    const result = validateBundle({
+      id: "reward-center-bundle",
+      name: "Reward Center Bundle",
+      version: "0.1.0",
+      specosVersion: ">=0.1.0",
+      projectTypes: ["mixed"],
+      installs: [{ target: "rules/", from: "files/rules/" }],
+      workflow: {
+        default: "missing-workflow",
+        available: ["spec-driven-default"],
+      },
+      entrypoints: {
+        draftTemplate: "template-feature-draft",
+        specTemplate: "feature-spec-v1",
+        workflowId: "missing-workflow",
+      },
+      capabilities: {
+        refineSpec: true,
+        generateTestPlan: true,
+        runApiTests: false,
+        runUiTests: false,
+        normalizeResults: true,
+      },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errors.map((error) => error.path)).toEqual(
+      expect.arrayContaining(["workflow.default", "entrypoints.workflowId"]),
+    );
+  });
+
+  it("rejects bundles that escape the files payload root", () => {
+    const result = validateBundle({
+      id: "reward-center-bundle",
+      name: "Reward Center Bundle",
+      version: "0.1.0",
+      specosVersion: ">=0.1.0",
+      projectTypes: ["mixed"],
+      installs: [{ target: "../outside", from: "files/../../outside" }],
+      workflow: {
+        default: "spec-driven-default",
+        available: ["spec-driven-default"],
+      },
+      entrypoints: {
+        draftTemplate: "template-feature-draft",
+        specTemplate: "feature-spec-v1",
+        workflowId: "spec-driven-default",
+      },
+      capabilities: {
+        refineSpec: true,
+        generateTestPlan: true,
+        runApiTests: false,
+        runUiTests: false,
+        normalizeResults: true,
+      },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errors.map((error) => error.path)).toEqual(
+      expect.arrayContaining(["installs[0].target", "installs[0].from"]),
     );
   });
 });

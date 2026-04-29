@@ -87,6 +87,31 @@ describe("buildExportBundle", () => {
     ]);
     expect(bundle.summary).toContain("3 selected assets");
   });
+
+  it("emits an installable SpecOS bundle payload alongside the review snapshot", () => {
+    const bundle = exportsLib.buildExportBundle(project, selectedAssets, {
+      conflictCount: 0,
+      missingDependencyCount: 0
+    });
+
+    expect(bundle.bundleManifest.id).toBe("reward-center-bundle");
+    expect(bundle.bundleManifest.workflow.default).toBe("spec-driven-default");
+    expect(bundle.bundleManifest.installs).toEqual([
+      { target: "ai/agents/", from: "files/ai/agents/" },
+      { target: "rules/", from: "files/rules/" },
+      { target: "spec-draft/_template/", from: "files/spec-draft/_template/" },
+      { target: "spec/_template/", from: "files/spec/_template/" },
+      { target: ".specos/workflows/", from: "files/.specos/workflows/" }
+    ]);
+    expect(bundle.bundleFiles.map((file) => file.targetPath)).toEqual([
+      ".specos-bundle/bundle.yaml",
+      ".specos-bundle/checksums.json",
+      ".specos-bundle/files/.specos/workflows/spec-driven-default.yaml",
+      ".specos-bundle/manifest.json"
+    ]);
+    expect(bundle.bundleManifestYaml).toContain("id: reward-center-bundle");
+    expect(bundle.bundleFiles.find((file) => file.targetPath === ".specos-bundle/files/.specos/workflows/spec-driven-default.yaml")?.content).toContain("id: spec-driven-default");
+  });
 });
 
 describe("groupExportFilesByDirectory", () => {

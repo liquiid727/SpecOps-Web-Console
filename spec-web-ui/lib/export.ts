@@ -1,7 +1,8 @@
+import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { stringify } from "yaml";
+import { parse, stringify } from "yaml";
 
 import { loadAssetFilePreview, loadCatalogAssets } from "@/lib/catalog";
 import { toggleReviewNoteTodo } from "@/lib/export-client";
@@ -11,6 +12,7 @@ import type {
   ExportBundle,
   ExportDiffPreview,
   ExportFile,
+  GeneratedExportFile,
   ExportFileGroup,
   ExportReviewDecision,
   ExportReviewDecisionEntry,
@@ -18,7 +20,8 @@ import type {
   ExportReviewGroup,
   ExportReviewState,
   ExportTreeNode,
-  ProjectManifest
+  ProjectManifest,
+  SpecosBundleManifest
 } from "@/lib/types";
 import { appRoot, repoRoot } from "@/lib/server-paths";
 
@@ -54,6 +57,36 @@ export function buildExportBundle(
       targetPath: relativePath
     }))
   );
+  const bundleManifest = buildSpecosBundleManifest(project, files);
+  const bundleManifestYaml = stringify(bundleManifest);
+  const workflowFile = buildBundleWorkflowFile();
+  const bundleFiles: GeneratedExportFile[] = [
+    {
+      targetPath: ".specos-bundle/bundle.yaml",
+      content: bundleManifestYaml
+    },
+    {
+      targetPath: ".specos-bundle/manifest.json",
+      content: `${JSON.stringify(
+        {
+          projectId: project.id,
+          selectedAssetIds: selectedAssets.map((asset) => asset.id),
+          generatedAt: new Date().toISOString(),
+          workflowId: bundleManifest.workflow.default
+        },
+        null,
+        2
+      )}\n`
+    },
+    {
+      targetPath: ".specos-bundle/files/.specos/workflows/spec-driven-default.yaml",
+      content: workflowFile
+    },
+    {
+      targetPath: ".specos-bundle/checksums.json",
+      content: `${JSON.stringify({}, null, 2)}\n`
+    }
+  ].sort((left, right) => left.targetPath.localeCompare(right.targetPath));
 
   const manifestYaml = stringify({
     id: project.id,
@@ -75,7 +108,10 @@ export function buildExportBundle(
     generatedAt: new Date().toISOString(),
     summary: `${selectedAssets.length} selected assets, ${files.length} exported files`,
     manifestYaml,
-    files
+    files,
+    bundleManifest,
+    bundleManifestYaml,
+    bundleFiles
   };
 }
 
@@ -100,10 +136,23 @@ export async function generateExportBundle(projectId: string) {
   for (const file of exportBundle.files) {
     const sourceAbsolutePath = path.resolve(repoRoot, file.sourcePath);
     const targetAbsolutePath = path.join(exportDirectory, file.targetPath);
+    const bundlePayloadAbsolutePath = path.join(exportDirectory, ".specos-bundle", "files", file.targetPath);
 
     await fs.mkdir(path.dirname(targetAbsolutePath), { recursive: true });
     await fs.copyFile(sourceAbsolutePath, targetAbsolutePath);
+    await fs.mkdir(path.dirname(bundlePayloadAbsolutePath), { recursive: true });
+    await fs.copyFile(sourceAbsolutePath, bundlePayloadAbsolutePath);
   }
+
+  for (const file of exportBundle.bundleFiles) {
+    const targetAbsolutePath = path.join(exportDirectory, file.targetPath);
+    await fs.mkdir(path.dirname(targetAbsolutePath), { recursive: true });
+    await fs.writeFile(targetAbsolutePath, file.content, "utf8");
+  }
+
+  const checksumsPath = path.join(exportDirectory, ".specos-bundle", "checksums.json");
+  const checksums = await buildBundleChecksums(exportDirectory);
+  await fs.writeFile(checksumsPath, `${JSON.stringify(checksums, null, 2)}\n`, "utf8");
 
   return exportBundle;
 }
@@ -116,12 +165,18 @@ export async function loadGeneratedExportBundle(projectId: string, snapshot: "cu
   try {
     const manifestYaml = await fs.readFile(manifestPath, "utf8");
     const files = await collectExportFiles(exportDirectory);
+    const bundleManifestYaml = await fs.readFile(path.join(exportDirectory, ".specos-bundle", "bundle.yaml"), "utf8");
+    const bundleManifest = parseBundleManifestYaml(bundleManifestYaml);
+    const bundleFiles = await collectGeneratedBundleFiles(exportDirectory);
 
     return {
       generatedAt: (await fs.stat(manifestPath)).mtime.toISOString(),
       summary: `${files.length} exported files ready for review`,
       manifestYaml,
-      files
+      files,
+      bundleManifest,
+      bundleManifestYaml,
+      bundleFiles
     } satisfies ExportBundle;
   } catch {
     return null;
@@ -589,7 +644,7 @@ async function collectExportFiles(directory: string, prefix = ""): Promise<Expor
   const files: ExportBundle["files"] = [];
 
   for (const entry of entries) {
-    if (entry.name === "project-manifest.yaml" || entry.name === ".previous") {
+    if (entry.name === "project-manifest.yaml" || entry.name === ".previous" || entry.name === ".specos-bundle") {
       continue;
     }
 
@@ -604,4 +659,119 @@ async function collectExportFiles(directory: string, prefix = ""): Promise<Expor
   }
 
   return files.sort((left, right) => left.targetPath.localeCompare(right.targetPath));
+}
+
+async function collectGeneratedBundleFiles(directory: string, prefix = ""): Promise<GeneratedExportFile[]> {
+  const entries = await fs.readdir(directory, { withFileTypes: true });
+  const files: GeneratedExportFile[] = [];
+
+  for (const entry of entries) {
+    const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
+    const absolutePath = path.join(directory, entry.name);
+
+    if (entry.isDirectory()) {
+      files.push(...(await collectGeneratedBundleFiles(absolutePath, relativePath)));
+      continue;
+    }
+
+    const content = await fs.readFile(absolutePath, "utf8");
+    files.push({ targetPath: relativePath, content });
+  }
+
+  return files.sort((left, right) => left.targetPath.localeCompare(right.targetPath));
+}
+
+function buildSpecosBundleManifest(project: ProjectManifest, files: ExportFile[]): SpecosBundleManifest {
+  return {
+    id: `${project.id}-bundle`,
+    name: `${project.name} Bundle`,
+    version: "0.1.0",
+    specosVersion: ">=0.1.0",
+    projectTypes: [project.projectType],
+    installs: deriveInstallMappings(files),
+    workflow: {
+      default: "spec-driven-default",
+      available: ["spec-driven-default"]
+    },
+    entrypoints: {
+      draftTemplate: project.draftTemplateId,
+      specTemplate: "feature-spec-v1",
+      workflowId: "spec-driven-default"
+    },
+    capabilities: {
+      refineSpec: true,
+      generateTestPlan: true,
+      runApiTests: false,
+      runUiTests: false,
+      normalizeResults: true
+    }
+  };
+}
+
+function deriveInstallMappings(files: ExportFile[]) {
+  const priorities = [
+    "ai/agents/",
+    "rules/",
+    "spec-draft/_template/",
+    "spec/_template/",
+    ".specos/workflows/"
+  ];
+  const installs = new Set<string>();
+
+  for (const file of files) {
+    const target = resolveInstallTarget(file.targetPath);
+    if (target) {
+      installs.add(target);
+    }
+  }
+
+  installs.add(".specos/workflows/");
+
+  return priorities
+    .filter((target) => installs.has(target))
+    .map((target) => ({
+      target,
+      from: `files/${target}`
+    }));
+}
+
+function resolveInstallTarget(targetPath: string) {
+  if (targetPath.startsWith("ai/agents/")) return "ai/agents/";
+  if (targetPath.startsWith("spec-draft/_template/")) return "spec-draft/_template/";
+  if (targetPath.startsWith("spec/_template/")) return "spec/_template/";
+  if (targetPath.startsWith("rules/")) return "rules/";
+
+  const [firstSegment] = targetPath.split("/");
+  return firstSegment ? `${firstSegment}/` : undefined;
+}
+
+function buildBundleWorkflowFile() {
+  return stringify({
+    id: "spec-driven-default",
+    name: "Spec Driven Default",
+    steps: [
+      {
+        id: "bundle_smoke",
+        run: "node -e \"console.log('specos-bundle-installed')\""
+      }
+    ]
+  });
+}
+
+function parseBundleManifestYaml(source: string): SpecosBundleManifest {
+  if (source.trim().length === 0) {
+    throw new Error("Missing bundle manifest");
+  }
+
+  return parse(source) as SpecosBundleManifest;
+}
+
+async function buildBundleChecksums(exportDirectory: string) {
+  const checksumTargets = await collectGeneratedBundleFiles(path.join(exportDirectory, ".specos-bundle"));
+  return Object.fromEntries(
+    checksumTargets
+      .filter((file) => file.targetPath !== "checksums.json")
+      .map((file) => [`.specos-bundle/${file.targetPath}`, createHash("sha256").update(file.content).digest("hex")])
+      .sort(([left], [right]) => left.localeCompare(right))
+  );
 }

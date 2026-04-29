@@ -14,8 +14,9 @@ SpecOS 是一个面向工程与业务系统开发的 **Spec-Driven AI IDE**。
 如果你只想知道“今天这个仓库实际能怎么跑起来”，可以直接按下面三条路线理解：
 
 1. `CLI`：初始化或检查一个 SpecOS 项目骨架。
-2. `spec-web-ui`：选择规则/模板/Agent，创建项目工作区，编辑 draft，导出 bundle 快照。
-3. `test-console`：读取现成的 `test-plan`，触发 runner，生成规范化测试结果并可视化。
+2. `spec-web-ui`：选择规则/模板/Agent，创建项目工作区，编辑 draft，导出 bundle 快照与可安装 bundle。
+3. `CLI`：校验、安装、列出并运行 bundle 提供的 workflow。
+4. `test-console`：读取现成的 `test-plan`，触发 runner，生成规范化测试结果并可视化。
 
 当前实现流程图见：
 - [todo/specos-current-implemented-flow.md](/Users/liquiid/code/specos-ai/todo/specos-current-implemented-flow.md)
@@ -57,6 +58,10 @@ node /Users/liquiid/code/specos-ai/packages/cli/dist/main.js init --template spe
 - `specos init --template fullstack`
 - `specos init --template spec-only`
 - `specos check`
+- `specos validate-bundle <path>`
+- `specos install-bundle <path>`
+- `specos list-workflows`
+- `specos run-workflow <workflowId>`
 
 当前内置模板：
 - `fullstack`
@@ -89,6 +94,7 @@ node /Users/liquiid/code/specos-ai/packages/cli/dist/main.js init --template spe
 - 创建项目工作区
 - 维护项目 draft
 - 导出当前选择资产的 bundle 快照
+- 同时生成一个可被 CLI 安装的 `.specos-bundle/`
 
 启动方式：
 
@@ -112,10 +118,43 @@ npm run dev -- --port 3001
 你会看到的主要数据位置：
 - 项目工作区：`spec-web-ui/workspace/projects/`
 - 导出快照：`spec-web-ui/workspace/exports/`
+- 可安装 bundle：`spec-web-ui/workspace/exports/<projectId>/.specos-bundle/`
 
 注意：
 - 当前导出默认写到 `spec-web-ui/workspace/exports/<projectId>/`
+- export 根目录保留 review snapshot
+- `.specos-bundle/` 子目录提供给 CLI 安装
 - 它不会自动把内容回写到仓库根目录的 `spec/`、`tests/`、`ai/agents/`
+
+### 2.5 用 CLI 安装 bundle
+
+当你在 `spec-web-ui` 里生成 export snapshot 之后，可以把同目录下的 `.specos-bundle/` 安装到目标项目。
+
+先校验：
+
+```bash
+node packages/cli/dist/main.js validate-bundle spec-web-ui/workspace/exports/<projectId>
+```
+
+再安装到当前项目目录：
+
+```bash
+node packages/cli/dist/main.js install-bundle spec-web-ui/workspace/exports/<projectId>
+```
+
+安装后可以查看 workflow：
+
+```bash
+node packages/cli/dist/main.js list-workflows
+```
+
+运行某个 workflow：
+
+```bash
+node packages/cli/dist/main.js run-workflow spec-driven-default
+```
+
+第一版 bundle workflow 当前主要是“安装与运行链路 smoke test”，用于确认 bundle 已被成功加载，后续再逐步接入真正的 `refine spec -> generate test-plan -> run tests` 执行步骤。
 
 ### 3. 准备 `test-plan`
 
