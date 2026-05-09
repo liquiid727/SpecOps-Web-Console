@@ -235,7 +235,11 @@ roles:
     role_prompt: roles/ci-editor.md
     canonical: ai/agents/ci-editor.md
     skill_mode: scoped_only
-    skills: []
+    skills:
+      - name: team-ci-agent
+        path: .skills/team-ci-agent/SKILL.md
+        required: false
+        purpose: Git action readiness, staged scope validation, commit/PR/merge gates, and CI Record output.
     context_includes:
       - .rules/project.md
       - rules/ci/spec-release-gates.md
