@@ -12,7 +12,7 @@ If a task skips any link in the chain, call that out explicitly.
 
 - Identify whether the request is draft, spec, implementation, test, CI, or review work.
 - Locate the closest source of truth before editing.
-- Prefer accepted specs under `spec/`; use `spec-draft/` and `draft/` only as non-final input.
+- Prefer accepted specs under `specs/current/`; use `spec-draft/`, `draft/`, and `specs/changes/` only as non-final input.
 - Record assumptions when the source of truth is incomplete.
 
 ## Artifact Rules

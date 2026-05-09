@@ -36,7 +36,7 @@ work_types:
 
   spec:
     rules:
-      - spec/_rules/README.md
+      - specs/_rules/README.md
       - rules/shared/error-code-governance.md
     agents:
       - spec-editor

@@ -70,7 +70,9 @@ node /Users/liquiid/code/specos-ai/packages/cli/dist/main.js init --template spe
 初始化后会写入：
 - `.specos/manifest.yaml`
 - `.specos/workflows/default-fullstack.yaml`
-- `spec/`
+- `specs/current/`
+- `specs/changes/`
+- `specs/archive/`
 - `spec-draft/`
 - `tests/`
 - `ai/agents/`
@@ -78,14 +80,16 @@ node /Users/liquiid/code/specos-ai/packages/cli/dist/main.js init --template spe
 `spec-only` 模板会保留更轻的骨架：
 - `.specos/manifest.yaml`
 - `.specos/workflows/default-spec-only.yaml`
-- `spec/`
+- `specs/current/`
+- `specs/changes/`
+- `specs/archive/`
 - `spec-draft/`
 - `tests/`
 
 `check` 当前会验证：
 - `.specos/manifest.yaml` 存在且结构合法
 - artifact 目录路径不越出项目根目录
-- `spec-draft`、`spec`、`tests`、`tests/results` 等基础目录存在
+- `spec-draft`、`specs/current`、`tests`、`tests/results` 等基础目录存在
 
 ### 2. 用 `spec-web-ui` 组织项目资产
 
@@ -124,7 +128,7 @@ npm run dev -- --port 3001
 - 当前导出默认写到 `spec-web-ui/workspace/exports/<projectId>/`
 - export 根目录保留 review snapshot
 - `.specos-bundle/` 子目录提供给 CLI 安装
-- 它不会自动把内容回写到仓库根目录的 `spec/`、`tests/`、`ai/agents/`
+- 它不会自动把内容回写到仓库根目录的 `specs/`、`tests/`、`ai/agents/`
 
 ### 2.5 用 CLI 安装 bundle
 
@@ -158,7 +162,7 @@ node packages/cli/dist/main.js run-workflow spec-driven-default
 
 ### 3. 准备 `test-plan`
 
-当前仓库里，`test-console` 不会直接从 `spec-draft/` 或 `spec/` 自动生成测试计划。
+当前仓库里，`test-console` 不会直接从 `spec-draft/` 或 `specs/current/` 自动生成测试计划。
 
 它需要你先准备好：
 

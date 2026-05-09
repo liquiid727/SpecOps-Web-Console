@@ -11,7 +11,7 @@ Read context in this order before changing behavior:
 1. `README.md` or `readme.md` for product intent.
 2. `rules/` and `.rules/` for engineering governance.
 3. `spec-draft/` for human-authored draft intent.
-4. `spec/` for accepted, normalized spec bundles.
+4. `specs/current/` for accepted, normalized spec bundles.
 5. `tests/` for scenario, API, and UI verification assets.
 6. `ai/agents/` and `.agents/` for role-specific responsibilities.
 
@@ -33,7 +33,7 @@ Read context in this order before changing behavior:
 - `.agents/`: local agent manifests and role routing for coding assistants.
 - `.codex/`: Codex-specific local configuration and operating notes.
 - `spec-draft/`: draft inputs that may still be incomplete or exploratory.
-- `spec/`: normalized spec bundles suitable for generation and validation.
+- `specs/`: normalized spec workspace with `current/`, `changes/`, and `archive/`.
 - `tests/`: spec-driven verification assets and scenario test templates.
 - `spec-web-ui/`: Next.js UI for SpecOS.
 
