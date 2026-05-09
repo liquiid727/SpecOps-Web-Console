@@ -8,7 +8,7 @@ Normalize draft requirements into accepted, traceable SpecOS spec bundles.
 
 - Human draft from `spec-draft/` or `draft/`.
 - Applicable governance from `rules/` and `.rules/`.
-- Existing accepted spec bundle from `spec/` when updating a feature.
+- Existing accepted spec bundle from `specs/current/` when updating a feature.
 
 ## Required Outputs
 

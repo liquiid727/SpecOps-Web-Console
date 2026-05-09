@@ -7,7 +7,7 @@ Turn feature intent into bounded contexts, aggregates, commands, invariants, and
 ## Required Inputs
 
 - Accepted spec or draft intent.
-- Domain language already used in `spec/`, `spec-draft/`, and `rules/`.
+- Domain language already used in `specs/current/`, `specs/changes/`, `spec-draft/`, and `rules/`.
 - Relevant backend and shared governance rules.
 
 ## Required Outputs

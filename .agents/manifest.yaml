@@ -15,7 +15,8 @@ context_order:
   - .rules/project.md
   - rules/
   - spec-draft/
-  - spec/
+  - specs/current/
+  - specs/changes/
   - tests/
   - ai/agents/
 
@@ -45,13 +46,15 @@ roles:
     skills: []
     context_includes:
       - .rules/project.md
-      - spec/_rules/README.md
+      - specs/_rules/README.md
       - spec-draft/
-      - spec/
+      - specs/current/
+      - specs/changes/
       - tests/
     owns:
       - spec-draft/
-      - spec/
+      - specs/current/
+      - specs/changes/
     outputs:
       - normalized spec bundle
       - assumptions and unresolved questions
@@ -93,7 +96,8 @@ roles:
       - rules/backend/go-backend-governance.md
       - rules/shared/error-code-governance.md
       - spec-draft/
-      - spec/
+      - specs/current/
+      - specs/changes/
     owns:
       - domain boundary notes
       - aggregate and invariant proposals
@@ -110,7 +114,7 @@ roles:
       - .rules/project.md
       - rules/backend/go-backend-governance.md
       - rules/shared/error-code-governance.md
-      - spec/
+      - specs/current/
       - tests/bruno/
     owns:
       - API contracts
@@ -128,7 +132,7 @@ roles:
       - .rules/project.md
       - rules/backend/go-backend-governance.md
       - rules/backend/goose-migration-standards.md
-      - spec/
+      - specs/current/
     owns:
       - migration planning
       - rollout and rollback notes
@@ -146,13 +150,36 @@ roles:
       - rules/shared/error-code-governance.md
       - tests/README.md
       - tests/bruno/
-      - spec/
+      - specs/current/
     owns:
       - tests/bruno/
       - API scenario assertions
     outputs:
       - Bruno collections
       - environment notes
+
+  e2e-test-agent:
+    role_prompt: roles/e2e-test-agent.md
+    canonical: ai/agents/e2e-test-agent.md
+    skill_mode: scoped_only
+    skills: []
+    context_includes:
+      - .rules/project.md
+      - rules/frontend/react-workbench-delivery.md
+      - rules/shared/error-code-governance.md
+      - tests/README.md
+      - tests/plans/
+      - tests/scenarios/
+      - tests/results/
+      - specs/current/
+    owns:
+      - end-to-end business journey coverage
+      - scenario fixtures and preconditions
+      - normalized scenario-result mapping
+    outputs:
+      - E2E journey matrix
+      - fixture and environment checklist
+      - scenario-result normalization notes
 
   playwright-test-agent:
     role_prompt: roles/playwright-test-agent.md
@@ -164,7 +191,7 @@ roles:
       - rules/frontend/react-workbench-delivery.md
       - tests/README.md
       - spec-web-ui/
-      - spec/
+      - specs/current/
     owns:
       - browser scenario plans
       - UI state coverage
@@ -180,7 +207,7 @@ roles:
     context_includes:
       - .rules/project.md
       - tests/README.md
-      - spec/
+      - specs/current/
     owns:
       - unit test coverage notes
       - module risk summaries
@@ -196,7 +223,7 @@ roles:
     context_includes:
       - .rules/project.md
       - tests/README.md
-      - spec/
+      - specs/current/
     owns:
       - specialized verification notes
       - smoke and contract results
@@ -245,7 +272,7 @@ roles:
     context_includes:
       - .rules/project.md
       - tests/README.md
-      - spec/
+      - specs/current/
     owns:
       - tests/
     outputs:
@@ -261,7 +288,7 @@ roles:
       - .rules/project.md
       - rules/
       - tests/
-      - spec/
+      - specs/
     owns:
       - review findings
       - validation gaps

@@ -19,10 +19,61 @@ This directory defines local agent routing, role contracts, and scoped skill loa
 - API contract generation: `openapi-agent`
 - Database and migration planning: `db-migration-agent`
 - API scenario tests: `bruno-test-agent`
+- End-to-end business journeys: `e2e-test-agent`
 - UI scenario tests: `playwright-test-agent`
 - CI and release gates: `ci-editor`
 - Local scripts and workflow wiring: `execution-editor`
 - Test structure and coverage: `test-editor`
+
+## Dispatch Flow
+
+The default entry agent receives the user request, classifies the work, then routes bounded tasks to the narrowest matching role from `manifest.yaml`. This is a routing contract for agent teams; the current repository stores the contract and role prompts, while concrete runtime dispatch is implemented by the host agent system or future workflow runner.
+
+```mermaid
+flowchart TD
+  A["User request / business context"] --> B["Default entry agent"]
+  B --> C["Read context in order: readme, rules, spec-draft, specs, tests, agents"]
+  C --> D{"Work type?"}
+
+  D -->|Draft or spec normalization| E["spec-editor"]
+  D -->|Domain boundary or invariant| F["ddd-domain-agent"]
+  D -->|API contract| G["openapi-agent"]
+  D -->|DB migration planning| H["db-migration-agent"]
+  D -->|UI design / handoff| I["ui-design-agent"]
+  D -->|Test planning| J["test-editor"]
+  D -->|API scenario tests| K["bruno-test-agent"]
+  D -->|Business E2E journey| L["e2e-test-agent"]
+  D -->|UI browser coverage| M["playwright-test-agent"]
+  D -->|CI / release gates| N["ci-editor"]
+  D -->|Workflow scripts| O["execution-editor"]
+  D -->|Review / risk check| P["reviewer"]
+
+  E --> Q{"Output target"}
+  F --> Q
+  G --> Q
+  H --> Q
+  I --> Q
+  J --> Q
+  K --> Q
+  L --> Q
+  M --> Q
+  N --> Q
+  O --> Q
+  P --> Q
+
+  Q -->|Proposed change| R["specs/changes/<change-id>"]
+  Q -->|Accepted source of truth| S["specs/current/"]
+  Q -->|Tests and results| T["tests/"]
+  Q -->|Scripts / workflows| U["scripts/ or ai/workflows/"]
+  Q -->|Review output| V["review findings / open questions"]
+
+  R --> W{"Human approval gate"}
+  W -->|Accepted| S
+  W -->|Needs work| B
+  S --> X["Implementation, test, and review agents read current specs"]
+  X --> Y["Report validation evidence and unresolved questions"]
+  Y --> Z["Archive completed change under specs/archive/"]
+```
 
 ## Prompt Assembly
 
@@ -45,6 +96,6 @@ When a role is selected, assemble prompt context in this order:
 
 ## Shared Rules
 
-- Every role must cite the spec, draft, rule, or workflow it is using.
+- Every role must cite the current spec, proposed change, draft, rule, or workflow it is using.
 - Every output must include open questions when information is missing.
 - Role work should be narrow, reviewable, and safe to compose with other agents.
