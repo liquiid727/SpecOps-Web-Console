@@ -106,7 +106,10 @@ describe("specos cli", () => {
 
     expect(init.exitCode).toBe(0);
     await expect(readFile(join(cwd, ".specos/manifest.yaml"), "utf8")).resolves.toContain("type: spec-only");
-    await expect(readFile(join(cwd, "spec/README.md"), "utf8")).resolves.toContain("Spec bundle");
+    await expect(readFile(join(cwd, "specs/README.md"), "utf8")).resolves.toContain("current/change/archive");
+    await expect(readFile(join(cwd, "specs/current/README.md"), "utf8")).resolves.toContain("Accepted");
+    await expect(readFile(join(cwd, "specs/changes/README.md"), "utf8")).resolves.toContain("Proposed");
+    await expect(readFile(join(cwd, "specs/archive/README.md"), "utf8")).resolves.toContain("Completed");
   });
 
   it("rejects unknown templates with a stable error code", async () => {
@@ -134,7 +137,7 @@ describe("specos cli", () => {
     const manifest = await readFile(join(cwd, ".specos/manifest.yaml"), "utf8");
     await writeFile(
       join(cwd, ".specos/manifest.yaml"),
-      manifest.replace("specsDir: spec", "specsDir: ../outside"),
+      manifest.replace("specsDir: specs/current", "specsDir: ../outside"),
     );
 
     const check = await runCli(["check"], { cwd });

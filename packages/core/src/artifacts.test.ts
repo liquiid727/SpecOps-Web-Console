@@ -15,7 +15,7 @@ describe("artifact validation", () => {
       stacks: { frontend: "next", backend: "node-api" },
       artifacts: {
         draftsDir: "spec-draft",
-        specsDir: "spec",
+        specsDir: "specs/current",
         testsDir: "tests",
         resultsDir: "tests/results",
       },
@@ -34,7 +34,7 @@ describe("artifact validation", () => {
       stacks: { frontend: "none", backend: "none" },
       artifacts: {
         draftsDir: "spec-draft",
-        specsDir: "spec",
+        specsDir: "specs/current",
         testsDir: "tests",
         resultsDir: "tests/results",
       },
@@ -53,7 +53,7 @@ describe("artifact validation", () => {
       stacks: { frontend: "next", backend: "node-api" },
       artifacts: {
         draftsDir: "spec-draft",
-        specsDir: "spec",
+        specsDir: "specs/current",
         testsDir: "tests",
         resultsDir: "tests/results",
       },
@@ -73,7 +73,7 @@ describe("artifact validation", () => {
       stacks: { frontend: "next", backend: "node-api" },
       artifacts: {
         draftsDir: "spec-draft",
-        specsDir: "spec",
+        specsDir: "specs/current",
         testsDir: "tests",
         resultsDir: "tests/results",
       },

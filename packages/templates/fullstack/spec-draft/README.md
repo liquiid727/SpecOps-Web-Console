@@ -2,4 +2,4 @@
 
 Human-authored draft intent belongs here.
 
-Drafts may be incomplete; accepted implementation should happen from normalized specs in `spec/`.
+Drafts may be incomplete; accepted implementation should happen from normalized specs in `specs/current/`.
