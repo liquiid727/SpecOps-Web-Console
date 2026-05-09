@@ -2,13 +2,30 @@
 
 ## 一句话介绍
 SpecOS 是一个面向工程与业务系统开发的 **Spec-Driven AI IDE**。  
-它的核心不是“让 AI 直接写代码”，而是让需求、Spec、Agent、测试、接口、CI、报告，围绕同一套工程语义持续流转。
+它的核心不是“让 AI 直接写代码”，而是围绕一套标准化、体系化、可复用的 Spec，让需求、开发、测试、文档、部署和交付报告在同一套工程语义下持续对齐。
 
 ## 核心定位
-- 把需求变成结构化输入，而不是零散对话。
-- 把 `spec-draft` 变成可追踪、可演进的正式 Spec。
-- 把 Agent 从“随意发挥”变成“职责明确、上下文受控”。
-- 把测试和报告纳入同一条业务链路，支持回溯和审计。
+SpecOS 的核心价值是把通用 Spec 作为工程协作的中心协议。它不只记录“需求是什么”，还要承载业务目标、流程、规则、异常、接口、数据、UI、测试、验收、文档和部署交付所需的共同语义。
+
+围绕这套 Spec，系统要形成几类自动对齐能力：
+
+- 需求格式自动对齐：把不同来源、不同表达方式的原始需求整理成统一、结构化、可审查的 Spec。
+- 开发自动对齐：让领域建模、API、UI、数据迁移、实现任务和 Agent 分工都能追溯到同一份 Spec。
+- 测试自动对齐：让 test-plan、API 测试、E2E 场景、结果报告和发布阻塞项都映射到 Spec 中的业务流程、规则和验收条件。
+- 文档自动对齐：让设计文档、接口文档、测试说明、验收报告和部署文档基于 Spec 生成、维护和审查，而不是事后补写。
+- Agent 能力自动对齐：让不同 Agent 在同一套规则、Spec 和上下文边界内协作，避免随意读取上下文和自由发挥。
+
+因此，SpecOS 的长期方向不是一个单点代码生成器，而是一套以标准 Spec 为核心的 AI 工程交付体系：
+
+```text
+原始需求
+-> 标准化 Spec
+-> Agent 分工与开发实现
+-> API / UI / 数据 / 业务规则资产
+-> test-plan / API 测试 / E2E 测试
+-> 测试报告 / Review 记录 / 验收文档
+-> 部署文档 / 交付门禁
+```
 
 ## 当前仓库怎么用
 如果你只想知道“今天这个仓库实际能怎么跑起来”，可以直接按下面三条路线理解：
@@ -93,10 +110,17 @@ node /Users/liquiid/code/specos-ai/packages/cli/dist/main.js init --template spe
 
 ### 2. 用 `spec-web-ui` 组织项目资产
 
-`spec-web-ui` 当前不是完整 workflow runner，它更像一个“catalog-first workspace”：
+`spec-web-ui` 是 SpecOS 面向开发人员的 AI 工程配置资产工作台。它当前不是完整 workflow runner，而是一个“catalog-first workspace”，用于沉淀、浏览、选择和组合日常开发中高频使用的 rules、skills、agent roles、templates、workflows 和 test patterns。
+
+前期，它帮助开发人员快速 pick 项目需要的资产，组合出项目级 AI 配置骨架，减少重复编写规则、Agent 职责、技能说明和测试规范的成本。
+
+后期，它沉淀的配置资产会成为 RAG 语料和项目脚手架知识库。目标是通过一个 `project-start-agent` 与开发人员交流并确认项目类型、技术栈、业务场景、团队规范、测试要求和交付方式，然后自动推荐并生成适合该项目的 AI 配置脚手架。
+
+当前主要能力：
 - 浏览 rules / templates / agent roles
 - 创建项目工作区
 - 维护项目 draft
+- 选择和组合项目所需配置资产
 - 导出当前选择资产的 bundle 快照
 - 同时生成一个可被 CLI 安装的 `.specos-bundle/`
 
