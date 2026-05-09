@@ -9,7 +9,7 @@ This file applies to all files under `spec-web-ui/`.
 - Use `.agents/roles/ui-design-agent.md` for user-facing UI structure, visual hierarchy, interaction states, responsive behavior, and design-system decisions.
 - Use `.codex/skills/specos-ui-design/SKILL.md` when changing screens, layouts, components, copy hierarchy, or handoff notes in this frontend project.
 - Use `.skills/tool-config-ui/SKILL.md` for tool-style configuration pages such as agent settings, skill configuration, rules, policy editors, switchboards, and dangerous operations.
-- Keep UI work traceable to `rules/frontend/react-workbench-delivery.md`, `rules/ui/pencil-prototype-ui.md`, an accepted `spec/` bundle, or a draft under `spec-draft/`.
+- Keep UI work traceable to `rules/frontend/react-workbench-delivery.md`, `rules/ui/pencil-prototype-ui.md`, an accepted `specs/current/` bundle, or a draft under `spec-draft/`.
 
 ## Frontend Delivery Rules
 

@@ -70,7 +70,7 @@ export async function createProject(input: {
     selectedAssets: [],
     draftTemplateId: "template-feature-draft",
     draftPath: `spec-web-ui/workspace/projects/${id}/draft.md`,
-    exportTargets: ["rules/", "spec/_template/", "ai/agents/", "project-manifest.yaml"]
+    exportTargets: ["rules/", "specs/_template/", "ai/agents/", "project-manifest.yaml"]
   };
 
   await fs.writeFile(getProjectManifestPath(id), JSON.stringify(project, null, 2), "utf8");

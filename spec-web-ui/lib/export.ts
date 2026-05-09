@@ -713,7 +713,7 @@ function deriveInstallMappings(files: ExportFile[]) {
     "ai/agents/",
     "rules/",
     "spec-draft/_template/",
-    "spec/_template/",
+    "specs/_template/",
     ".specos/workflows/"
   ];
   const installs = new Set<string>();
@@ -738,7 +738,7 @@ function deriveInstallMappings(files: ExportFile[]) {
 function resolveInstallTarget(targetPath: string) {
   if (targetPath.startsWith("ai/agents/")) return "ai/agents/";
   if (targetPath.startsWith("spec-draft/_template/")) return "spec-draft/_template/";
-  if (targetPath.startsWith("spec/_template/")) return "spec/_template/";
+  if (targetPath.startsWith("specs/_template/")) return "specs/_template/";
   if (targetPath.startsWith("rules/")) return "rules/";
 
   const [firstSegment] = targetPath.split("/");

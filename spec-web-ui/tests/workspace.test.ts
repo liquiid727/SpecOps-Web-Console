@@ -79,7 +79,7 @@ const project: ProjectManifest = {
   ],
   draftTemplateId: "template-feature-draft",
   draftPath: "spec-web-ui/workspace/projects/rewards-platform/draft.md",
-  exportTargets: ["rules/", "spec/_template/", "ai/agents/", "project-manifest.yaml"]
+  exportTargets: ["rules/", "specs/_template/", "ai/agents/", "project-manifest.yaml"]
 };
 
 describe("resolveProjectWorkspace", () => {

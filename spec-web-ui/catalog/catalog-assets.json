@@ -13,7 +13,7 @@
     "sourcePath": "rules/backend/go-backend-governance.md",
     "files": [
       "rules/backend/go-backend-governance.md",
-      "spec/_rules/README.md"
+      "specs/_rules/README.md"
     ],
     "version": "1.0.0",
     "draftHints": [
@@ -213,11 +213,11 @@
     "appliesTo": ["backend", "frontend"],
     "dependsOn": ["template-feature-draft"],
     "conflictsWith": [],
-    "sourcePath": "spec/_template/feature/spec.example.md",
+    "sourcePath": "specs/_template/feature/spec.example.md",
     "files": [
-      "spec/_template/feature/spec.example.md",
-      "spec/_template/feature/model.example.md",
-      "spec/_template/feature/changelog.example.md"
+      "specs/_template/feature/spec.example.md",
+      "specs/_template/feature/model.example.md",
+      "specs/_template/feature/changelog.example.md"
     ],
     "version": "1.0.0",
     "draftHints": [
@@ -353,7 +353,7 @@
     "dependsOn": ["agent-spec-editor"],
     "conflictsWith": [],
     "sourcePath": "ai/agents/openapi-agent.md",
-    "files": ["ai/agents/openapi-agent.md", "spec/_template/feature/openapi.example.yaml"],
+    "files": ["ai/agents/openapi-agent.md", "specs/_template/feature/openapi.example.yaml"],
     "version": "1.0.0",
     "draftHints": [
       "为 API 草案补 request/response 示例",

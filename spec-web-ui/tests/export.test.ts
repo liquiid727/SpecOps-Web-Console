@@ -16,7 +16,7 @@ const project: ProjectManifest = {
   ],
   draftTemplateId: "template-feature-draft",
   draftPath: "spec-web-ui/workspace/projects/reward-center/draft.md",
-  exportTargets: ["rules/", "spec/_template/", "ai/agents/", "project-manifest.yaml"]
+  exportTargets: ["rules/", "specs/_template/", "ai/agents/", "project-manifest.yaml"]
 };
 
 const selectedAssets: CatalogAsset[] = [
@@ -49,7 +49,7 @@ const selectedAssets: CatalogAsset[] = [
     sourcePath: "spec-draft/_template/feature/product-ui.template.md",
     files: [
       "spec-draft/_template/feature/product-ui.template.md",
-      "spec/_template/feature/spec.example.md"
+      "specs/_template/feature/spec.example.md"
     ],
     version: "1.0.0"
   },
@@ -82,7 +82,7 @@ describe("buildExportBundle", () => {
     expect(bundle.files.map((file) => file.targetPath)).toEqual([
       "rules/backend/go-backend-governance.md",
       "spec-draft/_template/feature/product-ui.template.md",
-      "spec/_template/feature/spec.example.md",
+      "specs/_template/feature/spec.example.md",
       "ai/agents/spec-editor.md"
     ]);
     expect(bundle.summary).toContain("3 selected assets");
@@ -100,7 +100,7 @@ describe("buildExportBundle", () => {
       { target: "ai/agents/", from: "files/ai/agents/" },
       { target: "rules/", from: "files/rules/" },
       { target: "spec-draft/_template/", from: "files/spec-draft/_template/" },
-      { target: "spec/_template/", from: "files/spec/_template/" },
+      { target: "specs/_template/", from: "files/specs/_template/" },
       { target: ".specos/workflows/", from: "files/.specos/workflows/" }
     ]);
     expect(bundle.bundleFiles.map((file) => file.targetPath)).toEqual([
@@ -119,7 +119,7 @@ describe("groupExportFilesByDirectory", () => {
     const groups = exportsLib.groupExportFilesByDirectory([
       { sourcePath: "rules/backend/go-backend-governance.md", targetPath: "rules/backend/go-backend-governance.md" },
       { sourcePath: "ai/agents/spec-editor.md", targetPath: "ai/agents/spec-editor.md" },
-      { sourcePath: "spec/_template/feature/spec.example.md", targetPath: "spec/_template/feature/spec.example.md" }
+      { sourcePath: "specs/_template/feature/spec.example.md", targetPath: "specs/_template/feature/spec.example.md" }
     ]);
 
     expect(groups).toEqual([
@@ -132,8 +132,8 @@ describe("groupExportFilesByDirectory", () => {
         files: [{ sourcePath: "rules/backend/go-backend-governance.md", targetPath: "rules/backend/go-backend-governance.md" }]
       },
       {
-        directory: "spec",
-        files: [{ sourcePath: "spec/_template/feature/spec.example.md", targetPath: "spec/_template/feature/spec.example.md" }]
+        directory: "specs",
+        files: [{ sourcePath: "specs/_template/feature/spec.example.md", targetPath: "specs/_template/feature/spec.example.md" }]
       }
     ]);
   });
@@ -250,7 +250,7 @@ describe("buildExportReviewFiles", () => {
       ],
       previousFiles: [
         { sourcePath: "ai/agents/spec-editor.md", targetPath: "ai/agents/spec-editor.md" },
-        { sourcePath: "spec/_template/feature/spec.example.md", targetPath: "spec/_template/feature/spec.example.md" }
+        { sourcePath: "specs/_template/feature/spec.example.md", targetPath: "specs/_template/feature/spec.example.md" }
       ],
       currentContents: {
         "rules/backend/go-backend-governance.md": "# New Rule\n",
@@ -258,7 +258,7 @@ describe("buildExportReviewFiles", () => {
       },
       previousContents: {
         "ai/agents/spec-editor.md": "# Spec Editor\n\nPrevious\n",
-        "spec/_template/feature/spec.example.md": "# Previous Spec\n"
+        "specs/_template/feature/spec.example.md": "# Previous Spec\n"
       }
     });
 
@@ -270,7 +270,7 @@ describe("buildExportReviewFiles", () => {
     ).toEqual([
       { path: "ai/agents/spec-editor.md", status: "changed" },
       { path: "rules/backend/go-backend-governance.md", status: "new" },
-      { path: "spec/_template/feature/spec.example.md", status: "removed" }
+      { path: "specs/_template/feature/spec.example.md", status: "removed" }
     ]);
   });
 });

@@ -29,7 +29,7 @@
   "draftPath": "spec-web-ui/workspace/projects/merchant-console/draft.md",
   "exportTargets": [
     "rules/",
-    "spec/_template/",
+    "specs/_template/",
     "ai/agents/",
     "project-manifest.yaml"
   ]

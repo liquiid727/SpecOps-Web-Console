@@ -133,7 +133,7 @@ describe("buildAssetCompositionPreview", () => {
           ],
           draftTemplateId: "template-react-feature",
           draftPath: "spec-web-ui/workspace/projects/rewards-platform/draft.md",
-          exportTargets: ["rules/", "spec/_template/", "ai/agents/", "project-manifest.yaml"]
+          exportTargets: ["rules/", "specs/_template/", "ai/agents/", "project-manifest.yaml"]
         },
         selectedAssets: assets.filter((asset) => asset.id !== "agent-openapi"),
         missingDependencies: [],
