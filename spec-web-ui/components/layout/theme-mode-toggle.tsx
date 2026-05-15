@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 
+import { getLocaleCopy, type Locale } from "@/lib/locale";
 import {
   THEME_CHANGE_EVENT,
   buildThemeState,
@@ -37,9 +38,11 @@ function applyThemeMode(mode: ThemeMode) {
   return state;
 }
 
-export function ThemeModeToggle({ compact = false }: { compact?: boolean }) {
+export function ThemeModeToggle({ compact = false, locale = "zh" }: { compact?: boolean; locale?: Locale }) {
   const [mode, setMode] = useState<ThemeMode>("system");
   const [resolvedMode, setResolvedMode] = useState<ResolvedThemeMode>("dark");
+  const [open, setOpen] = useState(false);
+  const copy = getLocaleCopy(locale);
 
   useEffect(() => {
     let storedMode: ThemeMode = "system";
@@ -97,29 +100,50 @@ export function ThemeModeToggle({ compact = false }: { compact?: boolean }) {
   }, [mode]);
 
   const isDark = resolvedMode === "dark";
+  const modeOptions: Array<{ mode: ThemeMode; label: string }> = [
+    { mode: "light", label: copy.shell.day },
+    { mode: "dark", label: copy.shell.night },
+    { mode: "auto", label: "Auto" }
+  ];
 
   return (
     <div className={compact ? "space-y-0" : "space-y-2"}>
-      <button
-        aria-checked={isDark}
-        aria-label="Theme"
-        className={cn(
-          "theme-switch control control-secondary inline-flex items-center rounded-full",
-          compact ? "theme-switch-compact" : "theme-switch-regular"
-        )}
-        onClick={() => setMode(isDark ? "light" : "dark")}
-        role="switch"
-        type="button"
-      >
-        <span className={cn("theme-switch-label", !isDark && "theme-switch-label-active")}>Day</span>
-        <span className="theme-switch-track" aria-hidden="true">
-          <span className={cn("theme-switch-thumb", isDark && "theme-switch-thumb-dark")} />
-        </span>
-        <span className={cn("theme-switch-label", isDark && "theme-switch-label-active")}>Night</span>
-      </button>
+      <div className="utility-menu">
+        <button
+          aria-expanded={open}
+          aria-haspopup="menu"
+          aria-label={copy.shell.theme}
+          className={cn(
+            "utility-menu-button control control-secondary inline-flex cursor-pointer list-none items-center rounded-full",
+            compact ? "utility-menu-button-compact" : "utility-menu-button-regular"
+          )}
+          onClick={() => setOpen((current) => !current)}
+          type="button"
+        >
+          <span aria-hidden="true" className="utility-menu-icon">{isDark ? "D" : "L"}</span>
+          <span className="utility-menu-current">{isDark ? copy.shell.night : copy.shell.day}</span>
+        </button>
+        <div className={cn("utility-menu-popover", !open && "hidden")} role="menu" aria-label={copy.shell.theme}>
+          {modeOptions.map((option) => (
+            <button
+              aria-checked={mode === option.mode}
+              className={cn("utility-menu-item", mode === option.mode && "utility-menu-item-active")}
+              key={option.mode}
+              onClick={() => {
+                setMode(option.mode);
+                setOpen(false);
+              }}
+              role="menuitemradio"
+              type="button"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
       {compact ? null : (
         <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-slate-500">
-          theme: {isDark ? "dark" : "light"}
+          {copy.shell.theme}: {mode}/{isDark ? "dark" : "light"}
         </p>
       )}
     </div>

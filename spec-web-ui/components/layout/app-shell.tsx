@@ -1,11 +1,13 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { LanguageToggle } from "@/components/layout/language-toggle";
 import { MobileUtilityBar } from "@/components/layout/mobile-utility-bar";
 import { SiteNav } from "@/components/layout/site-nav";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import type { Locale } from "@/lib/locale";
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({ children, locale }: { children: ReactNode; locale: Locale }) {
   return (
     <div className="min-h-screen bg-canvas">
       <header className="sticky top-0 z-20 hidden border-b border-line bg-canvas/98 md:block">
@@ -19,16 +21,19 @@ export function AppShell({ children }: { children: ReactNode }) {
               <span>specos-ai/spec-web-ui</span>
             </Link>
             <div className="min-w-0 flex-1">
-              <SiteNav />
+              <SiteNav locale={locale} />
             </div>
-            <ThemeToggle compact />
+            <div className="flex items-center gap-2">
+              <LanguageToggle compact locale={locale} />
+              <ThemeToggle compact locale={locale} />
+            </div>
           </div>
         </div>
       </header>
       <main className="mx-auto max-w-[1560px] px-4 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] pt-4 sm:px-5 sm:pt-5 md:px-6 md:py-6 md:pb-6">
         {children}
       </main>
-      <MobileUtilityBar />
+      <MobileUtilityBar locale={locale} />
     </div>
   );
 }

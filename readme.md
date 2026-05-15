@@ -19,13 +19,18 @@ SpecOS 的核心价值是把通用 Spec 作为工程协作的中心协议。它�
 
 ```text
 原始需求
--> 标准化 Spec
--> Agent 分工与开发实现
+-> spec-draft/ 人工草稿
+-> specs/changes/<change-id>/ 标准化变更包
+-> 基于 specs/current/ + specs/changes/<change-id>/ 做影响分析、Agent 分工与开发实现
 -> API / UI / 数据 / 业务规则资产
 -> test-plan / API 测试 / E2E 测试
 -> 测试报告 / Review 记录 / 验收文档
+-> 验收通过后更新 specs/current/
 -> 部署文档 / 交付门禁
+-> 归档 specs/archive/<change-id>/
 ```
+
+其中 `specs/current/` 代表已经验收并生效的系统事实，不是需求进入开发前提前改写的目标目录。生产链路应先把新需求收敛到 `specs/changes/<change-id>/`，开发、测试、文档和 Agent 分工都基于 `current + change` 执行；只有实现、测试、评审和验收通过后，才把该 change promote/merge 进 `specs/current/`，再归档到 `specs/archive/`。
 
 ## 当前仓库怎么用
 如果你只想知道“今天这个仓库实际能怎么跑起来”，可以直接按下面三条路线理解：
@@ -186,7 +191,7 @@ node packages/cli/dist/main.js run-workflow spec-driven-default
 
 ### 3. 准备 `test-plan`
 
-当前仓库里，`test-console` 不会直接从 `spec-draft/` 或 `specs/current/` 自动生成测试计划。
+当前仓库里，`test-console` 不会直接从 `spec-draft/`、`specs/current/` 或 `specs/changes/<change-id>/` 自动生成测试计划。
 
 它需要你先准备好：
 
@@ -198,7 +203,7 @@ node packages/cli/dist/main.js run-workflow spec-driven-default
 
 当前真实情况是：
 - `packages/core` 里已经有 `spec`、`test-plan`、`scenario-result` 的 schema 和校验逻辑
-- 但仓库里还没有统一命令把 `accepted spec` 自动落成 `tests/plans/*.json`
+- 但仓库里还没有统一命令根据 `specs/current/ + specs/changes/<change-id>/` 自动落 `tests/plans/*.json`
 - 所以这一步目前需要人工准备，或通过你自己的脚本/Agent 生成
 
 ### 4. 跑 runner，生成规范化测试结果
@@ -286,8 +291,8 @@ npm run dev -- --port 3002
 
 下面这些能力在仓库里“有设计、有 schema、有角色定义”，但按当前实现还没有串成统一执行链：
 
-- `spec-draft -> accepted spec` 自动 refine
-- `accepted spec -> tests/plans/*.json` 自动生成
+- `spec-draft -> specs/changes/<change-id>` 自动 refine
+- `specs/current + specs/changes/<change-id> -> tests/plans/*.json` 自动生成
 - Bruno / Playwright 真实执行并自动归一化
 - `spec-web-ui` 一键串联到 `test-console`
 - workflow yaml 直接驱动整个运行时
@@ -295,7 +300,7 @@ npm run dev -- --port 3002
 所以更准确地说，当前版本是：
 
 - 已实现 MVP：`项目骨架 -> 资产编排 -> 手工准备 test-plan -> runner 产出 normalized result -> console 展示`
-- 未完全实现的大闭环：`draft -> accepted spec -> 自动测试生成 -> 真执行 -> 自动汇总 -> CI 门禁`
+- 未完全实现的大闭环：`draft -> change -> 基于 current + change 开发与测试 -> 真执行 -> 自动汇总 -> 验收后更新 current -> CI 门禁`
 
 ## 解决什么问题
 - Feature 如何稳定进入 Spec，而不是停留在口头描述。
@@ -330,7 +335,7 @@ npm run dev -- --port 3002
 - 运营配置 / 指标日志 / 待确认问题
 
 ### 3. Spec Refine Agent
-- 负责把 `spec-draft` 转为正式 Spec。
+- 负责把 `spec-draft` 转为 `specs/changes/<change-id>` 下的正式变更包。
 - 自动读取项目 Rules，并按模板补全缺失内容。
 
 工作职责：
@@ -389,7 +394,7 @@ steps:
 ```
 
 一次触发，串联流程：
-`spec draft -> final spec -> 测试 -> 代码 -> 报告`
+`spec draft -> change spec -> 基于 current + change 生成测试/代码 -> 报告 -> 验收后更新 current`
 
 当前仓库中的最小闭环示例：
 

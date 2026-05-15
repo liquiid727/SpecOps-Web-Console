@@ -87,6 +87,16 @@ When a role is selected, assemble prompt context in this order:
 6. Selected declared skills
 7. Selected required rules and context includes
 
+## Project Context Placement
+
+Stable project background, architecture facts, and domain language belong under `specs/current/`:
+
+- `specs/current/project-context.md`
+- `specs/current/architecture-context.md`
+- `specs/current/domain-context.md`
+
+Role prompts should reference these files through `.agents/manifest.yaml` `context_includes` instead of duplicating accepted project facts inside `.agents/roles/` or `ai/agents/`.
+
 ## Skill Loading Rules
 
 - Skills are opt-in per role and must be declared in `manifest.yaml`.

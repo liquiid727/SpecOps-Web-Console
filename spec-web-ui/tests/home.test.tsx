@@ -1,0 +1,68 @@
+import React from "react";
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("next/headers", () => ({
+  cookies: async () => ({
+    get: () => null
+  })
+}));
+
+vi.mock("@/lib/catalog", () => ({
+  loadCatalogAssets: async () => [
+    {
+      id: "rule-backend-governance",
+      type: "rule",
+      title: "Go Backend Governance",
+      summary: "Shared backend delivery rules.",
+      direction: "backend",
+      stacks: ["go"],
+      tags: ["errors", "logging"],
+      appliesTo: ["backend"],
+      dependsOn: [],
+      conflictsWith: [],
+      sourcePath: "rules/backend/go-backend-governance.md",
+      files: ["rules/backend/go-backend-governance.md"],
+      version: "1.0.0"
+    }
+  ],
+  getCatalogFilterOptions: () => ({
+    directions: ["backend"],
+    types: ["rule"],
+    stacks: ["go"],
+    tags: ["errors"]
+  })
+}));
+
+vi.mock("@/lib/projects", () => ({
+  listProjects: async () => [
+    {
+      id: "rewards-platform",
+      name: "Rewards Platform",
+      projectType: "mixed",
+      architecture: "modular-monolith",
+      stacks: ["go", "react"]
+    }
+  ]
+}));
+
+import HomePage from "@/app/page";
+
+describe("HomePage", () => {
+  it("keeps the landing page as a lightweight first-use guide", async () => {
+    render(await HomePage());
+
+    expect(
+      screen.getByRole("heading", { name: "先搜索目录，找到要组合的项目资产。" })
+    ).toBeInTheDocument();
+    expect(screen.getByText("初次使用建议")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "发现页" })).toHaveAttribute("href", "/discover");
+    expect(screen.getByRole("link", { name: "项目页" })).toHaveAttribute("href", "/projects");
+    expect(screen.getByRole("link", { name: "导出页" })).toHaveAttribute("href", "/exports");
+    expect(screen.queryByText("$ GO DISCOVER")).not.toBeInTheDocument();
+    expect(screen.queryByText("目录快照")).not.toBeInTheDocument();
+    expect(screen.queryByText("最近项目")).not.toBeInTheDocument();
+    expect(screen.queryByText("筛选器")).not.toBeInTheDocument();
+    expect(screen.queryByText("工作区循环")).not.toBeInTheDocument();
+  });
+});

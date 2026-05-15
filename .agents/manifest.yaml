@@ -15,6 +15,9 @@ context_order:
   - .rules/project.md
   - rules/
   - spec-draft/
+  - specs/current/project-context.md
+  - specs/current/architecture-context.md
+  - specs/current/domain-context.md
   - specs/current/
   - specs/changes/
   - tests/
@@ -95,6 +98,9 @@ roles:
       - .rules/project.md
       - rules/backend/go-backend-governance.md
       - rules/shared/error-code-governance.md
+      - specs/current/project-context.md
+      - specs/current/architecture-context.md
+      - specs/current/domain-context.md
       - spec-draft/
       - specs/current/
       - specs/changes/
@@ -290,6 +296,9 @@ roles:
     skills: []
     context_includes:
       - .rules/project.md
+      - specs/current/project-context.md
+      - specs/current/architecture-context.md
+      - specs/current/domain-context.md
       - rules/
       - tests/
       - specs/

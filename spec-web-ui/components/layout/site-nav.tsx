@@ -1,21 +1,30 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import React from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 
+import { getLocaleCopy, type Locale } from "@/lib/locale";
 import { buildShellBreadcrumbs } from "@/lib/shell";
 import { cn } from "@/lib/utils";
 
-const navItems = [
-  { href: "/discover", label: "Discover" },
-  { href: "/projects", label: "Projects" },
-  { href: "/drafts", label: "Draft Studio" },
-  { href: "/exports", label: "Exports" }
+type NavItem =
+  | { href: string; key: "home" | "specTemplates" | "agentTemplates" | "projects" }
+  | { disabled: true; key: "workflowTemplates" };
+
+const navItems: NavItem[] = [
+  { href: "/", key: "home" },
+  { href: "/spec-templates", key: "specTemplates" },
+  { href: "/agent-templates", key: "agentTemplates" },
+  { key: "workflowTemplates", disabled: true },
+  { href: "/projects", key: "projects" }
 ];
 
-export function SiteNav() {
+export function SiteNav({ locale }: { locale: Locale }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const breadcrumbs = buildShellBreadcrumbs(pathname);
+  const copy = getLocaleCopy(locale);
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5">
@@ -30,14 +39,37 @@ export function SiteNav() {
                 segment.href === pathname ? "text-ink" : "text-slate-500 hover:text-ink"
               )}
             >
-              {segment.label}
+              {segment.label === "~"
+                ? segment.label
+                : copy.shell.nav[segment.label as keyof typeof copy.shell.nav] ?? segment.label}
             </Link>
           </span>
         ))}
       </div>
       <nav className="flex flex-wrap items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">
         {navItems.map((item) => {
-          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const [itemPath, itemQueryString] = "href" in item ? item.href.split("?") : ["", ""];
+          const itemQuery = new URLSearchParams(itemQueryString ?? "");
+          const hasQuery = Array.from(itemQuery.keys()).length > 0;
+          const pathActive =
+            itemPath === "/" ? pathname === "/" : Boolean(itemPath) && (pathname === itemPath || pathname.startsWith(`${itemPath}/`));
+          const queryActive =
+            !hasQuery ||
+            Array.from(itemQuery.entries()).every(([key, value]) => searchParams.get(key) === value);
+          const active = pathActive && queryActive;
+          const label = copy.shell.nav[item.key as keyof typeof copy.shell.nav];
+
+          if (!("href" in item)) {
+            return (
+              <span
+                key={item.key}
+                aria-disabled="true"
+                className="rounded-full border border-transparent px-2.5 py-1 text-slate-600"
+              >
+                {label}/
+              </span>
+            );
+          }
 
           return (
             <Link
@@ -50,7 +82,7 @@ export function SiteNav() {
                   : "border-transparent text-slate-500 hover:border-line hover:bg-panel hover:text-ink"
               )}
             >
-              {item.href.replace("/", "")}/
+              {label}/
             </Link>
           );
         })}

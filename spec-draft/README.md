@@ -33,10 +33,14 @@ In these cases, creating a fully independent spec is usually not the best choice
 
 1. Engineers convert product requirements into a structured `spec-draft`.
 2. The `spec-draft` agent formats and normalizes the draft using project rules.
-3. Spec and architecture agents collaborate to turn the draft into an implementable formal spec.
+3. Spec and architecture agents collaborate to turn the draft into a formal change package under `specs/changes/<change-id>/`.
+4. Implementation and tests run against `specs/current/` plus the active change package.
+5. After implementation, tests, review, and acceptance are complete, the accepted change content is promoted into `specs/current/` and the completed change is archived.
 1. 研发将产品需求整理为结构化 `spec-draft`。
 2. `spec-draft` agent 基于项目规则完成格式化与规范化。
-3. spec 与架构相关 agent 协同，将 draft 转化为可落地的正式 spec。
+3. spec 与架构相关 agent 协同，将 draft 转化为 `specs/changes/<change-id>/` 下可落地的正式变更包。
+4. 开发与测试基于 `specs/current/` 和当前 change package 一起执行。
+5. 实现、测试、评审和验收完成后，再把已接受内容更新到 `specs/current/`，并归档完成的 change。
 
 ## Responsibilities / 职责分工
 

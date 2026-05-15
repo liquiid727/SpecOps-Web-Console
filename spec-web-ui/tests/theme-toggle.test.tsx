@@ -47,20 +47,20 @@ describe("ThemeModeToggle", () => {
     installMatchMedia(false);
   });
 
-  it("renders a two-state theme switch and toggles explicit light/dark mode", () => {
+  it("renders theme options inside an icon menu and applies explicit light mode", () => {
     window.localStorage.setItem("specos-theme-mode", "dark");
 
     render(<ThemeModeToggle compact />);
 
-    const themeSwitch = screen.getByRole("switch", { name: "Theme" });
+    const themeMenu = screen.getByRole("button", { name: "主题" });
 
-    expect(themeSwitch).toHaveAttribute("aria-checked", "true");
-    expect(screen.getByText("Day")).toBeInTheDocument();
-    expect(screen.getByText("Night")).toBeInTheDocument();
+    expect(themeMenu).toHaveAttribute("aria-haspopup", "menu");
+    expect(themeMenu).toHaveAttribute("aria-expanded", "false");
 
-    fireEvent.click(themeSwitch);
+    fireEvent.click(themeMenu);
 
-    expect(themeSwitch).toHaveAttribute("aria-checked", "false");
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "日间" }));
+
     expect(window.localStorage.getItem("specos-theme-mode")).toBe("light");
   });
 });

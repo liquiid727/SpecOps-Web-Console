@@ -65,3 +65,9 @@
 - 生成可被 CLI 安装的 `.specos-bundle/`。
 
 后续开发和改动应优先服务于“配置资产工作台”和“未来 RAG/项目脚手架入口”这两个方向。
+
+## UX / 交互设计参考
+
+- [Workbench UX Design](design/workbench-ux-design.md)
+
+这份文档定义 `spec-web-ui` 的工作台定位、用户角色、信息架构、核心流程、交互原则和状态覆盖。后续首页、Discover、Projects、Drafts、Exports 等用户界面改动，应优先保持它要求的“清爽、简单、明确下一步”的工具站点体验。

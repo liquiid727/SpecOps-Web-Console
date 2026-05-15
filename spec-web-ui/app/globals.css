@@ -352,6 +352,31 @@ textarea::placeholder {
   line-height: 1.7;
 }
 
+.plain-section {
+  border: 1px solid rgb(var(--color-line));
+  box-shadow: var(--panel-shadow);
+}
+
+.plain-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid rgb(var(--color-line));
+  padding: 1rem 1.25rem;
+}
+
+.plain-section-body {
+  padding: 1.25rem;
+}
+
+.plain-section-title {
+  margin: 0;
+  color: rgb(var(--color-ink));
+  font-size: clamp(1.1rem, 1.4vw, 1.35rem);
+  font-weight: 650;
+}
+
 .traffic-lights {
   display: inline-flex;
   align-items: center;
@@ -437,6 +462,83 @@ textarea::placeholder {
 
 .theme-switch-thumb-dark {
   transform: translateX(1.5rem);
+}
+
+.utility-menu {
+  position: relative;
+}
+
+.utility-menu-button {
+  gap: 0.5rem;
+}
+
+.utility-menu-button-compact {
+  min-height: 2rem;
+  padding: 0.35rem 0.55rem;
+}
+
+.utility-menu-button-regular {
+  min-height: 2.25rem;
+  padding: 0.45rem 0.7rem;
+}
+
+.utility-menu-icon,
+.utility-menu-current {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.utility-menu-icon {
+  display: inline-grid;
+  height: 1.35rem;
+  width: 1.35rem;
+  place-items: center;
+  border-radius: 999px;
+  background: rgb(var(--color-canvas));
+  color: rgb(var(--color-ink));
+}
+
+.utility-menu-current {
+  color: rgb(var(--color-slate-500));
+}
+
+.utility-menu-popover {
+  position: absolute;
+  right: 0;
+  z-index: 30;
+  margin-top: 0.45rem;
+  min-width: 8.5rem;
+  border: 1px solid rgb(var(--color-line));
+  border-radius: 0.5rem;
+  background: rgb(var(--color-panel));
+  box-shadow: var(--panel-hover-shadow);
+  padding: 0.35rem;
+}
+
+.utility-menu-item {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  border: 0;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: rgb(var(--color-slate-400));
+  cursor: pointer;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.55rem 0.65rem;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.utility-menu-item:hover,
+.utility-menu-item-active {
+  background: rgb(var(--color-canvas));
+  color: rgb(var(--color-ink));
 }
 
 @media (max-width: 768px) {

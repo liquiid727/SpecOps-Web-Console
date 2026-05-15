@@ -17,6 +17,7 @@ export function WindowSection({
   className,
   contentClassName,
   tint = "neutral",
+  variant = "window",
   ...props
 }: HTMLAttributes<HTMLDivElement> & {
   title: ReactNode;
@@ -25,7 +26,27 @@ export function WindowSection({
   actions?: ReactNode;
   contentClassName?: string;
   tint?: GlassSurfaceTint;
+  variant?: "window" | "plain";
 }) {
+  if (variant === "plain") {
+    return (
+      <section
+        className={cn(buildGlassSurfaceClassName("panel", tint), "plain-section rounded-lg", className)}
+        {...props}
+      >
+        <div className="plain-section-header">
+          <div className="min-w-0">
+            {eyebrow ? <p className="window-eyebrow">{eyebrow}</p> : null}
+            <h2 className="plain-section-title">{title}</h2>
+            {description ? <p className="window-description">{description}</p> : null}
+          </div>
+          {actions ? <div className="window-actions">{actions}</div> : null}
+        </div>
+        <div className={cn("plain-section-body", contentClassName)}>{children}</div>
+      </section>
+    );
+  }
+
   return (
     <section className={cn(buildGlassSurfaceClassName("hero", tint), "window-section rounded-[28px]", className)} {...props}>
       <div className="window-titlebar">
