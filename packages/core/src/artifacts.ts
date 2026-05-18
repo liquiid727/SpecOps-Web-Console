@@ -5,6 +5,7 @@ export type SpecosErrorCode =
   | "SPECOS_SPEC_INVALID"
   | "SPECOS_TRACE_MISSING"
   | "SPECOS_TEST_PLAN_INVALID"
+  | "SPECOS_TEST_SCHEDULE_INVALID"
   | "SPECOS_SCENARIO_RESULT_INVALID"
   | "SPECOS_WORKFLOW_INVALID"
   | "SPECOS_BUNDLE_INVALID"
@@ -164,6 +165,52 @@ export interface SpecosTestPlan {
   flows: TestPlanFlow[];
   endpoints: TestPlanEndpoint[];
   scenarios: TestPlanScenario[];
+}
+
+export type TestScheduleExecutionMode = "parallel" | "test-after-execution";
+export type TestScheduleTrackId = "execution" | "testing";
+export type TestScheduleIsolation = "implementation-only" | "spec-and-contract-only";
+export type TestScheduleTaskType = "implementation" | "api-test" | "ui-test-gap";
+export type TestScheduleTaskStatus = "ready" | "blocked";
+
+export interface TestScheduleTrack {
+  id: TestScheduleTrackId;
+  agentRole: "execution-editor" | "test-editor";
+  isolation: TestScheduleIsolation;
+  allowedInputs: string[];
+  forbiddenInputs: string[];
+}
+
+export interface TestScheduleTask {
+  id: string;
+  trackId: TestScheduleTrackId;
+  agentRole: "execution-editor" | "bruno-test-agent" | "playwright-test-agent";
+  type: TestScheduleTaskType;
+  status: TestScheduleTaskStatus;
+  reason?: string;
+  inputs: string[];
+  outputs: string[];
+  dependsOn: string[];
+  traceability: {
+    scenarios: string[];
+    endpoints: string[];
+  };
+}
+
+export interface SpecosTestSchedule {
+  specId: string;
+  specVersion: string;
+  featureName: string;
+  changeId: string;
+  executionMode: TestScheduleExecutionMode;
+  tracks: TestScheduleTrack[];
+  tasks: TestScheduleTask[];
+  gates: string[];
+}
+
+export interface GeneratedTextAsset {
+  path: string;
+  content: string;
 }
 
 export interface ScenarioResult {
@@ -360,6 +407,255 @@ export function buildDeterministicTestPlan(spec: SpecosSpec): SpecosTestPlan {
   };
 }
 
+export function buildSpecChangeTestSchedule(
+  plan: SpecosTestPlan,
+  options: { changeId: string; executionMode?: TestScheduleExecutionMode },
+): SpecosTestSchedule {
+  const endpointTargets = plan.endpoints.map((endpoint) => `${endpoint.method.toUpperCase()} ${endpoint.path}`);
+  const scenarioNames = plan.scenarios.map((scenario) => scenario.name);
+  const executionMode = options.executionMode ?? "parallel";
+
+  return {
+    specId: plan.specId,
+    specVersion: plan.specVersion,
+    featureName: plan.featureName,
+    changeId: options.changeId,
+    executionMode,
+    tracks: [
+      {
+        id: "execution",
+        agentRole: "execution-editor",
+        isolation: "implementation-only",
+        allowedInputs: [
+          `specs/changes/${options.changeId}/spec.md`,
+          `specs/changes/${options.changeId}/architecture-review.md`,
+          `specs/changes/${options.changeId}/design-review.md`,
+          "specs/current/",
+        ],
+        forbiddenInputs: ["tests/results/", "tests/bruno/", "tests/scenarios/", "tests/e2e/", "tests/playwright/"],
+      },
+      {
+        id: "testing",
+        agentRole: "test-editor",
+        isolation: "spec-and-contract-only",
+        allowedInputs: [
+          `specs/changes/${options.changeId}/spec.md`,
+          `specs/changes/${options.changeId}/openapi.yaml`,
+          `tests/plans/${plan.specId}.test-plan.json`,
+          "specs/current/",
+        ],
+        forbiddenInputs: ["implementation report", "source implementation notes"],
+      },
+    ],
+    tasks: [
+      {
+        id: `implement-${plan.specId}`,
+        trackId: "execution",
+        agentRole: "execution-editor",
+        type: "implementation",
+        status: "ready",
+        inputs: [`specs/changes/${options.changeId}/spec.md`, "specs/current/"],
+        outputs: [`specs/changes/${options.changeId}/implementation-report.md`, `tests/unit/${plan.specId}/`],
+        dependsOn: ["architecture_reviewed", "design_reviewed"],
+        traceability: { scenarios: scenarioNames, endpoints: endpointTargets },
+      },
+      {
+        id: `api-tests-${plan.specId}`,
+        trackId: "testing",
+        agentRole: "bruno-test-agent",
+        type: "api-test",
+        status: "ready",
+        inputs: [
+          `tests/plans/${plan.specId}.test-plan.json`,
+          `specs/changes/${options.changeId}/openapi.yaml`,
+        ],
+        outputs: [`tests/bruno/${plan.specId}/`, `tests/results/${plan.specId}.*.json`],
+        dependsOn: executionMode === "parallel" ? ["test_plan_ready"] : [`implement-${plan.specId}`],
+        traceability: { scenarios: scenarioNames, endpoints: endpointTargets },
+      },
+      ...plan.scenarios.map((scenario) => ({
+        id: `ui-gap-${scenario.name}`,
+        trackId: "testing" as const,
+        agentRole: "playwright-test-agent" as const,
+        type: "ui-test-gap" as const,
+        status: "blocked" as const,
+        reason: "UI execution is scheduled as a gap until Playwright assets and selectors are available.",
+        inputs: [`tests/plans/${plan.specId}.test-plan.json`],
+        outputs: [`tests/scenarios/${plan.specId}/ui-gaps.md`],
+        dependsOn: ["test_plan_ready"],
+        traceability: { scenarios: [scenario.name], endpoints: endpointTargets },
+      })),
+    ],
+    gates: [
+      "architecture_reviewed",
+      "design_reviewed",
+      "implementation_done",
+      "api_tests_passed",
+      "test_gaps_recorded",
+      "reviewed",
+      "promoted",
+      "archived",
+    ],
+  };
+}
+
+export function buildBlockedApiScenarioResult(
+  plan: SpecosTestPlan,
+  schedule: SpecosTestSchedule,
+  options: { reason: string; runId?: string; timestamp?: string },
+): ScenarioResult {
+  const runId = options.runId ?? `run-api-${new Date().toISOString().replace(/[:.]/g, "-")}`;
+  const timestamp = options.timestamp ?? new Date().toISOString();
+  const items = plan.endpoints.map((endpoint) => ({
+    runId,
+    specId: plan.specId,
+    specVersion: plan.specVersion,
+    testType: "api" as const,
+    target: `${endpoint.method.toUpperCase()} ${endpoint.path}`,
+    flowName: plan.flows[0]?.name,
+    status: "warning" as const,
+    durationMs: 0,
+    summary: options.reason,
+    endpoint: {
+      name: endpoint.name,
+      method: endpoint.method.toUpperCase(),
+      path: endpoint.path,
+      coverage: endpoint.branches,
+      relatedRule: endpoint.relatedRule,
+      failureReason: options.reason,
+    },
+    evidence: {
+      traceId: runId,
+      note: `API execution blocked for change ${schedule.changeId}`,
+    },
+  }));
+
+  return {
+    runId,
+    specId: plan.specId,
+    specVersion: plan.specVersion,
+    featureName: plan.featureName,
+    workflowId: schedule.changeId,
+    status: "warning",
+    releaseDecision: "blocked",
+    startedAt: timestamp,
+    endedAt: timestamp,
+    blockers: [options.reason],
+    highRiskScenarios: plan.scenarios.map((scenario) => scenario.name),
+    coverageGaps: plan.endpoints.map((endpoint) => `${endpoint.name} API execution blocked`),
+    summary: {
+      apiPassRate: 0,
+      scenarioPassRate: 0,
+      totalEndpoints: plan.endpoints.length,
+      totalScenarios: plan.scenarios.length,
+    },
+    flowResults: buildBlockedApiFlowResults(plan, options.reason),
+    items,
+  };
+}
+
+export function buildExecutedApiScenarioResult(
+  plan: SpecosTestPlan,
+  schedule: SpecosTestSchedule,
+  execution: {
+    exitCode: number;
+    stdout: string;
+    stderr: string;
+    command: string;
+    runId?: string;
+    timestamp?: string;
+    durationMs?: number;
+  },
+): ScenarioResult {
+  const runId = execution.runId ?? `run-api-${new Date().toISOString().replace(/[:.]/g, "-")}`;
+  const timestamp = execution.timestamp ?? new Date().toISOString();
+  const passed = execution.exitCode === 0;
+  const summary = passed ? "API command completed successfully" : `API command failed with exit code ${execution.exitCode}`;
+  const itemStatus: "pass" | "warning" = passed ? "pass" : "warning";
+  const items = plan.endpoints.map((endpoint) => ({
+    runId,
+    specId: plan.specId,
+    specVersion: plan.specVersion,
+    testType: "api" as const,
+    target: `${endpoint.method.toUpperCase()} ${endpoint.path}`,
+    flowName: plan.flows[0]?.name,
+    status: itemStatus,
+    durationMs: execution.durationMs ?? 0,
+    summary,
+    endpoint: {
+      name: endpoint.name,
+      method: endpoint.method.toUpperCase(),
+      path: endpoint.path,
+      coverage: endpoint.branches,
+      relatedRule: endpoint.relatedRule,
+      failureReason: passed ? undefined : execution.stderr || execution.stdout || summary,
+    },
+    evidence: {
+      traceId: runId,
+      command: execution.command,
+      stdout: execution.stdout,
+      stderr: execution.stderr,
+      note: `API command executed for change ${schedule.changeId}`,
+    },
+  }));
+
+  return {
+    runId,
+    specId: plan.specId,
+    specVersion: plan.specVersion,
+    featureName: plan.featureName,
+    workflowId: schedule.changeId,
+    status: passed ? "pass" : "warning",
+    releaseDecision: passed ? "ready" : "blocked",
+    startedAt: timestamp,
+    endedAt: timestamp,
+    blockers: passed ? [] : [summary],
+    highRiskScenarios: passed ? [] : plan.scenarios.map((scenario) => scenario.name),
+    coverageGaps: passed ? [] : plan.endpoints.map((endpoint) => `${endpoint.name} API command failed`),
+    summary: {
+      apiPassRate: passed ? 1 : 0,
+      scenarioPassRate: 0,
+      totalEndpoints: plan.endpoints.length,
+      totalScenarios: plan.scenarios.length,
+    },
+    flowResults: buildExecutedApiFlowResults(plan, passed, summary),
+    items,
+  };
+}
+
+export function buildBrunoCollectionAssets(plan: SpecosTestPlan): GeneratedTextAsset[] {
+  const collection = {
+    version: "1",
+    name: plan.specId,
+    type: "collection",
+    ignore: ["node_modules", ".git"],
+  };
+  const readme = [
+    `# ${plan.featureName} Bruno API Tests`,
+    "",
+    `Spec id: \`${plan.specId}\``,
+    `Spec version: \`${plan.specVersion}\``,
+    "",
+    "Generated from `tests/plans/` for the `bruno-test-agent` track.",
+    "",
+    "## Endpoints",
+    "",
+    ...plan.endpoints.map((endpoint) => `- ${endpoint.method.toUpperCase()} ${endpoint.path} - ${endpoint.name}`),
+    "",
+  ].join("\n");
+
+  const requestAssets = plan.endpoints.map((endpoint, index) => ({
+    path: `${slugifyFileName(endpoint.name)}.bru`,
+    content: buildBrunoRequest(endpoint, index + 1),
+  }));
+
+  return [
+    { path: "bruno.json", content: `${JSON.stringify(collection, null, 2)}\n` },
+    { path: "README.md", content: readme },
+    ...requestAssets,
+  ];
+}
+
 export function validateTestPlan(value: unknown): ValidationResult {
   const state: MutableValidation = { errors: [] };
   const plan = asRecord(value);
@@ -386,6 +682,29 @@ export function validateTestPlan(value: unknown): ValidationResult {
   }
 
   requirePlanBranches(state, plan);
+
+  return result(state.errors);
+}
+
+export function validateTestSchedule(value: unknown): ValidationResult {
+  const state: MutableValidation = { errors: [] };
+  const schedule = asRecord(value);
+
+  requireString(state, schedule, "specId", "SPECOS_TEST_SCHEDULE_INVALID", "specId");
+  requireString(state, schedule, "specVersion", "SPECOS_TEST_SCHEDULE_INVALID", "specVersion");
+  requireString(state, schedule, "featureName", "SPECOS_TEST_SCHEDULE_INVALID", "featureName");
+  requireString(state, schedule, "changeId", "SPECOS_TEST_SCHEDULE_INVALID", "changeId");
+  requireOneOf(
+    state,
+    schedule?.executionMode,
+    ["parallel", "test-after-execution"],
+    "SPECOS_TEST_SCHEDULE_INVALID",
+    "executionMode",
+  );
+  requireTestScheduleTracks(state, schedule?.tracks);
+  requireTestScheduleTasks(state, schedule?.tasks);
+  requireStringArray(state, schedule?.gates, "SPECOS_TEST_SCHEDULE_INVALID", "gates");
+  requireScheduleSeparation(state, schedule);
 
   return result(state.errors);
 }
@@ -736,6 +1055,232 @@ function requireEndpointPlanArray(state: MutableValidation, value: unknown): voi
     requireStringArray(state, endpoint?.preconditions, "SPECOS_TEST_PLAN_INVALID", `${path}.preconditions`);
     requireStringArray(state, endpoint?.expectedResults, "SPECOS_TEST_PLAN_INVALID", `${path}.expectedResults`);
     requireString(state, endpoint, "relatedRule", "SPECOS_TEST_PLAN_INVALID", `${path}.relatedRule`);
+  });
+}
+
+function requireTestScheduleTracks(state: MutableValidation, value: unknown): void {
+  if (!Array.isArray(value) || value.length === 0) {
+    state.errors.push(makeError("SPECOS_TEST_SCHEDULE_INVALID", "tracks"));
+    return;
+  }
+
+  value.forEach((track, index) => {
+    const path = `tracks[${index}]`;
+    requireOneOf(state, track?.id, ["execution", "testing"], "SPECOS_TEST_SCHEDULE_INVALID", `${path}.id`);
+    requireOneOf(
+      state,
+      track?.agentRole,
+      ["execution-editor", "test-editor"],
+      "SPECOS_TEST_SCHEDULE_INVALID",
+      `${path}.agentRole`,
+    );
+    requireOneOf(
+      state,
+      track?.isolation,
+      ["implementation-only", "spec-and-contract-only"],
+      "SPECOS_TEST_SCHEDULE_INVALID",
+      `${path}.isolation`,
+    );
+    requireStringArray(state, track?.allowedInputs, "SPECOS_TEST_SCHEDULE_INVALID", `${path}.allowedInputs`);
+    requireStringArray(state, track?.forbiddenInputs, "SPECOS_TEST_SCHEDULE_INVALID", `${path}.forbiddenInputs`);
+  });
+}
+
+function requireTestScheduleTasks(state: MutableValidation, value: unknown): void {
+  if (!Array.isArray(value) || value.length === 0) {
+    state.errors.push(makeError("SPECOS_TEST_SCHEDULE_INVALID", "tasks"));
+    return;
+  }
+
+  value.forEach((task, index) => {
+    const path = `tasks[${index}]`;
+    requireString(state, task, "id", "SPECOS_TEST_SCHEDULE_INVALID", `${path}.id`);
+    requireOneOf(state, task?.trackId, ["execution", "testing"], "SPECOS_TEST_SCHEDULE_INVALID", `${path}.trackId`);
+    requireOneOf(
+      state,
+      task?.agentRole,
+      ["execution-editor", "bruno-test-agent", "playwright-test-agent"],
+      "SPECOS_TEST_SCHEDULE_INVALID",
+      `${path}.agentRole`,
+    );
+    requireOneOf(
+      state,
+      task?.type,
+      ["implementation", "api-test", "ui-test-gap"],
+      "SPECOS_TEST_SCHEDULE_INVALID",
+      `${path}.type`,
+    );
+    requireOneOf(state, task?.status, ["ready", "blocked"], "SPECOS_TEST_SCHEDULE_INVALID", `${path}.status`);
+    requireStringArray(state, task?.inputs, "SPECOS_TEST_SCHEDULE_INVALID", `${path}.inputs`);
+    requireStringArray(state, task?.outputs, "SPECOS_TEST_SCHEDULE_INVALID", `${path}.outputs`);
+    requireStringArrayAllowEmpty(state, task?.dependsOn, "SPECOS_TEST_SCHEDULE_INVALID", `${path}.dependsOn`);
+    requireStringArray(
+      state,
+      task?.traceability?.scenarios,
+      "SPECOS_TEST_SCHEDULE_INVALID",
+      `${path}.traceability.scenarios`,
+    );
+    requireStringArray(
+      state,
+      task?.traceability?.endpoints,
+      "SPECOS_TEST_SCHEDULE_INVALID",
+      `${path}.traceability.endpoints`,
+    );
+    if (task?.status === "blocked") {
+      requireString(state, task, "reason", "SPECOS_TEST_SCHEDULE_INVALID", `${path}.reason`);
+    }
+  });
+}
+
+function buildBlockedApiFlowResults(plan: SpecosTestPlan, reason: string): FlowResult[] {
+  return plan.flows.map((flow) => ({
+    name: flow.name,
+    status: "warning",
+    stages: flow.stages.map((stage) => ({
+      name: stage.name,
+      status: "warning",
+      scenarios: stage.scenarioNames.map((scenarioName) => {
+        const scenario = plan.scenarios.find((item) => item.name === scenarioName);
+        return {
+          name: scenarioName,
+          status: "pending",
+          relatedEndpointTargets: plan.endpoints.map((endpoint) => `${endpoint.method.toUpperCase()} ${endpoint.path}`),
+          steps: (scenario?.steps ?? stage.stepNames).map((stepName) => ({
+            name: stepName,
+            status: "pending",
+          })),
+        };
+      }),
+      endpoints: plan.endpoints.map((endpoint) => ({
+        target: `${endpoint.method.toUpperCase()} ${endpoint.path}`,
+        name: endpoint.name,
+        method: endpoint.method.toUpperCase(),
+        path: endpoint.path,
+        status: "warning",
+        relatedRule: endpoint.relatedRule,
+        summary: reason,
+      })),
+    })),
+  }));
+}
+
+function buildExecutedApiFlowResults(plan: SpecosTestPlan, passed: boolean, summary: string): FlowResult[] {
+  const apiStatus = passed ? "pass" : "warning";
+  return plan.flows.map((flow) => ({
+    name: flow.name,
+    status: apiStatus,
+    stages: flow.stages.map((stage) => ({
+      name: stage.name,
+      status: apiStatus,
+      scenarios: stage.scenarioNames.map((scenarioName) => {
+        const scenario = plan.scenarios.find((item) => item.name === scenarioName);
+        return {
+          name: scenarioName,
+          status: "pending",
+          relatedEndpointTargets: plan.endpoints.map((endpoint) => `${endpoint.method.toUpperCase()} ${endpoint.path}`),
+          steps: (scenario?.steps ?? stage.stepNames).map((stepName) => ({
+            name: stepName,
+            status: "pending",
+          })),
+        };
+      }),
+      endpoints: plan.endpoints.map((endpoint) => ({
+        target: `${endpoint.method.toUpperCase()} ${endpoint.path}`,
+        name: endpoint.name,
+        method: endpoint.method.toUpperCase(),
+        path: endpoint.path,
+        status: apiStatus,
+        relatedRule: endpoint.relatedRule,
+        summary,
+      })),
+    })),
+  }));
+}
+
+function buildBrunoRequest(endpoint: TestPlanEndpoint, sequence: number): string {
+  const method = endpoint.method.toLowerCase();
+  const body =
+    method === "get" || method === "delete"
+      ? ""
+      : [
+          "",
+          "body:json {",
+          "  {",
+          '    "example": "replace with spec-derived request body"',
+          "  }",
+          "}",
+        ].join("\n");
+
+  return [
+    "meta {",
+    `  name: ${endpoint.name}`,
+    "  type: http",
+    `  seq: ${sequence}`,
+    "}",
+    "",
+    `${method} {`,
+    `  url: {{baseUrl}}${endpoint.path}`,
+    method === "get" || method === "delete" ? "  body: none" : "  body: json",
+    "  auth: inherit",
+    "}",
+    "",
+    "headers {",
+    "  Content-Type: application/json",
+    "}",
+    body,
+    "",
+    "tests {",
+    `  // Branches: ${endpoint.branches.join(", ")}`,
+    `  // Expected: ${endpoint.expectedResults.join("; ")}`,
+    `  // Related rule: ${endpoint.relatedRule}`,
+    "}",
+    "",
+  ]
+    .filter((line, index, lines) => !(line === "" && lines[index - 1] === ""))
+    .join("\n");
+}
+
+function slugifyFileName(value: string): string {
+  const slug = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug || "request";
+}
+
+function requireScheduleSeparation(state: MutableValidation, schedule: Record<string, any> | undefined): void {
+  if (!Array.isArray(schedule?.tracks)) return;
+  const trackIds = new Set(schedule.tracks.map((track: Record<string, any>) => track?.id));
+  if (!trackIds.has("execution") || !trackIds.has("testing")) {
+    state.errors.push(makeError("SPECOS_TEST_SCHEDULE_INVALID", "tracks"));
+  }
+
+  if (!Array.isArray(schedule?.tasks)) return;
+  schedule.tasks.forEach((task: Record<string, any>, index: number) => {
+    const outputs = Array.isArray(task?.outputs) ? task.outputs : [];
+    const executionTaskWritesIndependentTests =
+      task?.trackId === "execution" &&
+      outputs.some((output) => {
+        const normalized = String(output);
+        return (
+          normalized.startsWith("tests/bruno/") ||
+          normalized.startsWith("tests/scenarios/") ||
+          normalized.startsWith("tests/e2e/") ||
+          normalized.startsWith("tests/playwright/") ||
+          normalized.startsWith("tests/results/")
+        );
+      });
+    const testingTaskWritesImplementation =
+      task?.trackId === "testing" &&
+      outputs.some((output) => {
+        const normalized = String(output);
+        return normalized.startsWith("src/") || normalized.startsWith("app/") || normalized.startsWith("packages/");
+      });
+
+    if (executionTaskWritesIndependentTests || testingTaskWritesImplementation) {
+      state.errors.push(makeError("SPECOS_TEST_SCHEDULE_INVALID", `tasks[${index}].outputs`));
+    }
   });
 }
 

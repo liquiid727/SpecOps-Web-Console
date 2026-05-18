@@ -7,12 +7,24 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import {
+  buildBlockedApiScenarioResult,
+  buildBrunoCollectionAssets,
+  buildDeterministicTestPlan,
+  buildExecutedApiScenarioResult,
+  buildSpecChangeTestSchedule,
   copyTemplateDirectory,
   validateBundle,
   validateManifest,
+  validateSpec,
+  validateScenarioResult,
+  validateTestPlan,
+  validateTestSchedule,
   validateWorkflow,
   type SpecosBundleManifest,
   type SpecosManifest,
+  type SpecosSpec,
+  type SpecosTestPlan,
+  type SpecosTestSchedule,
   type SpecosWorkflow,
 } from "@specos/core";
 import { parse } from "yaml";
@@ -47,7 +59,7 @@ const templates: TemplateDefinition[] = [
 ];
 const templateNames = templates.map((template) => template.name).join(", ");
 const exec = promisify(execCallback);
-const supportedCommands = "Supported commands: init, check, validate-bundle, install-bundle, list-workflows, run-workflow";
+const supportedCommands = "Supported commands: init, check, validate-bundle, install-bundle, list-workflows, run-workflow, generate-test-plan, generate-bruno-tests, run-api-tests";
 const commandHelp = `${supportedCommands}\nTemplates: ${templateNames}`;
 
 export async function runCli(args: string[], options: RunCliOptions): Promise<RunCliResult> {
@@ -80,6 +92,18 @@ export async function runCli(args: string[], options: RunCliOptions): Promise<Ru
 
   if (command === "run-workflow") {
     return runWorkflowCommand(context.cwd, args[1]);
+  }
+
+  if (command === "generate-test-plan") {
+    return generateTestPlanCommand(context.cwd, args.slice(1));
+  }
+
+  if (command === "run-api-tests") {
+    return runApiTestsCommand(context.cwd, args.slice(1));
+  }
+
+  if (command === "generate-bruno-tests") {
+    return generateBrunoTestsCommand(context.cwd, args.slice(1));
   }
 
   return {
@@ -424,6 +448,326 @@ async function runWorkflowCommand(cwd: string, workflowId: string | undefined): 
   };
 }
 
+async function generateTestPlanCommand(cwd: string, args: string[]): Promise<RunCliResult> {
+  const parsed = parseGenerateTestPlanArgs(args);
+  if (!parsed.ok) {
+    return parsed.error;
+  }
+
+  const specPath = resolve(cwd, parsed.value.specPath);
+  if (!(await pathExists(specPath))) {
+    return failure("SPECOS_SPEC_INVALID", `Spec file not found: ${parsed.value.specPath}`);
+  }
+
+  const specSource = await readFile(specPath, "utf8");
+  const spec = parseArtifactObject(specSource, specPath);
+  const specValidation = validateSpec(spec);
+
+  if (!specValidation.ok) {
+    return failure(
+      "SPECOS_SPEC_INVALID",
+      specValidation.errors.map((error) => `${error.path ?? "spec"} ${error.message}`).join("; "),
+    );
+  }
+
+  const validSpec = spec as unknown as SpecosSpec;
+  const testPlan = buildDeterministicTestPlan(validSpec);
+  const planValidation = validateTestPlan(testPlan);
+
+  if (!planValidation.ok) {
+    return failure(
+      "SPECOS_TEST_PLAN_INVALID",
+      planValidation.errors.map((error) => `${error.path ?? "testPlan"} ${error.message}`).join("; "),
+    );
+  }
+
+  const changeId = parsed.value.changeId ?? inferChangeIdFromSpecPath(cwd, specPath) ?? validSpec.id;
+  const schedule = buildSpecChangeTestSchedule(testPlan, {
+    changeId,
+    executionMode: parsed.value.executionMode,
+  });
+  const scheduleValidation = validateTestSchedule(schedule);
+
+  if (!scheduleValidation.ok) {
+    return failure(
+      "SPECOS_TEST_SCHEDULE_INVALID",
+      scheduleValidation.errors.map((error) => `${error.path ?? "testSchedule"} ${error.message}`).join("; "),
+    );
+  }
+
+  const planPath = join(cwd, "tests", "plans", `${validSpec.id}.test-plan.json`);
+  const schedulePath = join(cwd, "tests", "schedules", `${validSpec.id}.test-schedule.json`);
+  await mkdir(dirname(planPath), { recursive: true });
+  await mkdir(dirname(schedulePath), { recursive: true });
+  await writeFile(planPath, `${JSON.stringify(testPlan, null, 2)}\n`, "utf8");
+  await writeFile(schedulePath, `${JSON.stringify(schedule, null, 2)}\n`, "utf8");
+
+  return {
+    exitCode: 0,
+    stdout: [
+      `SPECOS_TEST_PLAN_OK ${toPosixPath(relative(cwd, planPath))}`,
+      `SPECOS_TEST_SCHEDULE_OK ${toPosixPath(relative(cwd, schedulePath))}`,
+      "",
+    ].join("\n"),
+    stderr: "",
+  };
+}
+
+async function runApiTestsCommand(cwd: string, args: string[]): Promise<RunCliResult> {
+  const specId = args[0];
+  if (!specId) {
+    return failure("SPECOS_TEST_PLAN_INVALID", "run-api-tests requires a spec id");
+  }
+  const parsed = parseRunApiTestsArgs(args.slice(1));
+  if (!parsed.ok) {
+    return parsed.error;
+  }
+
+  const planPath = join(cwd, "tests", "plans", `${specId}.test-plan.json`);
+  const schedulePath = join(cwd, "tests", "schedules", `${specId}.test-schedule.json`);
+
+  if (!(await pathExists(planPath))) {
+    return failure("SPECOS_TEST_PLAN_INVALID", `Test plan not found: tests/plans/${specId}.test-plan.json`);
+  }
+
+  if (!(await pathExists(schedulePath))) {
+    return failure("SPECOS_TEST_SCHEDULE_INVALID", `Test schedule not found: tests/schedules/${specId}.test-schedule.json`);
+  }
+
+  const plan = parseArtifactObject(await readFile(planPath, "utf8"), planPath) as unknown as SpecosTestPlan;
+  const schedule = parseArtifactObject(await readFile(schedulePath, "utf8"), schedulePath) as unknown as SpecosTestSchedule;
+  const planValidation = validateTestPlan(plan);
+  if (!planValidation.ok) {
+    return failure(
+      "SPECOS_TEST_PLAN_INVALID",
+      planValidation.errors.map((error) => `${error.path ?? "testPlan"} ${error.message}`).join("; "),
+    );
+  }
+
+  const scheduleValidation = validateTestSchedule(schedule);
+  if (!scheduleValidation.ok) {
+    return failure(
+      "SPECOS_TEST_SCHEDULE_INVALID",
+      scheduleValidation.errors.map((error) => `${error.path ?? "testSchedule"} ${error.message}`).join("; "),
+    );
+  }
+
+  const brunoDir = join(cwd, "tests", "bruno", specId);
+  if (!(await pathExists(brunoDir))) {
+    return writeBlockedApiResult(cwd, plan, schedule, `Bruno collection not found at tests/bruno/${specId}`);
+  }
+
+  if (parsed.value.command) {
+    return runApiCommand(cwd, plan, schedule, parsed.value.command);
+  }
+
+  return writeBlockedApiResult(cwd, plan, schedule, "Bruno execution adapter is not configured for this project");
+}
+
+async function runApiCommand(
+  cwd: string,
+  plan: SpecosTestPlan,
+  schedule: SpecosTestSchedule,
+  command: string,
+): Promise<RunCliResult> {
+  const startedAt = Date.now();
+  const execution = await execCommandCapture(command, cwd);
+  const result = buildExecutedApiScenarioResult(plan, schedule, {
+    ...execution,
+    command,
+    durationMs: Date.now() - startedAt,
+  });
+  const validation = validateScenarioResult(result);
+
+  if (!validation.ok) {
+    return failure(
+      "SPECOS_SCENARIO_RESULT_INVALID",
+      validation.errors.map((error) => `${error.path ?? "scenarioResult"} ${error.message}`).join("; "),
+    );
+  }
+
+  const outputDir = join(cwd, "tests", "results");
+  await mkdir(outputDir, { recursive: true });
+  const outputPath = join(outputDir, `${plan.specId}.${result.runId}.json`);
+  await writeFile(outputPath, `${JSON.stringify(result, null, 2)}\n`, "utf8");
+
+  if (execution.exitCode === 0) {
+    return {
+      exitCode: 0,
+      stdout: `SPECOS_API_TESTS_OK ${toPosixPath(relative(cwd, outputPath))}\n`,
+      stderr: "",
+    };
+  }
+
+  return {
+    exitCode: 1,
+    stdout: `SPECOS_API_TESTS_FAILED ${toPosixPath(relative(cwd, outputPath))}\n`,
+    stderr: execution.stderr,
+  };
+}
+
+async function execCommandCapture(command: string, cwd: string): Promise<{ exitCode: number; stdout: string; stderr: string }> {
+  try {
+    const result = await exec(command, {
+      cwd,
+      maxBuffer: 1024 * 1024,
+    });
+    return { exitCode: 0, stdout: result.stdout, stderr: result.stderr };
+  } catch (error) {
+    if (error instanceof Error && "stdout" in error && "stderr" in error) {
+      const commandError = error as Error & { stdout?: unknown; stderr?: unknown; code?: unknown };
+      const exitCode = typeof commandError.code === "number" ? commandError.code : 1;
+      return {
+        exitCode,
+        stdout: typeof commandError.stdout === "string" ? commandError.stdout : "",
+        stderr: typeof commandError.stderr === "string" ? commandError.stderr : error.message,
+      };
+    }
+
+    return { exitCode: 1, stdout: "", stderr: error instanceof Error ? error.message : "Unknown command failure" };
+  }
+}
+
+async function generateBrunoTestsCommand(cwd: string, args: string[]): Promise<RunCliResult> {
+  const specId = args[0];
+  if (!specId) {
+    return failure("SPECOS_TEST_PLAN_INVALID", "generate-bruno-tests requires a spec id");
+  }
+
+  const planPath = join(cwd, "tests", "plans", `${specId}.test-plan.json`);
+  if (!(await pathExists(planPath))) {
+    return failure("SPECOS_TEST_PLAN_INVALID", `Test plan not found: tests/plans/${specId}.test-plan.json`);
+  }
+
+  const plan = parseArtifactObject(await readFile(planPath, "utf8"), planPath) as unknown as SpecosTestPlan;
+  const planValidation = validateTestPlan(plan);
+
+  if (!planValidation.ok) {
+    return failure(
+      "SPECOS_TEST_PLAN_INVALID",
+      planValidation.errors.map((error) => `${error.path ?? "testPlan"} ${error.message}`).join("; "),
+    );
+  }
+
+  const assets = buildBrunoCollectionAssets(plan);
+  const outputDir = join(cwd, "tests", "bruno", specId);
+  await mkdir(outputDir, { recursive: true });
+
+  for (const asset of assets) {
+    const outputPath = join(outputDir, asset.path);
+    await mkdir(dirname(outputPath), { recursive: true });
+    await writeFile(outputPath, asset.content, "utf8");
+  }
+
+  return {
+    exitCode: 0,
+    stdout: `SPECOS_BRUNO_TESTS_OK tests/bruno/${specId} files ${assets.length}\n`,
+    stderr: "",
+  };
+}
+
+async function writeBlockedApiResult(
+  cwd: string,
+  plan: SpecosTestPlan,
+  schedule: SpecosTestSchedule,
+  reason: string,
+): Promise<RunCliResult> {
+  const result = buildBlockedApiScenarioResult(plan, schedule, { reason });
+  const validation = validateScenarioResult(result);
+
+  if (!validation.ok) {
+    return failure(
+      "SPECOS_SCENARIO_RESULT_INVALID",
+      validation.errors.map((error) => `${error.path ?? "scenarioResult"} ${error.message}`).join("; "),
+    );
+  }
+
+  const outputDir = join(cwd, "tests", "results");
+  await mkdir(outputDir, { recursive: true });
+  const outputPath = join(outputDir, `${plan.specId}.${result.runId}.json`);
+  await writeFile(outputPath, `${JSON.stringify(result, null, 2)}\n`, "utf8");
+
+  return {
+    exitCode: 1,
+    stdout: `SPECOS_API_TESTS_BLOCKED ${toPosixPath(relative(cwd, outputPath))}\n${reason}\n`,
+    stderr: "",
+  };
+}
+
+function parseGenerateTestPlanArgs(
+  args: string[],
+): { ok: true; value: { specPath: string; changeId?: string; executionMode: "parallel" | "test-after-execution" } } | { ok: false; error: RunCliResult } {
+  const specPath = args[0];
+  if (!specPath) {
+    return { ok: false, error: failure("SPECOS_SPEC_INVALID", "generate-test-plan requires a spec file path") };
+  }
+
+  let changeId: string | undefined;
+  let executionMode: "parallel" | "test-after-execution" = "parallel";
+
+  for (let index = 1; index < args.length; index += 1) {
+    const arg = args[index];
+
+    if (arg === "--change") {
+      const value = args[index + 1];
+      if (!value) {
+        return { ok: false, error: failure("SPECOS_ARGUMENT_INVALID", "--change requires a value") };
+      }
+      changeId = value;
+      index += 1;
+      continue;
+    }
+
+    if (arg === "--mode") {
+      const value = args[index + 1];
+      if (value !== "parallel" && value !== "test-after-execution") {
+        return {
+          ok: false,
+          error: failure("SPECOS_ARGUMENT_INVALID", "--mode must be parallel or test-after-execution"),
+        };
+      }
+      executionMode = value;
+      index += 1;
+      continue;
+    }
+
+    return { ok: false, error: failure("SPECOS_ARGUMENT_INVALID", `Unsupported generate-test-plan argument: ${arg}`) };
+  }
+
+  return { ok: true, value: { specPath, changeId, executionMode } };
+}
+
+function parseRunApiTestsArgs(args: string[]): { ok: true; value: { command?: string } } | { ok: false; error: RunCliResult } {
+  let command: string | undefined;
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+
+    if (arg === "--command") {
+      const value = args[index + 1];
+      if (!value) {
+        return { ok: false, error: failure("SPECOS_ARGUMENT_INVALID", "--command requires a value") };
+      }
+      command = value;
+      index += 1;
+      continue;
+    }
+
+    return { ok: false, error: failure("SPECOS_ARGUMENT_INVALID", `Unsupported run-api-tests argument: ${arg}`) };
+  }
+
+  return { ok: true, value: { command } };
+}
+
+function inferChangeIdFromSpecPath(cwd: string, specPath: string): string | undefined {
+  const parts = toPosixPath(relative(cwd, specPath)).split("/");
+  const changesIndex = parts.indexOf("changes");
+  if (changesIndex >= 0 && parts[changesIndex + 1]) {
+    return parts[changesIndex + 1];
+  }
+  return undefined;
+}
+
 async function resolveBundleLocation(cwd: string, bundlePathArg: string): Promise<{ rootDir: string; manifestPath: string } | undefined> {
   const absoluteInput = resolve(cwd, bundlePathArg);
   const candidates: Array<{ rootDir: string; manifestPath: string }> = [
@@ -498,4 +842,13 @@ function isCliEntrypoint(): boolean {
 function parseYamlObject(source: string): Record<string, unknown> {
   const parsed = parse(source, { prettyErrors: false, uniqueKeys: true });
   return typeof parsed === "object" && parsed !== null ? (parsed as Record<string, unknown>) : {};
+}
+
+function parseArtifactObject(source: string, filePath: string): Record<string, unknown> {
+  if (filePath.endsWith(".json")) {
+    const parsed = JSON.parse(source);
+    return typeof parsed === "object" && parsed !== null ? (parsed as Record<string, unknown>) : {};
+  }
+
+  return parseYamlObject(source);
 }

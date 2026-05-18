@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildBlockedApiScenarioResult,
+  buildBrunoCollectionAssets,
   buildDeterministicTestPlan,
+  buildExecutedApiScenarioResult,
+  buildSpecChangeTestSchedule,
   validateBundle,
   validateManifest,
   validateScenarioResult,
   validateSpec,
+  validateTestSchedule,
   validateTestPlan,
 } from "./artifacts";
 
@@ -161,6 +166,167 @@ describe("artifact validation", () => {
     ]);
   });
 
+  it("builds an isolated execution and test schedule from a test plan", () => {
+    const plan = {
+      specId: "reward-order",
+      specVersion: "1.0.0",
+      featureName: "Reward Order",
+      source: "accepted-spec" as const,
+      flows: [
+        {
+          name: "Claim reward",
+          stages: [{ name: "Open", scenarioNames: ["Happy"], stepNames: ["Open"] }],
+        },
+      ],
+      endpoints: [
+        {
+          name: "Create reward order",
+          method: "POST",
+          path: "/api/reward-orders",
+          priority: "P0" as const,
+          branches: ["happy", "limit", "error", "flow"] as const,
+          preconditions: ["user logged in"],
+          expectedResults: ["order created"],
+          relatedRule: "reward.order.create",
+        },
+      ],
+      scenarios: [
+        {
+          name: "Happy",
+          priority: "P0" as const,
+          branches: ["happy"] as const,
+          preconditions: ["user logged in"],
+          expectedResults: ["order created"],
+          steps: ["Open"],
+        },
+      ],
+    };
+
+    const schedule = buildSpecChangeTestSchedule(plan, {
+      changeId: "reward-order-create",
+      executionMode: "parallel",
+    });
+    const validation = validateTestSchedule(schedule);
+
+    expect(validation.ok).toBe(true);
+    expect(schedule.changeId).toBe("reward-order-create");
+    expect(schedule.executionMode).toBe("parallel");
+    expect(schedule.tracks.map((track) => track.id)).toEqual(["execution", "testing"]);
+    expect(schedule.tracks[0]).toMatchObject({
+      id: "execution",
+      agentRole: "execution-editor",
+      isolation: "implementation-only",
+    });
+    expect(schedule.tracks[1]).toMatchObject({
+      id: "testing",
+      agentRole: "test-editor",
+      isolation: "spec-and-contract-only",
+    });
+    expect(schedule.tasks.map((task) => task.agentRole)).toEqual([
+      "execution-editor",
+      "bruno-test-agent",
+      "playwright-test-agent",
+    ]);
+    expect(schedule.tasks.find((task) => task.id === "implement-reward-order")?.outputs).toEqual([
+      "specs/changes/reward-order-create/implementation-report.md",
+      "tests/unit/reward-order/",
+    ]);
+    expect(schedule.tasks.find((task) => task.id === "ui-gap-Happy")).toMatchObject({
+      status: "blocked",
+      reason: "UI execution is scheduled as a gap until Playwright assets and selectors are available.",
+    });
+  });
+
+  it("allows execution schedules to own implementation-coupled unit tests", () => {
+    const result = validateTestSchedule({
+      specId: "reward-order",
+      specVersion: "1.0.0",
+      featureName: "Reward Order",
+      changeId: "reward-order-create",
+      executionMode: "parallel",
+      tracks: [
+        {
+          id: "execution",
+          agentRole: "execution-editor",
+          isolation: "implementation-only",
+          allowedInputs: ["specs/changes/reward-order-create/spec.md"],
+          forbiddenInputs: ["tests/results/", "tests/bruno/", "tests/scenarios/"],
+        },
+        {
+          id: "testing",
+          agentRole: "test-editor",
+          isolation: "spec-and-contract-only",
+          allowedInputs: ["tests/plans/reward-order.test-plan.json"],
+          forbiddenInputs: ["implementation report"],
+        },
+      ],
+      tasks: [
+        {
+          id: "implementation-with-unit-tests",
+          trackId: "execution",
+          agentRole: "execution-editor",
+          type: "implementation",
+          status: "ready",
+          inputs: ["specs/changes/reward-order-create/spec.md"],
+          outputs: ["src/reward.ts", "tests/unit/reward-order/"],
+          dependsOn: [],
+          traceability: { scenarios: ["Happy"], endpoints: ["POST /api/reward-orders"] },
+        },
+        {
+          id: "api-tests",
+          trackId: "testing",
+          agentRole: "bruno-test-agent",
+          type: "api-test",
+          status: "ready",
+          inputs: ["tests/plans/reward-order.test-plan.json"],
+          outputs: ["tests/bruno/reward-order/", "tests/results/reward-order.run.json"],
+          dependsOn: [],
+          traceability: { scenarios: ["Happy"], endpoints: ["POST /api/reward-orders"] },
+        },
+      ],
+      gates: ["implementation_done", "tests_passed"],
+    });
+
+    expect(result.ok).toBe(true);
+  });
+
+  it("rejects test schedules that merge execution and testing responsibilities", () => {
+    const result = validateTestSchedule({
+      specId: "reward-order",
+      specVersion: "1.0.0",
+      changeId: "reward-order-create",
+      executionMode: "parallel",
+      tracks: [
+        {
+          id: "execution",
+          agentRole: "execution-editor",
+          isolation: "implementation-only",
+          allowedInputs: ["specs/changes/reward-order-create/spec.md"],
+          forbiddenInputs: ["tests/results/"],
+        },
+      ],
+      tasks: [
+        {
+          id: "mixed-task",
+          trackId: "execution",
+          agentRole: "execution-editor",
+          type: "implementation",
+          status: "ready",
+          inputs: ["specs/changes/reward-order-create/spec.md"],
+          outputs: ["src/reward.ts", "tests/bruno/reward-order/"],
+          dependsOn: [],
+          traceability: { scenarios: ["Happy"], endpoints: ["POST /api/reward-orders"] },
+        },
+      ],
+      gates: ["implementation_done", "tests_passed"],
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errors.map((error) => error.path)).toEqual(
+      expect.arrayContaining(["tracks", "tasks[0].outputs"]),
+    );
+  });
+
   it("rejects test plans with unknown branch names", () => {
     const result = validateTestPlan({
       specId: "reward-order",
@@ -220,6 +386,193 @@ describe("artifact validation", () => {
     });
 
     expect(result.ok).toBe(true);
+  });
+
+  it("builds a blocked API scenario result when API execution assets are missing", () => {
+    const plan = {
+      specId: "reward-order",
+      specVersion: "1.0.0",
+      featureName: "Reward Order",
+      source: "accepted-spec" as const,
+      flows: [
+        {
+          name: "Claim reward",
+          stages: [{ name: "Open", scenarioNames: ["Happy"], stepNames: ["Open"] }],
+        },
+      ],
+      endpoints: [
+        {
+          name: "Create reward order",
+          method: "POST",
+          path: "/api/reward-orders",
+          priority: "P0" as const,
+          branches: ["happy", "limit", "error", "flow"] as const,
+          preconditions: ["user logged in"],
+          expectedResults: ["order created"],
+          relatedRule: "reward.order.create",
+        },
+      ],
+      scenarios: [
+        {
+          name: "Happy",
+          priority: "P0" as const,
+          branches: ["happy"] as const,
+          preconditions: ["user logged in"],
+          expectedResults: ["order created"],
+          steps: ["Open"],
+        },
+      ],
+    };
+    const schedule = buildSpecChangeTestSchedule(plan, {
+      changeId: "reward-order-create",
+      executionMode: "parallel",
+    });
+
+    const result = buildBlockedApiScenarioResult(plan, schedule, {
+      reason: "Bruno collection not found at tests/bruno/reward-order",
+      runId: "run-api-blocked",
+      timestamp: "2026-05-15T00:00:00.000Z",
+    });
+    const validation = validateScenarioResult(result);
+
+    expect(validation.ok).toBe(true);
+    expect(result.releaseDecision).toBe("blocked");
+    expect(result.status).toBe("warning");
+    expect(result.summary.apiPassRate).toBe(0);
+    expect(result.summary.totalEndpoints).toBe(1);
+    expect(result.blockers).toEqual(["Bruno collection not found at tests/bruno/reward-order"]);
+    expect(result.items[0]).toMatchObject({
+      testType: "api",
+      target: "POST /api/reward-orders",
+      status: "warning",
+      summary: "Bruno collection not found at tests/bruno/reward-order",
+    });
+    expect(result.flowResults[0].stages[0].endpoints[0]).toMatchObject({
+      target: "POST /api/reward-orders",
+      status: "warning",
+    });
+  });
+
+  it("builds deterministic Bruno API assets from a test plan", () => {
+    const plan = {
+      specId: "reward-order",
+      specVersion: "1.0.0",
+      featureName: "Reward Order",
+      source: "accepted-spec" as const,
+      flows: [
+        {
+          name: "Claim reward",
+          stages: [{ name: "Open", scenarioNames: ["Happy"], stepNames: ["Open"] }],
+        },
+      ],
+      endpoints: [
+        {
+          name: "Create reward order",
+          method: "POST",
+          path: "/api/reward-orders",
+          priority: "P0" as const,
+          branches: ["happy", "limit", "error", "flow"] as const,
+          preconditions: ["user logged in"],
+          expectedResults: ["order created"],
+          relatedRule: "reward.order.create",
+        },
+        {
+          name: "Read reward order",
+          method: "GET",
+          path: "/api/reward-orders/:id",
+          priority: "P1" as const,
+          branches: ["happy", "error", "edge"] as const,
+          preconditions: ["order exists"],
+          expectedResults: ["order returned"],
+          relatedRule: "reward.order.read",
+        },
+      ],
+      scenarios: [
+        {
+          name: "Happy",
+          priority: "P0" as const,
+          branches: ["happy"] as const,
+          preconditions: ["user logged in"],
+          expectedResults: ["order created"],
+          steps: ["Open"],
+        },
+      ],
+    };
+
+    const assets = buildBrunoCollectionAssets(plan);
+
+    expect(assets.map((asset) => asset.path)).toEqual([
+      "bruno.json",
+      "README.md",
+      "create-reward-order.bru",
+      "read-reward-order.bru",
+    ]);
+    expect(assets.find((asset) => asset.path === "bruno.json")?.content).toContain('"name": "reward-order"');
+    expect(assets.find((asset) => asset.path === "create-reward-order.bru")?.content).toContain("post {");
+    expect(assets.find((asset) => asset.path === "create-reward-order.bru")?.content).toContain("url: {{baseUrl}}/api/reward-orders");
+    expect(assets.find((asset) => asset.path === "read-reward-order.bru")?.content).toContain("get {");
+    expect(assets.find((asset) => asset.path === "README.md")?.content).toContain("Spec version: `1.0.0`");
+  });
+
+  it("builds a normalized passing API result from a command execution", () => {
+    const plan = {
+      specId: "reward-order",
+      specVersion: "1.0.0",
+      featureName: "Reward Order",
+      source: "accepted-spec" as const,
+      flows: [
+        {
+          name: "Claim reward",
+          stages: [{ name: "Open", scenarioNames: ["Happy"], stepNames: ["Open"] }],
+        },
+      ],
+      endpoints: [
+        {
+          name: "Create reward order",
+          method: "POST",
+          path: "/api/reward-orders",
+          priority: "P0" as const,
+          branches: ["happy", "limit", "error", "flow"] as const,
+          preconditions: ["user logged in"],
+          expectedResults: ["order created"],
+          relatedRule: "reward.order.create",
+        },
+      ],
+      scenarios: [
+        {
+          name: "Happy",
+          priority: "P0" as const,
+          branches: ["happy"] as const,
+          preconditions: ["user logged in"],
+          expectedResults: ["order created"],
+          steps: ["Open"],
+        },
+      ],
+    };
+    const schedule = buildSpecChangeTestSchedule(plan, {
+      changeId: "reward-order-create",
+      executionMode: "parallel",
+    });
+
+    const result = buildExecutedApiScenarioResult(plan, schedule, {
+      exitCode: 0,
+      stdout: "bruno passed",
+      stderr: "",
+      command: "bru run tests/bruno/reward-order",
+      runId: "run-api-pass",
+      timestamp: "2026-05-15T00:00:00.000Z",
+    });
+    const validation = validateScenarioResult(result);
+
+    expect(validation.ok).toBe(true);
+    expect(result.status).toBe("pass");
+    expect(result.releaseDecision).toBe("ready");
+    expect(result.summary.apiPassRate).toBe(1);
+    expect(result.items[0]).toMatchObject({
+      status: "pass",
+      summary: "API command completed successfully",
+    });
+    expect(result.items[0].evidence.command).toBe("bru run tests/bruno/reward-order");
   });
 
   it("rejects scenario result arrays that would break the console", () => {

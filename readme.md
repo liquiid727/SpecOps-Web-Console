@@ -84,6 +84,9 @@ node /Users/liquiid/code/specos-ai/packages/cli/dist/main.js init --template spe
 - `specos install-bundle <path>`
 - `specos list-workflows`
 - `specos run-workflow <workflowId>`
+- `specos generate-test-plan <spec-file> --change <change-id>`
+- `specos generate-bruno-tests <specId>`
+- `specos run-api-tests <specId>`
 
 当前内置模板：
 - `fullstack`
@@ -191,11 +194,18 @@ node packages/cli/dist/main.js run-workflow spec-driven-default
 
 ### 3. 准备 `test-plan`
 
-当前仓库里，`test-console` 不会直接从 `spec-draft/`、`specs/current/` 或 `specs/changes/<change-id>/` 自动生成测试计划。
+当前仓库里，`test-console` 不会直接从 `spec-draft/` 自动生成测试计划。进入 `specs/changes/<change-id>/` 后，可以从 normalized spec JSON/YAML 生成测试计划和测试调度。
 
-它需要你先准备好：
+生成命令：
+
+```bash
+node packages/cli/dist/main.js generate-test-plan specs/changes/<change-id>/spec.json --change <change-id>
+```
+
+输出：
 
 - `tests/plans/<spec>.test-plan.json`
+- `tests/schedules/<spec>.test-schedule.json`
 
 可以先参考现成示例：
 
@@ -203,8 +213,9 @@ node packages/cli/dist/main.js run-workflow spec-driven-default
 
 当前真实情况是：
 - `packages/core` 里已经有 `spec`、`test-plan`、`scenario-result` 的 schema 和校验逻辑
-- 但仓库里还没有统一命令根据 `specs/current/ + specs/changes/<change-id>/` 自动落 `tests/plans/*.json`
-- 所以这一步目前需要人工准备，或通过你自己的脚本/Agent 生成
+- CLI 已支持从 normalized spec 文件落 `tests/plans/*.json` 和 `tests/schedules/*.json`
+- 但 `spec-draft -> normalized spec/change package` 仍需要 spec agent 或人工准备
+- `test-schedule` 会分离 execution agent 和 test agent 的输入/输出边界，避免实现与测试互相污染
 
 ### 4. 跑 runner，生成规范化测试结果
 
@@ -236,6 +247,40 @@ node scripts/orchestration/test-runner.mjs reward-order latest all
 - 这个 runner 当前是“模拟/归一化脚本”
 - 它会读取 `test-plan` 并拼出标准化 `scenario-result`
 - 它当前不会真的去调用 Bruno 或 Playwright 执行测试
+
+对于新的 change workflow，API 测试入口是：
+
+```bash
+node packages/cli/dist/main.js run-api-tests <specId>
+```
+
+该命令会读取：
+
+- `tests/plans/<spec>.test-plan.json`
+- `tests/schedules/<spec>.test-schedule.json`
+- `tests/bruno/<spec>/`
+
+Bruno API 资产可以先由 test-plan 生成：
+
+```bash
+node packages/cli/dist/main.js generate-bruno-tests <specId>
+```
+
+输出：
+
+- `tests/bruno/<spec>/bruno.json`
+- `tests/bruno/<spec>/*.bru`
+- `tests/bruno/<spec>/README.md`
+
+如果 Bruno collection 尚未生成或 Bruno adapter 尚未配置，命令会写入 blocked 的 normalized result 到 `tests/results/`，并返回非零退出码。它不会把缺失真实执行伪装成通过。
+
+如果项目已经有 Bruno CLI 或自定义 API 测试命令，可以显式传入执行命令：
+
+```bash
+node packages/cli/dist/main.js run-api-tests <specId> --command "bru run tests/bruno/<specId>"
+```
+
+命令退出码为 `0` 时生成 ready/pass 的 normalized result；非 `0` 时生成 blocked/warning 的 normalized result。
 
 ### 5. 用 `test-console` 查看结果
 

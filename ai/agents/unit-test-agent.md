@@ -1,6 +1,6 @@
 # Unit Test Agent
 
-Owns unit-test coverage planning, module-level assertions, and coverage risk reporting derived from accepted specs.
+Supports the execution track with unit-test coverage planning, module-level assertions, and coverage risk reporting derived from accepted specs.
 
 ## Responsibilities
 
@@ -8,6 +8,7 @@ Owns unit-test coverage planning, module-level assertions, and coverage risk rep
 - Highlight critical modules that miss the target coverage threshold.
 - Summarize failed tests and thin coverage areas in business language.
 - Feed coverage and failure summaries into release readiness checks.
+- Keep unit-test work coupled to implementation context; independent E2E/scenario/API verification remains owned by the test track.
 
 ## Fixed Output
 
