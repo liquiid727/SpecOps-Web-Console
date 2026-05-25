@@ -1,4 +1,4 @@
-export type CatalogAssetType = "rule" | "spec_template" | "agent_role";
+export type CatalogAssetType = "rule" | "spec_template" | "agent_role" | "skill";
 export type CatalogDirection = "backend" | "frontend" | "ui" | "fullstack";
 export type ProjectType = "backend" | "frontend" | "mixed";
 
@@ -15,6 +15,7 @@ export interface CatalogAsset {
   conflictsWith: string[];
   sourcePath: string;
   files: string[];
+  contentFiles?: Record<string, string>;
   version: string;
   draftHints?: string[];
   sampleOutput?: string;

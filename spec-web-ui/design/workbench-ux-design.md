@@ -6,13 +6,13 @@
 - Frontend delivery rule: [rules/frontend/react-workbench-delivery.md](../../rules/frontend/react-workbench-delivery.md)
 - UI handoff rule: [rules/ui/pencil-prototype-ui.md](../../rules/ui/pencil-prototype-ui.md)
 - UI role: [.agents/roles/ui-design-agent.md](../../.agents/roles/ui-design-agent.md)
-- Draft template: [spec-draft/_template/feature/ui-handoff.template.md](../../spec-draft/_template/feature/ui-handoff.template.md)
+- Requirement flow draft: [spec-draft/requirement-intake-flow.md](../../spec-draft/requirement-intake-flow.md)
 
 This document is the working UX reference for `spec-web-ui`. It is draft-only until a normalized spec bundle accepts it.
 
 ## Product Positioning
 
-`spec-web-ui` is a developer workbench for quickly building a project's AI foundation.
+`spec-web-ui` is a standalone tool site and asset workbench for quickly building a project's AI foundation.
 
 It helps developers discover, select, and assemble the reusable assets needed to start a project with clear AI operating rules:
 
@@ -24,11 +24,14 @@ It helps developers discover, select, and assemble the reusable assets needed to
 - test patterns
 - project conventions
 
+It is not the requirement intake surface for a target project. A concrete project's requirement lifecycle belongs in that target repository, usually through `spec-draft/`, `specs/changes/`, `tests/`, review notes, and acceptance records. `spec-web-ui` may export assets into that repository, but it should not become the source of truth for `draft -> change -> test-plan -> result -> acceptance`.
+
 The product is not a general admin dashboard. It should not make users feel they are managing a large back office system. Its main job is to help a developer answer:
 
 1. What reusable AI engineering assets exist here?
 2. Which assets fit my project?
 3. How do I package them into a usable project baseline?
+4. What would the generated rules, templates, agents, workflows, and directory structure look like before I install them?
 
 ## UX Principle
 
@@ -40,9 +43,10 @@ Use this rule of thumb:
 
 - Home page: orientation and starting point.
 - Discover: search and understand reusable assets.
-- Projects: assemble a project baseline.
-- Drafts: edit project intent.
-- Exports: review and package the bundle.
+- Configuration Workspace: assemble a project baseline from selected assets.
+- Export Preview: review generated files, structure, and installable bundle output.
+
+Avoid using "draft" language in this UI unless it clearly means a reusable template draft. "Draft" is reserved for target project requirement intake and should not be presented as a canonical state inside this workbench.
 
 ## Primary Users
 
@@ -54,7 +58,7 @@ Expected behavior:
 
 - Searches or browses available assets.
 - Picks a small set of relevant items.
-- Creates or opens a project workspace.
+- Creates or opens a configuration workspace.
 - Exports a baseline that can be installed into the target repo.
 
 ### Team Lead
@@ -80,7 +84,7 @@ Expected behavior:
 
 ## Information Architecture
 
-The product should expose five stable areas.
+The product should expose four stable areas.
 
 ### Home
 
@@ -92,7 +96,7 @@ Home should stay minimal:
 - short description
 - search input
 - one primary path into Discover
-- one secondary path into Projects
+- one secondary path into the Configuration Workspace
 - a lightweight first-use hint
 
 Home should not include permanent dashboard cards, statistics grids, large catalog previews, or project panels. Those create a false sense that the home page is a content-heavy workspace.
@@ -106,35 +110,26 @@ Core tasks:
 - Search by title, tag, stack, or source path.
 - Filter by type, direction, stack, and tag.
 - Inspect asset details.
-- Add relevant assets to a project.
+- Add relevant assets to a configuration workspace.
 - Understand dependencies, conflicts, and recommendations.
 
 Discover can be denser than Home because users arrive there with intent.
 
-### Projects
+### Configuration Workspace
 
 Purpose: assemble a project-specific AI foundation.
 
 Core tasks:
 
-- Create or open a project workspace.
+- Create or open a configuration workspace.
 - See selected assets.
 - Resolve missing dependencies and conflicts.
-- Connect the project to a draft and export target.
+- Edit project profile metadata such as name, stack, domain, and target output path.
+- Preview how selected assets form a baseline configuration.
 
-Project screens should show current composition and readiness, not generic marketing content.
+Workspace screens should show current asset composition and readiness, not concrete project requirement state. If a user needs to write actual requirements, the UI should direct them to the generated target repo structure or exported templates, not store the requirement lifecycle here.
 
-### Drafts
-
-Purpose: maintain human-readable project intent before it becomes a normalized spec bundle.
-
-Core tasks:
-
-- Open a project draft.
-- Edit structured sections such as background, goals, user flow, system flow, state, rules, and tests.
-- Keep draft content traceable to templates and project assets.
-
-### Exports
+### Export Preview
 
 Purpose: package the selected setup into a reviewable, installable bundle.
 
@@ -151,9 +146,9 @@ Core tasks:
 Open workbench
 -> Search or enter Discover
 -> Understand available assets
--> Add assets to a project
+-> Add assets to a configuration workspace
 -> Resolve dependencies and conflicts
--> Edit or confirm project draft
+-> Preview generated baseline structure and workflow relationships
 -> Export bundle
 -> Install baseline into target project
 ```
@@ -170,8 +165,8 @@ Expected interaction:
 
 - User sees one clear explanation of the workbench.
 - User can search immediately.
-- User can enter Discover or Projects.
-- First-use hint gives the simple path: Discover -> Projects -> Exports.
+- User can enter Discover or the Configuration Workspace.
+- First-use hint gives the simple path: Discover -> Workspace -> Export.
 
 Avoid:
 
@@ -197,10 +192,21 @@ Selection should make consequences visible.
 
 Expected behavior:
 
-- Adding an asset updates the project composition.
+- Adding an asset updates the workspace composition.
 - Missing dependencies are called out near the selected asset or project summary.
 - Conflicts are explicit and actionable.
 - Recommended assets explain why they are recommended.
+
+### Baseline Preview Interaction
+
+Preview should make the generated baseline understandable before export.
+
+Expected behavior:
+
+- Users see the selected rules, skills, agents, templates, workflows, and test patterns as one composed baseline.
+- Users can inspect the generated directory structure.
+- Users can inspect a simple workflow diagram that explains how the selected assets relate.
+- Users can edit configuration metadata, but should not edit concrete target-project requirements here.
 
 ### Export Interaction
 
@@ -239,8 +245,8 @@ Every user-facing flow should define these states.
 ### Empty
 
 - No catalog assets found.
-- No project exists yet.
-- No selected assets in a project.
+- No configuration workspace exists yet.
+- No selected assets in the workspace.
 - No export snapshot exists.
 
 Empty states should tell users the next action, not describe the system.
@@ -248,7 +254,8 @@ Empty states should tell users the next action, not describe the system.
 ### Loading
 
 - Loading catalog.
-- Loading project workspace.
+- Loading configuration workspace.
+- Generating baseline preview.
 - Generating export preview.
 - Validating dependencies or conflicts.
 
@@ -256,9 +263,9 @@ Loading states should preserve layout stability.
 
 ### Success
 
-- Asset added to project.
-- Project workspace created.
-- Draft saved.
+- Asset added to workspace.
+- Configuration workspace created.
+- Baseline preview generated.
 - Export snapshot generated.
 
 Success states should confirm the result and expose the next step.
@@ -266,7 +273,8 @@ Success states should confirm the result and expose the next step.
 ### Failure
 
 - Catalog load failed.
-- Project save failed.
+- Workspace save failed.
+- Baseline preview generation failed.
 - Dependency validation failed.
 - Export generation failed.
 
@@ -279,8 +287,8 @@ Home should remain one-column or near one-column on most screen sizes. It should
 Task pages may use multiple columns when useful:
 
 - Discover can use filters and result panels.
-- Projects can use composition and detail panels.
-- Exports can use file list and preview/diff panels.
+- Configuration Workspace can use composition and detail panels.
+- Export Preview can use file list and preview/diff panels.
 
 On mobile, each route should preserve the same task order:
 
@@ -297,6 +305,7 @@ Prefer:
 
 - "搜索规则、模板、Agent 角色"
 - "组合项目上下文"
+- "预览生成结构"
 - "导出 Bundle"
 - "查看依赖和冲突"
 
@@ -309,10 +318,11 @@ Avoid:
 
 ## Open Questions
 
-- Should Home eventually support a guided project-start wizard, or should that stay in Projects?
+- Should Home eventually support a guided project-start wizard, or should that stay in Configuration Workspace?
 - Should agent and skill configuration become a dedicated route, or remain catalog assets inside Discover?
 - Should bundle presets be first-class project templates?
 - How much of the future `project-start-agent` flow should be visible before RAG automation exists?
+- What is the minimal export contract between `spec-web-ui` and a target project repository?
 
 ## Validation Notes
 

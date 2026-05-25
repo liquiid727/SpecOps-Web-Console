@@ -1,0 +1,38 @@
+{
+  "id": "agent-bruno-test",
+  "type": "agent_role",
+  "title": "Bruno Test Agent",
+  "summary": "Generates Bruno collections and spec-aligned API scenario assertions.",
+  "direction": "backend",
+  "stacks": [
+    "go",
+    "python"
+  ],
+  "tags": [
+    "bruno",
+    "api",
+    "scenario"
+  ],
+  "appliesTo": [
+    "backend"
+  ],
+  "dependsOn": [
+    "agent-openapi",
+    "template-normalized-spec"
+  ],
+  "conflictsWith": [],
+  "sourcePath": "spec-web-ui/catalog/agent-templates/agent-bruno-test/bruno-test-agent.md",
+  "files": [
+    "ai/agents/bruno-test-agent.md",
+    "tests/bruno/README.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "为主流程补齐请求、响应和断言"
+  ],
+  "sampleOutput": "Bruno collection 和接口场景断言。",
+  "contentFiles": {
+    "ai/agents/bruno-test-agent.md": "spec-web-ui/catalog/agent-templates/agent-bruno-test/bruno-test-agent.md",
+    "tests/bruno/README.md": "spec-web-ui/catalog/agent-templates/agent-bruno-test/README.md"
+  }
+}

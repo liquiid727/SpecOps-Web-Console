@@ -6,12 +6,53 @@ import { appRoot, ensureRelativeRepoPath } from "@/lib/server-paths";
 import { sortStrings, uniq } from "@/lib/utils";
 
 const catalogRegistryPath = path.join(appRoot, "catalog", "catalog-assets.json");
+const catalogDirectories = [
+  path.join(appRoot, "catalog", "spec-templates"),
+  path.join(appRoot, "catalog", "agent-templates"),
+  path.join(appRoot, "catalog", "skills")
+];
+
+async function readCatalogAssetsFromDirectory(directoryPath: string) {
+  const entries = await fs.readdir(directoryPath, { withFileTypes: true });
+  const manifests = await Promise.all(
+    entries
+      .filter((entry) => entry.isDirectory())
+      .map(async (entry) => {
+        const assetPath = path.join(directoryPath, entry.name, "asset.json");
+
+        try {
+          const raw = await fs.readFile(assetPath, "utf8");
+          return JSON.parse(raw) as CatalogAsset;
+        } catch (error) {
+          if (
+            error &&
+            typeof error === "object" &&
+            "code" in error &&
+            error.code === "ENOENT"
+          ) {
+            return null;
+          }
+
+          throw error;
+        }
+      })
+  );
+
+  return manifests.filter((asset): asset is CatalogAsset => Boolean(asset));
+}
 
 export async function loadCatalogAssets() {
   const raw = await fs.readFile(catalogRegistryPath, "utf8");
-  const catalog = JSON.parse(raw) as CatalogAsset[];
+  const registryCatalog = JSON.parse(raw) as CatalogAsset[];
+  const directoryCatalogs = await Promise.all(catalogDirectories.map(readCatalogAssetsFromDirectory));
+  const catalog = [...registryCatalog, ...directoryCatalogs.flat()];
+  const assetMap = new Map<string, CatalogAsset>();
 
-  return catalog.sort((left, right) => left.title.localeCompare(right.title));
+  for (const asset of catalog) {
+    assetMap.set(asset.id, asset);
+  }
+
+  return [...assetMap.values()].sort((left, right) => left.title.localeCompare(right.title));
 }
 
 export async function loadCatalogAsset(assetId: string) {

@@ -46,11 +46,17 @@ const selectedAssets: CatalogAsset[] = [
     appliesTo: ["backend", "frontend"],
     dependsOn: [],
     conflictsWith: [],
-    sourcePath: "spec-draft/_template/feature/product-ui.template.md",
+    sourcePath: "spec-web-ui/catalog/spec-templates/template-feature-draft/product-ui.template.md",
     files: [
       "spec-draft/_template/feature/product-ui.template.md",
       "specs/_template/feature/spec.example.md"
     ],
+    contentFiles: {
+      "spec-draft/_template/feature/product-ui.template.md":
+        "spec-web-ui/catalog/spec-templates/template-feature-draft/product-ui.template.md",
+      "specs/_template/feature/spec.example.md":
+        "spec-web-ui/catalog/spec-templates/template-normalized-spec/spec.example.md"
+    },
     version: "1.0.0"
   },
   {
@@ -85,6 +91,9 @@ describe("buildExportBundle", () => {
       "specs/_template/feature/spec.example.md",
       "ai/agents/spec-editor.md"
     ]);
+    expect(bundle.files.find((file) => file.targetPath === "spec-draft/_template/feature/product-ui.template.md")?.sourcePath).toBe(
+      "spec-web-ui/catalog/spec-templates/template-feature-draft/product-ui.template.md"
+    );
     expect(bundle.summary).toContain("3 selected assets");
   });
 

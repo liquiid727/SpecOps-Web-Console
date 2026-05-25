@@ -4,6 +4,8 @@
 
 它的核心价值不是做一个普通后台，也不是把所有 workflow 都塞进 UI 里执行，而是沉淀、浏览、选择和组合开发人员日常高频使用的 AI 工程资产，让项目可以快速建立自己的规则、Agent 能力、测试规范和交付结构。
 
+它也不是单个目标项目的需求状态系统。具体项目的 `draft -> change -> test-plan -> result -> acceptance` 生命周期应留在目标项目仓库内；`spec-web-ui` 只负责维护、组合、预览和导出可复用资产。
+
 ## 核心定位
 
 `spec-web-ui` 服务于两阶段目标。
@@ -31,6 +33,7 @@
 -> 浏览 rules / skills / agents / templates
 -> 选择适合项目的资产
 -> 组合成项目级 AI 配置
+-> 预览生成目录结构和 workflow 关系
 -> 导出 bundle / scaffold
 -> 安装到目标项目
 ```
@@ -50,6 +53,7 @@
 
 - 不把 `spec-web-ui` 设计成普通 CRUD 管理后台。
 - 不让它替代 CLI、测试执行器或 CI runner。
+- 不让它承载具体项目的需求 lifecycle 状态。
 - 不把它变成无边界的 Agent 聊天入口。
 - 不绕过 SpecOS 的核心链路：标准化 Spec、规则、Agent 分工、测试、文档和交付门禁必须保持可追踪。
 
@@ -58,9 +62,9 @@
 当前实现以 catalog-first workspace 为主：
 
 - 浏览 catalog 中的规则、模板和 Agent 角色。
-- 创建项目工作区。
-- 维护项目 draft。
+- 创建配置工作区。
 - 组合项目所需资产。
+- 预览项目级 AI 配置、目录结构和 workflow 关系。
 - 导出 review snapshot。
 - 生成可被 CLI 安装的 `.specos-bundle/`。
 
@@ -69,5 +73,6 @@
 ## UX / 交互设计参考
 
 - [Workbench UX Design](design/workbench-ux-design.md)
+- [Requirement Intake Flow](../spec-draft/requirement-intake-flow.md)
 
-这份文档定义 `spec-web-ui` 的工作台定位、用户角色、信息架构、核心流程、交互原则和状态覆盖。后续首页、Discover、Projects、Drafts、Exports 等用户界面改动，应优先保持它要求的“清爽、简单、明确下一步”的工具站点体验。
+这些文档共同定义两条边界：`spec-web-ui` 是独立工具站点和资产工作台；具体项目需求流程属于目标项目仓库。后续首页、Discover、Configuration Workspace、Export Preview 等用户界面改动，应优先保持“清爽、简单、明确下一步”的工具站点体验。

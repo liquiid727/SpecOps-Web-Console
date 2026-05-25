@@ -6,6 +6,7 @@ import {
   getCatalogFilterOptions,
   getFeaturedAssets,
   getMarketplaceRecommendations,
+  loadCatalogAssets,
   sortCatalogAssetsForWorkspace
 } from "@/lib/catalog";
 import { buildAssetCompositionPreview } from "@/lib/projects";
@@ -56,6 +57,24 @@ const assets: CatalogAsset[] = [
     sourcePath: "ai/agents/openapi-agent.md",
     files: ["ai/agents/openapi-agent.md"],
     version: "1.0.0"
+  },
+  {
+    id: "skill-ddd-layering",
+    type: "skill",
+    title: "DDD Layering Governance",
+    summary: "Guides DDD layer ownership and domain modeling decisions.",
+    direction: "backend",
+    stacks: ["go"],
+    tags: ["ddd", "layering"],
+    appliesTo: ["backend"],
+    dependsOn: [],
+    conflictsWith: [],
+    sourcePath: "spec-web-ui/catalog/skills/ddd-layering-governance/SKILL.md",
+    files: [
+      "spec-web-ui/catalog/skills/ddd-layering-governance/SKILL.md",
+      "spec-web-ui/catalog/skills/ddd-layering-governance/references/layering-rules.md"
+    ],
+    version: "1.0.0"
   }
 ];
 
@@ -73,7 +92,7 @@ describe("filterCatalogAssets", () => {
   });
 
   it("returns all assets when no filters are set", () => {
-    expect(filterCatalogAssets(assets, {})).toHaveLength(3);
+    expect(filterCatalogAssets(assets, {})).toHaveLength(4);
   });
 });
 
@@ -82,9 +101,37 @@ describe("getCatalogFilterOptions", () => {
     expect(getCatalogFilterOptions(assets)).toEqual({
       directions: ["backend", "frontend", "fullstack"],
       stacks: ["go", "react"],
-      tags: ["api", "auth", "ci", "errors", "openapi", "react", "ui"],
-      types: ["agent_role", "rule", "spec_template"]
+      tags: ["api", "auth", "ci", "ddd", "errors", "layering", "openapi", "react", "ui"],
+      types: ["agent_role", "rule", "skill", "spec_template"]
     });
+  });
+});
+
+describe("loadCatalogAssets", () => {
+  it("loads skill assets from the web-ui catalog directory", async () => {
+    const catalog = await loadCatalogAssets();
+    const skill = catalog.find((asset) => asset.id === "skill-ddd-layering-governance");
+
+    expect(skill?.type).toBe("skill");
+    expect(skill?.sourcePath).toBe("spec-web-ui/catalog/skills/ddd-layering-governance/SKILL.md");
+  });
+
+  it("loads spec and agent template assets from directory-backed manifests", async () => {
+    const catalog = await loadCatalogAssets();
+    const specTemplate = catalog.find((asset) => asset.id === "template-feature-draft");
+    const agentTemplate = catalog.find((asset) => asset.id === "agent-spec-editor");
+
+    expect(specTemplate?.sourcePath).toBe(
+      "spec-web-ui/catalog/spec-templates/template-feature-draft/product-ui.template.md"
+    );
+    expect(specTemplate?.files).toEqual(["spec-draft/_template/feature/product-ui.template.md"]);
+    expect(specTemplate?.contentFiles?.["spec-draft/_template/feature/product-ui.template.md"]).toBe(
+      "spec-web-ui/catalog/spec-templates/template-feature-draft/product-ui.template.md"
+    );
+    expect(agentTemplate?.sourcePath).toBe(
+      "spec-web-ui/catalog/agent-templates/agent-spec-editor/spec-editor.md"
+    );
+    expect(agentTemplate?.files).toEqual(["ai/agents/spec-editor.md"]);
   });
 });
 
@@ -100,7 +147,8 @@ describe("sortCatalogAssetsForWorkspace", () => {
     expect(sorted.map((asset) => asset.id)).toEqual([
       "agent-openapi",
       "rule-go-backend",
-      "template-react-feature"
+      "template-react-feature",
+      "skill-ddd-layering"
     ]);
   });
 });
@@ -110,10 +158,10 @@ describe("getMarketplaceRecommendations", () => {
     const recommendations = getMarketplaceRecommendations(assets, {
       activeStacks: ["go"],
       selectedAssetIds: ["rule-go-backend"],
-      limit: 1
+      limit: 2
     });
 
-    expect(recommendations.map((asset) => asset.id)).toEqual(["agent-openapi"]);
+    expect(recommendations.map((asset) => asset.id)).toEqual(["skill-ddd-layering", "agent-openapi"]);
   });
 });
 
@@ -135,7 +183,9 @@ describe("buildAssetCompositionPreview", () => {
           draftPath: "spec-web-ui/workspace/projects/rewards-platform/draft.md",
           exportTargets: ["rules/", "specs/_template/", "ai/agents/", "project-manifest.yaml"]
         },
-        selectedAssets: assets.filter((asset) => asset.id !== "agent-openapi"),
+        selectedAssets: assets.filter((asset) =>
+          ["rule-go-backend", "template-react-feature"].includes(asset.id)
+        ),
         missingDependencies: [],
         conflicts: [],
         recommendedAssets: []
@@ -150,13 +200,17 @@ describe("buildAssetCompositionPreview", () => {
 });
 
 describe("getFeaturedAssets", () => {
-  it("surfaces a small featured set with strong stack and tag signals", () => {
+  it("surfaces a small featured set with strong stack and tag signals across asset types", () => {
     const featured = getFeaturedAssets(assets, {
-      limit: 2,
-      preferredTags: ["openapi", "ui"]
+      limit: 3,
+      preferredTags: ["openapi", "ui", "ddd"]
     });
 
-    expect(featured.map((asset) => asset.id)).toEqual(["agent-openapi", "template-react-feature"]);
+    expect(featured.map((asset) => asset.id)).toEqual([
+      "agent-openapi",
+      "template-react-feature",
+      "skill-ddd-layering"
+    ]);
   });
 });
 

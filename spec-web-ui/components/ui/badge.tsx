@@ -1,4 +1,4 @@
-import type { HTMLAttributes } from "react";
+import React, { type HTMLAttributes } from "react";
 
 import { buildGlassInteractiveClassName } from "@/lib/theme";
 import { cn } from "@/lib/utils";

@@ -68,7 +68,7 @@ export async function TemplateLibraryPage({
   route: string;
   searchLabel: string;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
-  templateType: Extract<CatalogAssetType, "agent_role" | "spec_template">;
+  templateType: Extract<CatalogAssetType, "agent_role" | "skill" | "spec_template">;
   title: string;
 }) {
   const [resolvedSearchParams, catalog] = await Promise.all([searchParams, loadCatalogAssets()]);

@@ -36,9 +36,11 @@ SpecOS 的核心价值是把通用 Spec 作为工程协作的中心协议。它�
 如果你只想知道“今天这个仓库实际能怎么跑起来”，可以直接按下面三条路线理解：
 
 1. `CLI`：初始化或检查一个 SpecOS 项目骨架。
-2. `spec-web-ui`：选择规则/模板/Agent，创建项目工作区，编辑 draft，导出 bundle 快照与可安装 bundle。
+2. `spec-web-ui`：作为工具站点和资产工作台，维护并导出常用 rules、skills、spec 模板、Agent 模板、workflow 模板和 test patterns。
 3. `CLI`：校验、安装、列出并运行 bundle 提供的 workflow。
 4. `test-console`：读取现成的 `test-plan`，触发 runner，生成规范化测试结果并可视化。
+
+注意：`spec-web-ui` 不属于单个项目的需求交付主流程。具体项目的需求状态仍应落在目标项目自己的 `spec-draft/`、`specs/changes/`、`tests/` 和验收记录中；`spec-web-ui` 只提供可复用资产的浏览、组合和导出能力，后续可独立成一个专门维护和部署的工具站点。
 
 当前实现流程图见：
 - [todo/specos-current-implemented-flow.md](/Users/liquiid/code/specos-ai/todo/specos-current-implemented-flow.md)
@@ -118,7 +120,7 @@ node /Users/liquiid/code/specos-ai/packages/cli/dist/main.js init --template spe
 
 ### 2. 用 `spec-web-ui` 组织项目资产
 
-`spec-web-ui` 是 SpecOS 面向开发人员的 AI 工程配置资产工作台。它当前不是完整 workflow runner，而是一个“catalog-first workspace”，用于沉淀、浏览、选择和组合日常开发中高频使用的 rules、skills、agent roles、templates、workflows 和 test patterns。
+`spec-web-ui` 是 SpecOS 面向开发人员的 AI 工程配置资产工作台。它当前不是完整 workflow runner，也不是单个项目的需求状态管理系统，而是一个“catalog-first workspace”，用于沉淀、浏览、选择和组合日常开发中高频使用的 rules、skills、agent roles、templates、workflows 和 test patterns。
 
 前期，它帮助开发人员快速 pick 项目需要的资产，组合出项目级 AI 配置骨架，减少重复编写规则、Agent 职责、技能说明和测试规范的成本。
 
@@ -126,11 +128,13 @@ node /Users/liquiid/code/specos-ai/packages/cli/dist/main.js init --template spe
 
 当前主要能力：
 - 浏览 rules / templates / agent roles
-- 创建项目工作区
-- 维护项目 draft
+- 创建配置工作区
 - 选择和组合项目所需配置资产
+- 预览项目级 AI 配置、目录结构和 workflow 关系
 - 导出当前选择资产的 bundle 快照
 - 同时生成一个可被 CLI 安装的 `.specos-bundle/`
+
+这里的“配置工作区”是资产选择与导出过程中的组合辅助，不是某个目标项目需求的权威生命周期状态。需求从原始输入进入实现、测试和验收时，权威链路应在目标项目仓库内继续推进。
 
 启动方式：
 
@@ -147,12 +151,12 @@ npm run dev -- --port 3001
 建议使用路径：
 
 1. 进入 `discover`，浏览规则、模板、agent 资产
-2. 进入 `projects`，创建一个项目工作区
-3. 进入项目 draft 页面，编辑结构化草稿
+2. 进入配置工作区，选择并组合项目所需资产
+3. 预览生成目录结构和 workflow 关系
 4. 进入 export 页面，生成导出快照并做差异评审
 
 你会看到的主要数据位置：
-- 项目工作区：`spec-web-ui/workspace/projects/`
+- 配置工作区：`spec-web-ui/workspace/projects/`
 - 导出快照：`spec-web-ui/workspace/exports/`
 - 可安装 bundle：`spec-web-ui/workspace/exports/<projectId>/.specos-bundle/`
 

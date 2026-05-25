@@ -23,6 +23,10 @@ describe("SiteNav", () => {
       "href",
       "/agent-templates"
     );
+    expect(screen.getByRole("link", { name: "Skill 仓库/" })).toHaveAttribute(
+      "href",
+      "/skills"
+    );
     expect(screen.getByText("Workflow 模版/")).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByRole("link", { name: "项目/" })).toHaveAttribute("href", "/projects");
   });

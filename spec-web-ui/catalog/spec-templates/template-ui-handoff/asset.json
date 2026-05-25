@@ -1,0 +1,38 @@
+{
+  "id": "template-ui-handoff",
+  "type": "spec_template",
+  "title": "UI Handoff Draft",
+  "summary": "Draft template for UI-facing workbench flows, state coverage, and handoff constraints.",
+  "direction": "frontend",
+  "stacks": [
+    "react",
+    "next"
+  ],
+  "tags": [
+    "ui",
+    "handoff",
+    "draft"
+  ],
+  "appliesTo": [
+    "frontend",
+    "ui"
+  ],
+  "dependsOn": [
+    "rule-frontend-react",
+    "rule-ui-pencil"
+  ],
+  "conflictsWith": [],
+  "sourcePath": "spec-web-ui/catalog/spec-templates/template-ui-handoff/ui-handoff.template.md",
+  "files": [
+    "spec-draft/_template/feature/ui-handoff.template.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "补齐页面状态、空态和异常态",
+    "把原型交付和 API 假设串起来"
+  ],
+  "sampleOutput": "偏 UI handoff 的结构化 draft。",
+  "contentFiles": {
+    "spec-draft/_template/feature/ui-handoff.template.md": "spec-web-ui/catalog/spec-templates/template-ui-handoff/ui-handoff.template.md"
+  }
+}

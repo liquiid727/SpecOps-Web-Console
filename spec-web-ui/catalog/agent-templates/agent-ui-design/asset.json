@@ -1,0 +1,38 @@
+{
+  "id": "agent-ui-design",
+  "type": "agent_role",
+  "title": "UI Design Agent",
+  "summary": "Owns product UI structure, screen states, responsive behavior, and handoff decisions.",
+  "direction": "frontend",
+  "stacks": [
+    "react",
+    "next"
+  ],
+  "tags": [
+    "ui",
+    "design",
+    "handoff"
+  ],
+  "appliesTo": [
+    "frontend",
+    "ui"
+  ],
+  "dependsOn": [
+    "template-ui-handoff",
+    "rule-frontend-react"
+  ],
+  "conflictsWith": [],
+  "sourcePath": "spec-web-ui/catalog/agent-templates/agent-ui-design/ui-design-agent.md",
+  "files": [
+    "ai/agents/ui-design-agent.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "明确空态、加载态、成功态和失败态",
+    "保持路由、组件、文案和场景名称可追溯"
+  ],
+  "sampleOutput": "UI 设计计划、状态覆盖和响应式交付说明。",
+  "contentFiles": {
+    "ai/agents/ui-design-agent.md": "spec-web-ui/catalog/agent-templates/agent-ui-design/ui-design-agent.md"
+  }
+}

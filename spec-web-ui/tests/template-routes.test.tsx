@@ -44,11 +44,27 @@ vi.mock("@/lib/catalog", () => ({
       sourcePath: "ai/agents/spec-editor.md",
       files: ["ai/agents/spec-editor.md"],
       version: "1.0.0"
+    },
+    {
+      id: "skill-ddd-layering-governance",
+      type: "skill",
+      title: "DDD Layering Governance",
+      summary: "Guides DDD layer ownership and domain modeling decisions.",
+      direction: "backend",
+      stacks: ["go"],
+      tags: ["ddd", "layering"],
+      appliesTo: ["backend"],
+      dependsOn: [],
+      conflictsWith: [],
+      sourcePath: "spec-web-ui/catalog/skills/ddd-layering-governance/SKILL.md",
+      files: ["spec-web-ui/catalog/skills/ddd-layering-governance/SKILL.md"],
+      version: "1.0.0"
     }
   ]
 }));
 
 import AgentTemplatesPage from "@/app/agent-templates/page";
+import SkillsPage from "@/app/skills/page";
 import SpecTemplatesPage from "@/app/spec-templates/page";
 
 describe("template library routes", () => {
@@ -68,5 +84,15 @@ describe("template library routes", () => {
     expect(screen.getByRole("searchbox", { name: "搜索 Agent 模版" })).toBeInTheDocument();
     expect(screen.getByText("Spec Editor Agent")).toBeInTheDocument();
     expect(screen.queryByText("Product UI Spec Template")).not.toBeInTheDocument();
+  });
+
+  it("renders skills on a dedicated repository route", async () => {
+    render(await SkillsPage({ searchParams: Promise.resolve({}) }));
+
+    expect(screen.getByRole("heading", { name: "Skill 仓库" })).toBeInTheDocument();
+    expect(screen.getByRole("searchbox", { name: "搜索 Skill" })).toBeInTheDocument();
+    expect(screen.getByText("DDD Layering Governance")).toBeInTheDocument();
+    expect(screen.queryByText("Product UI Spec Template")).not.toBeInTheDocument();
+    expect(screen.queryByText("Spec Editor Agent")).not.toBeInTheDocument();
   });
 });

@@ -1,0 +1,37 @@
+{
+  "id": "agent-architect-reviewer",
+  "type": "agent_role",
+  "title": "Architect Reviewer",
+  "summary": "Reviews context boundaries, integration seams, and long-term shape before implementation.",
+  "direction": "fullstack",
+  "stacks": [
+    "go",
+    "react",
+    "python"
+  ],
+  "tags": [
+    "review",
+    "architecture",
+    "boundaries"
+  ],
+  "appliesTo": [
+    "backend",
+    "frontend"
+  ],
+  "dependsOn": [
+    "agent-spec-editor"
+  ],
+  "conflictsWith": [],
+  "sourcePath": "spec-web-ui/catalog/agent-templates/agent-architect-reviewer/architect-reviewer.md",
+  "files": [
+    "ai/reviewers/architect-reviewer.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "确认边界划分、系统职责和集成方式"
+  ],
+  "sampleOutput": "架构边界评审和演进建议。",
+  "contentFiles": {
+    "ai/reviewers/architect-reviewer.md": "spec-web-ui/catalog/agent-templates/agent-architect-reviewer/architect-reviewer.md"
+  }
+}

@@ -95,6 +95,7 @@ describe("buildPresetBundlePreview", () => {
     expect(preview.assetTypeCounts).toEqual({
       agent_role: 1,
       rule: 1,
+      skill: 0,
       spec_template: 1
     });
     expect(preview.exportDirectories).toEqual(["ai", "rules", "spec-draft"]);

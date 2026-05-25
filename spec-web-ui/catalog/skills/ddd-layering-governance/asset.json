@@ -1,0 +1,27 @@
+{
+  "id": "skill-ddd-layering-governance",
+  "type": "skill",
+  "title": "DDD Layering Governance",
+  "summary": "Guides DDD layer ownership, thin application orchestration, domain-owned validation, and value-object modeling.",
+  "direction": "backend",
+  "stacks": ["go"],
+  "tags": ["ddd", "layering", "domain", "governance"],
+  "appliesTo": ["backend"],
+  "dependsOn": [],
+  "conflictsWith": [],
+  "sourcePath": "spec-web-ui/catalog/skills/ddd-layering-governance/SKILL.md",
+  "files": [
+    "spec-web-ui/catalog/skills/ddd-layering-governance/SKILL.md",
+    "spec-web-ui/catalog/skills/ddd-layering-governance/references/layering-rules.md",
+    "spec-web-ui/catalog/skills/ddd-layering-governance/references/domain-modeling-rules.md",
+    "spec-web-ui/catalog/skills/ddd-layering-governance/references/anti-patterns.md",
+    "spec-web-ui/catalog/skills/ddd-layering-governance/references/review-checklist.md",
+    "spec-web-ui/catalog/skills/ddd-layering-governance/agents/openai.yaml"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "确认业务合法性是否落在 domain API",
+    "把 application 保持为编排层，不承载业务真相"
+  ],
+  "sampleOutput": "DDD 分层决策、建模归属、反模式识别和实现落点建议。"
+}

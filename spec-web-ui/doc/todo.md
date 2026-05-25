@@ -1,5 +1,7 @@
 spec UI
-这个是个面向内部的工具站站，你可以理解为一个spec kit
+这个是个面向内部的工具站点，你可以理解为一个 spec kit / asset workbench。
+
+它维护平时积累的 spec 模板、agent 模板、workflow 模板、skill 内容、rules 和 test patterns。它不承载某个目标项目的需求生命周期；目标项目自己的需求流程仍然在目标项目仓库里走 `spec-draft -> specs/changes -> tests -> results -> acceptance -> specs/current`。
 
 UI spec：
 
@@ -27,7 +29,7 @@ System Behaviors
 
 
 UI States（界面状态机）
-- 导航栏右上角有主页/spec模版/agent模版/workflow模版（暂时不支持）/项目/
+- 导航栏右上角有主页/spec模版/agent模版/workflow模版（暂时不支持）/配置工作区/
 - 右上角还有语言切换和日夜模式切换，对应的，做成点击类型icon，点击之后下拉切换对应的语言类型和日/夜
 - 界面要简单，除了上面的导航栏和上面模版的搜索/筛选栏目 后面的内容模块都不要带有负责界面设计
     - 现在的内容模块似乎是复用了card，左右两侧都有对应的类似终端和apple的元素在这里，显得界面非常臃肿

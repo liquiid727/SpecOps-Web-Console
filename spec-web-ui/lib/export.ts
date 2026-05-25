@@ -53,7 +53,7 @@ export function buildExportBundle(
 ): ExportBundle {
   const files = selectedAssets.flatMap((asset) =>
     asset.files.map((relativePath) => ({
-      sourcePath: relativePath,
+      sourcePath: asset.contentFiles?.[relativePath] ?? relativePath,
       targetPath: relativePath
     }))
   );

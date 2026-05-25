@@ -1,0 +1,38 @@
+{
+  "id": "agent-specialized-check",
+  "type": "agent_role",
+  "title": "Specialized Check Agent",
+  "summary": "Owns focused smoke, regression, contract, and fixture checks outside API or E2E ownership.",
+  "direction": "fullstack",
+  "stacks": [
+    "go",
+    "react",
+    "python"
+  ],
+  "tags": [
+    "smoke",
+    "contract",
+    "fixtures"
+  ],
+  "appliesTo": [
+    "backend",
+    "frontend"
+  ],
+  "dependsOn": [
+    "template-normalized-spec"
+  ],
+  "conflictsWith": [],
+  "sourcePath": "spec-web-ui/catalog/agent-templates/agent-specialized-check/specialized-check-agent.md",
+  "files": [
+    "ai/agents/specialized-check-agent.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "把专项检查和命名业务风险绑定",
+    "返回规范化结果而不是工具原始输出"
+  ],
+  "sampleOutput": "专项检查结果、夹具说明和 smoke/contract 缺口。",
+  "contentFiles": {
+    "ai/agents/specialized-check-agent.md": "spec-web-ui/catalog/agent-templates/agent-specialized-check/specialized-check-agent.md"
+  }
+}

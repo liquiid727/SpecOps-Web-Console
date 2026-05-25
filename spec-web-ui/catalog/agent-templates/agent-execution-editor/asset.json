@@ -1,0 +1,38 @@
+{
+  "id": "agent-execution-editor",
+  "type": "agent_role",
+  "title": "Execution Editor",
+  "summary": "Owns implementation entrypoints, orchestration scripts, and execution wiring for accepted changes.",
+  "direction": "fullstack",
+  "stacks": [
+    "go",
+    "react",
+    "python"
+  ],
+  "tags": [
+    "execution",
+    "implementation",
+    "scripts"
+  ],
+  "appliesTo": [
+    "backend",
+    "frontend"
+  ],
+  "dependsOn": [
+    "agent-spec-editor"
+  ],
+  "conflictsWith": [],
+  "sourcePath": "spec-web-ui/catalog/agent-templates/agent-execution-editor/execution-editor.md",
+  "files": [
+    "ai/agents/execution-editor.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "确认入口脚本、命令和配置变更都能追溯到 spec",
+    "记录验证命令和跳过验证的原因"
+  ],
+  "sampleOutput": "执行入口、脚本编排和本地验证说明。",
+  "contentFiles": {
+    "ai/agents/execution-editor.md": "spec-web-ui/catalog/agent-templates/agent-execution-editor/execution-editor.md"
+  }
+}
