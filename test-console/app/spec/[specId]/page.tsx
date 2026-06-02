@@ -8,6 +8,7 @@ import { StatusPill } from "@/components/status-pill";
 import {
   buildApiTopologyTree,
   buildBusinessFlowMapFromPlan,
+  buildReadinessSummary,
   buildScenarioChains,
   getSpecBundle,
 } from "@/lib/data";
@@ -19,7 +20,7 @@ export default async function SpecPage({
   params: Promise<{ specId: string }>;
 }) {
   const { specId } = await params;
-  const { plan, latestRun: run, allRuns } = await getSpecBundle(specId);
+  const { plan, latestRun: run, allRuns, allSessions } = await getSpecBundle(specId);
 
   if (!run) {
     notFound();
@@ -29,7 +30,25 @@ export default async function SpecPage({
   const scenarioChains = buildScenarioChains(plan, run);
   const businessFlow = buildBusinessFlowMapFromPlan(plan, scenarioChains, run);
   const apiTopology = buildApiTopologyTree(plan, run, businessFlow);
+  const readiness = buildReadinessSummary(plan, run);
+  const performanceItems = run.items.filter((item) => item.testType === "performance" || item.testType === "latency");
+  const concurrencyItems = run.items.filter((item) => item.testType === "concurrency");
   const isLatestGenerated = allRuns[0]?.runId === run.runId;
+  const latestSession = allSessions[0];
+  const failedCompliance = readiness.standardCompliance.filter((item) => item.status === "failed" || item.status === "missing");
+  const sessionState = !latestSession
+    ? "empty"
+    : latestSession.specVersion !== run.specVersion || latestSession.changeId !== run.changeId
+      ? "stale"
+      : latestSession.scope !== "all" && readiness.decision !== "ready"
+        ? "partial"
+        : latestSession.status;
+  const nextStep =
+    failedCompliance[0]?.ownerAgent
+      ? `Rerun ${failedCompliance[0].ownerAgent.replace("-agent", "")} scope after fixing ${failedCompliance[0].requirementId}.`
+      : readiness.decision === "ready"
+        ? "Gate is ready. Review evidence before promote/release."
+        : "Run all scopes to refresh normalized evidence.";
 
   return (
     <main className="mx-auto flex min-h-screen max-w-7xl flex-col gap-6 px-6 py-10">
@@ -47,7 +66,7 @@ export default async function SpecPage({
           </div>
           <div className="flex flex-col items-end gap-3">
             <StatusPill label={run.releaseDecision} />
-            <RerunSpecForm specId={run.specId} specVersion={run.specVersion} />
+            <div className="text-sm text-muted">Use the Run Panel below for scoped reruns.</div>
           </div>
         </div>
       </header>
@@ -58,8 +77,17 @@ export default async function SpecPage({
         </div>
       ) : null}
 
+      <nav className="flex flex-wrap gap-3 rounded-2xl border border-slate-800 bg-slate-950/30 p-4 text-sm">
+        <Link href={`/spec/${run.specId}/plan`} className="text-indigo-300">Test Plan</Link>
+        <Link href={`/spec/${run.specId}/api`} className="text-indigo-300">API Tests</Link>
+        <Link href={`/spec/${run.specId}/scenario`} className="text-indigo-300">Scenario / E2E</Link>
+        <Link href={`/spec/${run.specId}/performance`} className="text-indigo-300">Performance</Link>
+        <Link href={`/spec/${run.specId}/concurrency`} className="text-indigo-300">Concurrency</Link>
+        <Link href={`/spec/${run.specId}/gates`} className="text-indigo-300">Gate Report</Link>
+      </nav>
+
       <SectionCard title="Summary" description="先看结论和阻塞，再决定是否下钻。">
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-4">
           <div className="rounded-xl border border-slate-800 bg-slate-950/30 p-4">
             <div className="text-sm text-muted">总体状态</div>
             <div className="mt-2">
@@ -67,23 +95,225 @@ export default async function SpecPage({
             </div>
           </div>
           <div className="rounded-xl border border-slate-800 bg-slate-950/30 p-4">
+            <div className="text-sm text-muted">Gate 结论</div>
+            <div className="mt-2">
+              <StatusPill label={readiness.decision} />
+            </div>
+          </div>
+          <div className="rounded-xl border border-slate-800 bg-slate-950/30 p-4">
             <div className="text-sm text-muted">阻塞原因</div>
             <ul className="mt-2 space-y-2 text-sm text-white">
-              {run.blockers.map((blocker) => (
+              {readiness.blockers.map((blocker) => (
                 <li key={blocker}>{blocker}</li>
               ))}
+              {readiness.blockers.length === 0 ? <li className="text-muted">暂无阻塞项</li> : null}
             </ul>
           </div>
           <div className="rounded-xl border border-slate-800 bg-slate-950/30 p-4">
-            <div className="text-sm text-muted">覆盖缺口</div>
+            <div className="text-sm text-muted">缺失证据</div>
             <ul className="mt-2 space-y-2 text-sm text-white">
-              {run.coverageGaps.map((gap) => (
+              {readiness.missingEvidence.map((gap) => (
                 <li key={gap}>{gap}</li>
               ))}
+              {readiness.missingEvidence.length === 0 ? <li className="text-muted">暂无缺失证据</li> : null}
             </ul>
           </div>
         </div>
       </SectionCard>
+
+      <SectionCard title="Developer Test Loop" description="开发者本地闭环：选择 scope、运行受控命令、查看 session、定位失败、按最小范围重跑。">
+        <div className="grid gap-4 xl:grid-cols-[1fr_1.2fr_1fr]">
+          <div className="rounded-xl border border-slate-800 bg-slate-950/30 p-4">
+            <div className="text-sm font-medium text-white">Run Panel</div>
+            <p className="mt-2 text-sm text-muted">
+              支持 unit、API、Scenario/E2E、Performance、Concurrency、Gate 和 All scopes。
+            </p>
+            <div className="mt-4">
+              <RerunSpecForm specId={run.specId} specVersion={run.specVersion} />
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-800 bg-slate-950/30 p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-medium text-white">Current Session</div>
+                <div className="mt-1 text-sm text-muted">
+                  {latestSession ? `${latestSession.runId} · ${latestSession.scope}` : "No run session yet"}
+                </div>
+              </div>
+              <div className="space-y-2 text-right">
+                <div className="text-xs uppercase tracking-wide text-muted">Session State</div>
+                <StatusPill label={sessionState} />
+              </div>
+            </div>
+            <div className="mt-4 grid gap-3 text-sm md:grid-cols-2">
+              <div className="rounded-lg border border-slate-800 p-3">exit: {latestSession?.exitCode ?? "—"}</div>
+              <div className="rounded-lg border border-slate-800 p-3">commands: {latestSession?.commands.length ?? 0}</div>
+              <div className="rounded-lg border border-slate-800 p-3">artifacts: {latestSession?.resultArtifacts.length ?? 0}</div>
+              <div className="rounded-lg border border-slate-800 p-3">gate: {latestSession?.gateReportPath ?? "—"}</div>
+            </div>
+            {latestSession?.stderrSummary ? (
+              <pre className="mt-4 max-h-32 overflow-auto rounded-lg border border-rose-900/40 bg-rose-950/20 p-3 text-xs text-rose-100">
+                {latestSession.stderrSummary}
+              </pre>
+            ) : null}
+          </div>
+
+          <div className="rounded-xl border border-slate-800 bg-slate-950/30 p-4">
+            <div className="text-sm font-medium text-white">Failure Inspector</div>
+            <p className="mt-2 text-sm text-muted">{nextStep}</p>
+            <div className="mt-4 space-y-3">
+              {failedCompliance.slice(0, 3).map((item) => (
+                <div key={`${item.requirementId}-${item.summary}`} className="rounded-lg border border-amber-900/50 bg-amber-950/20 p-3 text-sm">
+                  <div className="font-medium text-amber-100">{item.requirementId}</div>
+                  <div className="mt-1 text-amber-100">{item.ownerAgent} · {item.riskTier} · {item.gateImpact}</div>
+                  <div className="mt-2 text-slate-200">{item.summary}</div>
+                  <div className="mt-2 text-xs text-indigo-200">rerun: {item.ownerAgent.includes("performance") ? "performance" : item.ownerAgent.includes("concurrency") ? "concurrency" : item.ownerAgent.includes("bruno") ? "api" : "scenario"}</div>
+                </div>
+              ))}
+              {failedCompliance.length === 0 ? <div className="text-sm text-muted">No failed or missing standard evidence.</div> : null}
+            </div>
+          </div>
+        </div>
+      </SectionCard>
+
+      <SectionCard title="Run Session Timeline" description="按最近运行展示本地控制台命令、状态和生成 artifact。">
+        <div className="space-y-3">
+          {allSessions.slice(0, 5).map((session) => (
+            <div key={session.runId} className="rounded-xl border border-slate-800 bg-slate-950/30 p-4 text-sm">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="font-medium text-white">{session.runId}</div>
+                  <div className="mt-1 text-muted">{session.scope} · {session.startedAt} → {session.endedAt}</div>
+                </div>
+                <StatusPill label={session.status} />
+              </div>
+              <div className="mt-3 grid gap-2 md:grid-cols-3">
+                {session.commands.map((command) => (
+                  <div key={`${session.runId}-${command.scope}-${command.startedAt}`} className="rounded-lg border border-slate-800 p-3">
+                    <div className="font-medium text-white">{command.scope}</div>
+                    <div className="mt-1 text-muted">exit {command.exitCode}</div>
+                    <div className="mt-1 text-xs text-slate-300">{command.command} {command.args.join(" ")}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+          {allSessions.length === 0 ? <div className="text-sm text-muted">No run session artifacts yet.</div> : null}
+        </div>
+      </SectionCard>
+
+      <SectionCard
+        title="Test Plan Matrix"
+        description="从 spec 派生出的测试设计，不从具体实现或框架输出反推。"
+      >
+        {plan ? (
+          <div className="grid gap-4 lg:grid-cols-3">
+            <div className="rounded-xl border border-slate-800 bg-slate-950/30 p-4">
+              <div className="text-sm font-medium text-white">Endpoints</div>
+              <div className="mt-3 space-y-3">
+                {plan.endpoints.map((endpoint) => (
+                  <div key={`${endpoint.method}-${endpoint.path}`} className="rounded-lg border border-slate-800 p-3 text-sm">
+                    <div className="font-medium text-white">{endpoint.name}</div>
+                    <div className="mt-1 text-muted">{endpoint.method} {endpoint.path}</div>
+                    <div className="mt-2 text-xs text-slate-300">branches: {endpoint.branches.join(", ")}</div>
+                    <div className="mt-1 text-xs text-slate-300">rule: {endpoint.relatedRule}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-slate-950/30 p-4">
+              <div className="text-sm font-medium text-white">Scenarios</div>
+              <div className="mt-3 space-y-3">
+                {plan.scenarios.map((scenario) => (
+                  <div key={scenario.name} className="rounded-lg border border-slate-800 p-3 text-sm">
+                    <div className="font-medium text-white">{scenario.name}</div>
+                    <div className="mt-1 text-muted">{scenario.priority} · {scenario.branches.join(", ")}</div>
+                    <div className="mt-2 text-xs text-slate-300">steps: {scenario.steps.join(" → ")}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-slate-950/30 p-4">
+              <div className="text-sm font-medium text-white">Release Gates</div>
+              <div className="mt-3 space-y-3">
+                {readiness.requiredGates.map((gate) => (
+                  <div key={gate.id} className="rounded-lg border border-slate-800 p-3 text-sm">
+                    <div className="font-medium text-white">{gate.id}</div>
+                    <div className="mt-1 text-muted">{gate.type} · {gate.blocking ? "blocking" : "non-blocking"}</div>
+                    <div className="mt-2 text-xs text-slate-300">required: {gate.requiredTestTypes.join(", ")}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="text-sm text-muted">没有找到对应的 test-plan。</div>
+        )}
+      </SectionCard>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <SectionCard
+          title="Performance / Latency"
+          description="展示 SLO、p95/p99、错误率和原始报告证据。"
+        >
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="text-sm text-muted">当前状态</div>
+            <StatusPill label={readiness.performanceStatus} />
+          </div>
+          <div className="space-y-3">
+            {performanceItems.map((item) => (
+              <div key={`${item.testType}-${item.target}`} className={`rounded-xl border p-4 ${statusPanelTone(item.status === "running" ? "warning" : item.status)}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-medium text-white">{item.target}</div>
+                    <div className="mt-1 text-xs uppercase tracking-wide text-muted">{item.testType} · {item.gateImpact ?? "informational"}</div>
+                  </div>
+                  <StatusPill label={item.status} />
+                </div>
+                <div className="mt-3 grid gap-3 text-sm md:grid-cols-3">
+                  <div className="rounded-lg border border-slate-800 p-3">p95: {item.metrics?.p95Ms ?? item.slo?.p95Ms ?? "—"} ms</div>
+                  <div className="rounded-lg border border-slate-800 p-3">p99: {item.metrics?.p99Ms ?? item.slo?.p99Ms ?? "—"} ms</div>
+                  <div className="rounded-lg border border-slate-800 p-3">error: {item.metrics?.errorRate ?? item.slo?.errorRate ?? "—"}</div>
+                </div>
+                <p className="mt-3 text-sm text-muted">{item.summary}</p>
+              </div>
+            ))}
+            {performanceItems.length === 0 ? <div className="text-sm text-muted">本轮没有 performance/latency 结果。</div> : null}
+          </div>
+        </SectionCard>
+
+        <SectionCard
+          title="Concurrency / Consistency"
+          description="展示并发 actor、请求数、不变量和最终状态证据。"
+        >
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="text-sm text-muted">当前状态</div>
+            <StatusPill label={readiness.concurrencyStatus} />
+          </div>
+          <div className="space-y-3">
+            {concurrencyItems.map((item) => (
+              <div key={`${item.testType}-${item.target}`} className={`rounded-xl border p-4 ${statusPanelTone(item.status === "running" ? "warning" : item.status)}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-medium text-white">{item.target}</div>
+                    <div className="mt-1 text-xs uppercase tracking-wide text-muted">{item.gateImpact ?? "informational"}</div>
+                  </div>
+                  <StatusPill label={item.status} />
+                </div>
+                <div className="mt-3 space-y-2 text-sm">
+                  <div className="text-slate-100">Invariant: {item.concurrencyProfile?.invariant ?? "—"}</div>
+                  <div className="text-muted">Actors / Requests: {item.concurrencyProfile?.actors ?? "—"} / {item.concurrencyProfile?.requests ?? "—"}</div>
+                  <div className="text-muted">Expected: {item.concurrencyProfile?.expectedFinalState ?? "—"}</div>
+                  <div className="text-muted">Observed: {item.concurrencyProfile?.observedFinalState ?? "—"}</div>
+                </div>
+                <p className="mt-3 text-sm text-muted">{item.summary}</p>
+              </div>
+            ))}
+            {concurrencyItems.length === 0 ? <div className="text-sm text-muted">本轮没有 concurrency 结果。</div> : null}
+          </div>
+        </SectionCard>
+      </div>
 
       {businessFlow ? (
         <SectionCard

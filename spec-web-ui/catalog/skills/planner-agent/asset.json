@@ -1,0 +1,34 @@
+{
+  "id": "skill-planner-agent",
+  "type": "skill",
+  "title": "Planner Agent",
+  "summary": "Use when a routed task needs context-aware task breakdown, risk grading, dependency mapping, and a Task Plan before implementation or testing begins.",
+  "direction": "fullstack",
+  "stacks": [
+    "go",
+    "react",
+    "specos"
+  ],
+  "tags": [
+    "planner",
+    "task-plan",
+    "team",
+    "reusable",
+    "go-pack"
+  ],
+  "appliesTo": [
+    "backend",
+    "frontend"
+  ],
+  "dependsOn": [],
+  "conflictsWith": [],
+  "sourcePath": "spec-web-ui/catalog/skills/planner-agent/SKILL.md",
+  "files": [
+    "spec-web-ui/catalog/skills/planner-agent/SKILL.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "按项目类型确认是否启用该 skill，并检查引用资料是否适配目标仓库。"
+  ],
+  "sampleOutput": "可复用 skill 说明、触发条件、参考资料和运行边界。"
+}

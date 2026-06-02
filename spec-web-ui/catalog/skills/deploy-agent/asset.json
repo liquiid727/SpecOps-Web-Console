@@ -1,0 +1,33 @@
+{
+  "id": "skill-deploy-agent",
+  "type": "skill",
+  "title": "Deploy Agent",
+  "summary": "Use when a task needs build, rollout, rollback, or release-step planning without tying the workflow to one product topology.",
+  "direction": "fullstack",
+  "stacks": [
+    "go",
+    "react"
+  ],
+  "tags": [
+    "deploy",
+    "release",
+    "rollback",
+    "reusable",
+    "go-pack"
+  ],
+  "appliesTo": [
+    "backend",
+    "frontend"
+  ],
+  "dependsOn": [],
+  "conflictsWith": [],
+  "sourcePath": "spec-web-ui/catalog/skills/deploy-agent/SKILL.md",
+  "files": [
+    "spec-web-ui/catalog/skills/deploy-agent/SKILL.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "按项目类型确认是否启用该 skill，并检查引用资料是否适配目标仓库。"
+  ],
+  "sampleOutput": "可复用 skill 说明、触发条件、参考资料和运行边界。"
+}

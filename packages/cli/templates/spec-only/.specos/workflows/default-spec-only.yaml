@@ -1,0 +1,5 @@
+workflow: default-spec-only
+steps:
+  - refine_spec
+  - validate_spec
+  - generate_tests

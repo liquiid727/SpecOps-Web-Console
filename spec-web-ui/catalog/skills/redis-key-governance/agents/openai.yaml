@@ -1,0 +1,3 @@
+display_name: Redis Key Governance
+short_description: Standardize Redis key ownership, TTL, truth, and review rules.
+default_prompt: Design or review Redis key families with explicit owner, shape, TTL, truth mode, fallback rules, and documentation sync.

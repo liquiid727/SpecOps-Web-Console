@@ -1,0 +1,37 @@
+{
+  "id": "skill-redis-key-governance",
+  "type": "skill",
+  "title": "Redis Key Governance",
+  "summary": "Define, review, and document Redis key families for backend services without publishing one product's key catalog as a shared foundation truth. Use when adding or changing Redis keys, TTLs, projections, leases, rate limits, replay guards, or hot-read paths.",
+  "direction": "backend",
+  "stacks": [
+    "go",
+    "specos"
+  ],
+  "tags": [
+    "redis",
+    "governance",
+    "keys",
+    "backend",
+    "go-pack"
+  ],
+  "appliesTo": [
+    "backend"
+  ],
+  "dependsOn": [],
+  "conflictsWith": [],
+  "sourcePath": "spec-web-ui/catalog/skills/redis-key-governance/SKILL.md",
+  "files": [
+    "spec-web-ui/catalog/skills/redis-key-governance/SKILL.md",
+    "spec-web-ui/catalog/skills/redis-key-governance/agents/openai.yaml",
+    "spec-web-ui/catalog/skills/redis-key-governance/references/anti-patterns.md",
+    "spec-web-ui/catalog/skills/redis-key-governance/references/naming-and-shape.md",
+    "spec-web-ui/catalog/skills/redis-key-governance/references/review-checklist.md",
+    "spec-web-ui/catalog/skills/redis-key-governance/references/ttl-and-truth.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "按项目类型确认是否启用该 skill，并检查引用资料是否适配目标仓库。"
+  ],
+  "sampleOutput": "可复用 skill 说明、触发条件、参考资料和运行边界。"
+}

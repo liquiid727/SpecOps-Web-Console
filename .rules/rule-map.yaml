@@ -37,6 +37,7 @@ work_types:
   spec:
     rules:
       - specs/_rules/README.md
+      - rules/testing/production-test-standards.md
       - rules/shared/error-code-governance.md
     agents:
       - spec-editor
@@ -46,6 +47,7 @@ work_types:
   tests:
     rules:
       - tests/README.md
+      - rules/testing/production-test-standards.md
       - rules/ci/spec-release-gates.md
     agents:
       - test-editor
@@ -54,6 +56,7 @@ work_types:
 
   ci:
     rules:
+      - rules/testing/production-test-standards.md
       - rules/ci/spec-release-gates.md
       - scripts/checks/README.md
     agents:

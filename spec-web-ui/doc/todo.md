@@ -37,3 +37,19 @@ UI States（界面状态机）
 
 Feedback（反馈机制）
 - loading （当进入界面的时候，数据可能需要加载，这里要有对应的loading动画）
+
+
+Future Todo：specosai-agent
+- 后续增加一个 `specosai-agent`，作为用户创建项目 agent/rule/skill 体系时的智能入口。
+- 用户可以通过自然语言描述、PRD、技术文档、接口文档、数据库设计文档或现有项目说明，让 `specosai-agent` 先判断项目类型、需求类型、技术栈、测试要求和治理要求。
+- `specosai-agent` 根据判断结果，推荐并选择需要放置到目标项目里的文件：
+  - `.agents/manifest.yaml`
+  - `.agents/roles/*.md`
+  - `ai/agents/*.md`
+  - `.codex/skills/*`
+  - `.skills/*`
+  - `.rules/rule-map.yaml`
+  - `rules/**/*.md`
+  - `spec-draft/`、`specs/`、`tests/` 相关模板
+- 该 agent 需要输出一份可预览的安装计划，说明每个 agent、skill、rule 为什么需要、放在哪个路径、是否会覆盖已有文件、是否需要用户确认。
+- 未来上线之后再把这一套能力开发完整：从“用户描述/文档输入”到“自动选择 agent/rule/skill 文件”再到“一键导出或安装到目标项目”。

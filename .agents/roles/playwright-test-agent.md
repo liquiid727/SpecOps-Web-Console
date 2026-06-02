@@ -14,6 +14,7 @@ Define browser-level scenario coverage for UI flows described by specs.
 
 - Playwright scenario list.
 - Coverage for empty, loading, success, and failure states.
+- Trace, screenshot, and video evidence requirements for P0/P1 UI journeys.
 - Setup dependencies and flaky-risk notes.
 
 ## Guardrails
@@ -22,3 +23,4 @@ Define browser-level scenario coverage for UI flows described by specs.
 - Keep test flow names aligned with spec terminology.
 - Treat `.agents/manifest.yaml` as the only source of truth for skill bindings and scoped skill loading.
 - Surface missing selectors, fixtures, or routes early.
+- Emit normalized scenario evidence with `requirementId`, `ownerAgent`, and artifact references.

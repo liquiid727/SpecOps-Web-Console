@@ -4,9 +4,13 @@ import type {
   ApiTopologyTree,
   BusinessFlowMap,
   FlowResult,
+  ReadinessSummary,
+  RunSession,
   ScenarioChain,
   TestPlan,
   TestRun,
+  TestType,
+  TestOwnerAgent,
 } from "@/lib/types";
 
 const repoRoot = path.resolve(process.cwd(), "..");
@@ -21,7 +25,7 @@ async function readJsonFile<T>(filePath: string): Promise<T> {
 async function readJsonDirectory<T>(dirPath: string): Promise<T[]> {
   const entries = await fs.readdir(dirPath, { withFileTypes: true });
   const jsonFiles = entries
-    .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".json") && !entry.name.endsWith(".gate-report.json"))
     .map((entry) => path.join(dirPath, entry.name));
 
   const items = await Promise.all(jsonFiles.map((filePath) => readJsonFile<T>(filePath)));
@@ -33,8 +37,26 @@ export async function getAllTestPlans(): Promise<TestPlan[]> {
 }
 
 export async function getAllTestRuns(): Promise<TestRun[]> {
-  const runs = await readJsonDirectory<TestRun>(resultsDir);
+  const entries = await fs.readdir(resultsDir, { withFileTypes: true });
+  const jsonFiles = entries
+    .filter((entry) =>
+      entry.isFile() &&
+      entry.name.endsWith(".json") &&
+      !entry.name.endsWith(".gate-report.json") &&
+      !entry.name.endsWith(".session.json"),
+    )
+    .map((entry) => path.join(resultsDir, entry.name));
+  const runs = await Promise.all(jsonFiles.map((filePath) => readJsonFile<TestRun>(filePath)));
   return runs.sort((left, right) => right.endedAt.localeCompare(left.endedAt));
+}
+
+export async function getAllRunSessions(): Promise<RunSession[]> {
+  const entries = await fs.readdir(resultsDir, { withFileTypes: true });
+  const sessionFiles = entries
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".session.json"))
+    .map((entry) => path.join(resultsDir, entry.name));
+  const sessions = await Promise.all(sessionFiles.map((filePath) => readJsonFile<RunSession>(filePath)));
+  return sessions.sort((left, right) => right.endedAt.localeCompare(left.endedAt));
 }
 
 export async function getLatestRunsBySpec(): Promise<TestRun[]> {
@@ -59,12 +81,222 @@ export async function getSpecBundle(specId: string): Promise<{
   plan?: TestPlan;
   latestRun?: TestRun;
   allRuns: TestRun[];
+  allSessions: RunSession[];
 }> {
-  const [plans, runs] = await Promise.all([getAllTestPlans(), getAllTestRuns()]);
+  const [plans, runs, sessions] = await Promise.all([getAllTestPlans(), getAllTestRuns(), getAllRunSessions()]);
   return {
     plan: plans.find((item) => item.specId === specId),
     latestRun: runs.find((item) => item.specId === specId),
     allRuns: runs.filter((item) => item.specId === specId),
+    allSessions: sessions.filter((item) => item.specId === specId),
+  };
+}
+
+function normalizeItemStatus(status: TestRun["items"][number]["status"]) {
+  return status === "running" ? "warning" : status;
+}
+
+function statusForItems(items: TestRun["items"]): "pass" | "warning" | "fail" | "pending" {
+  if (items.length === 0) return "pending";
+  return mergeStatuses(items.map((item) => normalizeItemStatus(item.status)));
+}
+
+function ownerAgentForTestType(testType: TestType): TestOwnerAgent {
+  if (testType === "api" || testType === "security" || testType === "compatibility") return "bruno-test-agent";
+  if (testType === "scenario") return "playwright-test-agent";
+  if (testType === "unit") return "unit-test-agent";
+  if (testType === "performance" || testType === "latency") return "performance-test-agent";
+  if (testType === "concurrency") return "concurrency-test-agent";
+  return "specialized-check-agent";
+}
+
+function requirementMatchesTestType(layer: string, testType: TestType): boolean {
+  if (layer === "e2e") return testType === "scenario";
+  if (layer === "observability") return true;
+  if (layer === "latency") return testType === "performance" || testType === "latency";
+  if (layer === "security" || layer === "compatibility") return testType === "api" || testType === layer;
+  return layer === testType;
+}
+
+function emptyRiskSummary(): ReadinessSummary["riskSummary"] {
+  return {
+    P0: { passed: 0, failed: 0, missing: 0, waived: 0, blocked: 0 },
+    P1: { passed: 0, failed: 0, missing: 0, waived: 0, blocked: 0 },
+    P2: { passed: 0, failed: 0, missing: 0, waived: 0, blocked: 0 },
+  };
+}
+
+function buildStandardCompliance(
+  plan: TestPlan | undefined,
+  run: TestRun,
+  gates: NonNullable<TestPlan["releaseGates"]>,
+): ReadinessSummary["standardCompliance"] {
+  const compliance: ReadinessSummary["standardCompliance"] = [];
+
+  for (const requirement of plan?.standardRequirements ?? []) {
+    const matchingItems = run.items.filter((item) =>
+      (requirementMatchesTestType(requirement.layer, item.testType) && item.requirementId === requirement.id) ||
+      (requirementMatchesTestType(requirement.layer, item.testType) &&
+        (requirement.appliesTo.includes(item.target) ||
+          (item.scenarioName ? requirement.appliesTo.includes(item.scenarioName) : false))),
+    );
+
+    if (matchingItems.length === 0) {
+      compliance.push({
+        requirementId: requirement.id,
+        status: "missing",
+        riskTier: requirement.requiredFor[0] ?? plan?.riskTier ?? "P2",
+        ownerAgent: requirement.ownerAgent,
+        gateImpact: requirement.gateImpact,
+        summary: `${requirement.id} missing normalized evidence`,
+      });
+      continue;
+    }
+
+    for (const item of matchingItems) {
+      const hasEvidence = requirement.requiredEvidence.every((type) =>
+        item.artifactRefs?.some((ref) => ref.type === type),
+      );
+      compliance.push({
+        requirementId: requirement.id,
+        status: item.status === "pass" && hasEvidence ? "passed" : item.status === "pass" ? "missing" : "failed",
+        riskTier: requirement.requiredFor[0] ?? plan?.riskTier ?? "P2",
+        ownerAgent: item.ownerAgent ?? requirement.ownerAgent,
+        gateImpact: item.gateImpact ?? requirement.gateImpact,
+        summary: hasEvidence ? item.summary : `${item.summary}; missing ${requirement.requiredEvidence.join(", ")} evidence`,
+      });
+    }
+  }
+
+  for (const gate of gates) {
+    for (const testType of gate.requiredTestTypes) {
+      if (compliance.some((item) => item.requirementId === `gate.${gate.id}.${testType}`)) {
+        continue;
+      }
+      const matchingItems = run.items.filter((item) => item.testType === testType);
+      if (matchingItems.length === 0) {
+        compliance.push({
+          requirementId: `gate.${gate.id}.${testType}`,
+          status: "missing",
+          riskTier: gate.blocking ? "P0" : "P2",
+          ownerAgent: ownerAgentForTestType(testType),
+          gateImpact: gate.blocking ? "blocking" : "warning",
+          summary: `${gate.id} missing ${testType} result`,
+        });
+      }
+    }
+  }
+
+  return compliance;
+}
+
+function buildRiskSummary(
+  compliance: ReadinessSummary["standardCompliance"],
+): ReadinessSummary["riskSummary"] {
+  const summary = emptyRiskSummary();
+  for (const item of compliance) {
+    summary[item.riskTier][item.status] += 1;
+    if (item.gateImpact === "blocking" && (item.status === "failed" || item.status === "missing")) {
+      summary[item.riskTier].blocked += 1;
+    }
+  }
+  return summary;
+}
+
+function buildAgentEvidenceSummary(
+  compliance: ReadinessSummary["standardCompliance"],
+): ReadinessSummary["agentEvidenceSummary"] {
+  const byAgent = new Map<TestOwnerAgent, ReadinessSummary["agentEvidenceSummary"][number]>();
+  for (const item of compliance) {
+    const existing = byAgent.get(item.ownerAgent) ?? {
+      ownerAgent: item.ownerAgent,
+      passed: 0,
+      failed: 0,
+      missing: 0,
+      waived: 0,
+    };
+    existing[item.status] += 1;
+    byAgent.set(item.ownerAgent, existing);
+  }
+  return [...byAgent.values()].sort((left, right) => left.ownerAgent.localeCompare(right.ownerAgent));
+}
+
+export function buildReadinessSummary(plan: TestPlan | undefined, run: TestRun): ReadinessSummary {
+  const performanceItems = run.items.filter((item) => item.testType === "performance" || item.testType === "latency");
+  const concurrencyItems = run.items.filter((item) => item.testType === "concurrency");
+  const gates = plan?.releaseGates?.length
+    ? plan.releaseGates
+    : [
+        {
+          id: "default-verification",
+          type: "change-verification" as const,
+          requiredTestTypes: ["api", "scenario"] as TestType[],
+          blocking: true,
+          evidenceRequired: ["trace"] as NonNullable<TestPlan["releaseGates"]>[number]["evidenceRequired"],
+        },
+      ];
+  const missingEvidence: string[] = [];
+  const blockers: string[] = [...run.blockers];
+  const failedGates: string[] = [];
+  const standardCompliance = buildStandardCompliance(plan, run, gates);
+  const riskSummary = buildRiskSummary(standardCompliance);
+  const agentEvidenceSummary = buildAgentEvidenceSummary(standardCompliance);
+
+  for (const gate of gates) {
+    let failed = false;
+
+    for (const testType of gate.requiredTestTypes) {
+      const matchingItems = run.items.filter((item) => item.testType === testType);
+      if (matchingItems.length === 0) {
+        missingEvidence.push(`${gate.id} missing ${testType} result`);
+        failed = gate.blocking || failed;
+        continue;
+      }
+
+      for (const item of matchingItems) {
+        if (item.status !== "pass" && (gate.blocking || item.gateImpact === "blocking")) {
+          blockers.push(`${gate.id} ${testType} failed: ${item.summary}`);
+          failed = true;
+        }
+      }
+    }
+
+    for (const evidenceType of gate.evidenceRequired) {
+      const hasEvidence = run.items.some((item) => item.artifactRefs?.some((ref) => ref.type === evidenceType));
+      if (!hasEvidence) {
+        missingEvidence.push(`${gate.id} missing ${evidenceType} evidence`);
+        failed = gate.blocking || failed;
+      }
+    }
+
+    if (failed) {
+      failedGates.push(gate.id);
+    }
+  }
+
+  const decision =
+    plan?.source === "draft"
+      ? "draft-only"
+      : failedGates.length > 0 || blockers.length > 0 || run.releaseDecision === "blocked"
+        ? "blocked"
+        : "ready";
+
+  return {
+    decision,
+    performanceStatus: statusForItems(performanceItems),
+    concurrencyStatus: statusForItems(concurrencyItems),
+    gateStatus: failedGates.length > 0 ? "fail" : gates.length > 0 ? "pass" : "pending",
+    requiredGates: gates.map((gate) => ({
+      id: gate.id,
+      type: gate.type,
+      requiredTestTypes: gate.requiredTestTypes,
+      blocking: gate.blocking,
+    })),
+    missingEvidence,
+    blockers,
+    standardCompliance,
+    riskSummary,
+    agentEvidenceSummary,
   };
 }
 

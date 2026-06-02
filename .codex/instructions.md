@@ -19,6 +19,7 @@
 
 ## Requirement Intake
 
+- For non-trivial or ambiguous requests, prefer running or mentally applying `route-request --request "<text>"` before choosing role context.
 - For any new requirement, feature request, behavior change, UI flow, API change, test asset, workflow, or agent/rule change, use `spec-draft/requirement-intake-flow.md` as the default intake process.
 - Classify the request before editing as one of: raw requirement, draft-only, active change, implementation, test, review, acceptance, or tooling/configuration.
 - If the request is raw or draft-only, first preserve it under `spec-draft/` or explicitly state why the current work is only exploratory.

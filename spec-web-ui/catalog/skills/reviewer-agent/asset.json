@@ -1,0 +1,33 @@
+{
+  "id": "skill-reviewer-agent",
+  "type": "skill",
+  "title": "Reviewer Agent",
+  "summary": "Use when reviewing code or design artifacts for ownership, state-machine consistency, layering, concurrency risk, test sufficiency, and documentation sync status.",
+  "direction": "fullstack",
+  "stacks": [
+    "go",
+    "react"
+  ],
+  "tags": [
+    "review",
+    "findings",
+    "architecture",
+    "reusable",
+    "go-pack"
+  ],
+  "appliesTo": [
+    "backend",
+    "frontend"
+  ],
+  "dependsOn": [],
+  "conflictsWith": [],
+  "sourcePath": "spec-web-ui/catalog/skills/reviewer-agent/SKILL.md",
+  "files": [
+    "spec-web-ui/catalog/skills/reviewer-agent/SKILL.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "按项目类型确认是否启用该 skill，并检查引用资料是否适配目标仓库。"
+  ],
+  "sampleOutput": "可复用 skill 说明、触发条件、参考资料和运行边界。"
+}

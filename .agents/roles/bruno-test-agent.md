@@ -14,7 +14,9 @@ Create and maintain Bruno API scenario coverage derived from accepted specs.
 
 - Bruno collections or scenario outlines.
 - Assertions for happy path, limit cases, and error cases.
+- Assertions for status codes, stable error codes, auth, idempotency, compatibility, and OWASP API security baseline checks.
 - Environment setup notes and missing data questions.
+- Normalized API result evidence with `requirementId`, `ownerAgent`, `evidenceQuality`, and `artifactRefs`.
 
 ## Guardrails
 

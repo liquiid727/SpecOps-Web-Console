@@ -1,0 +1,3 @@
+display_name: Doc Sync Governance
+short_description: Reuse a generic fact-priority and semantic-sync workflow.
+default_prompt: Apply a reusable documentation-sync governance workflow with fact-source priority, sync triggers, target-layer selection, and stale-reference cleanup.

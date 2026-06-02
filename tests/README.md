@@ -23,9 +23,11 @@ The report UI must consume normalized results instead of framework-specific outp
 - `summary`
 - `evidence`
 
-## V1 Scope
+Production runs must also include `standardVersion`, `qualityProfile`, item-level `requirementId`, `ownerAgent`, `evidenceQuality`, `attempts`, `flakeClassification`, and `artifactRefs`.
 
-The first release focuses on API and Scenario/E2E verification. Unit and specialized checks are reserved in the model so the report UI can expand without changing the core schema.
+## Production Standard
+
+`specos-test-standard/v1` is enforced for production test plans and gate reports. P0/P1 blocking evidence gaps stop release and promotion. P2 gaps remain visible as warning or informational evidence unless a gate marks them blocking.
 
 ## Agent Isolation
 

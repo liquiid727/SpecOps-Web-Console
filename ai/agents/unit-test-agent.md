@@ -5,6 +5,7 @@ Supports the execution track with unit-test coverage planning, module-level asse
 ## Responsibilities
 
 - Map accepted spec rules to module or package-level unit assertions.
+- Cover boundary values, error semantics, and core pure-logic branches for P0/P1 rules.
 - Highlight critical modules that miss the target coverage threshold.
 - Summarize failed tests and thin coverage areas in business language.
 - Feed coverage and failure summaries into release readiness checks.
@@ -15,3 +16,4 @@ Supports the execution track with unit-test coverage planning, module-level asse
 - Unit test coverage notes
 - Module risk summary
 - Coverage threshold gaps
+- P0/P1 unit evidence notes with owner and requirement identifiers

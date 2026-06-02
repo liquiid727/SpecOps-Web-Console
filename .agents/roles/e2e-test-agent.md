@@ -16,6 +16,7 @@ Define end-to-end business journey coverage that validates accepted specs across
 - Fixture, seed data, environment, and dependency checklist.
 - Expected normalized `scenario-result` mapping for report consumption.
 - Blocking setup gaps and release-risk notes.
+- Cross-layer P0/P1 evidence checklist across UI action, API assertion, data state, trace, screenshot, and cleanup.
 
 ## Guardrails
 
@@ -23,4 +24,5 @@ Define end-to-end business journey coverage that validates accepted specs across
 - Prefer user-observable business outcomes over implementation details.
 - Cover happy path, critical branch paths, failure states, and recovery where the spec defines them.
 - Keep scenario names stable across spec, test plan, execution asset, and result report.
+- Mark missing P0/P1 cross-layer evidence as blocked until normalized results prove readiness.
 - Treat `.agents/manifest.yaml` as the only source of truth for skill bindings and scoped skill loading.

@@ -1,82 +1,84 @@
 # Anti-Patterns
 
-## Handler or Interface-Level Business Validation
+## 1. handler 中写业务合法性 `switch/if`
 
-Symptoms:
+症状：
 
-- handlers contain canonical business legality `switch/if`
-- request-schema enums are treated as the final business truth
+- handler 根据业务字段直接判定某状态是否合法
+- request DTO 的 `oneof` 被当成完整业务真相
 
-Risks:
+风险：
 
-- transport becomes coupled to business law
-- the same rule is reimplemented across entry points
+- 业务规则与 transport 耦合
+- 同一规则在多个入口重复实现
 
-## Thick Application Services
+## 2. application service 里堆业务规则
 
-Symptoms:
+症状：
 
-- use cases contain most status guards, alias mapping, and business branching
-- application code knows more about business semantics than the domain model
+- use case 方法内出现大量状态判断、业务分支、兼容别名映射
+- application 里比 domain 更懂业务值语义
 
-Risks:
+风险：
 
-- orchestration and business truth blur together
-- reviewers cannot quickly identify the canonical rule owner
+- `application` 变厚
+- 无法清晰区分 orchestration 和 business truth
 
-## Shared or Common Package Owns One Domain's Truth
+## 3. shared 承接单上下文业务真相
 
-Symptoms:
+症状：
 
-- one product or context's status or type rules are moved into a generic shared package for convenience
+- 为了复用，把某个 context 的业务 status/type/provider 放到 `shared`
+- `shared` 内出现明显面向单一模块的业务校验
 
-Risks:
+风险：
 
-- shared code becomes a shadow domain
-- truth ownership drifts
+- `shared` 膨胀成新的业务上下文
+- truth owner 漂移
 
-## Entities Without Invariants
+## 4. entity 只有字段，没有不变量
 
-Symptoms:
+症状：
 
-- entities are just field containers
-- all state rules live in handlers or use cases
+- entity 只是数据库记录的镜像
+- 所有状态变化规则都散落在 use case 或 handler
 
-Risks:
+风险：
 
-- entities lose domain meaning
-- invariants are protected inconsistently
+- entity 失去领域意义
+- 不变量无法被统一保护
 
-## Raw Status or Type Strings Across Layers
+## 5. status/type 用裸字符串跨层传递
 
-Symptoms:
+症状：
 
-- the same string literals appear in handlers, use cases, repositories, and responses
-- multiple spellings or aliases emerge for one concept
+- handler、application、repository 都直接写 `"pending"`、`"success"` 之类文本
+- 同一概念出现不同拼写或兼容别名
 
-Risks:
+风险：
 
-- magic values spread
-- business semantics drift
+- 魔法值扩散
+- 业务真相漂移
 
-## Request Constraints Mistaken for Business Truth
+## 6. request `oneof` 被误当业务真相
 
-Symptoms:
+症状：
 
-- request validation is considered sufficient, so domain parsing is skipped
+- 因为 request 层限制了几个值，就不再进入 domain parser / validator
 
-Risks:
+风险：
 
-- protocol rules replace business rules
-- non-HTTP or async entry points bypass the canonical validation path
+- 协议层约束替代了业务层真相
+- 新入口或异步入口会绕过真正的业务校验
 
-## Persistence Values Define Domain Meaning
+## 7. repository 枚举反向定义领域语义
 
-Symptoms:
+症状：
 
-- database or storage constants are treated as the authoritative business enum catalog
+- 数据库字段值直接决定业务可选项
+- 持久化层常量被各层当作 canonical enum
 
-Risks:
+风险：
 
-- storage concerns dictate domain design
-- refactoring and compatibility mapping become harder
+- 存储细节绑架领域模型
+- 重构或兼容映射成本升高

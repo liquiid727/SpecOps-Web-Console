@@ -1,3 +1,3 @@
 display_name: DDD Layering Governance
-short_description: Guide DDD layering, domain-owned validation, and enum or VO modeling without magic values.
-default_prompt: Review or design a change for DDD layering, thin application orchestration, domain-owned validation, VO or entity behavior boundaries, and enum or value-object modeling that removes magic values.
+short_description: Guide DDD layering, domain-owned validation, and enum/VO modeling without magic values.
+default_prompt: Review or design a backend change for DDD layering, thin application orchestration, domain-owned validation, VO or entity or domain service boundaries, and enum or value-object modeling that removes magic values.

@@ -127,6 +127,115 @@ export interface SpecosSpec {
 export type BranchType = "happy" | "error" | "edge" | "limit" | "flow";
 export type Priority = "P0" | "P1" | "P2";
 export type RunStatus = "pass" | "warning" | "fail" | "running" | "draft-only" | "pending";
+export type TestType =
+  | "api"
+  | "scenario"
+  | "unit"
+  | "specialized"
+  | "performance"
+  | "latency"
+  | "concurrency"
+  | "security"
+  | "migration"
+  | "compatibility";
+export type GateImpact = "blocking" | "warning" | "informational";
+export type TestStandardVersion = "specos-test-standard/v1";
+export type QualityProfile = "backend-api" | "frontend-ui" | "fullstack-flow" | "data-migration" | "agent-workflow";
+export type TestLayer =
+  | "unit"
+  | "api"
+  | "scenario"
+  | "e2e"
+  | "performance"
+  | "latency"
+  | "concurrency"
+  | "security"
+  | "migration"
+  | "compatibility"
+  | "observability";
+export type TestOwnerAgent =
+  | "test-editor"
+  | "unit-test-agent"
+  | "bruno-test-agent"
+  | "playwright-test-agent"
+  | "e2e-test-agent"
+  | "performance-test-agent"
+  | "concurrency-test-agent"
+  | "specialized-check-agent"
+  | "ci-editor";
+export type EvidenceQuality = "complete" | "partial" | "missing" | "invalid";
+export type FlakeClassification = "not-flaky" | "suspected-flaky" | "confirmed-flaky" | "quarantined";
+export type RequestKind =
+  | "raw-requirement"
+  | "draft-only"
+  | "active-change"
+  | "implementation"
+  | "test"
+  | "review"
+  | "acceptance"
+  | "tooling-configuration";
+export type RequestWorkType = "backend" | "frontend" | "ui_prototype" | "spec" | "tests" | "ci" | "orchestration";
+export type RequestRouteAgentRole =
+  | "spec-editor"
+  | "ui-design-agent"
+  | "ddd-domain-agent"
+  | "openapi-agent"
+  | "db-migration-agent"
+  | "bruno-test-agent"
+  | "e2e-test-agent"
+  | "playwright-test-agent"
+  | "unit-test-agent"
+  | "specialized-check-agent"
+  | "performance-test-agent"
+  | "concurrency-test-agent"
+  | "ci-editor"
+  | "execution-editor"
+  | "implementation-editor"
+  | "test-editor"
+  | "reviewer";
+
+const productionTestStandardVersion: TestStandardVersion = "specos-test-standard/v1";
+
+export interface RunnerMetadata {
+  name: string;
+  command: string;
+  exitCode: number;
+}
+
+export interface TestEnvironmentMetadata {
+  id: string;
+  fixtureVersion?: string;
+  seedCommand?: string;
+  cleanupCommand?: string;
+  externalDependencyMode?: "live" | "stubbed" | "mocked";
+}
+
+export interface TestSlo {
+  p95Ms?: number;
+  p99Ms?: number;
+  errorRate?: number;
+}
+
+export interface TestMetrics {
+  p50Ms?: number;
+  p95Ms?: number;
+  p99Ms?: number;
+  requestRate?: number;
+  errorRate?: number;
+}
+
+export interface ArtifactRef {
+  type: "trace" | "log" | "screenshot" | "video" | "raw-report" | "gate-report";
+  path: string;
+}
+
+export interface ConcurrencyProfile {
+  actors: number;
+  requests: number;
+  invariant: string;
+  expectedFinalState: string;
+  observedFinalState?: string;
+}
 
 export interface TestPlanFlow {
   name: string;
@@ -157,14 +266,79 @@ export interface TestPlanScenario {
   steps: string[];
 }
 
+export type ReleaseGateType = "pr-fast" | "change-verification" | "release" | "promote";
+
+export interface TestPlanPerformanceTarget {
+  endpoint: string;
+  priority: Priority;
+  slo: TestSlo;
+  gateImpact: GateImpact;
+}
+
+export interface TestPlanConcurrencyInvariant {
+  scenario: string;
+  invariant: string;
+  actorProfile: string;
+  expectedFinalState: string;
+  gateImpact: GateImpact;
+}
+
+export interface TestPlanReleaseGate {
+  id: string;
+  type: ReleaseGateType;
+  requiredTestTypes: TestType[];
+  blocking: boolean;
+  evidenceRequired: ArtifactRef["type"][];
+}
+
+export interface TestPlanStandardRequirement {
+  id: string;
+  layer: TestLayer;
+  appliesTo: string[];
+  requiredFor: Priority[];
+  ownerAgent: TestOwnerAgent;
+  requiredEvidence: ArtifactRef["type"][];
+  gateImpact: GateImpact;
+}
+
+export interface TestPlanFlakePolicy {
+  allowedRetries: number;
+  quarantineAllowed: boolean;
+  classificationRequired: boolean;
+}
+
+export interface TestPlanDataPolicy {
+  seedCommand?: string;
+  cleanupCommand?: string;
+  externalDependencyMode: "live" | "stubbed" | "mocked";
+  piiAllowed: boolean;
+  secretsAllowed: boolean;
+}
+
+export interface TestPlanSecurityPolicy {
+  baseline: "owasp-api-top-10-2023";
+  requiredChecks: string[];
+}
+
 export interface SpecosTestPlan {
+  standardVersion?: TestStandardVersion;
+  qualityProfile?: QualityProfile;
+  riskTier?: Priority;
   specId: string;
   specVersion: string;
+  changeId?: string;
   featureName: string;
   source: "accepted-spec" | "draft";
   flows: TestPlanFlow[];
   endpoints: TestPlanEndpoint[];
   scenarios: TestPlanScenario[];
+  performanceTargets?: TestPlanPerformanceTarget[];
+  concurrencyInvariants?: TestPlanConcurrencyInvariant[];
+  releaseGates?: TestPlanReleaseGate[];
+  standardRequirements?: TestPlanStandardRequirement[];
+  flakePolicy?: TestPlanFlakePolicy;
+  dataPolicy?: TestPlanDataPolicy;
+  securityPolicy?: TestPlanSecurityPolicy;
 }
 
 export type TestScheduleExecutionMode = "parallel" | "test-after-execution";
@@ -217,9 +391,15 @@ export interface ScenarioResult {
   runId: string;
   specId: string;
   specVersion: string;
+  standardVersion?: TestStandardVersion;
+  qualityProfile?: QualityProfile;
+  changeId?: string;
   featureName: string;
   workflowId?: string;
-  environment?: string;
+  runner?: RunnerMetadata;
+  environment?: string | TestEnvironmentMetadata;
+  commitSha?: string;
+  baselineRunId?: string;
   status: RunStatus;
   releaseDecision: "ready" | "blocked" | "draft-only";
   startedAt: string;
@@ -235,6 +415,62 @@ export interface ScenarioResult {
   };
   flowResults: FlowResult[];
   items: ResultItem[];
+}
+
+export interface TestGateReportGate {
+  id: string;
+  type: ReleaseGateType;
+  requiredTestTypes: TestType[];
+  blocking: boolean;
+}
+
+export interface TestGateReport {
+  specId: string;
+  specVersion: string;
+  changeId?: string;
+  decision: "ready" | "blocked" | "draft-only";
+  requiredGates: TestGateReportGate[];
+  passedGates: string[];
+  failedGates: string[];
+  missingEvidence: string[];
+  blockers: string[];
+  runIds: string[];
+  standardCompliance: TestGateStandardCompliance[];
+  riskSummary: Record<Priority, { passed: number; failed: number; missing: number; waived: number; blocked: number }>;
+  agentEvidenceSummary: TestGateAgentEvidenceSummary[];
+}
+
+export interface TestGateStandardCompliance {
+  requirementId: string;
+  status: "passed" | "failed" | "missing" | "waived";
+  riskTier: Priority;
+  ownerAgent: TestOwnerAgent;
+  gateImpact: GateImpact;
+  evidence: ArtifactRef["type"][];
+  summary: string;
+}
+
+export interface TestGateAgentEvidenceSummary {
+  ownerAgent: TestOwnerAgent;
+  passed: number;
+  failed: number;
+  missing: number;
+  waived: number;
+}
+
+export interface RequestRouteDecision {
+  requestKind: RequestKind;
+  workTypes: RequestWorkType[];
+  primaryAgent: RequestRouteAgentRole;
+  supportingAgents: RequestRouteAgentRole[];
+  rules: string[];
+  skills: string[];
+  requiredContext: string[];
+  needsDraft: boolean;
+  needsChangePackage: boolean;
+  nextStep: string;
+  confidence: "high" | "medium" | "low";
+  matchedSignals: string[];
 }
 
 export interface SpecosWorkflowStep {
@@ -292,16 +528,187 @@ export interface ResultItem {
   runId: string;
   specId: string;
   specVersion: string;
-  testType: "api" | "scenario" | "unit" | "specialized";
+  changeId?: string;
+  testType: TestType;
   target: string;
   status: Exclude<RunStatus, "draft-only" | "pending">;
   durationMs: number;
   summary: string;
+  requirementId?: string;
+  ownerAgent?: TestOwnerAgent;
+  evidenceQuality?: EvidenceQuality;
+  attempts?: number;
+  flakeClassification?: FlakeClassification;
+  gateImpact?: GateImpact;
+  slo?: TestSlo;
+  metrics?: TestMetrics;
+  artifactRefs?: ArtifactRef[];
+  concurrencyProfile?: ConcurrencyProfile;
 }
 
 type MutableValidation = {
   errors: SpecosError[];
 };
+
+const requestRoutingRules: Record<RequestWorkType, string[]> = {
+  backend: [
+    "rules/backend/go-backend-governance.md",
+    "rules/backend/redis-key-governance.md",
+    "rules/shared/error-code-governance.md",
+  ],
+  frontend: ["rules/frontend/react-workbench-delivery.md", "rules/shared/error-code-governance.md"],
+  ui_prototype: ["rules/ui/pencil-prototype-ui.md", "rules/frontend/react-workbench-delivery.md"],
+  spec: ["specs/_rules/README.md", "rules/testing/production-test-standards.md", "rules/shared/error-code-governance.md"],
+  tests: ["tests/README.md", "rules/testing/production-test-standards.md", "rules/ci/spec-release-gates.md"],
+  ci: ["rules/testing/production-test-standards.md", "rules/ci/spec-release-gates.md", "scripts/checks/README.md"],
+  orchestration: ["ai/workflows/README.md", "scripts/orchestration/README.md", "rules/ci/spec-release-gates.md"],
+};
+
+const requestRoutingAgents: Record<RequestWorkType, RequestRouteAgentRole[]> = {
+  backend: ["ddd-domain-agent", "openapi-agent", "db-migration-agent", "bruno-test-agent"],
+  frontend: ["ui-design-agent", "playwright-test-agent", "test-editor"],
+  ui_prototype: ["spec-editor", "playwright-test-agent"],
+  spec: ["spec-editor", "ddd-domain-agent", "test-editor"],
+  tests: ["test-editor", "bruno-test-agent", "playwright-test-agent"],
+  ci: ["ci-editor", "execution-editor"],
+  orchestration: ["execution-editor", "ci-editor", "reviewer"],
+};
+
+export function buildRequestRoute(rawRequest: string): RequestRouteDecision {
+  const request = rawRequest.trim();
+  const normalized = request.toLowerCase();
+  const matchedSignals: string[] = [];
+  const workTypes = new Set<RequestWorkType>();
+  const supportingAgents = new Set<RequestRouteAgentRole>();
+  const skills = new Set<string>();
+
+  const match = (signal: string, patterns: Array<string | RegExp>): boolean => {
+    const hit = patterns.some((pattern) => typeof pattern === "string" ? normalized.includes(pattern.toLowerCase()) : pattern.test(normalized));
+    if (hit) matchedSignals.push(signal);
+    return hit;
+  };
+
+  const hasRawRequirementSignal = match("raw-requirement", ["需求", "想法", "prd", "还没有 spec", "new requirement", "requirement"]);
+  const hasDraftSignal = match("draft-only", ["draft", "草稿", "设计文档", "文档", "整理一下"]);
+  const hasActiveChangeSignal = match("active-change", ["change", "specs/changes", "变更", "change package"]);
+  const hasImplementationSignal = match("implementation", ["实现", "开发", "代码", "修复", "bug", "接口实现", "implement", "fix"]);
+  const hasTestSignal = match("test", ["测试", "test", "unit", "e2e", "scenario", "api", "contract", "性能", "并发", "concurrency", "performance", "latency"]);
+  const hasReviewSignal = match("review", ["评审", "review", "检查", "审查"]);
+  const hasAcceptanceSignal = match("acceptance", ["验收", "发布", "release", "promote", "gate", "门禁", "ci"]);
+  const hasToolingSignal = match("tooling-configuration", ["agent", "skill", "workflow", "脚本", "cli", "配置", "router", "route-request"]);
+
+  if (match("backend", ["backend", "后端", "api", "接口", "database", "db", "migration", "sql", "redis", "go ", "golang"])) {
+    workTypes.add("backend");
+  }
+  if (match("frontend", ["frontend", "前端", "ui", "页面", "console", "react", "next", "可视化", "首页"])) {
+    workTypes.add("frontend");
+  }
+  if (match("ui_prototype", ["prototype", "原型", "pencil", "交互稿"])) {
+    workTypes.add("ui_prototype");
+  }
+  if (hasRawRequirementSignal || hasDraftSignal || hasActiveChangeSignal || match("spec", ["spec", "规格", "规范", "change package"])) {
+    workTypes.add("spec");
+  }
+  if (hasTestSignal) {
+    workTypes.add("tests");
+  }
+  if (hasAcceptanceSignal) {
+    workTypes.add("ci");
+  }
+  if (hasToolingSignal) {
+    workTypes.add("orchestration");
+  }
+  if (workTypes.size === 0) {
+    workTypes.add("spec");
+  }
+
+  for (const workType of workTypes) {
+    for (const agent of requestRoutingAgents[workType]) {
+      supportingAgents.add(agent);
+    }
+  }
+  if (normalized.includes("unit") || normalized.includes("单元")) supportingAgents.add("unit-test-agent");
+  if (normalized.includes("性能") || normalized.includes("performance") || normalized.includes("latency")) supportingAgents.add("performance-test-agent");
+  if (normalized.includes("并发") || normalized.includes("concurrency")) supportingAgents.add("concurrency-test-agent");
+  if (normalized.includes("api") || normalized.includes("contract") || normalized.includes("接口")) supportingAgents.add("bruno-test-agent");
+
+  const requestKind: RequestKind = hasRawRequirementSignal && !hasActiveChangeSignal
+    ? "raw-requirement"
+    : hasReviewSignal
+      ? "review"
+      : hasAcceptanceSignal && !hasTestSignal
+        ? "acceptance"
+        : hasTestSignal
+          ? "test"
+          : hasImplementationSignal
+            ? "implementation"
+            : hasToolingSignal
+              ? "tooling-configuration"
+              : hasDraftSignal
+                ? "draft-only"
+                : hasActiveChangeSignal
+                  ? "active-change"
+                  : "raw-requirement";
+
+  const primaryAgent = primaryAgentForRequest(requestKind, workTypes);
+  supportingAgents.delete(primaryAgent);
+
+  if (workTypes.has("frontend")) {
+    skills.add(".codex/skills/specos-ui-design/SKILL.md");
+  }
+  if (workTypes.has("ci")) {
+    skills.add(".skills/team-ci-agent/SKILL.md");
+  }
+
+  const rules = [...workTypes].flatMap((workType) => requestRoutingRules[workType]);
+  const needsDraft = requestKind === "raw-requirement" || requestKind === "draft-only";
+  const needsChangePackage = needsDraft || requestKind === "implementation" || requestKind === "test" || requestKind === "acceptance";
+
+  return {
+    requestKind,
+    workTypes: [...workTypes],
+    primaryAgent,
+    supportingAgents: [...supportingAgents],
+    rules: [...new Set(rules)],
+    skills: [...skills],
+    requiredContext: [
+      "AGENTS.md",
+      ".codex/instructions.md",
+      ".agents/manifest.yaml",
+      ".rules/rule-map.yaml",
+      ...[...workTypes].map((workType) => `.rules work_type: ${workType}`),
+    ],
+    needsDraft,
+    needsChangePackage,
+    nextStep: nextStepForRequest(requestKind, needsDraft, needsChangePackage),
+    confidence: matchedSignals.length >= 3 ? "high" : matchedSignals.length >= 1 ? "medium" : "low",
+    matchedSignals: [...new Set(matchedSignals)],
+  };
+}
+
+function primaryAgentForRequest(kind: RequestKind, workTypes: Set<RequestWorkType>): RequestRouteAgentRole {
+  if (kind === "raw-requirement" || kind === "draft-only" || kind === "active-change") return "spec-editor";
+  if (kind === "test") return "test-editor";
+  if (kind === "review") return "reviewer";
+  if (kind === "acceptance") return "ci-editor";
+  if (kind === "tooling-configuration") return "execution-editor";
+  if (workTypes.has("frontend")) return "ui-design-agent";
+  if (workTypes.has("backend")) return "implementation-editor";
+  return "spec-editor";
+}
+
+function nextStepForRequest(kind: RequestKind, needsDraft: boolean, needsChangePackage: boolean): string {
+  if (needsDraft) {
+    return "Create or update spec-draft/<stable-id>.md with raw request, assumptions, and open questions.";
+  }
+  if (needsChangePackage) {
+    return "Attach the request to specs/changes/<change-id>/ before implementation, testing, or release gates.";
+  }
+  if (kind === "review") {
+    return "Run the reviewer role against the active change, rules, tests, and validation evidence.";
+  }
+  return "Load the primary agent context from .agents/manifest.yaml and execute the bounded task.";
+}
 
 export function validateManifest(value: unknown): ValidationResult {
   const state: MutableValidation = { errors: [] };
@@ -370,8 +777,13 @@ export function buildDeterministicTestPlan(spec: SpecosSpec): SpecosTestPlan {
   const branches = normalizeBranches(spec.tests.requiredBranches);
   const firstRule = spec.rules[0]?.id ?? "spec.rule";
   const firstUserFlow = spec.userFlows[0];
+  const endpointTargets = api.map((contract) => `${contract.method.toUpperCase()} ${contract.path}`);
+  const scenarioTargets = branches.map((branch) => `${spec.title} ${branch} scenario`);
 
   return {
+    standardVersion: productionTestStandardVersion,
+    qualityProfile: api.length > 0 && (spec.ui?.length ?? 0) > 0 ? "fullstack-flow" : api.length > 0 ? "backend-api" : "frontend-ui",
+    riskTier: "P0",
     specId: spec.id,
     specVersion: spec.version,
     featureName: spec.title,
@@ -404,7 +816,62 @@ export function buildDeterministicTestPlan(spec: SpecosSpec): SpecosTestPlan {
       expectedResults: branch === "error" ? spec.edgeCases : spec.tests.requiredBranches.map((item) => `${item} branch covered`),
       steps: firstUserFlow.steps,
     })),
+    standardRequirements: buildDefaultStandardRequirements(endpointTargets, scenarioTargets),
+    flakePolicy: {
+      allowedRetries: 1,
+      quarantineAllowed: false,
+      classificationRequired: true,
+    },
+    dataPolicy: {
+      externalDependencyMode: "stubbed",
+      piiAllowed: false,
+      secretsAllowed: false,
+    },
+    securityPolicy: {
+      baseline: "owasp-api-top-10-2023",
+      requiredChecks: [
+        "broken-object-level-authorization",
+        "broken-authentication",
+        "broken-object-property-level-authorization",
+        "unrestricted-resource-consumption",
+      ],
+    },
   };
+}
+
+function buildDefaultStandardRequirements(
+  endpointTargets: string[],
+  scenarioTargets: string[],
+): TestPlanStandardRequirement[] {
+  return [
+    {
+      id: "std.p0.api.contract",
+      layer: "api",
+      appliesTo: endpointTargets,
+      requiredFor: ["P0", "P1"],
+      ownerAgent: "bruno-test-agent",
+      requiredEvidence: ["trace"],
+      gateImpact: "blocking",
+    },
+    {
+      id: "std.p0.scenario.e2e",
+      layer: "scenario",
+      appliesTo: scenarioTargets,
+      requiredFor: ["P0", "P1"],
+      ownerAgent: "playwright-test-agent",
+      requiredEvidence: ["trace", "screenshot"],
+      gateImpact: "blocking",
+    },
+    {
+      id: "std.p1.observability",
+      layer: "observability",
+      appliesTo: [...endpointTargets, ...scenarioTargets],
+      requiredFor: ["P0", "P1"],
+      ownerAgent: "test-editor",
+      requiredEvidence: ["trace", "log"],
+      gateImpact: "blocking",
+    },
+  ];
 }
 
 export function buildSpecChangeTestSchedule(
@@ -516,6 +983,13 @@ export function buildBlockedApiScenarioResult(
     status: "warning" as const,
     durationMs: 0,
     summary: options.reason,
+    requirementId: "std.p0.api.contract",
+    ownerAgent: "bruno-test-agent" as const,
+    evidenceQuality: "partial" as const,
+    attempts: 1,
+    flakeClassification: "not-flaky" as const,
+    gateImpact: endpoint.priority === "P2" ? "warning" as const : "blocking" as const,
+    artifactRefs: [{ type: "trace" as const, path: runId }],
     endpoint: {
       name: endpoint.name,
       method: endpoint.method.toUpperCase(),
@@ -534,6 +1008,8 @@ export function buildBlockedApiScenarioResult(
     runId,
     specId: plan.specId,
     specVersion: plan.specVersion,
+    standardVersion: plan.standardVersion,
+    qualityProfile: plan.qualityProfile,
     featureName: plan.featureName,
     workflowId: schedule.changeId,
     status: "warning",
@@ -582,6 +1058,13 @@ export function buildExecutedApiScenarioResult(
     status: itemStatus,
     durationMs: execution.durationMs ?? 0,
     summary,
+    requirementId: "std.p0.api.contract",
+    ownerAgent: "bruno-test-agent" as const,
+    evidenceQuality: passed ? "complete" as const : "partial" as const,
+    attempts: 1,
+    flakeClassification: "not-flaky" as const,
+    gateImpact: endpoint.priority === "P2" ? "warning" as const : "blocking" as const,
+    artifactRefs: [{ type: "trace" as const, path: runId }],
     endpoint: {
       name: endpoint.name,
       method: endpoint.method.toUpperCase(),
@@ -603,6 +1086,8 @@ export function buildExecutedApiScenarioResult(
     runId,
     specId: plan.specId,
     specVersion: plan.specVersion,
+    standardVersion: plan.standardVersion,
+    qualityProfile: plan.qualityProfile,
     featureName: plan.featureName,
     workflowId: schedule.changeId,
     status: passed ? "pass" : "warning",
@@ -656,12 +1141,271 @@ export function buildBrunoCollectionAssets(plan: SpecosTestPlan): GeneratedTextA
   ];
 }
 
+export function buildTestGateReport(
+  plan: SpecosTestPlan,
+  results: ScenarioResult[],
+  options: { changeId?: string } = {},
+): TestGateReport {
+  const gates = plan.releaseGates?.length
+    ? plan.releaseGates
+    : [
+        {
+          id: "default-p0-verification",
+          type: "change-verification" as const,
+          requiredTestTypes: ["api", "scenario"] as TestType[],
+          blocking: true,
+          evidenceRequired: ["trace"] as ArtifactRef["type"][],
+        },
+      ];
+  const scopedResults = results.filter((result) => {
+    const changeId = options.changeId ?? plan.changeId;
+    if (result.specId !== plan.specId || result.specVersion !== plan.specVersion) return false;
+    if (!changeId) return true;
+    return result.changeId === changeId || result.workflowId === changeId || result.items.some((item) => item.changeId === changeId);
+  });
+  const items = scopedResults.flatMap((result) => result.items);
+  const passedGates: string[] = [];
+  const failedGates: string[] = [];
+  const missingEvidence: string[] = [];
+  const blockers: string[] = [];
+  const standardCompliance: TestGateStandardCompliance[] = [];
+
+  for (const requirement of plan.standardRequirements ?? []) {
+    const matchingItems = items.filter((item) => {
+      const scenarioName = (item as ResultItem & { scenarioName?: string }).scenarioName;
+      return (
+        requirementMatchesTestType(requirement.layer, item.testType) &&
+        item.requirementId === requirement.id ||
+        (requirementMatchesTestType(requirement.layer, item.testType) &&
+          (requirement.appliesTo.includes(item.target) ||
+            (scenarioName ? requirement.appliesTo.includes(scenarioName) : false)))
+      );
+    });
+
+    if (matchingItems.length === 0) {
+      missingEvidence.push(`${requirement.id} missing normalized evidence`);
+      standardCompliance.push({
+        requirementId: requirement.id,
+        status: "missing",
+        riskTier: requirement.requiredFor[0] ?? plan.riskTier ?? "P2",
+        ownerAgent: requirement.ownerAgent,
+        gateImpact: requirement.gateImpact,
+        evidence: [],
+        summary: `${requirement.id} missing normalized evidence`,
+      });
+      continue;
+    }
+
+    for (const item of matchingItems) {
+      const evidence = item.artifactRefs?.map((ref) => ref.type) ?? [];
+      const hasRequiredEvidence = requirement.requiredEvidence.every((type) => evidence.includes(type));
+      const failed = item.status !== "pass";
+      if (failed) {
+        blockers.push(`${requirement.id} failed: ${item.summary}`);
+      } else if (!hasRequiredEvidence) {
+        missingEvidence.push(`${requirement.id} missing ${requirement.requiredEvidence.join(", ")} evidence`);
+      }
+      standardCompliance.push({
+        requirementId: requirement.id,
+        status: failed ? "failed" : hasRequiredEvidence ? "passed" : "missing",
+        riskTier: requirement.requiredFor[0] ?? plan.riskTier ?? "P2",
+        ownerAgent: item.ownerAgent ?? requirement.ownerAgent,
+        gateImpact: item.gateImpact ?? requirement.gateImpact,
+        evidence,
+        summary: hasRequiredEvidence ? item.summary : `${item.summary}; missing required standard evidence`,
+      });
+    }
+  }
+
+  for (const gate of gates) {
+    let gateFailed = false;
+    const riskTier = gate.blocking ? "P0" : "P2";
+
+    for (const testType of gate.requiredTestTypes) {
+      const matchingItems = items.filter((item) => item.testType === testType);
+      if (matchingItems.length === 0) {
+        missingEvidence.push(`${gate.id} missing ${testType} result`);
+        standardCompliance.push({
+          requirementId: `gate.${gate.id}.${testType}`,
+          status: "missing",
+          riskTier,
+          ownerAgent: ownerAgentForTestType(testType),
+          gateImpact: gate.blocking ? "blocking" : "warning",
+          evidence: [],
+          summary: `${gate.id} missing ${testType} result`,
+        });
+        gateFailed = gate.blocking || gateFailed;
+        continue;
+      }
+
+      for (const item of matchingItems) {
+        if (item.status !== "pass" && (gate.blocking || item.gateImpact === "blocking")) {
+          blockers.push(`${gate.id} ${testType} failed: ${item.summary}`);
+          standardCompliance.push({
+            requirementId: item.requirementId ?? `gate.${gate.id}.${testType}`,
+            status: "failed",
+            riskTier,
+            ownerAgent: item.ownerAgent ?? ownerAgentForTestType(testType),
+            gateImpact: item.gateImpact ?? (gate.blocking ? "blocking" : "warning"),
+            evidence: item.artifactRefs?.map((ref) => ref.type) ?? [],
+            summary: item.summary,
+          });
+          gateFailed = true;
+        } else {
+          standardCompliance.push({
+            requirementId: item.requirementId ?? `gate.${gate.id}.${testType}`,
+            status: "passed",
+            riskTier,
+            ownerAgent: item.ownerAgent ?? ownerAgentForTestType(testType),
+            gateImpact: item.gateImpact ?? (gate.blocking ? "blocking" : "warning"),
+            evidence: item.artifactRefs?.map((ref) => ref.type) ?? [],
+            summary: item.summary,
+          });
+        }
+      }
+    }
+
+    if (gate.evidenceRequired.length > 0) {
+      for (const evidenceType of gate.evidenceRequired) {
+        const hasEvidence = items.some((item) => item.artifactRefs?.some((ref) => ref.type === evidenceType));
+        if (!hasEvidence) {
+          missingEvidence.push(`${gate.id} missing ${evidenceType} evidence`);
+          gateFailed = gate.blocking || gateFailed;
+        }
+      }
+    }
+
+    if (gateFailed) {
+      failedGates.push(gate.id);
+    } else {
+      passedGates.push(gate.id);
+    }
+  }
+
+  const sourceIsDraft = plan.source === "draft";
+  const hasBlockingStandardGap = standardCompliance.some(
+    (item) =>
+      (item.riskTier === "P0" || item.riskTier === "P1") &&
+      item.gateImpact === "blocking" &&
+      (item.status === "failed" || item.status === "missing"),
+  );
+  if (hasBlockingStandardGap && !failedGates.includes("production-standard")) {
+    failedGates.push("production-standard");
+  }
+  return {
+    specId: plan.specId,
+    specVersion: plan.specVersion,
+    changeId: options.changeId ?? plan.changeId,
+    decision: sourceIsDraft ? "draft-only" : failedGates.length > 0 || hasBlockingStandardGap ? "blocked" : "ready",
+    requiredGates: gates.map((gate) => ({
+      id: gate.id,
+      type: gate.type,
+      requiredTestTypes: [...gate.requiredTestTypes],
+      blocking: gate.blocking,
+    })),
+    passedGates,
+    failedGates,
+    missingEvidence,
+    blockers,
+    runIds: [...new Set(scopedResults.map((result) => result.runId))],
+    standardCompliance,
+    riskSummary: buildRiskSummary(standardCompliance),
+    agentEvidenceSummary: buildAgentEvidenceSummary(standardCompliance),
+  };
+}
+
+function requirementMatchesTestType(layer: TestLayer, testType: TestType): boolean {
+  if (layer === "e2e") return testType === "scenario";
+  if (layer === "observability") return true;
+  if (layer === "latency") return testType === "performance" || testType === "latency";
+  if (layer === "security" || layer === "compatibility") return testType === "api" || testType === layer;
+  return layer === testType;
+}
+
+function ownerAgentForTestType(testType: TestType): TestOwnerAgent {
+  switch (testType) {
+    case "api":
+    case "security":
+    case "compatibility":
+      return "bruno-test-agent";
+    case "scenario":
+      return "playwright-test-agent";
+    case "unit":
+      return "unit-test-agent";
+    case "performance":
+    case "latency":
+      return "performance-test-agent";
+    case "concurrency":
+      return "concurrency-test-agent";
+    case "migration":
+    case "specialized":
+      return "specialized-check-agent";
+  }
+}
+
+function buildRiskSummary(
+  compliance: TestGateStandardCompliance[],
+): Record<Priority, { passed: number; failed: number; missing: number; waived: number; blocked: number }> {
+  const summary = {
+    P0: { passed: 0, failed: 0, missing: 0, waived: 0, blocked: 0 },
+    P1: { passed: 0, failed: 0, missing: 0, waived: 0, blocked: 0 },
+    P2: { passed: 0, failed: 0, missing: 0, waived: 0, blocked: 0 },
+  };
+
+  for (const item of compliance) {
+    summary[item.riskTier][item.status] += 1;
+    if (item.gateImpact === "blocking" && (item.status === "failed" || item.status === "missing")) {
+      summary[item.riskTier].blocked += 1;
+    }
+  }
+
+  return summary;
+}
+
+function buildAgentEvidenceSummary(compliance: TestGateStandardCompliance[]): TestGateAgentEvidenceSummary[] {
+  const byAgent = new Map<TestOwnerAgent, TestGateAgentEvidenceSummary>();
+
+  for (const item of compliance) {
+    const existing = byAgent.get(item.ownerAgent) ?? {
+      ownerAgent: item.ownerAgent,
+      passed: 0,
+      failed: 0,
+      missing: 0,
+      waived: 0,
+    };
+    existing[item.status] += 1;
+    byAgent.set(item.ownerAgent, existing);
+  }
+
+  return [...byAgent.values()].sort((left, right) => left.ownerAgent.localeCompare(right.ownerAgent));
+}
+
 export function validateTestPlan(value: unknown): ValidationResult {
   const state: MutableValidation = { errors: [] };
   const plan = asRecord(value);
+  const hasProductionStandard = plan?.standardVersion === productionTestStandardVersion;
+
+  if (plan?.standardVersion !== undefined) {
+    requireOneOf(
+      state,
+      plan.standardVersion,
+      [productionTestStandardVersion],
+      "SPECOS_TEST_PLAN_INVALID",
+      "standardVersion",
+    );
+  }
+  if (plan?.qualityProfile !== undefined) {
+    requireQualityProfile(state, plan.qualityProfile, "SPECOS_TEST_PLAN_INVALID", "qualityProfile");
+  }
+  if (plan?.riskTier !== undefined) {
+    requireOneOf(state, plan.riskTier, ["P0", "P1", "P2"], "SPECOS_TEST_PLAN_INVALID", "riskTier");
+  }
 
   requireString(state, plan, "specId", "SPECOS_TEST_PLAN_INVALID", "specId");
   requireString(state, plan, "specVersion", "SPECOS_TEST_PLAN_INVALID", "specVersion");
+  if (plan?.changeId !== undefined) {
+    requireString(state, plan, "changeId", "SPECOS_TEST_PLAN_INVALID", "changeId");
+  }
   requireString(state, plan, "featureName", "SPECOS_TEST_PLAN_INVALID", "featureName");
   requireOneOf(state, plan?.source, ["accepted-spec", "draft"], "SPECOS_TEST_PLAN_INVALID", "source");
   requireFlowPlanArray(state, plan?.flows);
@@ -679,6 +1423,44 @@ export function validateTestPlan(value: unknown): ValidationResult {
       requireStringArray(state, scenario?.expectedResults, "SPECOS_TEST_PLAN_INVALID", `${path}.expectedResults`);
       requireStringArray(state, scenario?.steps, "SPECOS_TEST_PLAN_INVALID", `${path}.steps`);
     });
+  }
+
+  if (plan?.performanceTargets !== undefined) {
+    requirePerformanceTargets(state, plan.performanceTargets);
+  }
+  if (plan?.concurrencyInvariants !== undefined) {
+    requireConcurrencyInvariants(state, plan.concurrencyInvariants);
+  }
+  if (plan?.releaseGates !== undefined) {
+    requireReleaseGates(state, plan.releaseGates);
+  }
+  if (plan?.standardRequirements !== undefined) {
+    requireStandardRequirements(state, plan.standardRequirements);
+  }
+  if (plan?.flakePolicy !== undefined) {
+    requireFlakePolicy(state, plan.flakePolicy);
+  }
+  if (plan?.dataPolicy !== undefined) {
+    requireDataPolicy(state, plan.dataPolicy);
+  }
+  if (plan?.securityPolicy !== undefined) {
+    requireSecurityPolicy(state, plan.securityPolicy);
+  }
+  if (hasProductionStandard) {
+    requireQualityProfile(state, plan?.qualityProfile, "SPECOS_TEST_PLAN_INVALID", "qualityProfile");
+    requireOneOf(state, plan?.riskTier, ["P0", "P1", "P2"], "SPECOS_TEST_PLAN_INVALID", "riskTier");
+    if (!Array.isArray(plan?.standardRequirements) || plan.standardRequirements.length === 0) {
+      state.errors.push(makeError("SPECOS_TEST_PLAN_INVALID", "standardRequirements"));
+    }
+    if (!asRecord(plan?.flakePolicy)) {
+      state.errors.push(makeError("SPECOS_TEST_PLAN_INVALID", "flakePolicy"));
+    }
+    if (!asRecord(plan?.dataPolicy)) {
+      state.errors.push(makeError("SPECOS_TEST_PLAN_INVALID", "dataPolicy"));
+    }
+    if (!asRecord(plan?.securityPolicy)) {
+      state.errors.push(makeError("SPECOS_TEST_PLAN_INVALID", "securityPolicy"));
+    }
   }
 
   requirePlanBranches(state, plan);
@@ -712,11 +1494,39 @@ export function validateTestSchedule(value: unknown): ValidationResult {
 export function validateScenarioResult(value: unknown): ValidationResult {
   const state: MutableValidation = { errors: [] };
   const scenario = asRecord(value);
+  const hasProductionStandard = scenario?.standardVersion === productionTestStandardVersion;
 
   requireString(state, scenario, "runId", "SPECOS_SCENARIO_RESULT_INVALID", "runId");
   requireString(state, scenario, "specId", "SPECOS_SCENARIO_RESULT_INVALID", "specId");
   requireString(state, scenario, "specVersion", "SPECOS_SCENARIO_RESULT_INVALID", "specVersion");
+  if (scenario?.standardVersion !== undefined) {
+    requireOneOf(
+      state,
+      scenario.standardVersion,
+      [productionTestStandardVersion],
+      "SPECOS_SCENARIO_RESULT_INVALID",
+      "standardVersion",
+    );
+  }
+  if (scenario?.qualityProfile !== undefined) {
+    requireQualityProfile(state, scenario.qualityProfile, "SPECOS_SCENARIO_RESULT_INVALID", "qualityProfile");
+  }
+  if (scenario?.changeId !== undefined) {
+    requireString(state, scenario, "changeId", "SPECOS_SCENARIO_RESULT_INVALID", "changeId");
+  }
   requireString(state, scenario, "featureName", "SPECOS_SCENARIO_RESULT_INVALID", "featureName");
+  if (scenario?.runner !== undefined) {
+    requireRunnerMetadata(state, scenario.runner);
+  }
+  if (scenario?.environment !== undefined && typeof scenario.environment !== "string") {
+    requireEnvironmentMetadata(state, scenario.environment);
+  }
+  if (scenario?.commitSha !== undefined) {
+    requireString(state, scenario, "commitSha", "SPECOS_SCENARIO_RESULT_INVALID", "commitSha");
+  }
+  if (scenario?.baselineRunId !== undefined) {
+    requireString(state, scenario, "baselineRunId", "SPECOS_SCENARIO_RESULT_INVALID", "baselineRunId");
+  }
   requireOneOf(
     state,
     scenario?.status,
@@ -765,7 +1575,7 @@ export function validateScenarioResult(value: unknown): ValidationResult {
   );
 
   requireFlowResultArray(state, scenario?.flowResults);
-  requireResultItemArray(state, scenario?.items);
+  requireResultItemArray(state, scenario?.items, { requireProductionEvidence: hasProductionStandard });
 
   return result(state.errors);
 }
@@ -907,6 +1717,18 @@ function requireNumber(
   }
 }
 
+function requireOptionalNumber(
+  state: MutableValidation,
+  object: Record<string, any> | undefined,
+  key: string,
+  code: SpecosErrorCode,
+  path: string,
+): void {
+  if (object?.[key] !== undefined && (typeof object[key] !== "number" || !Number.isFinite(object[key]))) {
+    state.errors.push(makeError(code, path));
+  }
+}
+
 function requireBoolean(
   state: MutableValidation,
   object: Record<string, any> | undefined,
@@ -963,6 +1785,106 @@ function requireOneOfArray(
   path: string,
 ): void {
   if (!Array.isArray(value) || value.length === 0 || value.some((item) => typeof item !== "string" || !allowed.includes(item))) {
+    state.errors.push(makeError(code, path));
+  }
+}
+
+function requireTestTypeArray(
+  state: MutableValidation,
+  value: unknown,
+  code: SpecosErrorCode,
+  path: string,
+): void {
+  requireOneOfArray(
+    state,
+    value,
+    [
+      "api",
+      "scenario",
+      "unit",
+      "specialized",
+      "performance",
+      "latency",
+      "concurrency",
+      "security",
+      "migration",
+      "compatibility",
+    ],
+    code,
+    path,
+  );
+}
+
+function requireArtifactRefTypeArray(
+  state: MutableValidation,
+  value: unknown,
+  code: SpecosErrorCode,
+  path: string,
+): void {
+  requireOneOfArray(
+    state,
+    value,
+    ["trace", "log", "screenshot", "video", "raw-report", "gate-report"],
+    code,
+    path,
+  );
+}
+
+function requireQualityProfile(
+  state: MutableValidation,
+  value: unknown,
+  code: SpecosErrorCode,
+  path: string,
+): void {
+  requireOneOf(
+    state,
+    value,
+    ["backend-api", "frontend-ui", "fullstack-flow", "data-migration", "agent-workflow"],
+    code,
+    path,
+  );
+}
+
+function requireOwnerAgent(
+  state: MutableValidation,
+  value: unknown,
+  code: SpecosErrorCode,
+  path: string,
+): void {
+  requireOneOf(
+    state,
+    value,
+    [
+      "test-editor",
+      "unit-test-agent",
+      "bruno-test-agent",
+      "playwright-test-agent",
+      "e2e-test-agent",
+      "performance-test-agent",
+      "concurrency-test-agent",
+      "specialized-check-agent",
+      "ci-editor",
+    ],
+    code,
+    path,
+  );
+}
+
+function requireSloForCode(
+  state: MutableValidation,
+  value: unknown,
+  code: SpecosErrorCode,
+  path: string,
+): void {
+  const slo = asRecord(value);
+  if (!slo) {
+    state.errors.push(makeError(code, path));
+    return;
+  }
+  requireOptionalNumber(state, slo, "p95Ms", code, `${path}.p95Ms`);
+  requireOptionalNumber(state, slo, "p99Ms", code, `${path}.p99Ms`);
+  requireOptionalNumber(state, slo, "errorRate", code, `${path}.errorRate`);
+  if (slo.p95Ms === undefined && slo.p99Ms === undefined && slo.errorRate === undefined) {
     state.errors.push(makeError(code, path));
   }
 }
@@ -1056,6 +1978,170 @@ function requireEndpointPlanArray(state: MutableValidation, value: unknown): voi
     requireStringArray(state, endpoint?.expectedResults, "SPECOS_TEST_PLAN_INVALID", `${path}.expectedResults`);
     requireString(state, endpoint, "relatedRule", "SPECOS_TEST_PLAN_INVALID", `${path}.relatedRule`);
   });
+}
+
+function requirePerformanceTargets(state: MutableValidation, value: unknown): void {
+  if (!Array.isArray(value)) {
+    state.errors.push(makeError("SPECOS_TEST_PLAN_INVALID", "performanceTargets"));
+    return;
+  }
+  value.forEach((target, index) => {
+    const path = `performanceTargets[${index}]`;
+    requireString(state, target, "endpoint", "SPECOS_TEST_PLAN_INVALID", `${path}.endpoint`);
+    requireOneOf(state, target?.priority, ["P0", "P1", "P2"], "SPECOS_TEST_PLAN_INVALID", `${path}.priority`);
+    requireSloForCode(state, target?.slo, "SPECOS_TEST_PLAN_INVALID", `${path}.slo`);
+    requireOneOf(
+      state,
+      target?.gateImpact,
+      ["blocking", "warning", "informational"],
+      "SPECOS_TEST_PLAN_INVALID",
+      `${path}.gateImpact`,
+    );
+  });
+}
+
+function requireConcurrencyInvariants(state: MutableValidation, value: unknown): void {
+  if (!Array.isArray(value)) {
+    state.errors.push(makeError("SPECOS_TEST_PLAN_INVALID", "concurrencyInvariants"));
+    return;
+  }
+  value.forEach((invariant, index) => {
+    const path = `concurrencyInvariants[${index}]`;
+    requireString(state, invariant, "scenario", "SPECOS_TEST_PLAN_INVALID", `${path}.scenario`);
+    requireString(state, invariant, "invariant", "SPECOS_TEST_PLAN_INVALID", `${path}.invariant`);
+    requireString(state, invariant, "actorProfile", "SPECOS_TEST_PLAN_INVALID", `${path}.actorProfile`);
+    requireString(state, invariant, "expectedFinalState", "SPECOS_TEST_PLAN_INVALID", `${path}.expectedFinalState`);
+    requireOneOf(
+      state,
+      invariant?.gateImpact,
+      ["blocking", "warning", "informational"],
+      "SPECOS_TEST_PLAN_INVALID",
+      `${path}.gateImpact`,
+    );
+  });
+}
+
+function requireReleaseGates(state: MutableValidation, value: unknown): void {
+  if (!Array.isArray(value)) {
+    state.errors.push(makeError("SPECOS_TEST_PLAN_INVALID", "releaseGates"));
+    return;
+  }
+  value.forEach((gate, index) => {
+    const path = `releaseGates[${index}]`;
+    requireString(state, gate, "id", "SPECOS_TEST_PLAN_INVALID", `${path}.id`);
+    requireOneOf(
+      state,
+      gate?.type,
+      ["pr-fast", "change-verification", "release", "promote"],
+      "SPECOS_TEST_PLAN_INVALID",
+      `${path}.type`,
+    );
+    requireTestTypeArray(state, gate?.requiredTestTypes, "SPECOS_TEST_PLAN_INVALID", `${path}.requiredTestTypes`);
+    requireBoolean(state, gate, "blocking", "SPECOS_TEST_PLAN_INVALID", `${path}.blocking`);
+    requireArtifactRefTypeArray(state, gate?.evidenceRequired, "SPECOS_TEST_PLAN_INVALID", `${path}.evidenceRequired`);
+  });
+}
+
+function requireStandardRequirements(state: MutableValidation, value: unknown): void {
+  if (!Array.isArray(value)) {
+    state.errors.push(makeError("SPECOS_TEST_PLAN_INVALID", "standardRequirements"));
+    return;
+  }
+  value.forEach((requirement, index) => {
+    const path = `standardRequirements[${index}]`;
+    requireString(state, requirement, "id", "SPECOS_TEST_PLAN_INVALID", `${path}.id`);
+    requireOneOf(
+      state,
+      requirement?.layer,
+      [
+        "unit",
+        "api",
+        "scenario",
+        "e2e",
+        "performance",
+        "latency",
+        "concurrency",
+        "security",
+        "migration",
+        "compatibility",
+        "observability",
+      ],
+      "SPECOS_TEST_PLAN_INVALID",
+      `${path}.layer`,
+    );
+    requireStringArray(state, requirement?.appliesTo, "SPECOS_TEST_PLAN_INVALID", `${path}.appliesTo`);
+    requireOneOfArray(state, requirement?.requiredFor, ["P0", "P1", "P2"], "SPECOS_TEST_PLAN_INVALID", `${path}.requiredFor`);
+    requireOwnerAgent(state, requirement?.ownerAgent, "SPECOS_TEST_PLAN_INVALID", `${path}.ownerAgent`);
+    requireArtifactRefTypeArray(
+      state,
+      requirement?.requiredEvidence,
+      "SPECOS_TEST_PLAN_INVALID",
+      `${path}.requiredEvidence`,
+    );
+    requireOneOf(
+      state,
+      requirement?.gateImpact,
+      ["blocking", "warning", "informational"],
+      "SPECOS_TEST_PLAN_INVALID",
+      `${path}.gateImpact`,
+    );
+  });
+}
+
+function requireFlakePolicy(state: MutableValidation, value: unknown): void {
+  const policy = asRecord(value);
+  if (!policy) {
+    state.errors.push(makeError("SPECOS_TEST_PLAN_INVALID", "flakePolicy"));
+    return;
+  }
+  requireNumber(state, policy, "allowedRetries", "SPECOS_TEST_PLAN_INVALID", "flakePolicy.allowedRetries");
+  requireBoolean(state, policy, "quarantineAllowed", "SPECOS_TEST_PLAN_INVALID", "flakePolicy.quarantineAllowed");
+  requireBoolean(
+    state,
+    policy,
+    "classificationRequired",
+    "SPECOS_TEST_PLAN_INVALID",
+    "flakePolicy.classificationRequired",
+  );
+}
+
+function requireDataPolicy(state: MutableValidation, value: unknown): void {
+  const policy = asRecord(value);
+  if (!policy) {
+    state.errors.push(makeError("SPECOS_TEST_PLAN_INVALID", "dataPolicy"));
+    return;
+  }
+  if (policy.seedCommand !== undefined) {
+    requireString(state, policy, "seedCommand", "SPECOS_TEST_PLAN_INVALID", "dataPolicy.seedCommand");
+  }
+  if (policy.cleanupCommand !== undefined) {
+    requireString(state, policy, "cleanupCommand", "SPECOS_TEST_PLAN_INVALID", "dataPolicy.cleanupCommand");
+  }
+  requireOneOf(
+    state,
+    policy.externalDependencyMode,
+    ["live", "stubbed", "mocked"],
+    "SPECOS_TEST_PLAN_INVALID",
+    "dataPolicy.externalDependencyMode",
+  );
+  requireBoolean(state, policy, "piiAllowed", "SPECOS_TEST_PLAN_INVALID", "dataPolicy.piiAllowed");
+  requireBoolean(state, policy, "secretsAllowed", "SPECOS_TEST_PLAN_INVALID", "dataPolicy.secretsAllowed");
+}
+
+function requireSecurityPolicy(state: MutableValidation, value: unknown): void {
+  const policy = asRecord(value);
+  if (!policy) {
+    state.errors.push(makeError("SPECOS_TEST_PLAN_INVALID", "securityPolicy"));
+    return;
+  }
+  requireOneOf(
+    state,
+    policy.baseline,
+    ["owasp-api-top-10-2023"],
+    "SPECOS_TEST_PLAN_INVALID",
+    "securityPolicy.baseline",
+  );
+  requireStringArray(state, policy.requiredChecks, "SPECOS_TEST_PLAN_INVALID", "securityPolicy.requiredChecks");
 }
 
 function requireTestScheduleTracks(state: MutableValidation, value: unknown): void {
@@ -1384,7 +2470,11 @@ function requireFlowResultEndpointArray(state: MutableValidation, value: unknown
   });
 }
 
-function requireResultItemArray(state: MutableValidation, value: unknown): void {
+function requireResultItemArray(
+  state: MutableValidation,
+  value: unknown,
+  options: { requireProductionEvidence?: boolean } = {},
+): void {
   if (!Array.isArray(value)) {
     state.errors.push(makeError("SPECOS_SCENARIO_RESULT_INVALID", "items"));
     return;
@@ -1397,10 +2487,24 @@ function requireResultItemArray(state: MutableValidation, value: unknown): void 
     requireOneOf(
       state,
       item?.testType,
-      ["api", "scenario", "unit", "specialized"],
+      [
+        "api",
+        "scenario",
+        "unit",
+        "specialized",
+        "performance",
+        "latency",
+        "concurrency",
+        "security",
+        "migration",
+        "compatibility",
+      ],
       "SPECOS_SCENARIO_RESULT_INVALID",
       `${path}.testType`,
     );
+    if (item?.changeId !== undefined) {
+      requireString(state, item, "changeId", "SPECOS_SCENARIO_RESULT_INVALID", `${path}.changeId`);
+    }
     requireString(state, item, "target", "SPECOS_SCENARIO_RESULT_INVALID", `${path}.target`);
     requireOneOf(
       state,
@@ -1411,7 +2515,145 @@ function requireResultItemArray(state: MutableValidation, value: unknown): void 
     );
     requireNumber(state, item, "durationMs", "SPECOS_SCENARIO_RESULT_INVALID", `${path}.durationMs`);
     requireString(state, item, "summary", "SPECOS_SCENARIO_RESULT_INVALID", `${path}.summary`);
+    if (item?.requirementId !== undefined) {
+      requireString(state, item, "requirementId", "SPECOS_SCENARIO_RESULT_INVALID", `${path}.requirementId`);
+    }
+    if (item?.ownerAgent !== undefined) {
+      requireOwnerAgent(state, item.ownerAgent, "SPECOS_SCENARIO_RESULT_INVALID", `${path}.ownerAgent`);
+    }
+    if (item?.evidenceQuality !== undefined) {
+      requireOneOf(
+        state,
+        item.evidenceQuality,
+        ["complete", "partial", "missing", "invalid"],
+        "SPECOS_SCENARIO_RESULT_INVALID",
+        `${path}.evidenceQuality`,
+      );
+    }
+    if (item?.attempts !== undefined) {
+      requireNumber(state, item, "attempts", "SPECOS_SCENARIO_RESULT_INVALID", `${path}.attempts`);
+    }
+    if (item?.flakeClassification !== undefined) {
+      requireOneOf(
+        state,
+        item.flakeClassification,
+        ["not-flaky", "suspected-flaky", "confirmed-flaky", "quarantined"],
+        "SPECOS_SCENARIO_RESULT_INVALID",
+        `${path}.flakeClassification`,
+      );
+    }
+    if (item?.gateImpact !== undefined) {
+      requireOneOf(
+        state,
+        item.gateImpact,
+        ["blocking", "warning", "informational"],
+        "SPECOS_SCENARIO_RESULT_INVALID",
+        `${path}.gateImpact`,
+      );
+    }
+    if (item?.slo !== undefined) {
+      requireSlo(state, item.slo, `${path}.slo`);
+    }
+    if (item?.metrics !== undefined) {
+      requireMetrics(state, item.metrics, `${path}.metrics`);
+    }
+    if (item?.artifactRefs !== undefined) {
+      requireArtifactRefs(state, item.artifactRefs, `${path}.artifactRefs`);
+    }
+    if (item?.concurrencyProfile !== undefined) {
+      requireConcurrencyProfile(state, item.concurrencyProfile, `${path}.concurrencyProfile`);
+    }
+    if (options.requireProductionEvidence && (item?.gateImpact === "blocking" || item?.status === "fail")) {
+      requireString(state, item, "requirementId", "SPECOS_SCENARIO_RESULT_INVALID", `${path}.requirementId`);
+      requireOwnerAgent(state, item?.ownerAgent, "SPECOS_SCENARIO_RESULT_INVALID", `${path}.ownerAgent`);
+      if (!Array.isArray(item?.artifactRefs) || item.artifactRefs.length === 0) {
+        state.errors.push(makeError("SPECOS_SCENARIO_RESULT_INVALID", `${path}.artifactRefs`));
+      }
+    }
   });
+}
+
+function requireRunnerMetadata(state: MutableValidation, value: unknown): void {
+  const runner = asRecord(value);
+  requireString(state, runner, "name", "SPECOS_SCENARIO_RESULT_INVALID", "runner.name");
+  requireString(state, runner, "command", "SPECOS_SCENARIO_RESULT_INVALID", "runner.command");
+  requireNumber(state, runner, "exitCode", "SPECOS_SCENARIO_RESULT_INVALID", "runner.exitCode");
+}
+
+function requireEnvironmentMetadata(state: MutableValidation, value: unknown): void {
+  const environment = asRecord(value);
+  requireString(state, environment, "id", "SPECOS_SCENARIO_RESULT_INVALID", "environment.id");
+  if (environment?.fixtureVersion !== undefined) {
+    requireString(state, environment, "fixtureVersion", "SPECOS_SCENARIO_RESULT_INVALID", "environment.fixtureVersion");
+  }
+  if (environment?.seedCommand !== undefined) {
+    requireString(state, environment, "seedCommand", "SPECOS_SCENARIO_RESULT_INVALID", "environment.seedCommand");
+  }
+  if (environment?.cleanupCommand !== undefined) {
+    requireString(state, environment, "cleanupCommand", "SPECOS_SCENARIO_RESULT_INVALID", "environment.cleanupCommand");
+  }
+  if (environment?.externalDependencyMode !== undefined) {
+    requireOneOf(
+      state,
+      environment.externalDependencyMode,
+      ["live", "stubbed", "mocked"],
+      "SPECOS_SCENARIO_RESULT_INVALID",
+      "environment.externalDependencyMode",
+    );
+  }
+}
+
+function requireSlo(state: MutableValidation, value: unknown, path: string): void {
+  const slo = asRecord(value);
+  if (!slo) {
+    state.errors.push(makeError("SPECOS_SCENARIO_RESULT_INVALID", path));
+    return;
+  }
+  requireOptionalNumber(state, slo, "p95Ms", "SPECOS_SCENARIO_RESULT_INVALID", `${path}.p95Ms`);
+  requireOptionalNumber(state, slo, "p99Ms", "SPECOS_SCENARIO_RESULT_INVALID", `${path}.p99Ms`);
+  requireOptionalNumber(state, slo, "errorRate", "SPECOS_SCENARIO_RESULT_INVALID", `${path}.errorRate`);
+}
+
+function requireMetrics(state: MutableValidation, value: unknown, path: string): void {
+  const metrics = asRecord(value);
+  if (!metrics) {
+    state.errors.push(makeError("SPECOS_SCENARIO_RESULT_INVALID", path));
+    return;
+  }
+  requireOptionalNumber(state, metrics, "p50Ms", "SPECOS_SCENARIO_RESULT_INVALID", `${path}.p50Ms`);
+  requireOptionalNumber(state, metrics, "p95Ms", "SPECOS_SCENARIO_RESULT_INVALID", `${path}.p95Ms`);
+  requireOptionalNumber(state, metrics, "p99Ms", "SPECOS_SCENARIO_RESULT_INVALID", `${path}.p99Ms`);
+  requireOptionalNumber(state, metrics, "requestRate", "SPECOS_SCENARIO_RESULT_INVALID", `${path}.requestRate`);
+  requireOptionalNumber(state, metrics, "errorRate", "SPECOS_SCENARIO_RESULT_INVALID", `${path}.errorRate`);
+}
+
+function requireArtifactRefs(state: MutableValidation, value: unknown, path: string): void {
+  if (!Array.isArray(value)) {
+    state.errors.push(makeError("SPECOS_SCENARIO_RESULT_INVALID", path));
+    return;
+  }
+  value.forEach((ref, index) => {
+    const refPath = `${path}[${index}]`;
+    requireOneOf(
+      state,
+      ref?.type,
+      ["trace", "log", "screenshot", "video", "raw-report", "gate-report"],
+      "SPECOS_SCENARIO_RESULT_INVALID",
+      `${refPath}.type`,
+    );
+    requireString(state, ref, "path", "SPECOS_SCENARIO_RESULT_INVALID", `${refPath}.path`);
+  });
+}
+
+function requireConcurrencyProfile(state: MutableValidation, value: unknown, path: string): void {
+  const profile = asRecord(value);
+  requireNumber(state, profile, "actors", "SPECOS_SCENARIO_RESULT_INVALID", `${path}.actors`);
+  requireNumber(state, profile, "requests", "SPECOS_SCENARIO_RESULT_INVALID", `${path}.requests`);
+  requireString(state, profile, "invariant", "SPECOS_SCENARIO_RESULT_INVALID", `${path}.invariant`);
+  requireString(state, profile, "expectedFinalState", "SPECOS_SCENARIO_RESULT_INVALID", `${path}.expectedFinalState`);
+  if (profile?.observedFinalState !== undefined) {
+    requireString(state, profile, "observedFinalState", "SPECOS_SCENARIO_RESULT_INVALID", `${path}.observedFinalState`);
+  }
 }
 
 function requirePlanBranches(state: MutableValidation, plan: Record<string, any> | undefined): void {

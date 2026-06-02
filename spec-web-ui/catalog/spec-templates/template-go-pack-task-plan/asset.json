@@ -1,0 +1,35 @@
+{
+  "id": "template-go-pack-task-plan",
+  "type": "spec_template",
+  "title": "Task Plan Template",
+  "summary": "Reusable Task Plan Template template from the Go skill and agent pack.",
+  "direction": "fullstack",
+  "stacks": [
+    "go",
+    "specos"
+  ],
+  "tags": [
+    "template",
+    "go-pack",
+    "task",
+    "plan"
+  ],
+  "appliesTo": [
+    "backend",
+    "frontend"
+  ],
+  "dependsOn": [],
+  "conflictsWith": [],
+  "sourcePath": "spec-web-ui/catalog/spec-templates/template-go-pack-task-plan/task-plan.md",
+  "files": [
+    "ai/templates/task-plan.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "选择后按目标项目的 spec/change/test 语义填写，不直接复制来源仓库事实。"
+  ],
+  "sampleOutput": "Routing、计划、交接、评审或测试报告类 Markdown 模板。",
+  "contentFiles": {
+    "ai/templates/task-plan.md": "spec-web-ui/catalog/spec-templates/template-go-pack-task-plan/task-plan.md"
+  }
+}

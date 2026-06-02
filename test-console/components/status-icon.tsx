@@ -2,15 +2,17 @@ import React from "react";
 
 function iconTone(status: string) {
   if (status === "pass" || status === "ready") return "bg-emerald-500/15 text-emerald-300 border-emerald-500/30";
-  if (status === "warning" || status === "running") return "bg-amber-500/15 text-amber-300 border-amber-500/30";
-  if (status === "pending") return "bg-slate-500/10 text-slate-300 border-slate-500/20";
+  if (status === "warning" || status === "running" || status === "partial" || status === "stale") {
+    return "bg-amber-500/15 text-amber-300 border-amber-500/30";
+  }
+  if (status === "pending" || status === "empty") return "bg-slate-500/10 text-slate-300 border-slate-500/20";
   return "bg-rose-500/15 text-rose-300 border-rose-500/30";
 }
 
 function symbolFor(status: string) {
   if (status === "pass" || status === "ready") return "✓";
-  if (status === "warning" || status === "running") return "!";
-  if (status === "pending") return "…";
+  if (status === "warning" || status === "running" || status === "partial" || status === "stale") return "!";
+  if (status === "pending" || status === "empty") return "…";
   return "×";
 }
 

@@ -237,6 +237,52 @@ roles:
       - specialized check results
       - setup gap notes
 
+  performance-test-agent:
+    role_prompt: roles/performance-test-agent.md
+    canonical: ai/agents/performance-test-agent.md
+    skill_mode: scoped_only
+    skills: []
+    context_includes:
+      - .rules/project.md
+      - rules/ci/spec-release-gates.md
+      - tests/README.md
+      - tests/plans/
+      - tests/performance/
+      - tests/results/
+      - specs/current/
+      - specs/changes/
+    owns:
+      - tests/performance/
+      - performance and latency result normalization notes
+      - SLO and baseline risk summaries
+    outputs:
+      - load profiles
+      - normalized performance results
+      - SLO regression report
+
+  concurrency-test-agent:
+    role_prompt: roles/concurrency-test-agent.md
+    canonical: ai/agents/concurrency-test-agent.md
+    skill_mode: scoped_only
+    skills: []
+    context_includes:
+      - .rules/project.md
+      - rules/ci/spec-release-gates.md
+      - tests/README.md
+      - tests/plans/
+      - tests/concurrency/
+      - tests/results/
+      - specs/current/
+      - specs/changes/
+    owns:
+      - tests/concurrency/
+      - concurrency invariant result normalization notes
+      - consistency and idempotency risk summaries
+    outputs:
+      - concurrency scenarios
+      - normalized concurrency results
+      - invariant failure report
+
   ci-editor:
     role_prompt: roles/ci-editor.md
     canonical: ai/agents/ci-editor.md

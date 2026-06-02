@@ -29,6 +29,14 @@ This directory defines local agent routing, role contracts, and scoped skill loa
 
 The default entry agent receives the user request, classifies the work, then routes bounded tasks to the narrowest matching role from `manifest.yaml`. This is a routing contract for agent teams; the current repository stores the contract and role prompts, while concrete runtime dispatch is implemented by the host agent system or future workflow runner.
 
+For a deterministic local route preview, run:
+
+```bash
+node packages/cli/dist/main.js route-request --request "<需求文本>"
+```
+
+The command returns `requestKind`, `workTypes`, `primaryAgent`, `supportingAgents`, required rules, role-bound skills, and the next lifecycle step. It does not execute the selected agents; it makes the routing decision explicit before intake, implementation, testing, review, or release work starts.
+
 ```mermaid
 flowchart TD
   A["User request / business context"] --> B["Default entry agent"]

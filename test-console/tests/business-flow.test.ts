@@ -1,8 +1,10 @@
-import { buildBusinessFlowMapFromPlan, buildScenarioChains, getSpecBundle } from "@/lib/data";
+import { buildBusinessFlowMapFromPlan, buildScenarioChains, getAllTestPlans, getAllTestRuns } from "@/lib/data";
 
 describe("business flow map", () => {
   it("prefers explicit flow stages from the plan", async () => {
-    const { plan, latestRun } = await getSpecBundle("reward-order");
+    const [plans, runs] = await Promise.all([getAllTestPlans(), getAllTestRuns()]);
+    const plan = plans.find((item) => item.specId === "reward-order");
+    const latestRun = runs.find((item) => item.specId === "reward-order" && item.releaseDecision === "blocked" && item.flowResults?.length);
     const chains = buildScenarioChains(plan, latestRun!);
     const flow = buildBusinessFlowMapFromPlan(plan, chains, latestRun!);
 

@@ -1,6 +1,16 @@
 import React from "react";
 import { triggerTestRunAction } from "@/app/actions";
 
+const runScopeOptions = [
+  ["all", "All scopes"],
+  ["unit", "Unit"],
+  ["api", "API"],
+  ["scenario", "Scenario / E2E"],
+  ["performance", "Performance"],
+  ["concurrency", "Concurrency"],
+  ["gate", "Gate"],
+] as const;
+
 export function RerunSpecForm({
   specId,
   specVersion,
@@ -22,9 +32,11 @@ export function RerunSpecForm({
           defaultValue="all"
           className="rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm text-white"
         >
-          <option value="all">API + Scenario</option>
-          <option value="api">API only</option>
-          <option value="scenario">Scenario only</option>
+          {runScopeOptions.map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
         </select>
       </div>
       <button

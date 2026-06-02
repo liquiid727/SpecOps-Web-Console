@@ -1,0 +1,3 @@
+display_name: CI Governance Baseline
+short_description: Reuse a generic change-validation and CI readiness workflow.
+default_prompt: Apply a reusable CI governance workflow with change validation evidence, stage-scope control, review readiness, and a stable CI Record output.

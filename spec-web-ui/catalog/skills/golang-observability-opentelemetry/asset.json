@@ -1,0 +1,35 @@
+{
+  "id": "skill-golang-observability-opentelemetry",
+  "type": "skill",
+  "title": "Golang Observability Opentelemetry",
+  "summary": "Instrumenting Go applications with OpenTelemetry for distributed tracing, Prometheus for metrics, and structured logging with slog",
+  "direction": "backend",
+  "stacks": [
+    "go"
+  ],
+  "tags": [
+    "observability",
+    "golang",
+    "opentelemetry",
+    "prometheus",
+    "tracing",
+    "metrics",
+    "logging",
+    "slog",
+    "go-pack"
+  ],
+  "appliesTo": [
+    "backend"
+  ],
+  "dependsOn": [],
+  "conflictsWith": [],
+  "sourcePath": "spec-web-ui/catalog/skills/golang-observability-opentelemetry/SKILL.md",
+  "files": [
+    "spec-web-ui/catalog/skills/golang-observability-opentelemetry/SKILL.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "按项目类型确认是否启用该 skill，并检查引用资料是否适配目标仓库。"
+  ],
+  "sampleOutput": "可复用 skill 说明、触发条件、参考资料和运行边界。"
+}

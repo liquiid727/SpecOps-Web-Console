@@ -2,6 +2,16 @@ import React from "react";
 import { triggerTestRunAction } from "@/app/actions";
 import type { TestPlan } from "@/lib/types";
 
+const runScopeOptions = [
+  ["all", "All scopes"],
+  ["unit", "Unit"],
+  ["api", "API"],
+  ["scenario", "Scenario / E2E"],
+  ["performance", "Performance"],
+  ["concurrency", "Concurrency"],
+  ["gate", "Gate"],
+] as const;
+
 export function RunTriggerForm({
   plans,
   defaultSpecId,
@@ -51,9 +61,11 @@ export function RunTriggerForm({
           defaultValue="all"
           className="w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm text-white"
         >
-          <option value="all">API + Scenario</option>
-          <option value="api">API only</option>
-          <option value="scenario">Scenario only</option>
+          {runScopeOptions.map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
         </select>
       </div>
 
@@ -68,4 +80,3 @@ export function RunTriggerForm({
     </form>
   );
 }
-

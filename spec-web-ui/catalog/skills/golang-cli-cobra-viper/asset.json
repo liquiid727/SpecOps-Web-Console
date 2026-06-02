@@ -1,0 +1,33 @@
+{
+  "id": "skill-golang-cli-cobra-viper",
+  "type": "skill",
+  "title": "Golang Cli Cobra Viper",
+  "summary": "Building production-quality CLI tools with Cobra command framework and Viper configuration management",
+  "direction": "backend",
+  "stacks": [
+    "go"
+  ],
+  "tags": [
+    "cli",
+    "golang",
+    "cobra",
+    "viper",
+    "configuration",
+    "shell-completion",
+    "go-pack"
+  ],
+  "appliesTo": [
+    "backend"
+  ],
+  "dependsOn": [],
+  "conflictsWith": [],
+  "sourcePath": "spec-web-ui/catalog/skills/golang-cli-cobra-viper/SKILL.md",
+  "files": [
+    "spec-web-ui/catalog/skills/golang-cli-cobra-viper/SKILL.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "按项目类型确认是否启用该 skill，并检查引用资料是否适配目标仓库。"
+  ],
+  "sampleOutput": "可复用 skill 说明、触发条件、参考资料和运行边界。"
+}

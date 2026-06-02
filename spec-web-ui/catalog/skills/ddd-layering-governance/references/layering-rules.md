@@ -1,63 +1,67 @@
 # Layering Rules
 
-## Layer Ownership
+## 四层职责
 
 - `domain`
-  - owns entities, value objects, domain services, invariants, business legality, and business normalization
+  - 拥有 entity、VO、domain service、业务不变量、业务合法性、兼容归一化
 - `application`
-  - owns use-case orchestration, transaction boundaries, cross-repository scheduling, idempotency coordination, retries, and external integration flow control
+  - 拥有 use case 编排、事务边界、跨仓储调度、幂等、重试、事件协调、外部集成流控
 - `interfaces`
-  - owns protocol parsing, request binding, response rendering, and transport-level error mapping
+  - 拥有协议解析、request binding、response rendering、transport error mapping
 - `infrastructure`
-  - owns persistence, cache, messaging, external clients, and concrete repository implementations
+  - 拥有数据库、缓存、外部客户端、repository 实现和运行时技术适配
 
-## Thin Application Standard
+## application 薄封装标准
 
-`application` should behave like an orchestration shell, not a second business-rules layer.
+`application` 应该像 orchestration shell，而不是业务规则主舞台。
 
-Good fits for `application`:
+允许放在 `application` 的内容：
 
-- coordinating multiple repositories or domain services
-- opening and committing transactions
-- retry, idempotency, and event orchestration
-- external system sequencing
-- adapting domain errors to use-case context
+- 调用多个 repository / domain service 组织一个 use case
+- 开启事务、控制提交与回滚
+- 做幂等键检查、重试策略、事件发布、外部接口协调
+- 将 domain error 包装成更适合 use case 上下文的错误
 
-Bad fits for `application`:
+不应放在 `application` 的内容：
 
-- canonical business legality `switch/if`
-- hard-coded status semantics
-- compatibility aliases that belong to the domain model
-- treating request-schema constraints as final business truth
+- 业务 enum 合法性 `switch/if`
+- 与具体业务状态转换强绑定的硬编码判断
+- 把 request 层 `oneof` 当成最终业务真相
+- 用裸字符串、裸整数在多个步骤里传递业务状态
 
-## Layering Decision Rule
+判断口径：
 
-- If the rule answers "is this business value legal?" or "what does this value mean?" it belongs in `domain`.
-- If the rule answers "how do we orchestrate this request end-to-end?" it belongs in `application`.
-- If the rule answers "how do we parse or render this protocol?" it belongs in `interfaces`.
-- If the rule answers "how do we store or fetch this data?" it belongs in `infrastructure`.
+- 如果规则回答的是“业务上什么值合法、什么状态允许、什么组合成立”，优先归 `domain`
+- 如果规则回答的是“这一趟请求怎么调度步骤、怎么包事务、怎么做幂等与重试”，归 `application`
 
-## Common Prohibitions
+## 各层禁止事项
 
-### interfaces
+### handler / interfaces
 
-- do not implement canonical business validation
-- do not let request DTOs become the business truth model
-- do not normalize business enums only at the transport edge
+- 禁止写业务合法性 `switch/if`
+- 禁止把 DTO 字段直接当领域真相
+- 禁止在成功响应里回传未经领域归一化的业务状态文本
 
-### application
+### use case / application service
 
-- do not duplicate validation already owned by value objects or entities
-- do not become a dumping ground for business guards
-- do not bypass domain constructors just because the caller already parsed the request
+- 禁止复制 VO / entity 已有合法性判断
+- 禁止把多处散落的业务守卫条件堆成流程脚本
+- 禁止因为“方便”而跳过 domain constructor / parser
 
-### infrastructure
+### repository / infrastructure
 
-- do not let persistence constants define business semantics
-- do not hide business rules inside repositories or client adapters
+- 禁止承载业务真相判断
+- 禁止让存储层枚举值反向定义领域语义
+- 禁止把某个上下文独有业务规则下沉到 shared 技术组件
 
-## Practical Heuristics
+## context owner / runtime owner 的最小关系
 
-- When adding a new business input, first ask whether it needs a value object or parser.
-- When adding a new business state, first ask whether it should become a typed enum instead of a raw string.
-- When reviewing a large use case, check whether it still reads like orchestration rather than a pile of business law.
+- package owner 与 runtime owner 必须一致
+- 某个 control loop 如果 runtime 归 `context-a`，它的业务控制逻辑就不该落到 `context-b/application`
+- `shared-contract` 只承接稳定共享契约和技术抽象，不承接单一上下文业务真相
+
+## 使用建议
+
+- 新增业务校验时，先问“这个校验是否能被抽成 VO/domain API”
+- 新增业务状态字段时，先问“是否需要 typed enum / VO，而不是 string 常量散落”
+- 评审 application service 时，优先看它是否仍然只是 orchestration shell

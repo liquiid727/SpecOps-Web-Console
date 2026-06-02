@@ -1,0 +1,35 @@
+{
+  "id": "skill-ci-governance-baseline",
+  "type": "skill",
+  "title": "Ci Governance Baseline",
+  "summary": "Reuse a generic change-validation and CI-governance workflow with stable evidence and artifact requirements. Use when a team needs review readiness, stage-scope control, or CI Record style outputs without repository-specific Git policy details.",
+  "direction": "backend",
+  "stacks": [
+    "go",
+    "specos"
+  ],
+  "tags": [
+    "ci",
+    "governance",
+    "git",
+    "go-pack"
+  ],
+  "appliesTo": [
+    "backend"
+  ],
+  "dependsOn": [],
+  "conflictsWith": [],
+  "sourcePath": "spec-web-ui/catalog/skills/ci-governance-baseline/SKILL.md",
+  "files": [
+    "spec-web-ui/catalog/skills/ci-governance-baseline/SKILL.md",
+    "spec-web-ui/catalog/skills/ci-governance-baseline/agents/openai.yaml",
+    "spec-web-ui/catalog/skills/ci-governance-baseline/references/change-validation.md",
+    "spec-web-ui/catalog/skills/ci-governance-baseline/references/ci-record.md",
+    "spec-web-ui/catalog/skills/ci-governance-baseline/references/stage-scope.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "按项目类型确认是否启用该 skill，并检查引用资料是否适配目标仓库。"
+  ],
+  "sampleOutput": "可复用 skill 说明、触发条件、参考资料和运行边界。"
+}

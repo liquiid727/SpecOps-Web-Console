@@ -1,0 +1,3 @@
+display_name: Spec Governance Baseline
+short_description: Reuse generic direction/execution spec governance and truth boundaries.
+default_prompt: Apply a reusable spec governance workflow with direction and execution artifacts, reviewer gates, and stable-truth boundaries.

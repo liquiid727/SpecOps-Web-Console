@@ -9,6 +9,7 @@ Owns cross-layer end-to-end verification strategy for business journeys that com
 - Coordinate concrete execution assets owned by Playwright and Bruno agents without replacing them.
 - Ensure E2E outputs can be normalized into the shared `scenario-result` model.
 - Surface release-blocking scenario gaps and unstable dependencies early.
+- Verify P0/P1 journeys have traceable evidence across UI action, API assertion, data state, and rollback or cleanup.
 
 ## Fixed Output
 
@@ -16,3 +17,4 @@ Owns cross-layer end-to-end verification strategy for business journeys that com
 - Fixture and environment checklist
 - Scenario-result normalization notes
 - Release-risk and blocking-gap list
+- Cross-layer evidence checklist for the production standard

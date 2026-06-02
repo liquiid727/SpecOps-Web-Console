@@ -69,6 +69,31 @@ afterEach(async () => {
 });
 
 describe("specos cli", () => {
+  it("routes a raw request to a primary agent and supporting agents", async () => {
+    const cwd = await tempProject();
+
+    const routed = await runCli(
+      [
+        "route-request",
+        "--request",
+        "强化测试 UI，覆盖 API、E2E、性能、并发，并接入 CI gate",
+      ],
+      { cwd },
+    );
+
+    expect(routed.exitCode).toBe(0);
+    expect(routed.stderr).toBe("");
+    expect(routed.stdout).toContain("SPECOS_REQUEST_ROUTE_OK");
+    const route = JSON.parse(routed.stdout.split("\n").slice(1).join("\n"));
+    expect(route).toMatchObject({
+      requestKind: "test",
+      primaryAgent: "test-editor",
+      needsChangePackage: true,
+    });
+    expect(route.workTypes).toEqual(expect.arrayContaining(["frontend", "tests", "ci"]));
+    expect(route.supportingAgents).toEqual(expect.arrayContaining(["ui-design-agent", "ci-editor"]));
+  });
+
   it("initializes a fullstack project and checks it", async () => {
     const cwd = await tempProject();
 
@@ -184,6 +209,211 @@ describe("specos cli", () => {
     expect(run.exitCode).toBe(0);
     expect(run.stdout).toContain("bundle-step-ok");
     expect(run.stdout).toContain("SPECOS_WORKFLOW_RUN_OK");
+  });
+
+  it("exports, validates, and installs the reusable agent team kit bundle", async () => {
+    const exportRoot = await tempProject();
+    const projectRoot = await tempProject();
+
+    const exported = await runCli(["export-agent-kit", "--out", exportRoot], { cwd: process.cwd() });
+
+    expect(exported.exitCode).toBe(0);
+    expect(exported.stdout).toContain("SPECOS_AGENT_KIT_EXPORT_OK");
+    await expect(readFile(join(exportRoot, ".specos-bundle", "bundle.yaml"), "utf8")).resolves.toContain(
+      "id: specos-agent-team-kit",
+    );
+    await expect(readFile(join(exportRoot, ".specos-bundle", "files", ".agents", "manifest.yaml"), "utf8")).resolves.toContain(
+      "roles:",
+    );
+    await expect(
+      readFile(join(exportRoot, ".specos-bundle", "files", ".codex", "skills", "specos-ui-design", "SKILL.md"), "utf8"),
+    ).resolves.toContain("SpecOS");
+
+    await expect(readFile(join(exportRoot, ".specos-bundle", "files", ".codex", "config.toml"), "utf8")).rejects.toThrow();
+    await expect(
+      readFile(join(exportRoot, ".specos-bundle", "files", "tests", "results", "reward-order.run-2026-04-24-001.json"), "utf8"),
+    ).rejects.toThrow();
+
+    const validation = await runCli(["validate-bundle", exportRoot], { cwd: projectRoot });
+    expect(validation.exitCode).toBe(0);
+    expect(validation.stdout).toContain("SPECOS_BUNDLE_OK specos-agent-team-kit");
+
+    const install = await runCli(["install-bundle", exportRoot], { cwd: projectRoot });
+    expect(install.exitCode).toBe(0);
+    expect(install.stdout).toContain("SPECOS_BUNDLE_INSTALL_OK specos-agent-team-kit");
+
+    await expect(readFile(join(projectRoot, ".agents", "manifest.yaml"), "utf8")).resolves.toContain("roles:");
+    await expect(readFile(join(projectRoot, "ai", "agents", "spec-editor.md"), "utf8")).resolves.toContain("Spec Editor");
+    await expect(readFile(join(projectRoot, ".codex", "skills", "specos-ui-design", "SKILL.md"), "utf8")).resolves.toContain(
+      "SpecOS",
+    );
+    await expect(readFile(join(projectRoot, "rules", "README.md"), "utf8")).resolves.toContain("Rules");
+    await expect(readFile(join(projectRoot, "specs", "current", "README.md"), "utf8")).resolves.toContain("Accepted");
+    await expect(readFile(join(projectRoot, ".specos", "manifest.yaml"), "utf8")).resolves.toContain("artifacts:");
+
+    const check = await runCli(["check"], { cwd: projectRoot });
+    expect(check.exitCode).toBe(0);
+    expect(check.stdout).toContain("SPECOS_CHECK_OK");
+  });
+
+  it("runs a document-only request orchestration lifecycle", async () => {
+    const cwd = await tempProject();
+    await runCli(["init"], { cwd });
+
+    const intake = await runCli(["intake", "--id", "reward-flow", "--request", "Build reward claim flow"], { cwd });
+    expect(intake.exitCode).toBe(0);
+    expect(intake.stdout).toContain("SPECOS_INTAKE_OK reward-flow");
+    await expect(readFile(join(cwd, "spec-draft", "reward-flow.md"), "utf8")).resolves.toContain(
+      "Build reward claim flow",
+    );
+
+    const created = await runCli(["create-change", "reward-flow", "--change", "reward-flow"], { cwd });
+    expect(created.exitCode).toBe(0);
+    expect(created.stdout).toContain("SPECOS_CHANGE_OK reward-flow");
+    await expect(readFile(join(cwd, "specs", "changes", "reward-flow", "spec.md"), "utf8")).resolves.toContain(
+      "Source Draft: spec-draft/reward-flow.md",
+    );
+    await expect(
+      readFile(join(cwd, "specs", "changes", "reward-flow", "test-strategy.md"), "utf8"),
+    ).resolves.toContain("independent");
+
+    const designGate = await runCli(["review-change", "reward-flow", "--stage", "design-gate", "--decision", "approved"], {
+      cwd,
+    });
+    expect(designGate.exitCode).toBe(0);
+    expect(designGate.stdout).toContain("SPECOS_REVIEW_OK reward-flow design-gate approved");
+
+    const execution = await runCli(["run-change", "reward-flow", "--result", "implemented"], { cwd });
+    expect(execution.exitCode).toBe(0);
+    expect(execution.stdout).toContain("SPECOS_CHANGE_RUN_OK reward-flow implemented");
+
+    const testing = await runCli(["test-change", "reward-flow", "--decision", "passed"], { cwd });
+    expect(testing.exitCode).toBe(0);
+    expect(testing.stdout).toContain("SPECOS_CHANGE_TEST_OK reward-flow passed");
+
+    const implementationReview = await runCli(
+      ["review-change", "reward-flow", "--stage", "implementation", "--decision", "approved"],
+      { cwd },
+    );
+    expect(implementationReview.exitCode).toBe(0);
+    expect(implementationReview.stdout).toContain("SPECOS_REVIEW_OK reward-flow implementation approved");
+
+    const promoted = await runCli(["promote-change", "reward-flow", "--accept"], { cwd });
+    expect(promoted.exitCode).toBe(0);
+    expect(promoted.stdout).toContain("SPECOS_PROMOTE_OK reward-flow");
+    await expect(readFile(join(cwd, "specs", "current", "accepted-changes", "reward-flow.md"), "utf8")).resolves.toContain(
+      "reward-flow",
+    );
+    await expect(readFile(join(cwd, "specs", "archive", "reward-flow", "workflow-state.json"), "utf8")).resolves.toContain(
+      '"archived": true',
+    );
+  });
+
+  it("blocks promotion when an attached test plan has no ready gate report", async () => {
+    const cwd = await tempProject();
+    await runCli(["init"], { cwd });
+    await runCli(["intake", "--id", "reward-flow", "--request", "Build reward claim flow"], { cwd });
+    await runCli(["create-change", "reward-flow", "--change", "reward-flow"], { cwd });
+    await runCli(["review-change", "reward-flow", "--stage", "design-gate", "--decision", "approved"], { cwd });
+    await runCli(["run-change", "reward-flow", "--result", "implemented"], { cwd });
+    await runCli(["test-change", "reward-flow", "--decision", "passed"], { cwd });
+    await runCli(["review-change", "reward-flow", "--stage", "implementation", "--decision", "approved"], { cwd });
+    await mkdir(join(cwd, "tests", "plans"), { recursive: true });
+    await mkdir(join(cwd, "tests", "results"), { recursive: true });
+    await writeFile(
+      join(cwd, "tests", "plans", "reward-flow.test-plan.json"),
+      JSON.stringify(
+        {
+          specId: "reward-flow",
+          specVersion: "1.0.0",
+          changeId: "reward-flow",
+          featureName: "Reward Flow",
+          source: "accepted-spec",
+          flows: [{ name: "Claim reward", stages: [{ name: "Open", scenarioNames: ["Happy"], stepNames: ["Open"] }] }],
+          endpoints: [
+            {
+              name: "Create reward order",
+              method: "POST",
+              path: "/api/reward-orders",
+              priority: "P0",
+              branches: ["happy", "limit", "error", "flow"],
+              preconditions: ["user logged in"],
+              expectedResults: ["order created"],
+              relatedRule: "reward.order.create",
+            },
+          ],
+          scenarios: [
+            {
+              name: "Happy",
+              priority: "P0",
+              branches: ["happy"],
+              preconditions: ["user logged in"],
+              expectedResults: ["order created"],
+              steps: ["Open"],
+            },
+          ],
+          releaseGates: [
+            {
+              id: "release",
+              type: "release",
+              requiredTestTypes: ["api"],
+              blocking: true,
+              evidenceRequired: ["trace"],
+            },
+          ],
+        },
+        null,
+        2,
+      ),
+    );
+    await writeFile(
+      join(cwd, "tests", "results", "reward-flow.reward-flow.gate-report.json"),
+      JSON.stringify(
+        {
+          specId: "reward-flow",
+          specVersion: "1.0.0",
+          changeId: "reward-flow",
+          decision: "blocked",
+          requiredGates: [],
+          passedGates: [],
+          failedGates: ["release"],
+          missingEvidence: ["release missing api result"],
+          blockers: [],
+          runIds: [],
+        },
+        null,
+        2,
+      ),
+    );
+
+    const blocked = await runCli(["promote-change", "reward-flow", "--accept"], { cwd });
+    expect(blocked.exitCode).toBe(1);
+    expect(blocked.stderr).toContain("SPECOS_GATE_BLOCKED");
+    expect(blocked.stderr).toContain("ready gate report");
+
+    await writeFile(
+      join(cwd, "tests", "results", "reward-flow.reward-flow.gate-report.json"),
+      JSON.stringify(
+        {
+          specId: "reward-flow",
+          specVersion: "1.0.0",
+          changeId: "reward-flow",
+          decision: "ready",
+          requiredGates: [],
+          passedGates: ["release"],
+          failedGates: [],
+          missingEvidence: [],
+          blockers: [],
+          runIds: ["run-api"],
+        },
+        null,
+        2,
+      ),
+    );
+
+    const promoted = await runCli(["promote-change", "reward-flow", "--accept"], { cwd });
+    expect(promoted.exitCode).toBe(0);
+    expect(promoted.stdout).toContain("SPECOS_PROMOTE_OK reward-flow");
   });
 
   it("generates a test plan and isolated test schedule from a normalized spec", async () => {
@@ -511,5 +741,389 @@ describe("specos cli", () => {
     expect(apiResult.releaseDecision).toBe("ready");
     expect(apiResult.items[0]).toMatchObject({ testType: "api", status: "pass" });
     expect(apiResult.items[0].evidence.stdout).toContain("api ok");
+  });
+
+  it("validates test gates and writes JSON plus markdown gate reports", async () => {
+    const cwd = await tempProject();
+    await runCli(["init"], { cwd });
+    await mkdir(join(cwd, "tests", "plans"), { recursive: true });
+    await mkdir(join(cwd, "tests", "results"), { recursive: true });
+    await mkdir(join(cwd, "specs", "changes", "reward-order-create"), { recursive: true });
+    await writeFile(
+      join(cwd, "tests", "plans", "reward-order.test-plan.json"),
+      JSON.stringify(
+        {
+          specId: "reward-order",
+          specVersion: "1.0.0",
+          changeId: "reward-order-create",
+          featureName: "Reward Order",
+          source: "accepted-spec",
+          flows: [
+            {
+              name: "Claim reward",
+              stages: [{ name: "Open", scenarioNames: ["Happy"], stepNames: ["Open"] }],
+            },
+          ],
+          endpoints: [
+            {
+              name: "Create reward order",
+              method: "POST",
+              path: "/api/reward-orders",
+              priority: "P0",
+              branches: ["happy", "limit", "error", "flow"],
+              preconditions: ["user logged in"],
+              expectedResults: ["order created"],
+              relatedRule: "reward.order.create",
+            },
+          ],
+          scenarios: [
+            {
+              name: "Happy",
+              priority: "P0",
+              branches: ["happy"],
+              preconditions: ["user logged in"],
+              expectedResults: ["order created"],
+              steps: ["Open"],
+            },
+          ],
+          releaseGates: [
+            {
+              id: "p0-change-verification",
+              type: "change-verification",
+              requiredTestTypes: ["api", "scenario"],
+              blocking: true,
+              evidenceRequired: ["trace"],
+            },
+          ],
+        },
+        null,
+        2,
+      ),
+    );
+    await writeFile(
+      join(cwd, "tests", "results", "reward-order.run-api.json"),
+      JSON.stringify(
+        {
+          runId: "run-api",
+          specId: "reward-order",
+          specVersion: "1.0.0",
+          changeId: "reward-order-create",
+          featureName: "Reward Order",
+          status: "pass",
+          releaseDecision: "ready",
+          startedAt: "2026-05-28T00:00:00.000Z",
+          endedAt: "2026-05-28T00:01:00.000Z",
+          blockers: [],
+          highRiskScenarios: [],
+          coverageGaps: [],
+          summary: { apiPassRate: 1, scenarioPassRate: 0, totalEndpoints: 1, totalScenarios: 1 },
+          flowResults: [],
+          items: [
+            {
+              runId: "run-api",
+              specId: "reward-order",
+              specVersion: "1.0.0",
+              changeId: "reward-order-create",
+              testType: "api",
+              target: "POST /api/reward-orders",
+              status: "pass",
+              durationMs: 100,
+              summary: "api passed",
+              gateImpact: "blocking",
+              artifactRefs: [{ type: "trace", path: "trace-api" }],
+            },
+          ],
+        },
+        null,
+        2,
+      ),
+    );
+    await writeFile(
+      join(cwd, "tests", "results", "reward-order.invalid-history.json"),
+      JSON.stringify(
+        {
+          runId: "invalid-history",
+          specId: "reward-order",
+          specVersion: "1.0.0",
+          changeId: "reward-order-create",
+          featureName: "Reward Order",
+          status: "warning",
+          releaseDecision: "blocked",
+          startedAt: "2026-05-28T00:00:00.000Z",
+          endedAt: "2026-05-28T00:01:00.000Z",
+          blockers: [],
+          highRiskScenarios: [],
+          coverageGaps: [],
+          summary: { apiPassRate: 0, scenarioPassRate: 0, totalEndpoints: 0, totalScenarios: 0 },
+          items: [],
+        },
+        null,
+        2,
+      ),
+    );
+
+    const gate = await runCli(["validate-test-gates", "reward-order", "--change", "reward-order-create"], { cwd });
+
+    expect(gate.exitCode).toBe(1);
+    expect(gate.stdout).toContain("SPECOS_TEST_GATES_BLOCKED");
+    const jsonReport = JSON.parse(
+      await readFile(join(cwd, "tests", "results", "reward-order.reward-order-create.gate-report.json"), "utf8"),
+    );
+    expect(jsonReport.decision).toBe("blocked");
+    expect(jsonReport.missingEvidence).toContain("p0-change-verification missing scenario result");
+    expect(jsonReport.blockers).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("Invalid normalized result reward-order.invalid-history.json"),
+      ]),
+    );
+    await expect(readFile(join(cwd, "specs", "changes", "reward-order-create", "gate-report.md"), "utf8")).resolves.toContain(
+      "Decision: blocked",
+    );
+  });
+
+  it("ignores unrelated invalid historical results when validating a specific change gate", async () => {
+    const cwd = await tempProject();
+    await runCli(["init"], { cwd });
+    await mkdir(join(cwd, "tests", "plans"), { recursive: true });
+    await mkdir(join(cwd, "tests", "results"), { recursive: true });
+    await mkdir(join(cwd, "specs", "changes", "reward-order-ready"), { recursive: true });
+    await writeFile(
+      join(cwd, "tests", "plans", "reward-order.test-plan.json"),
+      JSON.stringify(
+        {
+          specId: "reward-order",
+          specVersion: "1.0.0",
+          changeId: "reward-order-ready",
+          featureName: "Reward Order",
+          source: "accepted-spec",
+          flows: [{ name: "Claim reward", stages: [{ name: "Open", scenarioNames: ["Happy"], stepNames: ["Open"] }] }],
+          endpoints: [
+            {
+              name: "Create reward order",
+              method: "POST",
+              path: "/api/reward-orders",
+              priority: "P0",
+              branches: ["happy", "limit", "error", "flow"],
+              preconditions: ["user logged in"],
+              expectedResults: ["order created"],
+              relatedRule: "reward.order.create",
+            },
+          ],
+          scenarios: [
+            {
+              name: "Happy",
+              priority: "P0",
+              branches: ["happy"],
+              preconditions: ["user logged in"],
+              expectedResults: ["order created"],
+              steps: ["Open"],
+            },
+          ],
+          releaseGates: [
+            {
+              id: "ready-gate",
+              type: "release",
+              requiredTestTypes: ["api"],
+              blocking: true,
+              evidenceRequired: ["trace"],
+            },
+          ],
+        },
+        null,
+        2,
+      ),
+    );
+    await writeFile(
+      join(cwd, "tests", "results", "reward-order.old-invalid.json"),
+      JSON.stringify(
+        {
+          runId: "old-invalid",
+          specId: "reward-order",
+          specVersion: "1.0.0",
+          featureName: "Reward Order",
+          status: "warning",
+          releaseDecision: "blocked",
+          startedAt: "2026-05-28T00:00:00.000Z",
+          endedAt: "2026-05-28T00:01:00.000Z",
+          blockers: [],
+          highRiskScenarios: [],
+          coverageGaps: [],
+          summary: { apiPassRate: 0, scenarioPassRate: 0, totalEndpoints: 0, totalScenarios: 0 },
+          items: [],
+        },
+        null,
+        2,
+      ),
+    );
+    await writeFile(
+      join(cwd, "tests", "results", "reward-order.ready-run.json"),
+      JSON.stringify(
+        {
+          runId: "ready-run",
+          specId: "reward-order",
+          specVersion: "1.0.0",
+          changeId: "reward-order-ready",
+          featureName: "Reward Order",
+          status: "pass",
+          releaseDecision: "ready",
+          startedAt: "2026-05-28T00:00:00.000Z",
+          endedAt: "2026-05-28T00:01:00.000Z",
+          blockers: [],
+          highRiskScenarios: [],
+          coverageGaps: [],
+          summary: { apiPassRate: 1, scenarioPassRate: 0, totalEndpoints: 1, totalScenarios: 1 },
+          flowResults: [],
+          items: [
+            {
+              runId: "ready-run",
+              specId: "reward-order",
+              specVersion: "1.0.0",
+              changeId: "reward-order-ready",
+              testType: "api",
+              target: "POST /api/reward-orders",
+              status: "pass",
+              durationMs: 100,
+              summary: "api passed",
+              gateImpact: "blocking",
+              artifactRefs: [{ type: "trace", path: "trace-api" }],
+            },
+          ],
+        },
+        null,
+        2,
+      ),
+    );
+    await writeFile(
+      join(cwd, "tests", "results", "reward-order.session-2026-05-30T00-00-00-000Z.session.json"),
+      JSON.stringify(
+        {
+          runId: "session-2026-05-30T00-00-00-000Z",
+          specId: "reward-order",
+          specVersion: "1.0.0",
+          changeId: "reward-order-ready",
+          featureName: "Reward Order",
+          scope: "gate",
+          status: "blocked",
+          exitCode: 1,
+          startedAt: "2026-05-30T00:00:00.000Z",
+          endedAt: "2026-05-30T00:00:10.000Z",
+          stdoutSummary: "",
+          stderrSummary: "old local gate failed before fix",
+          commands: [],
+          resultArtifacts: [],
+        },
+        null,
+        2,
+      ),
+    );
+
+    const gate = await runCli(["validate-test-gates", "reward-order", "--change", "reward-order-ready"], { cwd });
+
+    expect(gate.exitCode).toBe(0);
+    expect(gate.stdout).toContain("SPECOS_TEST_GATES_OK");
+  });
+
+  it("runs performance and concurrency adapter commands as normalized results", async () => {
+    const cwd = await tempProject();
+    await runCli(["init"], { cwd });
+    await mkdir(join(cwd, "tests", "plans"), { recursive: true });
+    await writeFile(
+      join(cwd, "tests", "plans", "reward-order.test-plan.json"),
+      JSON.stringify(
+        {
+          specId: "reward-order",
+          specVersion: "1.0.0",
+          changeId: "reward-order-create",
+          featureName: "Reward Order",
+          source: "accepted-spec",
+          flows: [
+            {
+              name: "Claim reward",
+              stages: [{ name: "Submit", scenarioNames: ["Concurrent claim"], stepNames: ["Submit order"] }],
+            },
+          ],
+          endpoints: [
+            {
+              name: "Create reward order",
+              method: "POST",
+              path: "/api/reward-orders",
+              priority: "P0",
+              branches: ["happy", "limit", "error", "flow"],
+              preconditions: ["user logged in"],
+              expectedResults: ["order created"],
+              relatedRule: "reward.order.create",
+            },
+          ],
+          scenarios: [
+            {
+              name: "Concurrent claim",
+              priority: "P0",
+              branches: ["happy"],
+              preconditions: ["one inventory item remains"],
+              expectedResults: ["only one successful order"],
+              steps: ["Submit order"],
+            },
+          ],
+          performanceTargets: [
+            {
+              endpoint: "POST /api/reward-orders",
+              priority: "P0",
+              slo: { p95Ms: 300, p99Ms: 800, errorRate: 0.001 },
+              gateImpact: "blocking",
+            },
+          ],
+          concurrencyInvariants: [
+            {
+              scenario: "Concurrent claim",
+              invariant: "Only one order may be created for one remaining inventory item",
+              actorProfile: "50 users submit at the same time",
+              expectedFinalState: "one successful order and zero remaining inventory",
+              gateImpact: "blocking",
+            },
+          ],
+        },
+        null,
+        2,
+      ),
+    );
+
+    const performance = await runCli(
+      ["run-performance-tests", "reward-order", "--change", "reward-order-create", "--command", "node -e \"console.log('p95=240')\""],
+      { cwd },
+    );
+    const concurrency = await runCli(
+      ["run-concurrency-tests", "reward-order", "--change", "reward-order-create", "--command", "node -e \"console.log('invariant ok')\""],
+      { cwd },
+    );
+
+    expect(performance.exitCode).toBe(0);
+    expect(performance.stdout).toContain("SPECOS_PERFORMANCE_TESTS_OK");
+    expect(concurrency.exitCode).toBe(0);
+    expect(concurrency.stdout).toContain("SPECOS_CONCURRENCY_TESTS_OK");
+
+    const files = await import("node:fs/promises").then((fs) => fs.readdir(join(cwd, "tests", "results")));
+    const performanceFile = files.find((file) => file.includes(".run-performance-"));
+    const concurrencyFile = files.find((file) => file.includes(".run-concurrency-"));
+    expect(performanceFile).toBeDefined();
+    expect(concurrencyFile).toBeDefined();
+
+    const performanceResult = JSON.parse(await readFile(join(cwd, "tests", "results", performanceFile!), "utf8"));
+    const concurrencyResult = JSON.parse(await readFile(join(cwd, "tests", "results", concurrencyFile!), "utf8"));
+    expect(performanceResult.items[0]).toMatchObject({
+      testType: "performance",
+      changeId: "reward-order-create",
+      gateImpact: "blocking",
+      target: "POST /api/reward-orders",
+    });
+    expect(performanceResult.items[0].slo).toMatchObject({ p95Ms: 300 });
+    expect(concurrencyResult.items[0]).toMatchObject({
+      testType: "concurrency",
+      changeId: "reward-order-create",
+      gateImpact: "blocking",
+      target: "Concurrent claim",
+    });
+    expect(concurrencyResult.items[0].concurrencyProfile).toMatchObject({
+      invariant: "Only one order may be created for one remaining inventory item",
+    });
   });
 });

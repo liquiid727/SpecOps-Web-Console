@@ -1,0 +1,3 @@
+display_name: Test Governance Baseline
+short_description: Reuse a generic testing governance workflow with tracks, plans, and reports.
+default_prompt: Apply a reusable multi-track testing governance workflow with track selection, Test Plan, Test Report, coverage expectations, and residual-risk reporting.

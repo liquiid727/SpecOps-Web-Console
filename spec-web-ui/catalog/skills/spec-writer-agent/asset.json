@@ -1,0 +1,34 @@
+{
+  "id": "skill-spec-writer-agent",
+  "type": "skill",
+  "title": "Spec Writer Agent",
+  "summary": "Use when an approved design needs direction and execution specs drafted without promoting draft design directly into stable runtime truth.",
+  "direction": "fullstack",
+  "stacks": [
+    "go",
+    "react",
+    "specos"
+  ],
+  "tags": [
+    "spec",
+    "writer",
+    "execution",
+    "reusable",
+    "go-pack"
+  ],
+  "appliesTo": [
+    "backend",
+    "frontend"
+  ],
+  "dependsOn": [],
+  "conflictsWith": [],
+  "sourcePath": "spec-web-ui/catalog/skills/spec-writer-agent/SKILL.md",
+  "files": [
+    "spec-web-ui/catalog/skills/spec-writer-agent/SKILL.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "按项目类型确认是否启用该 skill，并检查引用资料是否适配目标仓库。"
+  ],
+  "sampleOutput": "可复用 skill 说明、触发条件、参考资料和运行边界。"
+}

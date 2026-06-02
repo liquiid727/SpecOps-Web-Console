@@ -1,0 +1,3 @@
+display_name: Team Orchestration Baseline
+short_description: Reuse a generic routing, planning, handoff, and review workflow baseline.
+default_prompt: Establish a reusable team execution baseline with routing, planning, handoff, findings, and sync artifacts without coupling to one repository's backend contexts.

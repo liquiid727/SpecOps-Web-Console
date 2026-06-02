@@ -1,0 +1,3 @@
+display_name: Error Logging Governance
+short_description: Guide errcode and errno boundaries, error conversion flow, and structured logging rules.
+default_prompt: Review or implement a Go backend change for error code ownership, error wrapping and transport mapping, audit and operational logs, and structured logging field requirements.

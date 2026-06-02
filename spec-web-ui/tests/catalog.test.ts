@@ -133,6 +133,36 @@ describe("loadCatalogAssets", () => {
     );
     expect(agentTemplate?.files).toEqual(["ai/agents/spec-editor.md"]);
   });
+
+  it("loads the extracted Go skill and agent pack as reusable catalog assets", async () => {
+    const catalog = await loadCatalogAssets();
+    const orchestratorAgent = catalog.find((asset) => asset.id === "agent-go-pack-orchestrator");
+    const apiGovernanceSkill = catalog.find((asset) => asset.id === "skill-api-contract-governance");
+    const routingTemplate = catalog.find((asset) => asset.id === "template-go-pack-routing");
+
+    expect(orchestratorAgent?.type).toBe("agent_role");
+    expect(orchestratorAgent?.sourcePath).toBe(
+      "spec-web-ui/catalog/agent-templates/agent-go-pack-orchestrator/orchestrator.md"
+    );
+    expect(orchestratorAgent?.files).toEqual(["ai/agents/orchestrator.md"]);
+    expect(orchestratorAgent?.contentFiles?.["ai/agents/orchestrator.md"]).toBe(
+      "spec-web-ui/catalog/agent-templates/agent-go-pack-orchestrator/orchestrator.md"
+    );
+
+    expect(apiGovernanceSkill?.type).toBe("skill");
+    expect(apiGovernanceSkill?.sourcePath).toBe(
+      "spec-web-ui/catalog/skills/api-contract-governance/SKILL.md"
+    );
+    expect(apiGovernanceSkill?.files).toContain(
+      "spec-web-ui/catalog/skills/api-contract-governance/references/api-contract-rules.md"
+    );
+
+    expect(routingTemplate?.type).toBe("spec_template");
+    expect(routingTemplate?.sourcePath).toBe(
+      "spec-web-ui/catalog/spec-templates/template-go-pack-routing/routing.md"
+    );
+    expect(routingTemplate?.files).toEqual(["ai/templates/routing.md"]);
+  });
 });
 
 describe("sortCatalogAssetsForWorkspace", () => {

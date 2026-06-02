@@ -101,11 +101,18 @@ The execution track may write implementation-coupled unit tests under `tests/uni
 
 ## First Implementation Slice
 
-The first implementation slice provides:
+The first implementation slice provides a document-only CLI workflow before any hosted multi-agent runtime exists:
 
+- `specos intake --id <draft-id> --request <text>`
+- `specos create-change <draft-id> --change <change-id>`
+- `specos review-change <change-id> --stage design-gate --decision approved`
+- `specos run-change <change-id> --result planned|implemented`
+- `specos test-change <change-id> --decision passed|failed|blocked`
+- `specos review-change <change-id> --stage implementation --decision approved`
+- `specos promote-change <change-id> --accept`
 - `specos generate-test-plan <spec-file> --change <change-id>`
 - `tests/plans/<spec>.test-plan.json`
 - `tests/schedules/<spec>.test-schedule.json`
 - validation that execution and testing responsibilities stay separated.
 
-Real API runner integration can consume this schedule in the next slice without changing the lifecycle contract.
+The CLI workflow writes `workflow-state.json` inside the change package and enforces gate order, but it does not pretend to execute real implementation or hosted agent dispatch. Real agent runtime and API/UI runner integration can consume this state in the next slice without changing the lifecycle contract.

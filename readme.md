@@ -82,6 +82,14 @@ node /Users/liquiid/code/specos-ai/packages/cli/dist/main.js init --template spe
 - `specos init --template fullstack`
 - `specos init --template spec-only`
 - `specos check`
+- `specos intake --id <draft-id> --request <text>`
+- `specos create-change <draft-id> --change <change-id>`
+- `specos review-change <change-id> --stage design-gate --decision approved`
+- `specos run-change <change-id> --result planned|implemented`
+- `specos test-change <change-id> --decision passed|failed|blocked`
+- `specos review-change <change-id> --stage implementation --decision approved`
+- `specos promote-change <change-id> --accept`
+- `specos export-agent-kit --out <path>`
 - `specos validate-bundle <path>`
 - `specos install-bundle <path>`
 - `specos list-workflows`
@@ -117,6 +125,61 @@ node /Users/liquiid/code/specos-ai/packages/cli/dist/main.js init --template spe
 - `.specos/manifest.yaml` 存在且结构合法
 - artifact 目录路径不越出项目根目录
 - `spec-draft`、`specs/current`、`tests`、`tests/results` 等基础目录存在
+
+### 1.1 文档型请求 Orchestrator
+
+当前 CLI 已提供第一版“纯文档/CLI workflow”，用于先把任何需求纳入可追踪状态机，但不直接接真实多 Agent runtime。
+
+推荐链路：
+
+```bash
+node packages/cli/dist/main.js intake --id reward-flow --request "Build reward claim flow"
+node packages/cli/dist/main.js create-change reward-flow --change reward-flow
+node packages/cli/dist/main.js review-change reward-flow --stage design-gate --decision approved
+node packages/cli/dist/main.js run-change reward-flow --result implemented
+node packages/cli/dist/main.js test-change reward-flow --decision passed
+node packages/cli/dist/main.js review-change reward-flow --stage implementation --decision approved
+node packages/cli/dist/main.js promote-change reward-flow --accept
+```
+
+产物链路：
+- `intake` 写入 `spec-draft/<draft-id>.md`，记录原始需求、澄清项和人工确认点。
+- `create-change` 写入 `specs/changes/<change-id>/`，生成 `spec.md`、architecture/design review、test strategy、execution plan、review report、changelog 和 `workflow-state.json`。
+- `review-change --stage design-gate` 记录 architecture/design gate 决策。只有 approved 后才能进入 `run-change`。
+- `run-change` 只记录执行交接或外部执行结果，不假装 CLI 已经真实改代码。
+- `test-change` 记录独立测试轨道的验收决策，强调场景/API/E2E 测试不能从执行 agent 私有实现说明派生。
+- `review-change --stage implementation` 记录实现评估。
+- `promote-change --accept` 在所有必需 gate 通过后，写入 `specs/current/accepted-changes/<change-id>.md` 并复制归档到 `specs/archive/<change-id>/`。
+
+### 1.5 导出 Agent Team Kit 到其他项目
+
+如果你想把本仓库沉淀的 Agent 角色分工、角色提示词、skill 绑定、rules、spec/test 骨架复用到其他项目，可以先生成一个标准 `.specos-bundle/`：
+
+```bash
+node packages/cli/dist/main.js export-agent-kit --out dist/specos-agent-team-kit
+```
+
+在目标项目中校验并安装：
+
+```bash
+node /Users/liquiid/code/specos-ai/packages/cli/dist/main.js validate-bundle /Users/liquiid/code/specos-ai/dist/specos-agent-team-kit
+node /Users/liquiid/code/specos-ai/packages/cli/dist/main.js install-bundle /Users/liquiid/code/specos-ai/dist/specos-agent-team-kit
+node /Users/liquiid/code/specos-ai/packages/cli/dist/main.js check
+```
+
+这个 bundle 会安装：
+- `AGENTS.md`
+- `.agents/`、`ai/agents/`、`ai/workflows/`
+- `.rules/`、`rules/`
+- `.codex/instructions.md`、`.codex/skills/`
+- `.skills/`
+- `spec-draft/`、`specs/`、`tests/`
+- `.specos/manifest.yaml` 和 `.specos/workflows/spec-driven-default.yaml`
+
+它不会包含 `.codex/config.toml`，也不会包含 `tests/results/*.json` 历史运行结果。安装后需要按目标项目手动调整：
+- `.agents/manifest.yaml` 的 `project`、上下文路径和不需要的角色。
+- `.rules/rule-map.yaml` 的规则适配。
+- `specs/current/project-context.md`、`architecture-context.md`、`domain-context.md` 的项目事实。
 
 ### 2. 用 `spec-web-ui` 组织项目资产
 

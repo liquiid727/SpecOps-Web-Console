@@ -1,0 +1,3 @@
+display_name: Foundation Extractor
+short_description: Extract standalone backend foundation rules and modules from an existing repository.
+default_prompt: Extract reusable backend standards, adapters, templates, and maintainer provenance into a standalone-ready foundation without turning the source repository into the migration target.

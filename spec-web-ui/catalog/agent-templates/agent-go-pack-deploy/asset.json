@@ -1,0 +1,34 @@
+{
+  "id": "agent-go-pack-deploy",
+  "type": "agent_role",
+  "title": "Deploy Agent",
+  "summary": "Reusable Deploy Agent role template extracted for Go backend and SpecOS team workflows.",
+  "direction": "fullstack",
+  "stacks": [
+    "go",
+    "react"
+  ],
+  "tags": [
+    "agent",
+    "go-pack",
+    "deploy"
+  ],
+  "appliesTo": [
+    "backend",
+    "frontend"
+  ],
+  "dependsOn": [],
+  "conflictsWith": [],
+  "sourcePath": "spec-web-ui/catalog/agent-templates/agent-go-pack-deploy/deploy.md",
+  "files": [
+    "ai/agents/deploy.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "启用前确认该 Agent 的上下文边界、交付物和目标仓库职责划分。"
+  ],
+  "sampleOutput": "Agent 职责、上下文边界、交付步骤和审查责任。",
+  "contentFiles": {
+    "ai/agents/deploy.md": "spec-web-ui/catalog/agent-templates/agent-go-pack-deploy/deploy.md"
+  }
+}
