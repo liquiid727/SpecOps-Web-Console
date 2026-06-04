@@ -35,6 +35,36 @@ const catalog: CatalogAsset[] = [
     version: "1.0.0"
   },
   {
+    id: "team-governance-pack",
+    type: "agent_team",
+    title: "Governance Team Pack",
+    summary: "Reusable team-level governance pack.",
+    direction: "fullstack",
+    stacks: ["go", "react"],
+    tags: ["team", "governance"],
+    appliesTo: ["backend", "frontend"],
+    dependsOn: [],
+    conflictsWith: [],
+    sourcePath: "agent-teams/governance-pack/README.md",
+    files: ["agent-teams/governance-pack/README.md"],
+    version: "1.0.0"
+  },
+  {
+    id: "skill-tool-config-ui",
+    type: "skill",
+    title: "Tool Config UI Skill",
+    summary: "Patterns for safe agent configuration interfaces.",
+    direction: "frontend",
+    stacks: ["react"],
+    tags: ["skill", "config"],
+    appliesTo: ["frontend"],
+    dependsOn: [],
+    conflictsWith: [],
+    sourcePath: ".skills/tool-config-ui/SKILL.md",
+    files: [".skills/tool-config-ui/SKILL.md"],
+    version: "1.0.0"
+  },
+  {
     id: "agent-openapi",
     type: "agent_role",
     title: "OpenAPI Agent",
@@ -94,7 +124,9 @@ describe("buildPresetBundlePreview", () => {
     expect(preview.assetCount).toBe(3);
     expect(preview.assetTypeCounts).toEqual({
       agent_role: 1,
+      agent_team: 0,
       rule: 1,
+      skill: 0,
       spec_template: 1
     });
     expect(preview.exportDirectories).toEqual(["ai", "rules", "spec-draft"]);

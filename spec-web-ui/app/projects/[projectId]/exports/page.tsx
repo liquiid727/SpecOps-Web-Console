@@ -61,6 +61,9 @@ export default async function ProjectExportsPage({
       );
     const decisionStats = summarizeExportReviewDecisions(reviewGroups);
     const notedFileCount = reviewGroups.flatMap((group) => group.files).filter((file) => file.note?.trim()).length;
+    const includesAgentTeams = workspace.selectedAssets.some((asset) =>
+      asset.files.some((file) => file.startsWith("agent-teams/"))
+    );
 
     return (
       <div className="space-y-6 md:space-y-8">
@@ -196,6 +199,11 @@ export default async function ProjectExportsPage({
               <div className="surface-base surface-field rounded-xl px-4 py-3 text-sm text-slate-300">
                 Selected assets: {workspace.selectedAssets.length}
               </div>
+              {includesAgentTeams ? (
+                <div className="surface-base surface-field rounded-xl px-4 py-3 text-sm text-slate-300">
+                  Agent team note: installed `agent-teams/` packs stay namespaced and must be referenced explicitly by the target project's own `AGENTS.md` or manifest.
+                </div>
+              ) : null}
             </WindowSection>
           </div>
         </div>

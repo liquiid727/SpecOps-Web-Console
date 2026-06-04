@@ -9,14 +9,16 @@ import { buildShellBreadcrumbs } from "@/lib/shell";
 import { cn } from "@/lib/utils";
 
 type NavItem =
-  | { href: string; key: "home" | "about" | "specTemplates" | "agentTemplates" | "projects" }
+  | { href: string; key: "home" | "about" | "specTemplates" | "skillTemplates" | "agentTemplates" | "agentTeams" | "projects" }
   | { disabled: true; key: "workflowTemplates" };
 
 const navItems: NavItem[] = [
   { href: "/", key: "home" },
   { href: "/about", key: "about" },
   { href: "/spec-templates", key: "specTemplates" },
+  { href: "/skill-templates", key: "skillTemplates" },
   { href: "/agent-templates", key: "agentTemplates" },
+  { href: "/agent-teams", key: "agentTeams" },
   { key: "workflowTemplates", disabled: true },
   { href: "/projects", key: "projects" }
 ];

@@ -5,23 +5,44 @@ import { WindowSection } from "@/components/ui/window-section";
 import { filterCatalogAssets, loadCatalogAssets } from "@/lib/catalog";
 import { buildShellCommandTitle } from "@/lib/shell";
 import { buildGlassSurfaceClassName } from "@/lib/theme";
-import type { CatalogAsset, CatalogAssetType } from "@/lib/types";
+import type { CatalogAsset, CatalogCategory, CatalogAssetType } from "@/lib/types";
+
+const categoryOptions: Array<{ label: string; value: CatalogCategory }> = [
+  { label: "产品", value: "product" },
+  { label: "运营", value: "operations" },
+  { label: "测试", value: "testing" },
+  { label: "部署", value: "deployment" },
+  { label: "前端", value: "frontend" },
+  { label: "后端", value: "backend" }
+];
 
 function getQueryValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
 }
 
-function getTemplateAssets(catalog: CatalogAsset[], type: CatalogAssetType, query: string) {
+function getCategoryValue(value: string | string[] | undefined) {
+  const selected = Array.isArray(value) ? value[0] ?? "" : value ?? "";
+  return categoryOptions.find((option) => option.value === selected)?.value ?? "";
+}
+
+function getTemplateAssets(
+  catalog: CatalogAsset[],
+  type: CatalogAssetType,
+  query: string,
+  category: CatalogCategory | ""
+) {
   const templates = catalog.filter((asset) => asset.type === type);
 
-  if (!query.trim()) {
+  if (!query.trim() && !category) {
     return templates;
   }
 
-  return filterCatalogAssets(templates, { query });
+  return filterCatalogAssets(templates, { query, categories: category ? [category] : [] });
 }
 
 function TemplateCard({ asset }: { asset: CatalogAsset }) {
+  const categories = asset.categories ?? [];
+
   return (
     <Link
       href={`/discover/${asset.id}`}
@@ -43,6 +64,11 @@ function TemplateCard({ asset }: { asset: CatalogAsset }) {
       <h3 className="mt-3 text-base font-semibold text-ink">{asset.title}</h3>
       <p className="mt-2 text-sm leading-6 text-slate-400">{asset.summary}</p>
       <div className="mt-3 flex flex-wrap gap-1.5">
+        {categories.slice(0, 3).map((category) => (
+          <span key={category} className="rounded-md border border-line px-2 py-0.5 font-mono text-[10px] text-slate-500">
+            {category}
+          </span>
+        ))}
         {asset.tags.slice(0, 5).map((tag) => (
           <span key={tag} className="rounded-md bg-canvas px-2 py-0.5 font-mono text-[10px] text-slate-500">
             {tag}
@@ -68,12 +94,13 @@ export async function TemplateLibraryPage({
   route: string;
   searchLabel: string;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
-  templateType: Extract<CatalogAssetType, "agent_role" | "spec_template">;
+  templateType: Extract<CatalogAssetType, "agent_role" | "spec_template" | "agent_team" | "skill">;
   title: string;
 }) {
   const [resolvedSearchParams, catalog] = await Promise.all([searchParams, loadCatalogAssets()]);
   const query = getQueryValue(resolvedSearchParams.q);
-  const assets = getTemplateAssets(catalog, templateType, query);
+  const selectedCategory = getCategoryValue(resolvedSearchParams.category);
+  const assets = getTemplateAssets(catalog, templateType, query, selectedCategory);
 
   return (
     <div className="space-y-5 md:space-y-6">
@@ -83,7 +110,7 @@ export async function TemplateLibraryPage({
         description={description}
         variant="plain"
       >
-        <form action={route} className="grid gap-2.5 md:grid-cols-[minmax(0,1fr)_112px]" role="search">
+        <form action={route} className="space-y-3" role="search">
           <label className="block">
             <span className="sr-only">{searchLabel}</span>
             <input
@@ -95,9 +122,50 @@ export async function TemplateLibraryPage({
               type="search"
             />
           </label>
-          <button className="control control-primary rounded-[16px] px-3.5 py-2.5 text-sm font-medium" type="submit">
-            搜索
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href={query ? `${route}?q=${encodeURIComponent(query)}` : route}
+              className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                !selectedCategory
+                  ? "border-line bg-panel text-ink"
+                  : "border-line/60 text-slate-500 hover:border-line hover:text-ink"
+              }`}
+            >
+              全部
+            </Link>
+            {categoryOptions.map((option) => {
+              const active = selectedCategory === option.value;
+              const params = new URLSearchParams();
+
+              if (query) {
+                params.set("q", query);
+              }
+
+              params.set("category", option.value);
+
+              return (
+                <Link
+                  key={option.value}
+                  href={`${route}?${params.toString()}`}
+                  className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                    active
+                      ? "border-line bg-panel text-ink"
+                      : "border-line/60 text-slate-500 hover:border-line hover:text-ink"
+                  }`}
+                >
+                  {option.label}
+                </Link>
+              );
+            })}
+          </div>
+          <div className="grid gap-2.5 md:grid-cols-[minmax(0,1fr)_112px]">
+            <div className="text-xs text-slate-500">
+              支持按产品、运营、测试、部署、前端、后端分类浏览当前模块资产。
+            </div>
+            <button className="control control-primary rounded-[16px] px-3.5 py-2.5 text-sm font-medium" type="submit">
+              搜索
+            </button>
+          </div>
         </form>
       </WindowSection>
 

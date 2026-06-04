@@ -51,6 +51,9 @@ export default async function AssetDetailPage({
           <div className="flex flex-wrap gap-2">
             <Badge>{asset.type.replace("_", " ")}</Badge>
             <Badge>{asset.direction}</Badge>
+            {(asset.categories ?? []).map((category) => (
+              <Badge key={category}>{category}</Badge>
+            ))}
           </div>
         }
         contentClassName="pt-0"
@@ -71,6 +74,10 @@ export default async function AssetDetailPage({
             <div className="surface-base surface-field rounded-2xl px-4 py-3">
               <p className="font-mono text-xs uppercase tracking-[0.14em] text-slate-500">tech stacks</p>
               <p className="mt-2 text-sm text-slate-300">{asset.stacks.join(", ")}</p>
+            </div>
+            <div className="surface-base surface-field rounded-2xl px-4 py-3">
+              <p className="font-mono text-xs uppercase tracking-[0.14em] text-slate-500">categories</p>
+              <p className="mt-2 text-sm text-slate-300">{(asset.categories ?? []).length ? (asset.categories ?? []).join(", ") : "none"}</p>
             </div>
             <div className="surface-base surface-field rounded-2xl px-4 py-3">
               <p className="font-mono text-xs uppercase tracking-[0.14em] text-slate-500">dependencies</p>

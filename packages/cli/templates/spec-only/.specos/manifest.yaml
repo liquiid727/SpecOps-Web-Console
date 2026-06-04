@@ -1,0 +1,19 @@
+project:
+  name: specos-spec-only
+  type: spec-only
+stacks:
+  frontend: none
+  backend: none
+artifacts:
+  draftsDir: spec-draft
+  specsDir: specs/current
+  testsDir: tests
+  resultsDir: tests/results
+rulePacks:
+  - spec-driven-delivery
+agentTemplates:
+  - spec-editor
+workflows:
+  - default-spec-only
+ci:
+  checkCommand: npx specos check

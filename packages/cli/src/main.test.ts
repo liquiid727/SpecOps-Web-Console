@@ -13,6 +13,7 @@ async function tempProject() {
 }
 
 async function writeBundleFixture(root: string) {
+  await mkdir(join(root, ".specos-bundle", "files", "agent-teams", "sample-team"), { recursive: true });
   await mkdir(join(root, ".specos-bundle", "files", "rules", "backend"), { recursive: true });
   await mkdir(join(root, ".specos-bundle", "files", ".specos", "workflows"), { recursive: true });
 
@@ -26,6 +27,8 @@ async function writeBundleFixture(root: string) {
       "projectTypes:",
       "  - mixed",
       "installs:",
+      "  - target: agent-teams/",
+      "    from: files/agent-teams/",
       "  - target: rules/",
       "    from: files/rules/",
       "  - target: .specos/workflows/",
@@ -46,6 +49,10 @@ async function writeBundleFixture(root: string) {
       "  normalizeResults: true",
       "",
     ].join("\n"),
+  );
+  await writeFile(
+    join(root, ".specos-bundle", "files", "agent-teams", "sample-team", "README.md"),
+    "# Sample Team Pack\n",
   );
   await writeFile(
     join(root, ".specos-bundle", "files", "rules", "backend", "go-backend-governance.md"),
@@ -169,6 +176,9 @@ describe("specos cli", () => {
     const install = await runCli(["install-bundle", bundleRoot], { cwd: projectRoot });
     expect(install.exitCode).toBe(0);
     expect(install.stdout).toContain("SPECOS_BUNDLE_INSTALL_OK");
+    await expect(readFile(join(projectRoot, "agent-teams", "sample-team", "README.md"), "utf8")).resolves.toContain(
+      "Sample Team Pack",
+    );
     await expect(readFile(join(projectRoot, "rules", "backend", "go-backend-governance.md"), "utf8")).resolves.toContain(
       "Go Backend Governance",
     );

@@ -13,5 +13,7 @@ describe("locale helpers", () => {
   it("returns shell copy for Chinese and English versions", () => {
     expect(getLocaleCopy("zh").shell.nav.discover).toBe("发现");
     expect(getLocaleCopy("en").shell.nav.discover).toBe("Discover");
+    expect(getLocaleCopy("zh").shell.nav.agentTeams).toBe("Agent Team");
+    expect(getLocaleCopy("en").shell.nav.agentTeams).toBe("Agent teams");
   });
 });

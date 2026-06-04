@@ -50,6 +50,21 @@ const catalog: CatalogAsset[] = [
     version: "1.0.0"
   },
   {
+    id: "team-governance-pack",
+    type: "agent_team",
+    title: "Governance Team Pack",
+    summary: "Reusable team-level governance workflow.",
+    direction: "fullstack",
+    stacks: ["go", "react"],
+    tags: ["team", "governance"],
+    appliesTo: ["backend", "frontend"],
+    dependsOn: [],
+    conflictsWith: [],
+    sourcePath: "agent-teams/governance-pack/README.md",
+    files: ["agent-teams/governance-pack/README.md"],
+    version: "1.0.0"
+  },
+  {
     id: "agent-manual-editor",
     type: "agent_role",
     title: "Manual Spec Editor",
@@ -75,11 +90,12 @@ const project: ProjectManifest = {
   selectedAssets: [
     { assetId: "template-feature-draft", enabled: true },
     { assetId: "agent-spec-editor", enabled: true },
-    { assetId: "agent-manual-editor", enabled: true }
+    { assetId: "agent-manual-editor", enabled: true },
+    { assetId: "team-governance-pack", enabled: true }
   ],
   draftTemplateId: "template-feature-draft",
   draftPath: "spec-web-ui/workspace/projects/rewards-platform/draft.md",
-  exportTargets: ["rules/", "specs/_template/", "ai/agents/", "project-manifest.yaml"]
+  exportTargets: ["rules/", "specs/_template/", "ai/agents/", "agent-teams/", "project-manifest.yaml"]
 };
 
 describe("resolveProjectWorkspace", () => {
@@ -89,7 +105,8 @@ describe("resolveProjectWorkspace", () => {
     expect(workspace.selectedAssets.map((asset) => asset.id)).toEqual([
       "template-feature-draft",
       "agent-spec-editor",
-      "agent-manual-editor"
+      "agent-manual-editor",
+      "team-governance-pack"
     ]);
     expect(workspace.missingDependencies).toEqual([
       {

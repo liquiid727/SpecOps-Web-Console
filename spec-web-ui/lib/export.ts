@@ -710,6 +710,8 @@ function buildSpecosBundleManifest(project: ProjectManifest, files: ExportFile[]
 
 function deriveInstallMappings(files: ExportFile[]) {
   const priorities = [
+    ".skills/",
+    "agent-teams/",
     "ai/agents/",
     "rules/",
     "spec-draft/_template/",
@@ -736,6 +738,8 @@ function deriveInstallMappings(files: ExportFile[]) {
 }
 
 function resolveInstallTarget(targetPath: string) {
+  if (targetPath.startsWith(".skills/")) return ".skills/";
+  if (targetPath.startsWith("agent-teams/")) return "agent-teams/";
   if (targetPath.startsWith("ai/agents/")) return "ai/agents/";
   if (targetPath.startsWith("spec-draft/_template/")) return "spec-draft/_template/";
   if (targetPath.startsWith("specs/_template/")) return "specs/_template/";
