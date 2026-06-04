@@ -1,5 +1,6 @@
-export type CatalogAssetType = "rule" | "spec_template" | "agent_role" | "skill";
+export type CatalogAssetType = "rule" | "spec_template" | "agent_role" | "agent_team" | "skill";
 export type CatalogDirection = "backend" | "frontend" | "ui" | "fullstack";
+export type CatalogCategory = "product" | "operations" | "testing" | "deployment" | "frontend" | "backend";
 export type ProjectType = "backend" | "frontend" | "mixed";
 
 export interface CatalogAsset {
@@ -8,6 +9,7 @@ export interface CatalogAsset {
   title: string;
   summary: string;
   direction: CatalogDirection;
+  categories?: CatalogCategory[];
   stacks: string[];
   tags: string[];
   appliesTo: string[];
@@ -57,6 +59,7 @@ export interface PresetBundle {
 
 export interface CatalogFilters {
   query?: string;
+  categories?: CatalogCategory[];
   types?: CatalogAssetType[];
   directions?: CatalogDirection[];
   stacks?: string[];

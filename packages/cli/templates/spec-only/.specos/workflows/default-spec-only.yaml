@@ -1,5 +1,11 @@
-workflow: default-spec-only
-steps:
-  - refine_spec
-  - validate_spec
-  - generate_tests
+id: default-spec-only
+name: Default Spec Only
+inputs:
+  - spec-draft
+outputs:
+  - spec
+  - tests
+gates:
+  - draft accepted by human
+  - spec normalized by agent
+  - test plan reviewed by human

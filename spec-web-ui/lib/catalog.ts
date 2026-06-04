@@ -70,6 +70,7 @@ export function filterCatalogAssets(assets: CatalogAsset[], filters: CatalogFilt
         asset.title,
         asset.summary,
         asset.id,
+        asset.sourcePath,
         ...asset.tags,
         ...asset.stacks
       ]
@@ -83,6 +84,14 @@ export function filterCatalogAssets(assets: CatalogAsset[], filters: CatalogFilt
 
     if (filters.types?.length && !filters.types.includes(asset.type)) {
       return false;
+    }
+
+    if (filters.categories?.length) {
+      const assetCategories = asset.categories ?? [];
+
+      if (!filters.categories.every((category) => assetCategories.includes(category))) {
+        return false;
+      }
     }
 
     if (filters.directions?.length && !filters.directions.includes(asset.direction)) {
@@ -189,6 +198,8 @@ export function getMarketplaceRecommendations(
       asset,
       score:
         (asset.stacks.some((stack) => activeStacks.includes(stack)) ? 3 : 0) +
+        (asset.type === "agent_role" ? 1 : 0) +
+        (asset.type === "skill" ? 1 : 0) +
         (asset.type === "rule" ? 1 : 0) +
         Math.min(asset.dependsOn.length, 2)
     }))
@@ -218,7 +229,13 @@ export function getFeaturedAssets(
       asset,
       score:
         preferredTags.filter((tag) => asset.tags.includes(tag)).length * 3 +
-        (asset.type === "agent_role" ? 2 : asset.type === "spec_template" ? 1 : 0) +
+        (asset.type === "agent_team"
+          ? 2
+          : asset.type === "agent_role" || asset.type === "skill"
+            ? 2
+            : asset.type === "spec_template"
+              ? 1
+              : 0) +
         asset.stacks.length
     }))
     .sort((left, right) => {

@@ -1,0 +1,10 @@
+id: agent-team-governance
+title: Agent Team Governance
+status: active
+version: 0.1.0
+summary: Governs role selection, model routing, and explicit references for imported team packs.
+rules:
+  - id: explicit-reference-required
+    description: Imported team packs must be referenced explicitly by the target project.
+  - id: preserve-namespacing
+    description: Installed team files stay inside the team pack namespace.

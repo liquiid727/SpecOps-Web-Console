@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function DiscoverPage() {
-  redirect("/spec-templates");
+  redirect("/skill-templates");
 }

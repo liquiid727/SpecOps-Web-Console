@@ -1,532 +1,111 @@
-# SpecOS 使用说明
+# SpecOS
 
-## 一句话介绍
-SpecOS 是一个面向工程与业务系统开发的 **Spec-Driven AI IDE**。  
-它的核心不是“让 AI 直接写代码”，而是围绕一套标准化、体系化、可复用的 Spec，让需求、开发、测试、文档、部署和交付报告在同一套工程语义下持续对齐。
+SpecOS is a spec-driven AI workspace for software teams. It treats product intent, engineering rules, agent roles, tests, and delivery artifacts as one traceable system instead of scattered documents and prompts.
 
-## 核心定位
-SpecOS 的核心价值是把通用 Spec 作为工程协作的中心协议。它不只记录“需求是什么”，还要承载业务目标、流程、规则、异常、接口、数据、UI、测试、验收、文档和部署交付所需的共同语义。
+The project is building toward an AI IDE experience where teams can define work once, keep it structured, and reuse that context across implementation, review, testing, and delivery.
 
-围绕这套 Spec，系统要形成几类自动对齐能力：
+## Why SpecOS
 
-- 需求格式自动对齐：把不同来源、不同表达方式的原始需求整理成统一、结构化、可审查的 Spec。
-- 开发自动对齐：让领域建模、API、UI、数据迁移、实现任务和 Agent 分工都能追溯到同一份 Spec。
-- 测试自动对齐：让 test-plan、API 测试、E2E 场景、结果报告和发布阻塞项都映射到 Spec 中的业务流程、规则和验收条件。
-- 文档自动对齐：让设计文档、接口文档、测试说明、验收报告和部署文档基于 Spec 生成、维护和审查，而不是事后补写。
-- Agent 能力自动对齐：让不同 Agent 在同一套规则、Spec 和上下文边界内协作，避免随意读取上下文和自由发挥。
+Most AI-assisted development breaks down when context becomes inconsistent. Requirements live in one place, prompts in another, tests somewhere else, and delivery rules often stay tribal.
 
-因此，SpecOS 的长期方向不是一个单点代码生成器，而是一套以标准 Spec 为核心的 AI 工程交付体系：
+SpecOS is designed to make that chain explicit:
 
 ```text
-原始需求
--> spec-draft/ 人工草稿
--> specs/changes/<change-id>/ 标准化变更包
--> 基于 specs/current/ + specs/changes/<change-id>/ 做影响分析、Agent 分工与开发实现
--> API / UI / 数据 / 业务规则资产
--> test-plan / API 测试 / E2E 测试
--> 测试报告 / Review 记录 / 验收文档
--> 验收通过后更新 specs/current/
--> 部署文档 / 交付门禁
--> 归档 specs/archive/<change-id>/
+draft -> change spec -> implementation assets -> tests -> review -> accepted current state
 ```
 
-其中 `specs/current/` 代表已经验收并生效的系统事实，不是需求进入开发前提前改写的目标目录。生产链路应先把新需求收敛到 `specs/changes/<change-id>/`，开发、测试、文档和 Agent 分工都基于 `current + change` 执行；只有实现、测试、评审和验收通过后，才把该 change promote/merge 进 `specs/current/`，再归档到 `specs/archive/`。
+That model helps teams:
 
-## 当前仓库怎么用
-如果你只想知道“今天这个仓库实际能怎么跑起来”，可以直接按下面三条路线理解：
+- keep requirements and generated artifacts aligned
+- reuse engineering rules, templates, skills, and agent packs
+- export project-ready bundles instead of copying ad-hoc files
+- make testing and review traceable to the original spec
 
-1. `CLI`：初始化或检查一个 SpecOS 项目骨架。
-2. `spec-web-ui`：作为工具站点和资产工作台，维护并导出常用 rules、skills、spec 模板、Agent 模板、workflow 模板和 test patterns。
-3. `CLI`：校验、安装、列出并运行 bundle 提供的 workflow。
-4. `test-console`：读取现成的 `test-plan`，触发 runner，生成规范化测试结果并可视化。
+## What Is In This Repository
 
-注意：`spec-web-ui` 不属于单个项目的需求交付主流程。具体项目的需求状态仍应落在目标项目自己的 `spec-draft/`、`specs/changes/`、`tests/` 和验收记录中；`spec-web-ui` 只提供可复用资产的浏览、组合和导出能力，后续可独立成一个专门维护和部署的工具站点。
+This repository currently contains three main product surfaces:
 
-当前实现流程图见：
-- [todo/specos-current-implemented-flow.md](/Users/liquiid/code/specos-ai/todo/specos-current-implemented-flow.md)
+- `packages/cli`: a SpecOS CLI for scaffolding projects, validating bundles, installing exported assets, and running workflow-oriented commands
+- `spec-web-ui`: a Next.js workspace for browsing catalog assets, assembling project configurations, and exporting installable bundles
+- `test-console`: an early console for working with normalized test plans and execution results
 
-### 0. 环境准备
+It also includes reusable project assets such as:
 
-根目录安装和构建：
+- `rules/`: engineering and delivery governance
+- `skills/` and `.skills/`: reusable skill packs and local skill assets
+- `ai/agents/`: agent role definitions
+- `agent-teams/`: reusable agent team packs
+- `specs/`, `spec-draft/`, and `tests/`: the spec and verification backbone
+
+## Current Status
+
+SpecOS is in an active prototype stage. The repository already supports a working end-to-end foundation, but it is not yet a polished general-availability product.
+
+Today you can:
+
+- initialize a SpecOS project skeleton with the CLI
+- browse catalog assets in `spec-web-ui`
+- select rules, templates, skills, agent roles, and agent team packs
+- export review snapshots and installable `.specos-bundle` payloads
+- validate and install bundles into a target project
+- generate normalized test-plan artifacts from prepared spec inputs
+
+## Quick Start
+
+### 1. Install and build the workspace
 
 ```bash
 npm install
 npm run build
 ```
 
-说明：
-- 根目录的 `npm install` / `npm run build` 主要服务于 `packages/core` 和 `packages/cli`
-- `spec-web-ui/` 和 `test-console/` 是独立 Next.js 应用，需要各自安装依赖
-
-### 1. 用 CLI 初始化一个 SpecOS 项目
-
-当前仓库提供一个最小可用的 `specos` CLI，用来初始化和检查 SpecOS 项目骨架。
-
-推荐在一个单独目录里试用，不要直接在本仓库根目录执行 `init`：
+### 2. Try the CLI
 
 ```bash
-mkdir -p /tmp/specos-demo
-cd /tmp/specos-demo
-node /Users/liquiid/code/specos-ai/packages/cli/dist/main.js init --template fullstack
-node /Users/liquiid/code/specos-ai/packages/cli/dist/main.js check
+node packages/cli/dist/main.js init --template fullstack
+node packages/cli/dist/main.js check
 ```
 
-如果你想用轻量模板：
+Other available commands include:
 
-```bash
-node /Users/liquiid/code/specos-ai/packages/cli/dist/main.js init --template spec-only
-```
+- `init --template spec-only`
+- `validate-bundle <path>`
+- `install-bundle <path>`
+- `list-workflows`
+- `run-workflow <workflowId>`
+- `generate-test-plan <spec-file> --change <change-id>`
 
-当前支持命令：
-- `specos init`
-- `specos init --template fullstack`
-- `specos init --template spec-only`
-- `specos check`
-- `specos intake --id <draft-id> --request <text>`
-- `specos create-change <draft-id> --change <change-id>`
-- `specos review-change <change-id> --stage design-gate --decision approved`
-- `specos run-change <change-id> --result planned|implemented`
-- `specos test-change <change-id> --decision passed|failed|blocked`
-- `specos review-change <change-id> --stage implementation --decision approved`
-- `specos promote-change <change-id> --accept`
-- `specos export-agent-kit --out <path>`
-- `specos validate-bundle <path>`
-- `specos install-bundle <path>`
-- `specos list-workflows`
-- `specos run-workflow <workflowId>`
-- `specos generate-test-plan <spec-file> --change <change-id>`
-- `specos generate-bruno-tests <specId>`
-- `specos run-api-tests <specId>`
-
-当前内置模板：
-- `fullstack`
-- `spec-only`
-
-初始化后会写入：
-- `.specos/manifest.yaml`
-- `.specos/workflows/default-fullstack.yaml`
-- `specs/current/`
-- `specs/changes/`
-- `specs/archive/`
-- `spec-draft/`
-- `tests/`
-- `ai/agents/`
-
-`spec-only` 模板会保留更轻的骨架：
-- `.specos/manifest.yaml`
-- `.specos/workflows/default-spec-only.yaml`
-- `specs/current/`
-- `specs/changes/`
-- `specs/archive/`
-- `spec-draft/`
-- `tests/`
-
-`check` 当前会验证：
-- `.specos/manifest.yaml` 存在且结构合法
-- artifact 目录路径不越出项目根目录
-- `spec-draft`、`specs/current`、`tests`、`tests/results` 等基础目录存在
-
-### 1.1 文档型请求 Orchestrator
-
-当前 CLI 已提供第一版“纯文档/CLI workflow”，用于先把任何需求纳入可追踪状态机，但不直接接真实多 Agent runtime。
-
-推荐链路：
-
-```bash
-node packages/cli/dist/main.js intake --id reward-flow --request "Build reward claim flow"
-node packages/cli/dist/main.js create-change reward-flow --change reward-flow
-node packages/cli/dist/main.js review-change reward-flow --stage design-gate --decision approved
-node packages/cli/dist/main.js run-change reward-flow --result implemented
-node packages/cli/dist/main.js test-change reward-flow --decision passed
-node packages/cli/dist/main.js review-change reward-flow --stage implementation --decision approved
-node packages/cli/dist/main.js promote-change reward-flow --accept
-```
-
-产物链路：
-- `intake` 写入 `spec-draft/<draft-id>.md`，记录原始需求、澄清项和人工确认点。
-- `create-change` 写入 `specs/changes/<change-id>/`，生成 `spec.md`、architecture/design review、test strategy、execution plan、review report、changelog 和 `workflow-state.json`。
-- `review-change --stage design-gate` 记录 architecture/design gate 决策。只有 approved 后才能进入 `run-change`。
-- `run-change` 只记录执行交接或外部执行结果，不假装 CLI 已经真实改代码。
-- `test-change` 记录独立测试轨道的验收决策，强调场景/API/E2E 测试不能从执行 agent 私有实现说明派生。
-- `review-change --stage implementation` 记录实现评估。
-- `promote-change --accept` 在所有必需 gate 通过后，写入 `specs/current/accepted-changes/<change-id>.md` 并复制归档到 `specs/archive/<change-id>/`。
-
-### 1.5 导出 Agent Team Kit 到其他项目
-
-如果你想把本仓库沉淀的 Agent 角色分工、角色提示词、skill 绑定、rules、spec/test 骨架复用到其他项目，可以先生成一个标准 `.specos-bundle/`：
-
-```bash
-node packages/cli/dist/main.js export-agent-kit --out dist/specos-agent-team-kit
-```
-
-在目标项目中校验并安装：
-
-```bash
-node /Users/liquiid/code/specos-ai/packages/cli/dist/main.js validate-bundle /Users/liquiid/code/specos-ai/dist/specos-agent-team-kit
-node /Users/liquiid/code/specos-ai/packages/cli/dist/main.js install-bundle /Users/liquiid/code/specos-ai/dist/specos-agent-team-kit
-node /Users/liquiid/code/specos-ai/packages/cli/dist/main.js check
-```
-
-这个 bundle 会安装：
-- `AGENTS.md`
-- `.agents/`、`ai/agents/`、`ai/workflows/`
-- `.rules/`、`rules/`
-- `.codex/instructions.md`、`.codex/skills/`
-- `.skills/`
-- `spec-draft/`、`specs/`、`tests/`
-- `.specos/manifest.yaml` 和 `.specos/workflows/spec-driven-default.yaml`
-
-它不会包含 `.codex/config.toml`，也不会包含 `tests/results/*.json` 历史运行结果。安装后需要按目标项目手动调整：
-- `.agents/manifest.yaml` 的 `project`、上下文路径和不需要的角色。
-- `.rules/rule-map.yaml` 的规则适配。
-- `specs/current/project-context.md`、`architecture-context.md`、`domain-context.md` 的项目事实。
-
-### 2. 用 `spec-web-ui` 组织项目资产
-
-`spec-web-ui` 是 SpecOS 面向开发人员的 AI 工程配置资产工作台。它当前不是完整 workflow runner，也不是单个项目的需求状态管理系统，而是一个“catalog-first workspace”，用于沉淀、浏览、选择和组合日常开发中高频使用的 rules、skills、agent roles、templates、workflows 和 test patterns。
-
-前期，它帮助开发人员快速 pick 项目需要的资产，组合出项目级 AI 配置骨架，减少重复编写规则、Agent 职责、技能说明和测试规范的成本。
-
-后期，它沉淀的配置资产会成为 RAG 语料和项目脚手架知识库。目标是通过一个 `project-start-agent` 与开发人员交流并确认项目类型、技术栈、业务场景、团队规范、测试要求和交付方式，然后自动推荐并生成适合该项目的 AI 配置脚手架。
-
-当前主要能力：
-- 浏览 rules / templates / agent roles
-- 创建配置工作区
-- 选择和组合项目所需配置资产
-- 预览项目级 AI 配置、目录结构和 workflow 关系
-- 导出当前选择资产的 bundle 快照
-- 同时生成一个可被 CLI 安装的 `.specos-bundle/`
-
-这里的“配置工作区”是资产选择与导出过程中的组合辅助，不是某个目标项目需求的权威生命周期状态。需求从原始输入进入实现、测试和验收时，权威链路应在目标项目仓库内继续推进。
-
-启动方式：
+### 3. Run the web workspace
 
 ```bash
 cd spec-web-ui
 npm install
-npm run dev -- --port 3001
+npm run dev
 ```
 
-打开浏览器访问：
+Then open [http://localhost:3000](http://localhost:3000).
 
-- [http://localhost:3001](http://localhost:3001)
+## Repository Shape
 
-建议使用路径：
-
-1. 进入 `discover`，浏览规则、模板、agent 资产
-2. 进入配置工作区，选择并组合项目所需资产
-3. 预览生成目录结构和 workflow 关系
-4. 进入 export 页面，生成导出快照并做差异评审
-
-你会看到的主要数据位置：
-- 配置工作区：`spec-web-ui/workspace/projects/`
-- 导出快照：`spec-web-ui/workspace/exports/`
-- 可安装 bundle：`spec-web-ui/workspace/exports/<projectId>/.specos-bundle/`
-
-注意：
-- 当前导出默认写到 `spec-web-ui/workspace/exports/<projectId>/`
-- export 根目录保留 review snapshot
-- `.specos-bundle/` 子目录提供给 CLI 安装
-- 它不会自动把内容回写到仓库根目录的 `specs/`、`tests/`、`ai/agents/`
-
-### 2.5 用 CLI 安装 bundle
-
-当你在 `spec-web-ui` 里生成 export snapshot 之后，可以把同目录下的 `.specos-bundle/` 安装到目标项目。
-
-先校验：
-
-```bash
-node packages/cli/dist/main.js validate-bundle spec-web-ui/workspace/exports/<projectId>
+```text
+packages/cli/        CLI entry points and templates
+spec-web-ui/         asset catalog, workspace, export UI
+test-console/        test-plan and result console
+rules/               reusable engineering governance
+agent-teams/         reusable agent team packs
+ai/agents/           agent role definitions
+spec-draft/          draft requirement inputs
+specs/               accepted specs, changes, and archive
+tests/               plans, schedules, and result assets
 ```
 
-再安装到当前项目目录：
+## For Contributors
 
-```bash
-node packages/cli/dist/main.js install-bundle spec-web-ui/workspace/exports/<projectId>
-```
+The repository is organized around a spec-first delivery model. If you are contributing implementation or workflow changes, the best starting points are:
 
-安装后可以查看 workflow：
+- [AGENTS.md](AGENTS.md)
+- [rules/README.md](rules/README.md)
+- [specs/README.md](specs/README.md)
+- [spec-web-ui/README.md](spec-web-ui/README.md)
 
-```bash
-node packages/cli/dist/main.js list-workflows
-```
-
-运行某个 workflow：
-
-```bash
-node packages/cli/dist/main.js run-workflow spec-driven-default
-```
-
-第一版 bundle workflow 当前主要是“安装与运行链路 smoke test”，用于确认 bundle 已被成功加载，后续再逐步接入真正的 `refine spec -> generate test-plan -> run tests` 执行步骤。
-
-### 3. 准备 `test-plan`
-
-当前仓库里，`test-console` 不会直接从 `spec-draft/` 自动生成测试计划。进入 `specs/changes/<change-id>/` 后，可以从 normalized spec JSON/YAML 生成测试计划和测试调度。
-
-生成命令：
-
-```bash
-node packages/cli/dist/main.js generate-test-plan specs/changes/<change-id>/spec.json --change <change-id>
-```
-
-输出：
-
-- `tests/plans/<spec>.test-plan.json`
-- `tests/schedules/<spec>.test-schedule.json`
-
-可以先参考现成示例：
-
-- [tests/plans/reward-order.test-plan.json](/Users/liquiid/code/specos-ai/tests/plans/reward-order.test-plan.json)
-
-当前真实情况是：
-- `packages/core` 里已经有 `spec`、`test-plan`、`scenario-result` 的 schema 和校验逻辑
-- CLI 已支持从 normalized spec 文件落 `tests/plans/*.json` 和 `tests/schedules/*.json`
-- 但 `spec-draft -> normalized spec/change package` 仍需要 spec agent 或人工准备
-- `test-schedule` 会分离 execution agent 和 test agent 的输入/输出边界，避免实现与测试互相污染
-
-### 4. 跑 runner，生成规范化测试结果
-
-当你准备好 `tests/plans/<spec>.test-plan.json` 后，可以从仓库根目录运行：
-
-```bash
-node scripts/orchestration/test-runner.mjs reward-order 1.2.0 all
-```
-
-参数格式：
-
-```bash
-node scripts/orchestration/test-runner.mjs <specId> [specVersion] [api|scenario|all]
-```
-
-例如：
-
-```bash
-node scripts/orchestration/test-runner.mjs reward-order latest api
-node scripts/orchestration/test-runner.mjs reward-order latest scenario
-node scripts/orchestration/test-runner.mjs reward-order latest all
-```
-
-输出结果会写到：
-
-- `tests/results/<spec>.<run_id>.json`
-
-注意：
-- 这个 runner 当前是“模拟/归一化脚本”
-- 它会读取 `test-plan` 并拼出标准化 `scenario-result`
-- 它当前不会真的去调用 Bruno 或 Playwright 执行测试
-
-对于新的 change workflow，API 测试入口是：
-
-```bash
-node packages/cli/dist/main.js run-api-tests <specId>
-```
-
-该命令会读取：
-
-- `tests/plans/<spec>.test-plan.json`
-- `tests/schedules/<spec>.test-schedule.json`
-- `tests/bruno/<spec>/`
-
-Bruno API 资产可以先由 test-plan 生成：
-
-```bash
-node packages/cli/dist/main.js generate-bruno-tests <specId>
-```
-
-输出：
-
-- `tests/bruno/<spec>/bruno.json`
-- `tests/bruno/<spec>/*.bru`
-- `tests/bruno/<spec>/README.md`
-
-如果 Bruno collection 尚未生成或 Bruno adapter 尚未配置，命令会写入 blocked 的 normalized result 到 `tests/results/`，并返回非零退出码。它不会把缺失真实执行伪装成通过。
-
-如果项目已经有 Bruno CLI 或自定义 API 测试命令，可以显式传入执行命令：
-
-```bash
-node packages/cli/dist/main.js run-api-tests <specId> --command "bru run tests/bruno/<specId>"
-```
-
-命令退出码为 `0` 时生成 ready/pass 的 normalized result；非 `0` 时生成 blocked/warning 的 normalized result。
-
-### 5. 用 `test-console` 查看结果
-
-启动方式：
-
-```bash
-cd test-console
-npm install
-npm run dev -- --port 3002
-```
-
-打开浏览器访问：
-
-- [http://localhost:3002](http://localhost:3002)
-
-你可以做的事：
-- 查看最近一次 run 摘要
-- 按 spec 查看业务流、场景链、接口拓扑
-- 查看 run detail 里的证据摘要
-- 通过表单重新触发 runner
-
-`test-console` 当前只消费两类输入：
-- `tests/plans/*.json`
-- `tests/results/*.json`
-
-### 6. 一条最短可运行闭环
-
-如果你只是想最快体验一遍当前实现，按这个顺序即可：
-
-```bash
-# 1) 根目录
-npm install
-npm run build
-
-# 2) 直接生成一份规范化结果
-node scripts/orchestration/test-runner.mjs reward-order 1.2.0 all
-
-# 3) 打开测试控制台
-cd test-console
-npm install
-npm run dev -- --port 3002
-```
-
-然后打开：
-
-- [http://localhost:3002](http://localhost:3002)
-
-这会让你看到当前仓库里最完整、最可演示的一条实现链路：
-
-`现成 test-plan -> runner 生成 normalized result -> test-console 可视化`
-
-### 7. 当前还没有自动化打通的部分
-
-下面这些能力在仓库里“有设计、有 schema、有角色定义”，但按当前实现还没有串成统一执行链：
-
-- `spec-draft -> specs/changes/<change-id>` 自动 refine
-- `specs/current + specs/changes/<change-id> -> tests/plans/*.json` 自动生成
-- Bruno / Playwright 真实执行并自动归一化
-- `spec-web-ui` 一键串联到 `test-console`
-- workflow yaml 直接驱动整个运行时
-
-所以更准确地说，当前版本是：
-
-- 已实现 MVP：`项目骨架 -> 资产编排 -> 手工准备 test-plan -> runner 产出 normalized result -> console 展示`
-- 未完全实现的大闭环：`draft -> change -> 基于 current + change 开发与测试 -> 真执行 -> 自动汇总 -> 验收后更新 current -> CI 门禁`
-
-## 解决什么问题
-- Feature 如何稳定进入 Spec，而不是停留在口头描述。
-- Agent 应该读取哪些上下文，如何避免跑偏。
-- 接口生成后如何进入 Bruno / API 测试链路。
-- 自动化场景测试如何按业务链路可视化。
-- 每次改动对应哪个 Spec 版本，如何可追溯。
-
-## 主要能力
-### 1. Web UI 初始化与选择
-- 选择项目类型：后端 / 前端 / 混合。
-- 选择 `project`、`architecture`。
-- 按方向与标签筛选 Rules（如 `backend`、`frontend`、`vue`、`react`、`go`、`java`）。
-- 快速组合规则、Agent、Spec 模板库，形成项目工程基线。
-
-示例规则（后端）：
-- Redis 规范
-- 数据库迁移规范（Goose）
-- 错误码规范
-- 日志规范
-- CI 规范
-
-### 2. Spec Draft Studio
-- 内置大量可读、可编辑的 Spec 草稿模板。
-- 支持先由人写“草稿”，再由 Agent 进行结构化补全和收敛。
-
-建议模板结构：
-- 背景 / 目标 / 非目标
-- 用户角色 / User Flow / System Flow
-- API 草案 / 状态机 / 数据模型
-- 业务规则 / 异常场景 / 测试场景
-- 运营配置 / 指标日志 / 待确认问题
-
-### 3. Spec Refine Agent
-- 负责把 `spec-draft` 转为 `specs/changes/<change-id>` 下的正式变更包。
-- 自动读取项目 Rules，并按模板补全缺失内容。
-
-工作职责：
-- 补充边界、异常、状态、幂等
-- 补充权限、审计、测试、错误码
-- 发现冲突并提示用户修正
-
-### 4. Agent Template Center
-预置标准 Agent 模板，明确输入输出和职责范围：
-- Backend API Agent
-- DDD Domain Agent
-- DB Migration Agent
-- Redis Key Agent
-- OpenAPI Agent
-- Bruno Test Agent
-- Playwright Test Agent
-- Code Review Agent
-- Runbook Agent
-- Failure Analysis Agent
-
-### 5. Scenario Test Generator
-统一场景测试产物与执行能力：
-- `test-scenarios.yaml`
-- Bruno API E2E
-- Playwright UI E2E
-- `scenario-result schema`
-
-支持：
-- 生成测试
-- 运行测试
-- 保存结果
-- 失败分析
-- 生成报告
-
-### 6. Scenario Report UI
-不是普通测试报告，而是业务链路验证视图：
-- 按业务场景展示
-- 按 User Flow 展示
-- 按 System Flow 展示
-- 每一步呈现请求、响应、断言、`trace_id`、日志链接
-
-V1 建议独立于 `spec-web-ui/` 落地为单独的测试控制台，只消费统一的 `test-plan` 和 `scenario-result` 产物。
-
-### 7. Workflow Runner
-通过工作流编排把“规范、接口、测试、代码、报告”串起来：
-
-```yaml
-workflow: reward-feature
-steps:
-  - refine_spec
-  - generate_openapi
-  - generate_bruno
-  - generate_backend_code
-  - run_api_tests
-  - generate_report
-```
-
-一次触发，串联流程：
-`spec draft -> change spec -> 基于 current + change 生成测试/代码 -> 报告 -> 验收后更新 current`
-
-当前仓库中的最小闭环示例：
-
-- `tests/plans/reward-order.test-plan.json`
-- `tests/results/reward-order.run-2026-04-24-001.json`
-- `scripts/orchestration/test-runner.mjs`
-- `test-console/`
-
-## 与编码 Agent 的关系
-SpecOS 不替代代码生成模型，代码仍可由如 `codex`、`claude code` 等工具完成。  
-SpecOS 的价值是给这些工具稳定的工程语义与执行边界，降低“生成可跑但不可维护、不可追溯”的风险。
-
-## 为什么要做
-- 需求输入不稳定
-- Spec 格式不稳定
-- 上下文散落
-- Agent 角色混乱
-- 测试没有固定入口
-- 生成结果不可追溯
-- 每次对话都要重复解释工程规则
-
-## V1 建议
-第一版不追求全自动，建议每一步都支持人工确认（Human-in-the-loop）。
+In general, changes should stay traceable to a draft, a spec change, a rule, or a test artifact.

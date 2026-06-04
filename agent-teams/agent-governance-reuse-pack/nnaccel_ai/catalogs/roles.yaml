@@ -1,0 +1,17 @@
+version: 1
+roles:
+  - id: spec-orchestrator
+    profile: spec
+    summary: Coordinates spec refinement and normalization work.
+  - id: team-orchestrator
+    profile: plan
+    summary: Coordinates multi-role planning and team-level execution flow.
+  - id: architecture-agent
+    profile: arch
+    summary: Reviews architecture boundaries and design impact.
+  - id: review-agent
+    profile: review
+    summary: Reviews change evidence, risks, and release readiness.
+  - id: deploy-agent
+    profile: deploy
+    summary: Handles deployment preparation and gated rollout execution.

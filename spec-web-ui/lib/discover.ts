@@ -111,6 +111,7 @@ export function buildPresetBundlePreview(bundle: PresetBundle, catalog: CatalogA
         return accumulator;
       },
       {
+        agent_team: 0,
         agent_role: 0,
         rule: 0,
         skill: 0,

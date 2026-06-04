@@ -19,6 +19,7 @@ const assets: CatalogAsset[] = [
     title: "Go Backend Governance",
     summary: "Shared backend delivery rules for Go services.",
     direction: "backend",
+    categories: ["backend"],
     stacks: ["go"],
     tags: ["ci", "auth", "errors"],
     appliesTo: ["backend"],
@@ -34,6 +35,7 @@ const assets: CatalogAsset[] = [
     title: "React Feature Draft",
     summary: "Structured draft template for React-facing features.",
     direction: "frontend",
+    categories: ["product", "frontend"],
     stacks: ["react"],
     tags: ["react", "ui"],
     appliesTo: ["frontend"],
@@ -44,11 +46,44 @@ const assets: CatalogAsset[] = [
     version: "1.0.0"
   },
   {
+    id: "skill-tool-config-ui",
+    type: "skill",
+    title: "Tool Config UI Skill",
+    summary: "Patterns for safe agent configuration interfaces.",
+    direction: "frontend",
+    categories: ["frontend", "operations"],
+    stacks: ["react"],
+    tags: ["skill", "config"],
+    appliesTo: ["frontend"],
+    dependsOn: [],
+    conflictsWith: [],
+    sourcePath: ".skills/tool-config-ui/SKILL.md",
+    files: [".skills/tool-config-ui/SKILL.md"],
+    version: "1.0.0"
+  },
+  {
+    id: "team-governance-pack",
+    type: "agent_team",
+    title: "Governance Team Pack",
+    summary: "Reusable agent team routing pack.",
+    direction: "fullstack",
+    categories: ["operations", "deployment"],
+    stacks: ["go", "react"],
+    tags: ["team", "routing"],
+    appliesTo: ["backend", "frontend"],
+    dependsOn: [],
+    conflictsWith: [],
+    sourcePath: "agent-teams/governance-pack/README.md",
+    files: ["agent-teams/governance-pack/README.md"],
+    version: "1.0.0"
+  },
+  {
     id: "agent-openapi",
     type: "agent_role",
     title: "OpenAPI Agent",
     summary: "Produces API contracts and aligns them with spec output.",
     direction: "fullstack",
+    categories: ["backend", "product"],
     stacks: ["go", "react"],
     tags: ["openapi", "api"],
     appliesTo: ["backend", "frontend"],
@@ -92,7 +127,19 @@ describe("filterCatalogAssets", () => {
   });
 
   it("returns all assets when no filters are set", () => {
-    expect(filterCatalogAssets(assets, {})).toHaveLength(4);
+    expect(filterCatalogAssets(assets, {})).toHaveLength(6);
+  });
+
+  it("matches source paths while searching catalog assets", () => {
+    const result = filterCatalogAssets(assets, { query: ".skills/tool-config-ui" });
+
+    expect(result.map((asset) => asset.id)).toEqual(["skill-tool-config-ui"]);
+  });
+
+  it("filters catalog assets by shared business category", () => {
+    const result = filterCatalogAssets(assets, { categories: ["operations"] });
+
+    expect(result.map((asset) => asset.id)).toEqual(["skill-tool-config-ui", "team-governance-pack"]);
   });
 });
 
@@ -101,8 +148,8 @@ describe("getCatalogFilterOptions", () => {
     expect(getCatalogFilterOptions(assets)).toEqual({
       directions: ["backend", "frontend", "fullstack"],
       stacks: ["go", "react"],
-      tags: ["api", "auth", "ci", "ddd", "errors", "layering", "openapi", "react", "ui"],
-      types: ["agent_role", "rule", "skill", "spec_template"]
+      tags: ["api", "auth", "ci", "config", "ddd", "errors", "layering", "openapi", "react", "routing", "skill", "team", "ui"],
+      types: ["agent_role", "agent_team", "rule", "skill", "spec_template"]
     });
   });
 });
@@ -178,7 +225,9 @@ describe("sortCatalogAssetsForWorkspace", () => {
       "agent-openapi",
       "rule-go-backend",
       "template-react-feature",
-      "skill-ddd-layering"
+      "skill-ddd-layering",
+      "team-governance-pack",
+      "skill-tool-config-ui"
     ]);
   });
 });
@@ -211,7 +260,7 @@ describe("buildAssetCompositionPreview", () => {
           ],
           draftTemplateId: "template-react-feature",
           draftPath: "spec-web-ui/workspace/projects/rewards-platform/draft.md",
-          exportTargets: ["rules/", "specs/_template/", "ai/agents/", "project-manifest.yaml"]
+          exportTargets: ["rules/", "specs/_template/", "ai/agents/", "agent-teams/", "project-manifest.yaml"]
         },
         selectedAssets: assets.filter((asset) =>
           ["rule-go-backend", "template-react-feature"].includes(asset.id)
@@ -232,15 +281,11 @@ describe("buildAssetCompositionPreview", () => {
 describe("getFeaturedAssets", () => {
   it("surfaces a small featured set with strong stack and tag signals across asset types", () => {
     const featured = getFeaturedAssets(assets, {
-      limit: 3,
-      preferredTags: ["openapi", "ui", "ddd"]
+      limit: 2,
+      preferredTags: ["openapi", "config"]
     });
 
-    expect(featured.map((asset) => asset.id)).toEqual([
-      "agent-openapi",
-      "template-react-feature",
-      "skill-ddd-layering"
-    ]);
+    expect(featured.map((asset) => asset.id)).toEqual(["agent-openapi", "skill-tool-config-ui"]);
   });
 });
 

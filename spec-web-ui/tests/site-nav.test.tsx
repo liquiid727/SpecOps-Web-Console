@@ -19,13 +19,17 @@ describe("SiteNav", () => {
       "href",
       "/spec-templates"
     );
+    expect(screen.getByRole("link", { name: "Skill 技能/" })).toHaveAttribute(
+      "href",
+      "/skill-templates"
+    );
     expect(screen.getByRole("link", { name: "Agent 模版/" })).toHaveAttribute(
       "href",
       "/agent-templates"
     );
-    expect(screen.getByRole("link", { name: "Skill 仓库/" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Agent Team/" })).toHaveAttribute(
       "href",
-      "/skills"
+      "/agent-teams"
     );
     expect(screen.getByText("Workflow 模版/")).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByRole("link", { name: "项目/" })).toHaveAttribute("href", "/projects");

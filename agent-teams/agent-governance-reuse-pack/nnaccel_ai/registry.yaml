@@ -1,0 +1,13 @@
+version: 1
+source_of_truth: yaml
+catalogs:
+  - id: roles
+    path: nnaccel_ai/catalogs/roles.yaml
+  - id: model-routing
+    path: nnaccel_ai/catalogs/model-routing.yaml
+governance:
+  - id: agent-team-governance
+    title: Agent Team Governance
+    status: active
+    machine_path: nnaccel_ai/openspec/specs/agent-team-governance/agent-team-governance.yaml
+    human_md_path: nnaccel_ai/openspec/specs/agent-team-governance/spec.md

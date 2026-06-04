@@ -150,7 +150,7 @@ const agentKitSources: AgentKitSource[] = [
   { source: ".rules", target: ".rules" },
   { source: "rules", target: "rules" },
   { source: ".codex/instructions.md", target: ".codex/instructions.md" },
-  { source: ".codex/skills", target: ".codex/skills" },
+  { source: ".skills/ui-design-handoff/SKILL.md", target: ".codex/skills/specos-ui-design/SKILL.md" },
   { source: ".skills", target: ".skills" },
   { source: "spec-draft", target: "spec-draft" },
   { source: "specs", target: "specs" },

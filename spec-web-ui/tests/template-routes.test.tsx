@@ -3,16 +3,32 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/catalog", () => ({
-  filterCatalogAssets: (assets: Array<{ title: string; summary: string; tags: string[] }>, filters: { query?: string }) => {
+  filterCatalogAssets: (
+    assets: Array<{ title: string; summary: string; tags: string[]; categories?: string[] }>,
+    filters: { query?: string; categories?: string[] }
+  ) => {
     const query = filters.query?.toLowerCase().trim();
+    const categories = filters.categories ?? [];
 
-    if (!query) {
-      return assets;
-    }
+    return assets.filter((asset) => {
+      if (query) {
+        const matchesQuery = [asset.title, asset.summary, ...asset.tags].some((value) => value.toLowerCase().includes(query));
 
-    return assets.filter((asset) =>
-      [asset.title, asset.summary, ...asset.tags].some((value) => value.toLowerCase().includes(query))
-    );
+        if (!matchesQuery) {
+          return false;
+        }
+      }
+
+      if (categories.length) {
+        const assetCategories = asset.categories ?? [];
+
+        if (!categories.every((category) => assetCategories.includes(category))) {
+          return false;
+        }
+      }
+
+      return true;
+    });
   },
   loadCatalogAssets: async () => [
     {
@@ -21,6 +37,7 @@ vi.mock("@/lib/catalog", () => ({
       title: "Product UI Spec Template",
       summary: "Draft structure for user-facing product screens.",
       direction: "frontend",
+      categories: ["product", "frontend"],
       stacks: ["react"],
       tags: ["ui", "handoff"],
       appliesTo: ["frontend"],
@@ -36,6 +53,7 @@ vi.mock("@/lib/catalog", () => ({
       title: "Spec Editor Agent",
       summary: "Refines drafts into reviewable SpecOS change packages.",
       direction: "fullstack",
+      categories: ["product", "backend"],
       stacks: ["specos"],
       tags: ["agent", "review"],
       appliesTo: ["spec"],
@@ -46,25 +64,43 @@ vi.mock("@/lib/catalog", () => ({
       version: "1.0.0"
     },
     {
-      id: "skill-ddd-layering-governance",
+      id: "skill-tool-config-ui",
       type: "skill",
-      title: "DDD Layering Governance",
-      summary: "Guides DDD layer ownership and domain modeling decisions.",
-      direction: "backend",
-      stacks: ["go"],
-      tags: ["ddd", "layering"],
-      appliesTo: ["backend"],
+      title: "Tool Config UI Skill",
+      summary: "Patterns for building safe configuration surfaces.",
+      direction: "frontend",
+      categories: ["frontend", "operations"],
+      stacks: ["react"],
+      tags: ["skill", "config"],
+      appliesTo: ["frontend"],
       dependsOn: [],
       conflictsWith: [],
-      sourcePath: "spec-web-ui/catalog/skills/ddd-layering-governance/SKILL.md",
-      files: ["spec-web-ui/catalog/skills/ddd-layering-governance/SKILL.md"],
+      sourcePath: ".skills/tool-config-ui/SKILL.md",
+      files: [".skills/tool-config-ui/SKILL.md"],
+      version: "1.0.0"
+    },
+    {
+      id: "team-governance-pack",
+      type: "agent_team",
+      title: "Governance Team Pack",
+      summary: "Reusable team-level governance pack.",
+      direction: "fullstack",
+      categories: ["operations", "deployment"],
+      stacks: ["specos"],
+      tags: ["team", "governance"],
+      appliesTo: ["spec"],
+      dependsOn: [],
+      conflictsWith: [],
+      sourcePath: "agent-teams/governance-pack/README.md",
+      files: ["agent-teams/governance-pack/README.md"],
       version: "1.0.0"
     }
   ]
 }));
 
 import AgentTemplatesPage from "@/app/agent-templates/page";
-import SkillsPage from "@/app/skills/page";
+import AgentTeamsPage from "@/app/agent-teams/page";
+import SkillTemplatesPage from "@/app/skill-templates/page";
 import SpecTemplatesPage from "@/app/spec-templates/page";
 
 describe("template library routes", () => {
@@ -86,13 +122,28 @@ describe("template library routes", () => {
     expect(screen.queryByText("Product UI Spec Template")).not.toBeInTheDocument();
   });
 
-  it("renders skills on a dedicated repository route", async () => {
-    render(await SkillsPage({ searchParams: Promise.resolve({}) }));
+  it("renders skill templates on a dedicated route", async () => {
+    render(await SkillTemplatesPage({ searchParams: Promise.resolve({}) }));
 
-    expect(screen.getByRole("heading", { name: "Skill 仓库" })).toBeInTheDocument();
-    expect(screen.getByRole("searchbox", { name: "搜索 Skill" })).toBeInTheDocument();
-    expect(screen.getByText("DDD Layering Governance")).toBeInTheDocument();
-    expect(screen.queryByText("Product UI Spec Template")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Skill 技能" })).toBeInTheDocument();
+    expect(screen.getByRole("searchbox", { name: "搜索 Skill 技能" })).toBeInTheDocument();
+    expect(screen.getByText("Tool Config UI Skill")).toBeInTheDocument();
+    expect(screen.queryByText("Spec Editor Agent")).not.toBeInTheDocument();
+  });
+
+  it("filters skills by category on the dedicated route", async () => {
+    render(await SkillTemplatesPage({ searchParams: Promise.resolve({ category: "operations" }) }));
+
+    expect(screen.getByText("Tool Config UI Skill")).toBeInTheDocument();
+    expect(screen.queryByText("Governance Team Pack")).not.toBeInTheDocument();
+  });
+
+  it("renders agent teams on a dedicated route", async () => {
+    render(await AgentTeamsPage({ searchParams: Promise.resolve({}) }));
+
+    expect(screen.getByRole("heading", { name: "Agent Team" })).toBeInTheDocument();
+    expect(screen.getByRole("searchbox", { name: "搜索 Agent Team" })).toBeInTheDocument();
+    expect(screen.getByText("Governance Team Pack")).toBeInTheDocument();
     expect(screen.queryByText("Spec Editor Agent")).not.toBeInTheDocument();
   });
 });

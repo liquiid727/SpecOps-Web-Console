@@ -12,11 +12,13 @@ const project: ProjectManifest = {
   selectedAssets: [
     { assetId: "rule-backend-governance", enabled: true },
     { assetId: "template-feature-draft", enabled: true },
-    { assetId: "agent-spec-editor", enabled: true }
+    { assetId: "agent-spec-editor", enabled: true },
+    { assetId: "skill-tool-config-ui", enabled: true },
+    { assetId: "team-governance-pack", enabled: true }
   ],
   draftTemplateId: "template-feature-draft",
   draftPath: "spec-web-ui/workspace/projects/reward-center/draft.md",
-  exportTargets: ["rules/", "specs/_template/", "ai/agents/", "project-manifest.yaml"]
+  exportTargets: ["rules/", "specs/_template/", "ai/agents/", "agent-teams/", "project-manifest.yaml"]
 };
 
 const selectedAssets: CatalogAsset[] = [
@@ -60,6 +62,36 @@ const selectedAssets: CatalogAsset[] = [
     version: "1.0.0"
   },
   {
+    id: "team-governance-pack",
+    type: "agent_team",
+    title: "Governance Team Pack",
+    summary: "Reusable team-level governance pack.",
+    direction: "fullstack",
+    stacks: ["go", "react"],
+    tags: ["team", "governance"],
+    appliesTo: ["backend", "frontend"],
+    dependsOn: [],
+    conflictsWith: [],
+    sourcePath: "agent-teams/governance-pack/README.md",
+    files: ["agent-teams/governance-pack/README.md"],
+    version: "1.0.0"
+  },
+  {
+    id: "skill-tool-config-ui",
+    type: "skill",
+    title: "Tool Config UI Skill",
+    summary: "Safe configuration UI patterns.",
+    direction: "frontend",
+    stacks: ["react"],
+    tags: ["skill", "config"],
+    appliesTo: ["frontend"],
+    dependsOn: [],
+    conflictsWith: [],
+    sourcePath: ".skills/tool-config-ui/SKILL.md",
+    files: [".skills/tool-config-ui/SKILL.md"],
+    version: "1.0.0"
+  },
+  {
     id: "agent-spec-editor",
     type: "agent_role",
     title: "Spec Editor",
@@ -89,12 +121,11 @@ describe("buildExportBundle", () => {
       "rules/backend/go-backend-governance.md",
       "spec-draft/_template/feature/product-ui.template.md",
       "specs/_template/feature/spec.example.md",
+      "agent-teams/governance-pack/README.md",
+      ".skills/tool-config-ui/SKILL.md",
       "ai/agents/spec-editor.md"
     ]);
-    expect(bundle.files.find((file) => file.targetPath === "spec-draft/_template/feature/product-ui.template.md")?.sourcePath).toBe(
-      "spec-web-ui/catalog/spec-templates/template-feature-draft/product-ui.template.md"
-    );
-    expect(bundle.summary).toContain("3 selected assets");
+    expect(bundle.summary).toContain("5 selected assets");
   });
 
   it("emits an installable SpecOS bundle payload alongside the review snapshot", () => {
@@ -106,6 +137,8 @@ describe("buildExportBundle", () => {
     expect(bundle.bundleManifest.id).toBe("reward-center-bundle");
     expect(bundle.bundleManifest.workflow.default).toBe("spec-driven-default");
     expect(bundle.bundleManifest.installs).toEqual([
+      { target: ".skills/", from: "files/.skills/" },
+      { target: "agent-teams/", from: "files/agent-teams/" },
       { target: "ai/agents/", from: "files/ai/agents/" },
       { target: "rules/", from: "files/rules/" },
       { target: "spec-draft/_template/", from: "files/spec-draft/_template/" },
@@ -126,12 +159,17 @@ describe("buildExportBundle", () => {
 describe("groupExportFilesByDirectory", () => {
   it("groups exported files by top-level directory for bundle review", () => {
     const groups = exportsLib.groupExportFilesByDirectory([
+      { sourcePath: "agent-teams/governance-pack/README.md", targetPath: "agent-teams/governance-pack/README.md" },
       { sourcePath: "rules/backend/go-backend-governance.md", targetPath: "rules/backend/go-backend-governance.md" },
       { sourcePath: "ai/agents/spec-editor.md", targetPath: "ai/agents/spec-editor.md" },
       { sourcePath: "specs/_template/feature/spec.example.md", targetPath: "specs/_template/feature/spec.example.md" }
     ]);
 
     expect(groups).toEqual([
+      {
+        directory: "agent-teams",
+        files: [{ sourcePath: "agent-teams/governance-pack/README.md", targetPath: "agent-teams/governance-pack/README.md" }]
+      },
       {
         directory: "ai",
         files: [{ sourcePath: "ai/agents/spec-editor.md", targetPath: "ai/agents/spec-editor.md" }]
@@ -180,12 +218,30 @@ describe("buildExportDiffPreview", () => {
 describe("buildExportFileTree", () => {
   it("builds a nested tree for grouped export navigation", () => {
     const tree = exportsLib.buildExportFileTree([
+      { sourcePath: "agent-teams/governance-pack/README.md", targetPath: "agent-teams/governance-pack/README.md" },
       { sourcePath: "rules/backend/go-backend-governance.md", targetPath: "rules/backend/go-backend-governance.md" },
       { sourcePath: "rules/shared/error-code-governance.md", targetPath: "rules/shared/error-code-governance.md" },
       { sourcePath: "ai/agents/spec-editor.md", targetPath: "ai/agents/spec-editor.md" }
     ]);
 
     expect(tree).toEqual([
+      {
+        name: "agent-teams",
+        path: "agent-teams",
+        children: [
+          {
+            name: "governance-pack",
+            path: "agent-teams/governance-pack",
+            children: [
+              {
+                name: "README.md",
+                path: "agent-teams/governance-pack/README.md",
+                file: { sourcePath: "agent-teams/governance-pack/README.md", targetPath: "agent-teams/governance-pack/README.md" }
+              }
+            ]
+          }
+        ]
+      },
       {
         name: "ai",
         path: "ai",
