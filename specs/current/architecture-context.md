@@ -27,12 +27,12 @@ Agent work is routed through `.agents/manifest.yaml`. The manifest defines role 
 - `spec-draft/` captures early human-authored intent and exploratory requirements.
 - `specs/changes/<change-id>/` captures normalized active work, assumptions, design notes, generated artifacts, and review evidence for a bounded change.
 - `tests/` captures scenario, API, UI, result, and test-plan assets tied to specs.
-- `ai/workflows/` documents orchestration flows that connect prompts, agent roles, review stages, and gates.
+- `ai/workflows/` documents orchestration flows that connect prompts, agent roles, review stages, gates, and QA acceptance.
 - `rules/` and `.rules/` define reusable governance and compact agent-facing rule entrypoints.
 
 ## Promotion Rule
 
-Agents should not write directly to `specs/current/` for new work. Promote content into `specs/current/` only after the related change has implementation, test, review, and acceptance evidence.
+Agents should not write directly to `specs/current/` for new work. Promote content into `specs/current/` only after the related change has implementation, independent test, review, QA acceptance, and release gate evidence.
 
 ## Open Questions
 

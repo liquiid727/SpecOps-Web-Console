@@ -192,6 +192,7 @@ export type RequestRouteAgentRole =
   | "execution-editor"
   | "implementation-editor"
   | "test-editor"
+  | "qa-agent"
   | "reviewer";
 
 const productionTestStandardVersion: TestStandardVersion = "specos-test-standard/v1";
@@ -569,9 +570,9 @@ const requestRoutingAgents: Record<RequestWorkType, RequestRouteAgentRole[]> = {
   frontend: ["ui-design-agent", "playwright-test-agent", "test-editor"],
   ui_prototype: ["spec-editor", "playwright-test-agent"],
   spec: ["spec-editor", "ddd-domain-agent", "test-editor"],
-  tests: ["test-editor", "bruno-test-agent", "playwright-test-agent"],
-  ci: ["ci-editor", "execution-editor"],
-  orchestration: ["execution-editor", "ci-editor", "reviewer"],
+  tests: ["test-editor", "bruno-test-agent", "playwright-test-agent", "qa-agent"],
+  ci: ["ci-editor", "execution-editor", "qa-agent"],
+  orchestration: ["execution-editor", "ci-editor", "qa-agent", "reviewer"],
 };
 
 export function buildRequestRoute(rawRequest: string): RequestRouteDecision {
@@ -594,7 +595,12 @@ export function buildRequestRoute(rawRequest: string): RequestRouteDecision {
   const hasImplementationSignal = match("implementation", ["实现", "开发", "代码", "修复", "bug", "接口实现", "implement", "fix"]);
   const hasTestSignal = match("test", ["测试", "test", "unit", "e2e", "scenario", "api", "contract", "性能", "并发", "concurrency", "performance", "latency"]);
   const hasReviewSignal = match("review", ["评审", "review", "检查", "审查"]);
-  const hasAcceptanceSignal = match("acceptance", ["验收", "发布", "release", "promote", "gate", "门禁", "ci"]);
+  const hasAcceptanceSignal = match("acceptance", ["qa", "质量", "验收", "发布", "acceptance", "release", "promote", "gate", "门禁", "ci"]);
+  const hasExplicitQaAcceptanceSignal =
+    normalized.includes("qa") ||
+    normalized.includes("质量") ||
+    normalized.includes("验收") ||
+    normalized.includes("acceptance");
   const hasToolingSignal = match("tooling-configuration", ["agent", "skill", "workflow", "脚本", "cli", "配置", "router", "route-request"]);
 
   if (match("backend", ["backend", "后端", "api", "接口", "database", "db", "migration", "sql", "redis", "go ", "golang"])) {
@@ -613,6 +619,7 @@ export function buildRequestRoute(rawRequest: string): RequestRouteDecision {
     workTypes.add("tests");
   }
   if (hasAcceptanceSignal) {
+    workTypes.add("tests");
     workTypes.add("ci");
   }
   if (hasToolingSignal) {
@@ -631,24 +638,25 @@ export function buildRequestRoute(rawRequest: string): RequestRouteDecision {
   if (normalized.includes("性能") || normalized.includes("performance") || normalized.includes("latency")) supportingAgents.add("performance-test-agent");
   if (normalized.includes("并发") || normalized.includes("concurrency")) supportingAgents.add("concurrency-test-agent");
   if (normalized.includes("api") || normalized.includes("contract") || normalized.includes("接口")) supportingAgents.add("bruno-test-agent");
+  if (hasAcceptanceSignal || hasExplicitQaAcceptanceSignal) supportingAgents.add("qa-agent");
 
   const requestKind: RequestKind = hasRawRequirementSignal && !hasActiveChangeSignal
     ? "raw-requirement"
-    : hasReviewSignal
-      ? "review"
-      : hasAcceptanceSignal && !hasTestSignal
+    : hasExplicitQaAcceptanceSignal
         ? "acceptance"
-        : hasTestSignal
-          ? "test"
-          : hasImplementationSignal
-            ? "implementation"
-            : hasToolingSignal
-              ? "tooling-configuration"
-              : hasDraftSignal
-                ? "draft-only"
-                : hasActiveChangeSignal
-                  ? "active-change"
-                  : "raw-requirement";
+        : hasReviewSignal
+          ? "review"
+          : hasTestSignal
+            ? "test"
+            : hasImplementationSignal
+              ? "implementation"
+              : hasToolingSignal
+                ? "tooling-configuration"
+                : hasDraftSignal
+                  ? "draft-only"
+                  : hasActiveChangeSignal
+                    ? "active-change"
+                    : "raw-requirement";
 
   const primaryAgent = primaryAgentForRequest(requestKind, workTypes);
   supportingAgents.delete(primaryAgent);
@@ -690,7 +698,7 @@ function primaryAgentForRequest(kind: RequestKind, workTypes: Set<RequestWorkTyp
   if (kind === "raw-requirement" || kind === "draft-only" || kind === "active-change") return "spec-editor";
   if (kind === "test") return "test-editor";
   if (kind === "review") return "reviewer";
-  if (kind === "acceptance") return "ci-editor";
+  if (kind === "acceptance") return "qa-agent";
   if (kind === "tooling-configuration") return "execution-editor";
   if (workTypes.has("frontend")) return "ui-design-agent";
   if (workTypes.has("backend")) return "implementation-editor";

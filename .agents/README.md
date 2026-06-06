@@ -22,6 +22,7 @@ This directory defines local agent routing, role contracts, and scoped skill loa
 - End-to-end business journeys: `e2e-test-agent`
 - UI scenario tests: `playwright-test-agent`
 - CI and release gates: `ci-editor`
+- Final quality acceptance: `qa-agent`
 - Local scripts and workflow wiring: `execution-editor`
 - Test structure and coverage: `test-editor`
 
@@ -54,7 +55,8 @@ flowchart TD
   D -->|UI browser coverage| M["playwright-test-agent"]
   D -->|CI / release gates| N["ci-editor"]
   D -->|Workflow scripts| O["execution-editor"]
-  D -->|Review / risk check| P["reviewer"]
+  D -->|QA acceptance| P["qa-agent"]
+  D -->|Review / risk check| AA["reviewer"]
 
   E --> Q{"Output target"}
   F --> Q
@@ -68,6 +70,7 @@ flowchart TD
   N --> Q
   O --> Q
   P --> Q
+  AA --> Q
 
   Q -->|Proposed change| R["specs/changes/<change-id>"]
   Q -->|Accepted source of truth| S["specs/current/"]

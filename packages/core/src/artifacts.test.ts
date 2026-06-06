@@ -35,12 +35,25 @@ describe("artifact validation", () => {
         "performance-test-agent",
         "concurrency-test-agent",
         "ci-editor",
+        "qa-agent",
       ]),
     );
     expect(route.rules).toEqual(
       expect.arrayContaining(["rules/testing/production-test-standards.md", "rules/ci/spec-release-gates.md"]),
     );
     expect(route.skills).toContain(".codex/skills/specos-ui-design/SKILL.md");
+  });
+
+  it("routes QA acceptance requests to the QA agent", () => {
+    const route = buildRequestRoute("请 QA agent 做最终质量验收，汇总 gate report 和 review findings");
+
+    expect(route).toMatchObject({
+      requestKind: "acceptance",
+      primaryAgent: "qa-agent",
+      needsChangePackage: true,
+    });
+    expect(route.workTypes).toEqual(expect.arrayContaining(["tests", "ci", "orchestration"]));
+    expect(route.supportingAgents).toEqual(expect.arrayContaining(["test-editor", "ci-editor", "reviewer"]));
   });
 
   it("routes raw requirements to spec intake before implementation", () => {

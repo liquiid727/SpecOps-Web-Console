@@ -44,6 +44,7 @@ Production `tests/results/*.json` artifacts must include:
 - `performance-test-agent`: latency, throughput, SLO thresholds, baseline regression, and capacity risk.
 - `concurrency-test-agent`: retries, duplicate submissions, locking, idempotency, eventual consistency, and final-state invariants.
 - `ci-editor`: CI commands, gate report interpretation, and release-blocking enforcement.
+- `qa-agent`: final acceptance decision, residual risk language, waiver tracking, and promotion recommendation after test and review evidence exist.
 
 ## Developer Console Loop
 

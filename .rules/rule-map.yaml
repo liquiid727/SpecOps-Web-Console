@@ -53,6 +53,7 @@ work_types:
       - test-editor
       - bruno-test-agent
       - playwright-test-agent
+      - qa-agent
 
   ci:
     rules:
@@ -62,6 +63,7 @@ work_types:
     agents:
       - ci-editor
       - execution-editor
+      - qa-agent
 
   orchestration:
     rules:
@@ -71,4 +73,5 @@ work_types:
     agents:
       - execution-editor
       - ci-editor
+      - qa-agent
       - reviewer

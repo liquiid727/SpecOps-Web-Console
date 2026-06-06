@@ -39,6 +39,7 @@ Define release checks that ensure generated artifacts still match accepted spec 
 - Require a gate report decision of `ready` before promoting a change into `specs/current/`.
 - Require all release-blocking normalized results to reference the same `spec_id`, `spec_version`, and `change_id`.
 - Require `standardCompliance`, `riskSummary`, and `agentEvidenceSummary` to show no P0/P1 blocking gaps.
+- Require `qa-agent` acceptance language for residual risks, waivers, and final promotion recommendation when a change has attached production test plans.
 - Archive gate evidence with the completed change package.
 
 ## Local Command

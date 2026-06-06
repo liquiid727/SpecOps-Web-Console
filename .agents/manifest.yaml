@@ -335,6 +335,29 @@ roles:
       - scenario coverage
       - test gaps
 
+  qa-agent:
+    role_prompt: roles/qa-agent.md
+    canonical: ai/agents/qa-agent.md
+    skill_mode: scoped_only
+    skills: []
+    context_includes:
+      - .rules/project.md
+      - rules/testing/production-test-standards.md
+      - rules/ci/spec-release-gates.md
+      - specs/current/
+      - specs/changes/
+      - tests/plans/
+      - tests/results/
+      - reviews/
+    owns:
+      - QA acceptance report
+      - final quality decision
+      - residual risk and waiver summary
+    outputs:
+      - QA acceptance report
+      - promotion recommendation
+      - release blockers
+
   reviewer:
     role_prompt: roles/reviewer.md
     canonical: ai/agents/reviewer.md
