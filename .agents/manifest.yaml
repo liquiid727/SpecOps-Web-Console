@@ -40,6 +40,9 @@ calling_convention:
     - Do not preload repository or external skills unless they are declared on the selected role.
     - Prefer switching agents or splitting tasks over broadening one agent's skill set.
     - Roles with empty skills run as role-and-rules-only agents.
+    - Do not invent ad-hoc roles; primary and supporting agents must be registered in this manifest.
+    - Treat route-request and classify-request as routing previews, not agent execution.
+    - For nested host-side dispatch, use pola as coordinator and follow ai/workflows/nested-agent-orchestration.md.
 
 roles:
   spec-editor:
@@ -101,6 +104,7 @@ roles:
       - specs/current/project-context.md
       - specs/current/architecture-context.md
       - specs/current/domain-context.md
+      - ai/workflows/nested-agent-orchestration.md
       - spec-draft/
       - specs/current/
       - specs/changes/
@@ -311,6 +315,7 @@ roles:
     context_includes:
       - .rules/project.md
       - ai/workflows/README.md
+      - ai/workflows/nested-agent-orchestration.md
       - scripts/README.md
       - scripts/orchestration/README.md
     owns:

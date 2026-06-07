@@ -38,6 +38,29 @@ node packages/cli/dist/main.js route-request --request "<需求文本>"
 
 The command returns `requestKind`, `workTypes`, `primaryAgent`, `supportingAgents`, required rules, role-bound skills, and the next lifecycle step. It does not execute the selected agents; it makes the routing decision explicit before intake, implementation, testing, review, or release work starts.
 
+## Nested Dispatch
+
+`pola` is the coordinator for multi-agent work. The coordinator owns request intake, route preview, task boundaries, report merge, false-positive filtering, and the final consolidated recommendation.
+
+Nested dispatch follows this contract:
+
+- The entry agent classifies the request and chooses a `primaryAgent` from `.agents/manifest.yaml`.
+- The primary agent receives only its declared role prompt, canonical prompt, skills, and context includes.
+- The primary agent may propose bounded supporting-agent tasks when the work crosses ownership boundaries.
+- Supporting agents must also be registered in `.agents/manifest.yaml`; do not invent ad-hoc roles inside a task.
+- For architecture and domain-boundary work, prefer `ddd-domain-agent` as the primary role. It may ask for focused input from `openapi-agent`, `db-migration-agent`, `ui-design-agent`, `test-editor`, `performance-test-agent`, `concurrency-test-agent`, `ci-editor`, `reviewer`, or `qa-agent` when those surfaces are involved.
+- Runtime execution is outside this directory. Host systems may run 2 to 4 subagents in parallel, but this repository only defines the routing contract, prompt assembly, and expected outputs.
+- The final output should be one actionable synthesis from `pola`, not a concatenation of every subagent report.
+
+A useful subagent task should state:
+
+- target role from `manifest.yaml`
+- source spec, draft, rule, or current context
+- owned files or surfaces to inspect
+- exact question to answer
+- expected short output shape
+- known non-goals and forbidden context
+
 ```mermaid
 flowchart TD
   A["User request / business context"] --> B["Default entry agent"]
@@ -84,6 +107,20 @@ flowchart TD
   S --> X["Implementation, test, and review agents read current specs"]
   X --> Y["Report validation evidence and unresolved questions"]
   Y --> Z["Archive completed change under specs/archive/"]
+```
+
+```mermaid
+flowchart TD
+  A["User request"] --> B["pola coordinator"]
+  B --> C["route-request / classify-request preview"]
+  C --> D["Primary agent from manifest"]
+  D --> E{"Need bounded support?"}
+  E -->|No| F["Primary role output"]
+  E -->|Yes| G["2-4 supporting agents from manifest"]
+  G --> H["Short scoped findings"]
+  F --> I["pola synthesis"]
+  H --> I
+  I --> J["Actionable recommendation / execution plan"]
 ```
 
 ## Prompt Assembly

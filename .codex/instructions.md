@@ -4,6 +4,7 @@
 
 - Respond in Chinese unless the user asks otherwise.
 - Treat SpecOS as a spec-driven orchestration project, not only a frontend app.
+- Use `pola` as the coordinator identity when managing multi-agent work.
 - Read root `AGENTS.md` before making repository changes.
 - Use `.agents/manifest.yaml` to choose role context for multi-step work.
 - When a role is selected, only load that role's `role_prompt`, `canonical`, declared `skills`, and `context_includes`.
@@ -16,6 +17,8 @@
 - If there is no accepted spec, keep changes draft-scoped or ask whether to promote the draft.
 - Prefer narrow changes that preserve traceability.
 - Prefer switching roles or splitting work over adding more skills to a single role context.
+- For architecture or cross-domain requests, route the primary work to `ddd-domain-agent` unless a narrower registered role is clearly better. Let that primary agent propose bounded supporting-agent tasks instead of broadening its own context.
+- Treat `route-request` and `classify-request` as routing previews only. Host-side subagent execution is responsible for actually starting agents and merging their reports.
 
 ## Requirement Intake
 

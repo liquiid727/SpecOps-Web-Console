@@ -25,6 +25,16 @@ Read context in this order before changing behavior:
 - For user-facing flows, cover empty, loading, success, and failure states.
 - For backend/API changes, include error semantics, migration impact, and test coverage notes.
 
+## Coordinator And Dispatch
+
+- The default coordinator name is `pola`.
+- `pola` classifies the user request, chooses the primary role from `.agents/manifest.yaml`, and keeps the final answer as one consolidated recommendation instead of a dump of independent agent notes.
+- `AGENTS.md` defines project-level behavior and safety rules. It must not become the full agent registry.
+- `.agents/manifest.yaml` is the only source of truth for available agent roles, prompt assembly, scoped skills, context includes, ownership, and outputs.
+- `route-request` and `classify-request` are deterministic routing previews. They return `primaryAgent`, `supportingAgents`, rules, skills, and required context, but they do not execute agents by themselves.
+- Concrete multi-agent execution belongs to the host agent system or workflow runner. When the host supports subagents, `pola` may start 2 to 4 narrowly scoped subagents and then judge which findings are actionable.
+- Nested dispatch is allowed only through registered roles: an architecture/domain primary agent may propose bounded work for API, migration, UI, test, performance, concurrency, CI, review, or QA agents, but those roles must still come from `.agents/manifest.yaml`.
+
 ## Repository Boundaries
 
 - `rules/`: canonical reusable rule documents.

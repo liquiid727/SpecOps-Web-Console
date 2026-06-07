@@ -101,6 +101,52 @@ describe("specos cli", () => {
     expect(route.supportingAgents).toEqual(expect.arrayContaining(["ui-design-agent", "ci-editor"]));
   });
 
+  it("routes architecture orchestration previews to the DDD domain agent", async () => {
+    const cwd = await tempProject();
+
+    const routed = await runCli(
+      [
+        "route-request",
+        "--request",
+        "让架构 agent 评估订单 API、数据库迁移、性能和并发风险，并输出子 agent 分工",
+      ],
+      { cwd },
+    );
+
+    expect(routed.exitCode).toBe(0);
+    expect(routed.stderr).toBe("");
+    const route = JSON.parse(routed.stdout.split("\n").slice(1).join("\n"));
+    expect(route).toMatchObject({
+      primaryAgent: "ddd-domain-agent",
+      requestKind: "test",
+    });
+    expect(route.supportingAgents).toEqual(
+      expect.arrayContaining(["openapi-agent", "db-migration-agent", "performance-test-agent", "concurrency-test-agent"]),
+    );
+  });
+
+  it("routes pure architecture review previews to the DDD domain agent", async () => {
+    const cwd = await tempProject();
+
+    const routed = await runCli(
+      [
+        "classify-request",
+        "--request",
+        "请评估这个领域边界和跨服务架构风险",
+      ],
+      { cwd },
+    );
+
+    expect(routed.exitCode).toBe(0);
+    expect(routed.stderr).toBe("");
+    const route = JSON.parse(routed.stdout.split("\n").slice(1).join("\n"));
+    expect(route).toMatchObject({
+      primaryAgent: "ddd-domain-agent",
+      requestKind: "review",
+      needsDraft: false,
+    });
+  });
+
   it("initializes a fullstack project and checks it", async () => {
     const cwd = await tempProject();
 

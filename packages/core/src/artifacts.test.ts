@@ -56,6 +56,41 @@ describe("artifact validation", () => {
     expect(route.supportingAgents).toEqual(expect.arrayContaining(["test-editor", "ci-editor", "reviewer"]));
   });
 
+  it("routes architecture orchestration requests to the DDD domain agent with bounded supporting agents", () => {
+    const route = buildRequestRoute(
+      "让架构 agent 评估订单 API、数据库迁移、性能和并发风险，并输出子 agent 分工",
+    );
+
+    expect(route).toMatchObject({
+      requestKind: "test",
+      primaryAgent: "ddd-domain-agent",
+    });
+    expect(route.workTypes).toEqual(expect.arrayContaining(["architecture", "backend", "tests", "orchestration"]));
+    expect(route.supportingAgents).toEqual(
+      expect.arrayContaining([
+        "openapi-agent",
+        "db-migration-agent",
+        "performance-test-agent",
+        "concurrency-test-agent",
+        "test-editor",
+        "reviewer",
+      ]),
+    );
+    expect(route.rules).toEqual(expect.arrayContaining(["ai/workflows/nested-agent-orchestration.md"]));
+  });
+
+  it("routes pure architecture reviews to the DDD domain agent before spec intake", () => {
+    const route = buildRequestRoute("请评估这个领域边界和跨服务架构风险");
+
+    expect(route).toMatchObject({
+      requestKind: "review",
+      primaryAgent: "ddd-domain-agent",
+      needsDraft: false,
+    });
+    expect(route.workTypes).toEqual(expect.arrayContaining(["architecture"]));
+    expect(route.supportingAgents).toEqual(expect.arrayContaining(["reviewer", "test-editor"]));
+  });
+
   it("routes raw requirements to spec intake before implementation", () => {
     const route = buildRequestRoute("我有一个新的支付路由需求，还没有 spec，先帮我整理一下");
 

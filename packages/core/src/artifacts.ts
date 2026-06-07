@@ -174,7 +174,15 @@ export type RequestKind =
   | "review"
   | "acceptance"
   | "tooling-configuration";
-export type RequestWorkType = "backend" | "frontend" | "ui_prototype" | "spec" | "tests" | "ci" | "orchestration";
+export type RequestWorkType =
+  | "architecture"
+  | "backend"
+  | "frontend"
+  | "ui_prototype"
+  | "spec"
+  | "tests"
+  | "ci"
+  | "orchestration";
 export type RequestRouteAgentRole =
   | "spec-editor"
   | "ui-design-agent"
@@ -552,6 +560,14 @@ type MutableValidation = {
 };
 
 const requestRoutingRules: Record<RequestWorkType, string[]> = {
+  architecture: [
+    ".rules/project.md",
+    "specs/current/architecture-context.md",
+    "specs/current/domain-context.md",
+    "rules/backend/go-backend-governance.md",
+    "rules/shared/error-code-governance.md",
+    "ai/workflows/nested-agent-orchestration.md",
+  ],
   backend: [
     "rules/backend/go-backend-governance.md",
     "rules/backend/redis-key-governance.md",
@@ -566,6 +582,15 @@ const requestRoutingRules: Record<RequestWorkType, string[]> = {
 };
 
 const requestRoutingAgents: Record<RequestWorkType, RequestRouteAgentRole[]> = {
+  architecture: [
+    "ddd-domain-agent",
+    "openapi-agent",
+    "db-migration-agent",
+    "test-editor",
+    "performance-test-agent",
+    "concurrency-test-agent",
+    "reviewer",
+  ],
   backend: ["ddd-domain-agent", "openapi-agent", "db-migration-agent", "bruno-test-agent"],
   frontend: ["ui-design-agent", "playwright-test-agent", "test-editor"],
   ui_prototype: ["spec-editor", "playwright-test-agent"],
@@ -601,8 +626,23 @@ export function buildRequestRoute(rawRequest: string): RequestRouteDecision {
     normalized.includes("质量") ||
     normalized.includes("验收") ||
     normalized.includes("acceptance");
+  const hasArchitectureSignal = match("architecture", [
+    "architecture",
+    "architect",
+    "架构",
+    "领域",
+    "domain",
+    "ddd",
+    "边界",
+    "bounded context",
+    "invariant",
+    "不变量",
+  ]);
   const hasToolingSignal = match("tooling-configuration", ["agent", "skill", "workflow", "脚本", "cli", "配置", "router", "route-request"]);
 
+  if (hasArchitectureSignal) {
+    workTypes.add("architecture");
+  }
   if (match("backend", ["backend", "后端", "api", "接口", "database", "db", "migration", "sql", "redis", "go ", "golang"])) {
     workTypes.add("backend");
   }
@@ -656,7 +696,9 @@ export function buildRequestRoute(rawRequest: string): RequestRouteDecision {
                   ? "draft-only"
                   : hasActiveChangeSignal
                     ? "active-change"
-                    : "raw-requirement";
+                    : hasArchitectureSignal
+                      ? "review"
+                      : "raw-requirement";
 
   const primaryAgent = primaryAgentForRequest(requestKind, workTypes);
   supportingAgents.delete(primaryAgent);
@@ -696,6 +738,7 @@ export function buildRequestRoute(rawRequest: string): RequestRouteDecision {
 
 function primaryAgentForRequest(kind: RequestKind, workTypes: Set<RequestWorkType>): RequestRouteAgentRole {
   if (kind === "raw-requirement" || kind === "draft-only" || kind === "active-change") return "spec-editor";
+  if (workTypes.has("architecture")) return "ddd-domain-agent";
   if (kind === "test") return "test-editor";
   if (kind === "review") return "reviewer";
   if (kind === "acceptance") return "qa-agent";
