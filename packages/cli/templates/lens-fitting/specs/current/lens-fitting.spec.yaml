@@ -1,0 +1,120 @@
+id: lens-fitting
+version: 0.1.0
+title: Lens Fitting MVP
+idea:
+  summary: Eyewear fitting mini program for prescription upload, lens recommendation, and order creation.
+spec:
+  product:
+    goals:
+      - Let users submit prescription data.
+      - Recommend lens options from merchant catalog rules.
+      - Create an order that a merchant can review.
+    actors:
+      - user
+      - merchant
+      - operator
+    flows:
+      - upload_prescription
+      - recommend_lens
+      - create_order
+    constraints:
+      - support ios/android mini-program entry points
+      - recommendation response target under 3s for MVP
+    acceptance:
+      - user can complete the MVP flow from prescription upload to order creation
+  architecture:
+    style: modular fullstack application
+    modules:
+      - prescription intake
+      - recommendation
+      - catalog
+      - order
+      - merchant review
+    integrations:
+      - optional payment provider
+      - optional recommendation provider
+    risks:
+      - prescription validation requires domain review
+  database:
+    entities:
+      - user_profile
+      - prescription
+      - lens_product
+      - recommendation
+      - order
+    relationships:
+      - user_profile has many prescriptions
+      - prescription has many recommendations
+      - order references recommendation
+    migrations:
+      - create MVP entities with auditable timestamps
+    dataRisks:
+      - prescription data is sensitive user health-adjacent data
+  api:
+    endpoints:
+      - POST /api/prescriptions
+      - POST /api/recommendations
+      - POST /api/orders
+      - GET /api/orders/{orderId}
+    events:
+      - order_created
+      - merchant_review_requested
+    externalServices: []
+    errorSemantics:
+      - validation_error
+      - recommendation_unavailable
+      - order_conflict
+  ui:
+    surfaces:
+      - prescription upload
+      - recommendation result
+      - order confirmation
+      - merchant review
+    states:
+      empty:
+        - no prescription uploaded
+      loading:
+        - recommendation pending
+      success:
+        - order created
+      failure:
+        - invalid prescription
+        - recommendation failed
+    analytics:
+      - prescription_submitted
+      - recommendation_viewed
+      - order_created
+task:
+  epics:
+    - prescription intake
+    - recommendation and catalog
+    - order and merchant review
+code:
+  frontend:
+    - mini-program pages and form states
+  backend:
+    - API handlers and recommendation service boundary
+  shared:
+    - validation schemas and error codes
+test:
+  unit:
+    - prescription validation rules
+  api:
+    - prescription, recommendation, and order endpoints
+  e2e:
+    - upload prescription to create order
+  performance:
+    - recommendation under target latency
+  concurrency:
+    - duplicate order submission does not create duplicate active orders
+deploy:
+  environments:
+    - local
+    - staging
+  gates:
+    - spec reviewed
+    - test plan reviewed
+    - rollback documented
+  rollback:
+    - disable recommendation provider
+    - stop accepting new order submissions

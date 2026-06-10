@@ -59,6 +59,7 @@ interface TemplateDefinition {
 
 const templates: TemplateDefinition[] = [
   { name: "fullstack", relativePath: "../templates/fullstack" },
+  { name: "lens-fitting", relativePath: "../templates/lens-fitting" },
   { name: "spec-only", relativePath: "../templates/spec-only" },
 ];
 const templateNames = templates.map((template) => template.name).join(", ");

@@ -1,0 +1,46 @@
+{
+  "id": "skill-product-architect",
+  "type": "skill",
+  "title": "Product Architect",
+  "summary": "Transforms raw ideas into a Spec blueprint with Product, Architecture, Database, API, and UI branches, then derives Task, Code, Test, and Deploy handoffs.",
+  "direction": "fullstack",
+  "categories": [
+    "product",
+    "operations"
+  ],
+  "stacks": [
+    "go",
+    "react",
+    "python",
+    "specos"
+  ],
+  "tags": [
+    "product",
+    "prd",
+    "spec",
+    "intake",
+    "orchestration"
+  ],
+  "appliesTo": [
+    "backend",
+    "frontend",
+    "ui"
+  ],
+  "dependsOn": [
+    "template-spec-blueprint-yaml",
+    "template-prd-draft",
+    "template-product-spec-yaml",
+    "template-feature-draft"
+  ],
+  "conflictsWith": [],
+  "sourcePath": "spec-web-ui/catalog/skills/product-architect/SKILL.md",
+  "files": [
+    "spec-web-ui/catalog/skills/product-architect/SKILL.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "先输出 draft 级 Spec Blueprint，再交给 spec-editor 进入 change package",
+    "保留开放问题和假设，避免把推断当成 accepted truth"
+  ],
+  "sampleOutput": "面向 spec-draft 的 Idea -> Spec -> Task -> Code -> Test -> Deploy 草案和后续 agent handoff。"
+}

@@ -23,15 +23,14 @@ describe("artifact validation", () => {
 
     expect(route).toMatchObject({
       requestKind: "test",
-      primaryAgent: "test-editor",
+      primaryAgent: "qa-agent",
       needsChangePackage: true,
     });
     expect(route.workTypes).toEqual(expect.arrayContaining(["frontend", "tests", "ci"]));
     expect(route.supportingAgents).toEqual(
       expect.arrayContaining([
-        "ui-design-agent",
+        "frontend-agent",
         "bruno-test-agent",
-        "playwright-test-agent",
         "performance-test-agent",
         "concurrency-test-agent",
         "ci-editor",
@@ -54,6 +53,38 @@ describe("artifact validation", () => {
     });
     expect(route.workTypes).toContain("spec");
     expect(route.nextStep).toContain("spec-draft");
+  });
+
+  it("routes raw product ideas to Product Architect before spec normalization", () => {
+    const route = buildRequestRoute("做一个眼镜验配小程序");
+
+    expect(route).toMatchObject({
+      requestKind: "raw-requirement",
+      primaryAgent: "product-architect-agent",
+      needsDraft: true,
+      needsChangePackage: true,
+    });
+    expect(route.workTypes).toEqual(expect.arrayContaining(["product", "spec"]));
+    expect(route.supportingAgents).toEqual(expect.arrayContaining(["spec-editor", "frontend-agent", "backend-agent", "qa-agent"]));
+    expect(route.skills).toContain("spec-web-ui/catalog/skills/product-architect/SKILL.md");
+  });
+
+  it("routes product SaaS planning to Product Architect", () => {
+    const route = buildRequestRoute("我要做一个配镜 SaaS，先帮我规划 MVP 和 PRD");
+
+    expect(route.primaryAgent).toBe("product-architect-agent");
+    expect(route.workTypes).toContain("product");
+    expect(route.matchedSignals).toContain("product-intent");
+  });
+
+  it("keeps existing draft-to-spec normalization on the spec editor", () => {
+    const route = buildRequestRoute("已有 draft，帮我整理成 spec");
+
+    expect(route).toMatchObject({
+      requestKind: "draft-only",
+      primaryAgent: "spec-editor",
+    });
+    expect(route.workTypes).not.toContain("product");
   });
 
   it("accepts a minimal fullstack manifest", () => {

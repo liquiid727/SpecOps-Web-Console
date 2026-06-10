@@ -1,0 +1,28 @@
+{
+  "id": "agent-qa",
+  "type": "agent_role",
+  "title": "QA Agent",
+  "summary": "Orchestrates quality strategy, specialist test routing, evidence normalization, and release risk reporting from SpecOS specs.",
+  "direction": "fullstack",
+  "categories": ["testing", "operations"],
+  "stacks": ["go", "react", "python", "specos"],
+  "tags": ["qa", "test", "quality", "orchestration", "agent"],
+  "appliesTo": ["backend", "frontend", "ui"],
+  "dependsOn": [
+    "agent-test-editor",
+    "agent-unit-test",
+    "agent-bruno-test",
+    "agent-e2e-test",
+    "agent-playwright-test",
+    "agent-specialized-check"
+  ],
+  "conflictsWith": [],
+  "sourcePath": "spec-web-ui/catalog/agent-templates/agent-qa/qa-agent.md",
+  "files": ["ai/agents/qa-agent.md"],
+  "version": "1.0.0",
+  "draftHints": ["从 Spec branches 生成 QA strategy", "按需路由 unit/API/E2E/browser/performance/concurrency specialist"],
+  "sampleOutput": "QA coverage matrix、test specialist handoff、evidence summary 和 release blockers。",
+  "contentFiles": {
+    "ai/agents/qa-agent.md": "spec-web-ui/catalog/agent-templates/agent-qa/qa-agent.md"
+  }
+}

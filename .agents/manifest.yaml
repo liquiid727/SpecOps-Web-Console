@@ -42,6 +42,39 @@ calling_convention:
     - Roles with empty skills run as role-and-rules-only agents.
 
 roles:
+  product-architect-agent:
+    role_prompt: roles/product-architect-agent.md
+    canonical: ai/agents/product-architect-agent.md
+    skill_mode: scoped_only
+    skills:
+      - name: product-architect
+        path: spec-web-ui/catalog/skills/product-architect/SKILL.md
+        required: true
+        purpose: Convert raw product ideas into a Spec blueprint with Product, Architecture, Database, API, and UI branches, then derive Task, Code, Test, and Deploy handoffs.
+    context_includes:
+      - .rules/project.md
+      - specs/current/project-context.md
+      - specs/current/architecture-context.md
+      - specs/current/domain-context.md
+      - spec-draft/
+      - spec-web-ui/catalog/spec-templates/template-prd-draft/
+      - spec-web-ui/catalog/spec-templates/template-spec-blueprint-yaml/
+      - spec-web-ui/catalog/spec-templates/template-product-spec-yaml/
+      - spec-web-ui/catalog/spec-templates/template-feature-draft/
+    owns:
+      - spec-draft/
+      - product draft notes
+      - agent handoff notes
+    outputs:
+      - Spec Blueprint
+      - Product branch notes
+      - Architecture branch notes
+      - Database branch notes
+      - API branch notes
+      - UI branch notes
+      - Task, Code, Test, and Deploy handoff plan
+      - assumptions and unresolved questions
+
   spec-editor:
     role_prompt: roles/spec-editor.md
     canonical: ai/agents/spec-editor.md
@@ -61,6 +94,72 @@ roles:
     outputs:
       - normalized spec bundle
       - assumptions and unresolved questions
+
+  frontend-agent:
+    role_prompt: roles/frontend-agent.md
+    canonical: ai/agents/frontend-agent.md
+    skill_mode: scoped_only
+    skills: []
+    context_includes:
+      - .rules/project.md
+      - rules/frontend/react-workbench-delivery.md
+      - rules/ui/pencil-prototype-ui.md
+      - specs/current/
+      - specs/changes/
+      - spec-web-ui/
+    owns:
+      - frontend implementation plan
+      - UI state coverage
+      - frontend specialist handoff
+    outputs:
+      - frontend plan
+      - UI state coverage notes
+      - specialist routing notes
+      - frontend risks and open questions
+
+  backend-agent:
+    role_prompt: roles/backend-agent.md
+    canonical: ai/agents/backend-agent.md
+    skill_mode: scoped_only
+    skills: []
+    context_includes:
+      - .rules/project.md
+      - rules/backend/go-backend-governance.md
+      - rules/shared/error-code-governance.md
+      - specs/current/
+      - specs/changes/
+      - tests/
+    owns:
+      - backend implementation plan
+      - backend specialist handoff
+      - error and compatibility risk notes
+    outputs:
+      - backend plan
+      - domain/API/database routing notes
+      - migration and rollback risks
+      - backend risks and open questions
+
+  qa-agent:
+    role_prompt: roles/qa-agent.md
+    canonical: ai/agents/qa-agent.md
+    skill_mode: scoped_only
+    skills: []
+    context_includes:
+      - .rules/project.md
+      - rules/testing/production-test-standards.md
+      - rules/ci/spec-release-gates.md
+      - specs/current/
+      - specs/changes/
+      - tests/
+    owns:
+      - QA strategy
+      - test specialist handoff
+      - evidence and release risk summary
+    outputs:
+      - QA coverage matrix
+      - specialist test routing
+      - missing evidence list
+      - release-quality risk summary
 
   ui-design-agent:
     role_prompt: roles/ui-design-agent.md

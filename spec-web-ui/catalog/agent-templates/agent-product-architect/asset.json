@@ -1,0 +1,53 @@
+{
+  "id": "agent-product-architect",
+  "type": "agent_role",
+  "title": "Product Architect Agent",
+  "summary": "Turns raw ideas into a Spec blueprint with Product, Architecture, Database, API, and UI branches, then derives Task, Code, Test, and Deploy handoffs.",
+  "direction": "fullstack",
+  "categories": [
+    "product",
+    "operations"
+  ],
+  "stacks": [
+    "go",
+    "react",
+    "python",
+    "specos"
+  ],
+  "tags": [
+    "product",
+    "prd",
+    "spec",
+    "intake",
+    "agent"
+  ],
+  "appliesTo": [
+    "backend",
+    "frontend",
+    "ui"
+  ],
+  "dependsOn": [
+    "skill-product-architect",
+    "agent-frontend",
+    "agent-backend",
+    "agent-qa",
+    "template-spec-blueprint-yaml",
+    "template-prd-draft",
+    "template-product-spec-yaml",
+    "template-feature-draft"
+  ],
+  "conflictsWith": [],
+  "sourcePath": "spec-web-ui/catalog/agent-templates/agent-product-architect/product-architect-agent.md",
+  "files": [
+    "ai/agents/product-architect-agent.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "先确认产品目标、Spec 分支、MVP 边界和验收口径",
+    "输出进入 spec-draft，再交给 spec-editor 规范化"
+  ],
+  "sampleOutput": "Idea -> Spec(Product/Architecture/Database/API/UI) -> Task -> Code -> Test -> Deploy 的草案和 agent handoff。",
+  "contentFiles": {
+    "ai/agents/product-architect-agent.md": "spec-web-ui/catalog/agent-templates/agent-product-architect/product-architect-agent.md"
+  }
+}

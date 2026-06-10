@@ -94,11 +94,28 @@ describe("specos cli", () => {
     const route = JSON.parse(routed.stdout.split("\n").slice(1).join("\n"));
     expect(route).toMatchObject({
       requestKind: "test",
-      primaryAgent: "test-editor",
+      primaryAgent: "qa-agent",
       needsChangePackage: true,
     });
     expect(route.workTypes).toEqual(expect.arrayContaining(["frontend", "tests", "ci"]));
-    expect(route.supportingAgents).toEqual(expect.arrayContaining(["ui-design-agent", "ci-editor"]));
+    expect(route.supportingAgents).toEqual(expect.arrayContaining(["frontend-agent", "ci-editor"]));
+  });
+
+  it("routes raw product ideas to the Product Architect agent", async () => {
+    const cwd = await tempProject();
+
+    const routed = await runCli(["route-request", "--request", "做一个眼镜验配小程序"], { cwd });
+
+    expect(routed.exitCode).toBe(0);
+    expect(routed.stdout).toContain("SPECOS_REQUEST_ROUTE_OK product-architect-agent");
+    const route = JSON.parse(routed.stdout.split("\n").slice(1).join("\n"));
+    expect(route).toMatchObject({
+      requestKind: "raw-requirement",
+      primaryAgent: "product-architect-agent",
+      needsDraft: true,
+      needsChangePackage: true,
+    });
+    expect(route.workTypes).toEqual(expect.arrayContaining(["product", "spec"]));
   });
 
   it("initializes a fullstack project and checks it", async () => {
@@ -144,6 +161,32 @@ describe("specos cli", () => {
     await expect(readFile(join(cwd, "specs/archive/README.md"), "utf8")).resolves.toContain("Completed");
   });
 
+  it("initializes the built-in lens fitting project template", async () => {
+    const cwd = await tempProject();
+
+    const init = await runCli(["init", "--template", "lens-fitting"], { cwd });
+
+    expect(init.exitCode).toBe(0);
+    expect(init.stdout).toContain("template lens-fitting");
+    await expect(readFile(join(cwd, ".specos/manifest.yaml"), "utf8")).resolves.toContain("name: lens-fitting-specos");
+    await expect(readFile(join(cwd, "README.md"), "utf8")).resolves.toContain("Idea");
+    await expect(readFile(join(cwd, "spec-draft/idea/lens-fitting-idea.md"), "utf8")).resolves.toContain("眼镜验配小程序");
+    const currentSpec = await readFile(join(cwd, "specs/current/lens-fitting.spec.yaml"), "utf8");
+    expect(currentSpec).toContain("product:");
+    expect(currentSpec).toContain("architecture:");
+    expect(currentSpec).toContain("database:");
+    expect(currentSpec).toContain("api:");
+    expect(currentSpec).toContain("ui:");
+    await expect(readFile(join(cwd, "specs/changes/lens-fitting-mvp/spec-blueprint.yaml"), "utf8")).resolves.toContain("Spec");
+    await expect(readFile(join(cwd, "tasks/lens-fitting-mvp.tasks.md"), "utf8")).resolves.toContain("Prescription Intake");
+    await expect(readFile(join(cwd, "code/README.md"), "utf8")).resolves.toContain("Code Handoff");
+    await expect(readFile(join(cwd, "tests/plans/lens-fitting-mvp.test-plan.json"), "utf8")).resolves.toContain("create_order");
+    await expect(readFile(join(cwd, "deploy/environments.md"), "utf8")).resolves.toContain("Rollback");
+
+    const check = await runCli(["check"], { cwd });
+    expect(check).toMatchObject({ exitCode: 0, stderr: "" });
+  });
+
   it("rejects unknown templates with a stable error code", async () => {
     const cwd = await tempProject();
 
@@ -151,7 +194,7 @@ describe("specos cli", () => {
 
     expect(init.exitCode).toBe(1);
     expect(init.stderr).toContain("SPECOS_TEMPLATE_UNKNOWN");
-    expect(init.stderr).toContain("Available templates: fullstack, spec-only");
+    expect(init.stderr).toContain("Available templates: fullstack, lens-fitting, spec-only");
   });
 
   it("reports a stable error code when manifest is missing", async () => {
@@ -186,7 +229,7 @@ describe("specos cli", () => {
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain("Supported commands: init, check");
-    expect(result.stderr).toContain("Templates: fullstack, spec-only");
+    expect(result.stderr).toContain("Templates: fullstack, lens-fitting, spec-only");
   });
 
   it("validates, installs, lists, and runs bundle workflows", async () => {

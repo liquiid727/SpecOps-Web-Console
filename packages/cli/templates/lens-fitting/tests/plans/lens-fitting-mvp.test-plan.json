@@ -1,0 +1,22 @@
+{
+  "id": "lens-fitting-mvp",
+  "changeId": "lens-fitting-mvp",
+  "qualityProfile": "fullstack-flow",
+  "requirements": [
+    {
+      "id": "upload_prescription",
+      "ownerAgent": "qa-agent",
+      "requiredTestTypes": ["api", "e2e"]
+    },
+    {
+      "id": "recommend_lens",
+      "ownerAgent": "qa-agent",
+      "requiredTestTypes": ["api", "performance"]
+    },
+    {
+      "id": "create_order",
+      "ownerAgent": "qa-agent",
+      "requiredTestTypes": ["api", "e2e", "concurrency"]
+    }
+  ]
+}

@@ -154,6 +154,7 @@ export type TestLayer =
   | "compatibility"
   | "observability";
 export type TestOwnerAgent =
+  | "qa-agent"
   | "test-editor"
   | "unit-test-agent"
   | "bruno-test-agent"
@@ -174,9 +175,13 @@ export type RequestKind =
   | "review"
   | "acceptance"
   | "tooling-configuration";
-export type RequestWorkType = "backend" | "frontend" | "ui_prototype" | "spec" | "tests" | "ci" | "orchestration";
+export type RequestWorkType = "product" | "backend" | "frontend" | "ui_prototype" | "spec" | "tests" | "ci" | "orchestration";
 export type RequestRouteAgentRole =
+  | "product-architect-agent"
   | "spec-editor"
+  | "frontend-agent"
+  | "backend-agent"
+  | "qa-agent"
   | "ui-design-agent"
   | "ddd-domain-agent"
   | "openapi-agent"
@@ -551,6 +556,7 @@ type MutableValidation = {
 };
 
 const requestRoutingRules: Record<RequestWorkType, string[]> = {
+  product: ["specs/current/project-context.md", "specs/_rules/README.md", "rules/testing/production-test-standards.md"],
   backend: [
     "rules/backend/go-backend-governance.md",
     "rules/backend/redis-key-governance.md",
@@ -565,11 +571,12 @@ const requestRoutingRules: Record<RequestWorkType, string[]> = {
 };
 
 const requestRoutingAgents: Record<RequestWorkType, RequestRouteAgentRole[]> = {
-  backend: ["ddd-domain-agent", "openapi-agent", "db-migration-agent", "bruno-test-agent"],
-  frontend: ["ui-design-agent", "playwright-test-agent", "test-editor"],
-  ui_prototype: ["spec-editor", "playwright-test-agent"],
-  spec: ["spec-editor", "ddd-domain-agent", "test-editor"],
-  tests: ["test-editor", "bruno-test-agent", "playwright-test-agent"],
+  product: ["product-architect-agent", "spec-editor", "frontend-agent", "backend-agent", "qa-agent"],
+  backend: ["backend-agent"],
+  frontend: ["frontend-agent"],
+  ui_prototype: ["frontend-agent", "ui-design-agent", "playwright-test-agent"],
+  spec: ["spec-editor", "frontend-agent", "backend-agent", "qa-agent"],
+  tests: ["qa-agent"],
   ci: ["ci-editor", "execution-editor"],
   orchestration: ["execution-editor", "ci-editor", "reviewer"],
 };
@@ -596,6 +603,36 @@ export function buildRequestRoute(rawRequest: string): RequestRouteDecision {
   const hasReviewSignal = match("review", ["评审", "review", "检查", "审查"]);
   const hasAcceptanceSignal = match("acceptance", ["验收", "发布", "release", "promote", "gate", "门禁", "ci"]);
   const hasToolingSignal = match("tooling-configuration", ["agent", "skill", "workflow", "脚本", "cli", "配置", "router", "route-request"]);
+  const hasProductIdeaSignal = match("product-intent", [
+    "做一个",
+    "我要做",
+    "生成 prd",
+    "生成prd",
+    "prd",
+    "产品",
+    "saas",
+    "小程序",
+    "crm",
+    "mvp",
+    "从 0",
+    "从0",
+    "用户画像",
+    "用户故事",
+    "市场分析",
+  ]);
+  const hasSpecNormalizationSignal = hasDraftSignal || hasActiveChangeSignal || match("spec-normalization", [
+    "整理成 spec",
+    "转成 spec",
+    "normalize",
+    "normalization",
+    "创建 change",
+    "创建变更",
+  ]);
+
+  if (hasProductIdeaSignal && !hasSpecNormalizationSignal && !hasImplementationSignal && !hasTestSignal && !hasReviewSignal && !hasAcceptanceSignal) {
+    workTypes.add("product");
+    workTypes.add("spec");
+  }
 
   if (match("backend", ["backend", "后端", "api", "接口", "database", "db", "migration", "sql", "redis", "go ", "golang"])) {
     workTypes.add("backend");
@@ -627,6 +664,7 @@ export function buildRequestRoute(rawRequest: string): RequestRouteDecision {
       supportingAgents.add(agent);
     }
   }
+  if (workTypes.has("tests") || normalized.includes("qa") || normalized.includes("质量")) supportingAgents.add("qa-agent");
   if (normalized.includes("unit") || normalized.includes("单元")) supportingAgents.add("unit-test-agent");
   if (normalized.includes("性能") || normalized.includes("performance") || normalized.includes("latency")) supportingAgents.add("performance-test-agent");
   if (normalized.includes("并发") || normalized.includes("concurrency")) supportingAgents.add("concurrency-test-agent");
@@ -655,6 +693,9 @@ export function buildRequestRoute(rawRequest: string): RequestRouteDecision {
 
   if (workTypes.has("frontend")) {
     skills.add(".codex/skills/specos-ui-design/SKILL.md");
+  }
+  if (workTypes.has("product")) {
+    skills.add("spec-web-ui/catalog/skills/product-architect/SKILL.md");
   }
   if (workTypes.has("ci")) {
     skills.add(".skills/team-ci-agent/SKILL.md");
@@ -687,13 +728,14 @@ export function buildRequestRoute(rawRequest: string): RequestRouteDecision {
 }
 
 function primaryAgentForRequest(kind: RequestKind, workTypes: Set<RequestWorkType>): RequestRouteAgentRole {
+  if (workTypes.has("product") && (kind === "raw-requirement" || kind === "draft-only")) return "product-architect-agent";
   if (kind === "raw-requirement" || kind === "draft-only" || kind === "active-change") return "spec-editor";
-  if (kind === "test") return "test-editor";
+  if (kind === "test") return "qa-agent";
   if (kind === "review") return "reviewer";
   if (kind === "acceptance") return "ci-editor";
   if (kind === "tooling-configuration") return "execution-editor";
-  if (workTypes.has("frontend")) return "ui-design-agent";
-  if (workTypes.has("backend")) return "implementation-editor";
+  if (workTypes.has("frontend")) return "frontend-agent";
+  if (workTypes.has("backend")) return "backend-agent";
   return "spec-editor";
 }
 
@@ -1856,6 +1898,7 @@ function requireOwnerAgent(
     value,
     [
       "test-editor",
+      "qa-agent",
       "unit-test-agent",
       "bruno-test-agent",
       "playwright-test-agent",

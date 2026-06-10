@@ -1,0 +1,45 @@
+{
+  "id": "template-spec-blueprint-yaml",
+  "type": "spec_template",
+  "title": "Spec Blueprint YAML Template",
+  "summary": "Idea-to-Spec blueprint template with Product, Architecture, Database, API, and UI branches, plus Task, Code, Test, and Deploy handoffs.",
+  "direction": "fullstack",
+  "categories": [
+    "product"
+  ],
+  "stacks": [
+    "go",
+    "react",
+    "python",
+    "specos"
+  ],
+  "tags": [
+    "idea",
+    "spec",
+    "architecture",
+    "database",
+    "api",
+    "ui",
+    "template"
+  ],
+  "appliesTo": [
+    "backend",
+    "frontend",
+    "ui"
+  ],
+  "dependsOn": [],
+  "conflictsWith": [],
+  "sourcePath": "spec-web-ui/catalog/spec-templates/template-spec-blueprint-yaml/spec-blueprint.template.yaml",
+  "files": [
+    "spec-draft/_template/product/spec-blueprint.template.yaml"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "按 Idea -> Spec -> Task -> Code -> Test -> Deploy 填写",
+    "Spec 至少覆盖 Product、Architecture、Database、API 和 UI"
+  ],
+  "sampleOutput": "一份包含 Product、Architecture、Database、API、UI、Task、Code、Test、Deploy 的 Spec Blueprint YAML。",
+  "contentFiles": {
+    "spec-draft/_template/product/spec-blueprint.template.yaml": "spec-web-ui/catalog/spec-templates/template-spec-blueprint-yaml/spec-blueprint.template.yaml"
+  }
+}

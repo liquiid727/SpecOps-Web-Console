@@ -1,8 +1,8 @@
 {
   "id": "template-feature-draft",
   "type": "spec_template",
-  "title": "15-Section Feature Draft",
-  "summary": "Human-readable draft studio template covering flow, state, model, rules, and testing.",
+  "title": "Feature Spec Draft",
+  "summary": "Human-readable feature spec template covering goals, user flow, APIs, database, instrumentation, exceptions, acceptance, state, model, rules, and testing.",
   "direction": "fullstack",
   "stacks": [
     "go",
@@ -30,7 +30,7 @@
     "先补业务背景与非目标，再补流程",
     "测试场景至少覆盖主路径、边界和异常"
   ],
-  "sampleOutput": "一份带 15 个章节的 Feature Draft Markdown。",
+  "sampleOutput": "一份覆盖目标、用户流程、接口、数据库、埋点、异常情况和验收标准的 Feature Spec Draft Markdown。",
   "contentFiles": {
     "spec-draft/_template/feature/product-ui.template.md": "spec-web-ui/catalog/spec-templates/template-feature-draft/product-ui.template.md"
   }

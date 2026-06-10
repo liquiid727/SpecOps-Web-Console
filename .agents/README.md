@@ -13,17 +13,16 @@ This directory defines local agent routing, role contracts, and scoped skill loa
 
 ## Role Selection
 
+- Idea-to-Spec intake: `product-architect-agent`
 - Spec normalization: `spec-editor`
-- Product UI design: `ui-design-agent`
-- Architecture and domain boundaries: `ddd-domain-agent`
-- API contract generation: `openapi-agent`
-- Database and migration planning: `db-migration-agent`
-- API scenario tests: `bruno-test-agent`
-- End-to-end business journeys: `e2e-test-agent`
-- UI scenario tests: `playwright-test-agent`
+- Frontend orchestration: `frontend-agent`
+- Backend orchestration: `backend-agent`
+- QA orchestration: `qa-agent`
 - CI and release gates: `ci-editor`
 - Local scripts and workflow wiring: `execution-editor`
-- Test structure and coverage: `test-editor`
+- Review and risk checks: `reviewer`
+
+Specialist roles such as `ui-design-agent`, `ddd-domain-agent`, `openapi-agent`, `db-migration-agent`, `test-editor`, `bruno-test-agent`, `playwright-test-agent`, `performance-test-agent`, and `concurrency-test-agent` are loaded by the top-level orchestrating agents when the task requires their narrower context.
 
 ## Dispatch Flow
 
@@ -43,28 +42,20 @@ flowchart TD
   B --> C["Read context in order: readme, rules, spec-draft, specs, tests, agents"]
   C --> D{"Work type?"}
 
+  D -->|Raw idea / product intent / MVP planning| PA["product-architect-agent"]
   D -->|Draft or spec normalization| E["spec-editor"]
-  D -->|Domain boundary or invariant| F["ddd-domain-agent"]
-  D -->|API contract| G["openapi-agent"]
-  D -->|DB migration planning| H["db-migration-agent"]
-  D -->|UI design / handoff| I["ui-design-agent"]
-  D -->|Test planning| J["test-editor"]
-  D -->|API scenario tests| K["bruno-test-agent"]
-  D -->|Business E2E journey| L["e2e-test-agent"]
-  D -->|UI browser coverage| M["playwright-test-agent"]
+  D -->|Frontend work| FE["frontend-agent"]
+  D -->|Backend work| BE["backend-agent"]
+  D -->|Quality strategy / tests| QA["qa-agent"]
   D -->|CI / release gates| N["ci-editor"]
   D -->|Workflow scripts| O["execution-editor"]
   D -->|Review / risk check| P["reviewer"]
 
+  PA -->|Spec blueprint| E
   E --> Q{"Output target"}
-  F --> Q
-  G --> Q
-  H --> Q
-  I --> Q
-  J --> Q
-  K --> Q
-  L --> Q
-  M --> Q
+  FE -->|May load ui-design / playwright specialists| Q
+  BE -->|May load ddd / openapi / db / API-test specialists| Q
+  QA -->|May load unit / API / E2E / browser / performance / concurrency specialists| Q
   N --> Q
   O --> Q
   P --> Q
@@ -78,7 +69,7 @@ flowchart TD
   R --> W{"Human approval gate"}
   W -->|Accepted| S
   W -->|Needs work| B
-  S --> X["Implementation, test, and review agents read current specs"]
+  S --> X["Frontend, Backend, QA, Deploy, and Review agents read current specs"]
   X --> Y["Report validation evidence and unresolved questions"]
   Y --> Z["Archive completed change under specs/archive/"]
 ```

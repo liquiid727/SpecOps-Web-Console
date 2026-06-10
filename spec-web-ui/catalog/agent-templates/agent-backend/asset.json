@@ -1,0 +1,21 @@
+{
+  "id": "agent-backend",
+  "type": "agent_role",
+  "title": "Backend Agent",
+  "summary": "Orchestrates backend architecture, domain, database, API, implementation, and backend verification handoffs from SpecOS branches.",
+  "direction": "backend",
+  "categories": ["backend", "product"],
+  "stacks": ["go", "python", "node", "specos"],
+  "tags": ["backend", "api", "database", "orchestration", "agent"],
+  "appliesTo": ["backend"],
+  "dependsOn": ["agent-ddd-domain", "agent-openapi", "agent-db-migration", "agent-bruno-test"],
+  "conflictsWith": [],
+  "sourcePath": "spec-web-ui/catalog/agent-templates/agent-backend/backend-agent.md",
+  "files": ["ai/agents/backend-agent.md"],
+  "version": "1.0.0",
+  "draftHints": ["从 Architecture、Database、API branches 规划后端交付", "按需路由 domain/API/db/test specialist"],
+  "sampleOutput": "Backend plan、specialist routing、error semantics、migration and rollback risk notes。",
+  "contentFiles": {
+    "ai/agents/backend-agent.md": "spec-web-ui/catalog/agent-templates/agent-backend/backend-agent.md"
+  }
+}

@@ -167,6 +167,14 @@ describe("loadCatalogAssets", () => {
     const catalog = await loadCatalogAssets();
     const specTemplate = catalog.find((asset) => asset.id === "template-feature-draft");
     const agentTemplate = catalog.find((asset) => asset.id === "agent-spec-editor");
+    const productArchitectAgent = catalog.find((asset) => asset.id === "agent-product-architect");
+    const frontendAgent = catalog.find((asset) => asset.id === "agent-frontend");
+    const backendAgent = catalog.find((asset) => asset.id === "agent-backend");
+    const qaAgent = catalog.find((asset) => asset.id === "agent-qa");
+    const productArchitectSkill = catalog.find((asset) => asset.id === "skill-product-architect");
+    const specBlueprintTemplate = catalog.find((asset) => asset.id === "template-spec-blueprint-yaml");
+    const prdTemplate = catalog.find((asset) => asset.id === "template-prd-draft");
+    const productSpecTemplate = catalog.find((asset) => asset.id === "template-product-spec-yaml");
 
     expect(specTemplate?.sourcePath).toBe(
       "spec-web-ui/catalog/spec-templates/template-feature-draft/product-ui.template.md"
@@ -179,6 +187,70 @@ describe("loadCatalogAssets", () => {
       "spec-web-ui/catalog/agent-templates/agent-spec-editor/spec-editor.md"
     );
     expect(agentTemplate?.files).toEqual(["ai/agents/spec-editor.md"]);
+
+    expect(productArchitectAgent?.type).toBe("agent_role");
+    expect(productArchitectAgent?.dependsOn).toEqual(
+      expect.arrayContaining([
+        "skill-product-architect",
+        "agent-frontend",
+        "agent-backend",
+        "agent-qa",
+        "template-spec-blueprint-yaml",
+        "template-prd-draft",
+        "template-product-spec-yaml",
+        "template-feature-draft"
+      ])
+    );
+    expect(productArchitectSkill?.sourcePath).toBe(
+      "spec-web-ui/catalog/skills/product-architect/SKILL.md"
+    );
+    expect(productArchitectSkill?.dependsOn).toEqual(
+      expect.arrayContaining([
+        "template-spec-blueprint-yaml",
+        "template-prd-draft",
+        "template-product-spec-yaml",
+        "template-feature-draft"
+      ])
+    );
+    expect(specBlueprintTemplate?.contentFiles?.["spec-draft/_template/product/spec-blueprint.template.yaml"]).toBe(
+      "spec-web-ui/catalog/spec-templates/template-spec-blueprint-yaml/spec-blueprint.template.yaml"
+    );
+    expect(prdTemplate?.contentFiles?.["spec-draft/_template/product/prd-draft.template.md"]).toBe(
+      "spec-web-ui/catalog/spec-templates/template-prd-draft/prd-draft.template.md"
+    );
+    expect(productSpecTemplate?.contentFiles?.["spec-draft/_template/product/product-spec.template.yaml"]).toBe(
+      "spec-web-ui/catalog/spec-templates/template-product-spec-yaml/product-spec.template.yaml"
+    );
+    expect(frontendAgent?.contentFiles?.["ai/agents/frontend-agent.md"]).toBe(
+      "spec-web-ui/catalog/agent-templates/agent-frontend/frontend-agent.md"
+    );
+    expect(backendAgent?.contentFiles?.["ai/agents/backend-agent.md"]).toBe(
+      "spec-web-ui/catalog/agent-templates/agent-backend/backend-agent.md"
+    );
+    expect(qaAgent?.contentFiles?.["ai/agents/qa-agent.md"]).toBe(
+      "spec-web-ui/catalog/agent-templates/agent-qa/qa-agent.md"
+    );
+  });
+
+  it("keeps Product Architect templates aligned with required sections and fields", async () => {
+    const catalog = await loadCatalogAssets();
+    const specBlueprintTemplate = catalog.find((asset) => asset.id === "template-spec-blueprint-yaml");
+    const prdTemplate = catalog.find((asset) => asset.id === "template-prd-draft");
+    const productSpecTemplate = catalog.find((asset) => asset.id === "template-product-spec-yaml");
+    const featureTemplate = catalog.find((asset) => asset.id === "template-feature-draft");
+
+    expect(specBlueprintTemplate?.draftHints?.join(" ")).toEqual(
+      expect.stringContaining("Product、Architecture、Database、API 和 UI")
+    );
+    expect(specBlueprintTemplate?.sampleOutput).toContain("Task、Code、Test、Deploy");
+    expect(prdTemplate?.sampleOutput).toContain("PRD");
+    expect(prdTemplate?.draftHints?.join(" ")).toEqual(
+      expect.stringContaining("背景、目标、用户画像、用户故事、功能列表、业务流程、边界条件、风险和里程碑")
+    );
+    expect(productSpecTemplate?.draftHints?.join(" ")).toEqual(
+      expect.stringContaining("product、actors、flows、constraints、apis、data、risks 和 acceptance")
+    );
+    expect(featureTemplate?.sampleOutput).toContain("接口、数据库、埋点、异常情况和验收标准");
   });
 
   it("loads the extracted Go skill and agent pack as reusable catalog assets", async () => {
