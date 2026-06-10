@@ -1,0 +1,156 @@
+taskGraph:
+  version: specos-task-graph/v1
+  sourceSpec:
+    id: lens-fitting-mvp
+    changeId: lens-fitting-mvp
+    refs:
+      - specs/current/lens-fitting.spec.yaml
+      - specs/changes/lens-fitting-mvp/spec-blueprint.yaml
+  nodes:
+    - id: task.ui.prescription_intake
+      kind: execution
+      context: frontend
+      title: Prescription intake surface
+      sourceSpecRefs:
+        - spec.ui.prescription_intake
+        - spec.api.prescription_upload
+      dependencies: []
+      inputs:
+        - product.flow.upload_prescription
+      outputs:
+        - code.frontend.prescription_form
+      acceptanceRefs:
+        - acceptance.prescription_upload_success
+      verificationRefs:
+        - test.e2e.prescription_upload
+      constraints:
+        - support mobile-first mini program flow
+      risk:
+        level: P1
+        reason: OCR confidence and invalid prescription states affect order quality.
+      dispatch:
+        layer: execution
+        capabilitySet: frontend
+        tools:
+          - react
+          - mini-program-shell
+        domainContext:
+          - prescription_upload
+          - fitting_profile
+
+    - id: task.api.prescription_upload
+      kind: execution
+      context: backend
+      title: Prescription upload API
+      sourceSpecRefs:
+        - spec.api.prescription_upload
+        - spec.database.prescription
+      dependencies:
+        - task.ui.prescription_intake
+      inputs:
+        - file.prescription_image
+        - actor.user
+      outputs:
+        - code.backend.prescription_endpoint
+        - data.prescription_record
+      acceptanceRefs:
+        - acceptance.prescription_upload_success
+      verificationRefs:
+        - test.api.prescription_upload
+      constraints:
+        - preserve validation errors for QA evidence
+      risk:
+        level: P1
+        reason: Upload validation and file handling need explicit error semantics.
+      dispatch:
+        layer: execution
+        capabilitySet: backend
+        tools:
+          - node-api
+        domainContext:
+          - prescription
+          - upload_validation
+
+    - id: task.api.lens_recommendation
+      kind: execution
+      context: backend
+      title: Lens recommendation service
+      sourceSpecRefs:
+        - spec.api.recommend_lens
+        - spec.product.lens_recommendation
+        - spec.database.lens_catalog
+      dependencies:
+        - task.api.prescription_upload
+      inputs:
+        - data.prescription_record
+        - data.lens_catalog
+      outputs:
+        - code.backend.recommendation_service
+        - api.recommendation_response
+      acceptanceRefs:
+        - acceptance.recommendation_under_3s
+      verificationRefs:
+        - test.api.recommend_lens
+        - test.performance.recommendation_p95
+      constraints:
+        - response p95 under 3s
+      risk:
+        level: P0
+        reason: Recommendation correctness and latency are core product promises.
+      dispatch:
+        layer: execution
+        capabilitySet: backend
+        tools:
+          - node-api
+          - performance-test
+        domainContext:
+          - lens_catalog
+          - recommendation_rules
+
+    - id: task.release.mvp_gate
+      kind: release
+      context: release
+      title: MVP release gate
+      sourceSpecRefs:
+        - spec.acceptance.mvp_release
+      dependencies:
+        - task.ui.prescription_intake
+        - task.api.prescription_upload
+        - task.api.lens_recommendation
+      inputs:
+        - verification.api_results
+        - verification.e2e_results
+        - verification.performance_results
+      outputs:
+        - release.mvp_decision
+      acceptanceRefs:
+        - acceptance.rollback_documented
+      verificationRefs:
+        - test.gate.release
+      constraints:
+        - rollback path must be documented before deploy
+      risk:
+        level: P1
+        reason: Release should remain blocked until QA evidence and rollback notes exist.
+      dispatch:
+        layer: release
+        capabilitySet: ci
+        tools:
+          - release-gate
+        domainContext:
+          - mvp_launch
+          - rollback
+  verification:
+    requiredEvidence:
+      - test.api.prescription_upload
+      - test.api.recommend_lens
+      - test.e2e.prescription_upload
+      - test.performance.recommendation_p95
+    gateRefs:
+      - rules/testing/production-test-standards.md
+      - rules/ci/spec-release-gates.md
+  release:
+    gates:
+      - release.mvp_decision
+    rollbackRefs:
+      - deploy/environments.md

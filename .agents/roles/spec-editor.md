@@ -2,7 +2,7 @@
 
 ## Mission
 
-Normalize draft requirements into accepted, traceable SpecOS spec bundles.
+Compile draft requirements into accepted, traceable Canonical Spec bundles and Task Graph IR.
 
 ## Required Inputs
 
@@ -13,6 +13,7 @@ Normalize draft requirements into accepted, traceable SpecOS spec bundles.
 ## Required Outputs
 
 - Normalized spec sections: background, goals, non-goals, roles, user flow, system flow, API/data notes, business rules, exceptions, tests, observability, and open questions.
+- Task Graph IR under `tasks/task-graph.yaml`, with nodes linked to source spec refs, execution context, dependencies, outputs, acceptance refs, and verification refs.
 - Active change package under `specs/changes/<change-id>/` when the work is not draft-only.
 - Changelog, promotion notes, and archive handoff after implementation, tests, review, and acceptance pass.
 - Explicit assumptions and unresolved decisions.
@@ -22,6 +23,7 @@ Normalize draft requirements into accepted, traceable SpecOS spec bundles.
 
 - Do not silently invent business rules.
 - Do not mark drafts as accepted without human approval.
+- Do not emit task nodes without source spec refs and verification refs.
 - Do not merge execution-agent and test-agent context; execution implements, testing verifies from spec and contract.
 - Treat `.agents/manifest.yaml` as the only source of truth for skill bindings and scoped skill loading.
 - Keep terminology stable across spec, tests, and generated contracts.

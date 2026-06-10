@@ -14,15 +14,15 @@ This directory defines local agent routing, role contracts, and scoped skill loa
 ## Role Selection
 
 - Idea-to-Spec intake: `product-architect-agent`
-- Spec normalization: `spec-editor`
-- Frontend orchestration: `frontend-agent`
-- Backend orchestration: `backend-agent`
-- QA orchestration: `qa-agent`
+- Spec Compiler and Task Graph IR: `spec-editor`
+- Execution context, frontend: `frontend-agent`
+- Execution context, backend: `backend-agent`
+- Verification Compiler: `qa-agent`
 - CI and release gates: `ci-editor`
 - Local scripts and workflow wiring: `execution-editor`
 - Review and risk checks: `reviewer`
 
-Specialist roles such as `ui-design-agent`, `ddd-domain-agent`, `openapi-agent`, `db-migration-agent`, `test-editor`, `bruno-test-agent`, `playwright-test-agent`, `performance-test-agent`, and `concurrency-test-agent` are loaded by the top-level orchestrating agents when the task requires their narrower context.
+Specialist roles such as `ui-design-agent`, `ddd-domain-agent`, `openapi-agent`, `db-migration-agent`, `test-editor`, `bruno-test-agent`, `playwright-test-agent`, `performance-test-agent`, and `concurrency-test-agent` are loaded as capability sets when a Task Graph node requires their narrower context.
 
 ## Dispatch Flow
 
@@ -34,7 +34,7 @@ For a deterministic local route preview, run:
 node packages/cli/dist/main.js route-request --request "<需求文本>"
 ```
 
-The command returns `requestKind`, `workTypes`, `primaryAgent`, `supportingAgents`, required rules, role-bound skills, and the next lifecycle step. It does not execute the selected agents; it makes the routing decision explicit before intake, implementation, testing, review, or release work starts.
+The command returns `requestKind`, `workTypes`, `compilerLayer`, `artifactFlow`, `primaryAgent`, `supportingAgents`, required rules, role-bound skills, and the next lifecycle step. It does not execute the selected agents; it makes the routing decision explicit before intake, implementation, testing, review, or release work starts.
 
 ```mermaid
 flowchart TD
@@ -51,11 +51,15 @@ flowchart TD
   D -->|Workflow scripts| O["execution-editor"]
   D -->|Review / risk check| P["reviewer"]
 
-  PA -->|Spec blueprint| E
+  PA -->|Spec Draft / blueprint| E
   E --> Q{"Output target"}
-  FE -->|May load ui-design / playwright specialists| Q
-  BE -->|May load ddd / openapi / db / API-test specialists| Q
-  QA -->|May load unit / API / E2E / browser / performance / concurrency specialists| Q
+  E -->|Canonical Spec + Task Graph IR| TG["tasks/task-graph.yaml"]
+  TG --> FE
+  TG --> BE
+  TG --> QA
+  FE -->|May load ui-design / playwright capabilities| Q
+  BE -->|May load ddd / openapi / db / API-test capabilities| Q
+  QA -->|May load unit / API / E2E / browser / performance / concurrency capabilities| Q
   N --> Q
   O --> Q
   P --> Q

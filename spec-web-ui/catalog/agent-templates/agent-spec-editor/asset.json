@@ -2,7 +2,7 @@
   "id": "agent-spec-editor",
   "type": "agent_role",
   "title": "Spec Editor",
-  "summary": "Compiles draft intent into normalized spec artifacts and bundle structure.",
+  "summary": "Compiles draft intent into Canonical Spec artifacts, bundle structure, and Task Graph IR.",
   "direction": "fullstack",
   "stacks": [
     "go",
@@ -19,7 +19,8 @@
     "frontend"
   ],
   "dependsOn": [
-    "template-feature-draft"
+    "template-feature-draft",
+    "template-task-graph-yaml"
   ],
   "conflictsWith": [],
   "sourcePath": "spec-web-ui/catalog/agent-templates/agent-spec-editor/spec-editor.md",
@@ -28,9 +29,10 @@
   ],
   "version": "1.0.0",
   "draftHints": [
-    "检查 Draft 中是否缺少边界、状态、权限和观测性内容"
+    "检查 Draft 中是否缺少边界、状态、权限和观测性内容",
+    "输出 Task Graph IR 时每个 node 都要携带 sourceSpecRefs、context、outputs 和 verificationRefs"
   ],
-  "sampleOutput": "标准化 spec bundle 和待确认差异项。",
+  "sampleOutput": "Canonical Spec bundle、Task Graph IR 和待确认差异项。",
   "contentFiles": {
     "ai/agents/spec-editor.md": "spec-web-ui/catalog/agent-templates/agent-spec-editor/spec-editor.md"
   }

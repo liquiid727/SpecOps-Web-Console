@@ -1,0 +1,32 @@
+taskGraph:
+  version: specos-task-graph/v1
+  sourceSpec:
+    id:
+    changeId:
+    refs: []
+  nodes:
+    - id:
+      kind: execution
+      context:
+      title:
+      sourceSpecRefs: []
+      dependencies: []
+      inputs: []
+      outputs: []
+      acceptanceRefs: []
+      verificationRefs: []
+      constraints: []
+      risk:
+        level:
+        reason:
+      dispatch:
+        layer: execution
+        capabilitySet:
+        tools: []
+        domainContext: []
+  verification:
+    requiredEvidence: []
+    gateRefs: []
+  release:
+    gates: []
+    rollbackRefs: []

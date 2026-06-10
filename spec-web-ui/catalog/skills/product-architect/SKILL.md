@@ -1,6 +1,6 @@
 ---
 name: product-architect
-description: Use when a raw idea, one-line requirement, or product request needs to become a traceable Spec blueprint with Product, Architecture, Database, API, and UI branches before Task, Code, Test, and Deploy handoffs.
+description: Use when a raw idea, one-line requirement, or product request needs to become a traceable Spec Draft / Spec blueprint with Product, Architecture, Database, API, and UI branches before Spec Compiler normalization.
 version: 1.0.0
 category: product
 tags:
@@ -24,19 +24,16 @@ Use this skill for raw product intent such as:
 
 Do not use it when the input is already an approved draft or active `specs/changes/<change-id>/` package; route that work to `spec-editor` or the relevant specialist agent.
 
-## Output Chain
+## Compiler Chain
 
 1. Idea
-2. Spec
+2. Spec Draft
 3. Spec.Product
 4. Spec.Architecture
 5. Spec.Database
 6. Spec.API
 7. Spec.UI
-8. Task
-9. Code
-10. Test
-11. Deploy
+8. Spec Compiler handoff for Canonical Spec and Task Graph IR
 
 ## Spec Blueprint Minimum Fields
 
@@ -63,7 +60,7 @@ deploy: []
 
 - Write Product Architect outputs as draft-level Spec blueprint artifacts or handoff notes.
 - Recommend a `spec-draft/<stable-id>.md` target and a future `specs/changes/<change-id>/` target.
-- Hand formal normalization to `spec-editor`.
-- Keep the main chain artifact-first: Idea, Spec, Task, Code, Test, Deploy.
-- Invoke stage agents only when that stage starts: `Task -> Code` invokes frontend/backend execution orchestration, `Code -> Test` invokes QA orchestration, and `Test -> Deploy` invokes CI/deploy gates.
+- Hand formal normalization and Task Graph IR generation to `spec-editor`.
+- Keep the main chain artifact-first: Idea, Spec Draft, Canonical Spec, Task Graph IR, Code, Verified Release.
+- Invoke runtime capabilities only after Task Graph nodes exist: execution contexts consume task nodes, QA verifies node outputs, and CI/deploy gates consume verification evidence.
 - Let stage agents load domain, API, database, UI, test, performance, concurrency, and other specialist agents only when the task requires their narrower context.

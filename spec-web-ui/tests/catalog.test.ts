@@ -171,8 +171,10 @@ describe("loadCatalogAssets", () => {
     const frontendAgent = catalog.find((asset) => asset.id === "agent-frontend");
     const backendAgent = catalog.find((asset) => asset.id === "agent-backend");
     const qaAgent = catalog.find((asset) => asset.id === "agent-qa");
+    const specEditorAgent = catalog.find((asset) => asset.id === "agent-spec-editor");
     const productArchitectSkill = catalog.find((asset) => asset.id === "skill-product-architect");
     const specBlueprintTemplate = catalog.find((asset) => asset.id === "template-spec-blueprint-yaml");
+    const taskGraphTemplate = catalog.find((asset) => asset.id === "template-task-graph-yaml");
     const prdTemplate = catalog.find((asset) => asset.id === "template-prd-draft");
     const productSpecTemplate = catalog.find((asset) => asset.id === "template-product-spec-yaml");
 
@@ -196,6 +198,7 @@ describe("loadCatalogAssets", () => {
         "agent-backend",
         "agent-qa",
         "template-spec-blueprint-yaml",
+        "template-task-graph-yaml",
         "template-prd-draft",
         "template-product-spec-yaml",
         "template-feature-draft"
@@ -207,13 +210,20 @@ describe("loadCatalogAssets", () => {
     expect(productArchitectSkill?.dependsOn).toEqual(
       expect.arrayContaining([
         "template-spec-blueprint-yaml",
+        "template-task-graph-yaml",
         "template-prd-draft",
         "template-product-spec-yaml",
         "template-feature-draft"
       ])
     );
+    expect(specEditorAgent?.dependsOn).toEqual(
+      expect.arrayContaining(["template-feature-draft", "template-task-graph-yaml"])
+    );
     expect(specBlueprintTemplate?.contentFiles?.["spec-draft/_template/product/spec-blueprint.template.yaml"]).toBe(
       "spec-web-ui/catalog/spec-templates/template-spec-blueprint-yaml/spec-blueprint.template.yaml"
+    );
+    expect(taskGraphTemplate?.contentFiles?.["tasks/task-graph.yaml"]).toBe(
+      "spec-web-ui/catalog/spec-templates/template-task-graph-yaml/task-graph.template.yaml"
     );
     expect(prdTemplate?.contentFiles?.["spec-draft/_template/product/prd-draft.template.md"]).toBe(
       "spec-web-ui/catalog/spec-templates/template-prd-draft/prd-draft.template.md"
@@ -235,6 +245,7 @@ describe("loadCatalogAssets", () => {
   it("keeps Product Architect templates aligned with required sections and fields", async () => {
     const catalog = await loadCatalogAssets();
     const specBlueprintTemplate = catalog.find((asset) => asset.id === "template-spec-blueprint-yaml");
+    const taskGraphTemplate = catalog.find((asset) => asset.id === "template-task-graph-yaml");
     const prdTemplate = catalog.find((asset) => asset.id === "template-prd-draft");
     const productSpecTemplate = catalog.find((asset) => asset.id === "template-product-spec-yaml");
     const featureTemplate = catalog.find((asset) => asset.id === "template-feature-draft");
@@ -242,7 +253,11 @@ describe("loadCatalogAssets", () => {
     expect(specBlueprintTemplate?.draftHints?.join(" ")).toEqual(
       expect.stringContaining("Product、Architecture、Database、API 和 UI")
     );
-    expect(specBlueprintTemplate?.sampleOutput).toContain("Task、Code、Test、Deploy");
+    expect(specBlueprintTemplate?.sampleOutput).toContain("Task Graph IR");
+    expect(taskGraphTemplate?.sampleOutput).toContain("sourceSpecRefs");
+    expect(taskGraphTemplate?.draftHints?.join(" ")).toEqual(
+      expect.stringContaining("Canonical Spec")
+    );
     expect(prdTemplate?.sampleOutput).toContain("PRD");
     expect(prdTemplate?.draftHints?.join(" ")).toEqual(
       expect.stringContaining("背景、目标、用户画像、用户故事、功能列表、业务流程、边界条件、风险和里程碑")

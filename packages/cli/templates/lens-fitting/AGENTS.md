@@ -12,16 +12,16 @@ This project uses SpecOS as the delivery backbone for an eyewear fitting product
 ## Delivery Chain
 
 ```text
-Idea -> Spec(Product, Architecture, Database, API, UI) -> Task -> Code -> Test -> Deploy
+Idea -> Spec Draft -> Canonical Spec -> Task Graph IR -> Code -> Verified Release
 ```
 
-This is the artifact chain. Agents are invoked at the stage boundary:
+This is the artifact chain. Agents are invoked as compiler-layer implementations:
 
-- Product Architect and Spec Editor work on `Idea -> Spec`.
-- Task planning turns the Spec branches into executable work.
-- Frontend and Backend agents are invoked when `Task -> Code` starts.
-- QA Agent is invoked when `Code -> Test` starts.
-- CI / Deploy gates are invoked when `Test -> Deploy` starts.
+- Product Architect compiles `Idea -> Spec Draft`.
+- Spec Editor compiles `Spec Draft -> Canonical Spec + Task Graph IR`.
+- Frontend and Backend execution contexts consume Task Graph nodes.
+- QA Agent verifies Code against Task Graph and Spec refs.
+- CI / Deploy gates consume verification evidence for release.
 
 ## Rules
 

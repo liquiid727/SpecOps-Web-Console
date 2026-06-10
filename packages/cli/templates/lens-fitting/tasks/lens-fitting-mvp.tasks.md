@@ -23,8 +23,8 @@
 - Task: create API and E2E test plan.
 - Task: document staging gate and rollback path.
 
-## Agent Invocation
+## Task Graph Handoff
 
-- `Task -> Code`: route frontend work to `frontend-agent` and backend work to `backend-agent`.
-- `Code -> Test`: route verification to `qa-agent`.
-- `Test -> Deploy`: route release gates and rollback checks to `ci-editor`.
+- The executable IR lives in `tasks/task-graph.yaml`.
+- Execution contexts consume graph nodes by `context`, `sourceSpecRefs`, `outputs`, and `verificationRefs`.
+- Frontend, backend, QA, and release agents are capability profiles for graph nodes, not the source of truth.

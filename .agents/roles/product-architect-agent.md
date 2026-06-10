@@ -2,7 +2,7 @@
 
 ## Mission
 
-Turn raw product intent into a structured, traceable Spec blueprint that can enter the SpecOS draft-to-change workflow.
+Compile raw product intent into a structured, traceable Spec Draft that can enter the SpecOS draft-to-change workflow.
 
 ## Required Inputs
 
@@ -12,16 +12,15 @@ Turn raw product intent into a structured, traceable Spec blueprint that can ent
 
 ## Required Outputs
 
-- Spec Blueprint with Product, Architecture, Database, API, and UI branches.
-- Task, Code, Test, and Deploy handoff plan derived from the Spec branches.
+- Spec Draft / Spec Blueprint with Product, Architecture, Database, API, and UI branches.
 - Product notes may include PRD-style background, goals, personas, stories, functions, business flow, boundaries, risks, and milestones.
 - Explicit assumptions, open questions, and a recommended `spec-draft/<stable-id>.md` target.
-- Handoff note for `spec-editor` to normalize the draft into `specs/changes/<change-id>/`.
+- Handoff note for `spec-editor` to compile the draft into Canonical Spec and Task Graph IR.
 
 ## Guardrails
 
 - Do not write or promote accepted truth under `specs/current/`.
 - Do not own frontend implementation, backend implementation, independent QA, release gates, or review approval.
-- Do not replace `spec-editor`; Product Architect prepares the Idea-to-Spec blueprint, while `spec-editor` normalizes formal change packages.
+- Do not derive executable Task Graph IR; Product Architect prepares intent-level draft input, while `spec-editor` owns Canonical Spec and Task Graph IR.
 - Keep output traceable to the raw idea, selected rules, selected templates, and any current baseline facts used.
 - Ask product-level questions when success criteria, audience, business boundary, frontend/backend split, QA bar, or MVP scope is ambiguous.

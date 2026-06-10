@@ -5,13 +5,14 @@ inputs:
 outputs:
   - specs/current/lens-fitting.spec.yaml
   - specs/changes/lens-fitting-mvp/
+  - tasks/task-graph.yaml
   - tasks/lens-fitting-mvp.tasks.md
   - tests/plans/lens-fitting-mvp.test-plan.json
   - deploy/environments.md
 gates:
   - idea accepted by human
   - spec branches reviewed
-  - task plan reviewed
+  - task graph reviewed
   - code handoff accepted
   - test plan reviewed
   - deploy gate reviewed

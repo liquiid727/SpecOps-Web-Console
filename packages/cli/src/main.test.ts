@@ -94,9 +94,11 @@ describe("specos cli", () => {
     const route = JSON.parse(routed.stdout.split("\n").slice(1).join("\n"));
     expect(route).toMatchObject({
       requestKind: "test",
+      compilerLayer: "verification",
       primaryAgent: "qa-agent",
       needsChangePackage: true,
     });
+    expect(route.artifactFlow).toEqual(["Code", "Verification Evidence", "Verified Release"]);
     expect(route.workTypes).toEqual(expect.arrayContaining(["frontend", "tests", "ci"]));
     expect(route.supportingAgents).toEqual(expect.arrayContaining(["frontend-agent", "ci-editor"]));
   });
@@ -111,10 +113,19 @@ describe("specos cli", () => {
     const route = JSON.parse(routed.stdout.split("\n").slice(1).join("\n"));
     expect(route).toMatchObject({
       requestKind: "raw-requirement",
+      compilerLayer: "intent",
       primaryAgent: "product-architect-agent",
       needsDraft: true,
       needsChangePackage: true,
     });
+    expect(route.artifactFlow).toEqual([
+      "Idea",
+      "Spec Draft",
+      "Canonical Spec",
+      "Task Graph IR",
+      "Code",
+      "Verified Release",
+    ]);
     expect(route.workTypes).toEqual(expect.arrayContaining(["product", "spec"]));
   });
 
@@ -179,6 +190,11 @@ describe("specos cli", () => {
     expect(currentSpec).toContain("ui:");
     await expect(readFile(join(cwd, "specs/changes/lens-fitting-mvp/spec-blueprint.yaml"), "utf8")).resolves.toContain("Spec");
     await expect(readFile(join(cwd, "tasks/lens-fitting-mvp.tasks.md"), "utf8")).resolves.toContain("Prescription Intake");
+    const taskGraph = await readFile(join(cwd, "tasks/task-graph.yaml"), "utf8");
+    expect(taskGraph).toContain("taskGraph:");
+    expect(taskGraph).toContain("sourceSpecRefs:");
+    expect(taskGraph).toContain("context: frontend");
+    expect(taskGraph).toContain("context: backend");
     await expect(readFile(join(cwd, "code/README.md"), "utf8")).resolves.toContain("Code Handoff");
     await expect(readFile(join(cwd, "tests/plans/lens-fitting-mvp.test-plan.json"), "utf8")).resolves.toContain("create_order");
     await expect(readFile(join(cwd, "deploy/environments.md"), "utf8")).resolves.toContain("Rollback");

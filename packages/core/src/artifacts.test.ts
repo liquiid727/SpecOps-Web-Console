@@ -23,9 +23,11 @@ describe("artifact validation", () => {
 
     expect(route).toMatchObject({
       requestKind: "test",
+      compilerLayer: "verification",
       primaryAgent: "qa-agent",
       needsChangePackage: true,
     });
+    expect(route.artifactFlow).toEqual(["Code", "Verification Evidence", "Verified Release"]);
     expect(route.workTypes).toEqual(expect.arrayContaining(["frontend", "tests", "ci"]));
     expect(route.supportingAgents).toEqual(
       expect.arrayContaining([
@@ -60,10 +62,19 @@ describe("artifact validation", () => {
 
     expect(route).toMatchObject({
       requestKind: "raw-requirement",
+      compilerLayer: "intent",
       primaryAgent: "product-architect-agent",
       needsDraft: true,
       needsChangePackage: true,
     });
+    expect(route.artifactFlow).toEqual([
+      "Idea",
+      "Spec Draft",
+      "Canonical Spec",
+      "Task Graph IR",
+      "Code",
+      "Verified Release",
+    ]);
     expect(route.workTypes).toEqual(expect.arrayContaining(["product", "spec"]));
     expect(route.supportingAgents).toEqual(expect.arrayContaining(["spec-editor", "frontend-agent", "backend-agent", "qa-agent"]));
     expect(route.skills).toContain("spec-web-ui/catalog/skills/product-architect/SKILL.md");
@@ -82,8 +93,10 @@ describe("artifact validation", () => {
 
     expect(route).toMatchObject({
       requestKind: "draft-only",
+      compilerLayer: "spec",
       primaryAgent: "spec-editor",
     });
+    expect(route.artifactFlow).toEqual(["Spec Draft", "Canonical Spec", "Task Graph IR"]);
     expect(route.workTypes).not.toContain("product");
   });
 

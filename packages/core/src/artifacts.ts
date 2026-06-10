@@ -176,6 +176,7 @@ export type RequestKind =
   | "acceptance"
   | "tooling-configuration";
 export type RequestWorkType = "product" | "backend" | "frontend" | "ui_prototype" | "spec" | "tests" | "ci" | "orchestration";
+export type RequestCompilerLayer = "intent" | "spec" | "execution" | "verification" | "release" | "orchestration";
 export type RequestRouteAgentRole =
   | "product-architect-agent"
   | "spec-editor"
@@ -466,6 +467,8 @@ export interface TestGateAgentEvidenceSummary {
 export interface RequestRouteDecision {
   requestKind: RequestKind;
   workTypes: RequestWorkType[];
+  compilerLayer: RequestCompilerLayer;
+  artifactFlow: string[];
   primaryAgent: RequestRouteAgentRole;
   supportingAgents: RequestRouteAgentRole[];
   rules: string[];
@@ -689,6 +692,7 @@ export function buildRequestRoute(rawRequest: string): RequestRouteDecision {
                   : "raw-requirement";
 
   const primaryAgent = primaryAgentForRequest(requestKind, workTypes);
+  const compilerLayer = compilerLayerForRequest(requestKind, workTypes);
   supportingAgents.delete(primaryAgent);
 
   if (workTypes.has("frontend")) {
@@ -708,6 +712,8 @@ export function buildRequestRoute(rawRequest: string): RequestRouteDecision {
   return {
     requestKind,
     workTypes: [...workTypes],
+    compilerLayer,
+    artifactFlow: artifactFlowForCompilerLayer(compilerLayer),
     primaryAgent,
     supportingAgents: [...supportingAgents],
     rules: [...new Set(rules)],
@@ -737,6 +743,25 @@ function primaryAgentForRequest(kind: RequestKind, workTypes: Set<RequestWorkTyp
   if (workTypes.has("frontend")) return "frontend-agent";
   if (workTypes.has("backend")) return "backend-agent";
   return "spec-editor";
+}
+
+function compilerLayerForRequest(kind: RequestKind, workTypes: Set<RequestWorkType>): RequestCompilerLayer {
+  if (workTypes.has("product") && (kind === "raw-requirement" || kind === "draft-only")) return "intent";
+  if (kind === "test" || kind === "review") return "verification";
+  if (kind === "acceptance") return "release";
+  if (kind === "tooling-configuration") return "orchestration";
+  if (kind === "implementation" || workTypes.has("frontend") || workTypes.has("backend")) return "execution";
+  return "spec";
+}
+
+function artifactFlowForCompilerLayer(layer: RequestCompilerLayer): string[] {
+  const fullFlow = ["Idea", "Spec Draft", "Canonical Spec", "Task Graph IR", "Code", "Verified Release"];
+  if (layer === "intent") return fullFlow;
+  if (layer === "spec") return ["Spec Draft", "Canonical Spec", "Task Graph IR"];
+  if (layer === "execution") return ["Task Graph IR", "Code"];
+  if (layer === "verification") return ["Code", "Verification Evidence", "Verified Release"];
+  if (layer === "release") return ["Verification Evidence", "Release Gate", "Deployable Release"];
+  return ["Workflow Intent", "Workflow Plan", "Workflow Execution Evidence"];
 }
 
 function nextStepForRequest(kind: RequestKind, needsDraft: boolean, needsChangePackage: boolean): string {

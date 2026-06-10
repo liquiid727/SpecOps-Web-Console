@@ -50,7 +50,7 @@ roles:
       - name: product-architect
         path: spec-web-ui/catalog/skills/product-architect/SKILL.md
         required: true
-        purpose: Convert raw product ideas into a Spec blueprint with Product, Architecture, Database, API, and UI branches, then derive Task, Code, Test, and Deploy handoffs.
+        purpose: Convert raw product ideas into a Spec Draft / Spec Blueprint with Product, Architecture, Database, API, and UI branches for Spec Compiler normalization.
     context_includes:
       - .rules/project.md
       - specs/current/project-context.md
@@ -59,6 +59,7 @@ roles:
       - spec-draft/
       - spec-web-ui/catalog/spec-templates/template-prd-draft/
       - spec-web-ui/catalog/spec-templates/template-spec-blueprint-yaml/
+      - spec-web-ui/catalog/spec-templates/template-task-graph-yaml/
       - spec-web-ui/catalog/spec-templates/template-product-spec-yaml/
       - spec-web-ui/catalog/spec-templates/template-feature-draft/
     owns:
@@ -66,13 +67,14 @@ roles:
       - product draft notes
       - agent handoff notes
     outputs:
+      - Spec Draft
       - Spec Blueprint
       - Product branch notes
       - Architecture branch notes
       - Database branch notes
       - API branch notes
       - UI branch notes
-      - Task, Code, Test, and Deploy handoff plan
+      - downstream compiler assumptions
       - assumptions and unresolved questions
 
   spec-editor:
@@ -87,11 +89,15 @@ roles:
       - specs/current/
       - specs/changes/
       - tests/
+      - spec-web-ui/catalog/spec-templates/template-task-graph-yaml/
     owns:
       - spec-draft/
       - specs/current/
       - specs/changes/
+      - tasks/task-graph.yaml
     outputs:
+      - canonical spec bundle
+      - task graph IR
       - normalized spec bundle
       - assumptions and unresolved questions
 

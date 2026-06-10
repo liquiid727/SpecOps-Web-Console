@@ -2,7 +2,7 @@
   "id": "skill-product-architect",
   "type": "skill",
   "title": "Product Architect",
-  "summary": "Transforms raw ideas into a Spec blueprint with Product, Architecture, Database, API, and UI branches, then derives Task, Code, Test, and Deploy handoffs.",
+  "summary": "Transforms raw ideas into a Spec Draft / Spec Blueprint with Product, Architecture, Database, API, and UI branches for Spec Compiler normalization.",
   "direction": "fullstack",
   "categories": [
     "product",
@@ -28,6 +28,7 @@
   ],
   "dependsOn": [
     "template-spec-blueprint-yaml",
+    "template-task-graph-yaml",
     "template-prd-draft",
     "template-product-spec-yaml",
     "template-feature-draft"
@@ -39,8 +40,8 @@
   ],
   "version": "1.0.0",
   "draftHints": [
-    "先输出 draft 级 Spec Blueprint，再交给 spec-editor 进入 change package",
+    "先输出 draft 级 Spec Blueprint，再交给 spec-editor 生成 Canonical Spec 和 Task Graph IR",
     "保留开放问题和假设，避免把推断当成 accepted truth"
   ],
-  "sampleOutput": "面向 spec-draft 的 Idea -> Spec -> Task -> Code -> Test -> Deploy 草案和后续 agent handoff。"
+  "sampleOutput": "面向 spec-draft 的 Idea -> Spec Draft 草案，并保留后续 Task Graph IR 编译所需的 source spec refs。"
 }

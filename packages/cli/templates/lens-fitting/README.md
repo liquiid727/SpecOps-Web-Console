@@ -6,11 +6,11 @@ It demonstrates the chain:
 
 ```text
 Idea
--> Spec(Product, Architecture, Database, API, UI)
--> Task
+-> Spec Draft
+-> Canonical Spec
+-> Task Graph IR
 -> Code
--> Test
--> Deploy
+-> Verified Release
 ```
 
-The template is intentionally lightweight. It is not a production implementation; it is a traceable project skeleton with enough content for agents and humans to continue from a concrete example.
+The template is intentionally lightweight. It is not a production implementation; it is a traceable project skeleton with enough Spec, Task Graph, Code, Verification, and Release evidence for agents and humans to continue from a concrete example.
