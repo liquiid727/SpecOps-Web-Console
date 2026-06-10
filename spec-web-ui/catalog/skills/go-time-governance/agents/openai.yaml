@@ -1,0 +1,3 @@
+display_name: Go Time Governance
+short_description: Guide Go backend clock sources, time fields, TTLs, storage precision, and testable time-dependent logic.
+default_prompt: Review or implement a Go backend change for clock injection, time field ownership, UTC storage, expiration or TTL semantics, database timestamp behavior, and deterministic time-dependent tests.

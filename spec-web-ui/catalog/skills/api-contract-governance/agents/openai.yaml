@@ -1,3 +1,3 @@
 display_name: API Contract Governance
-short_description: Guide explicit request and response models, SafeTime usage, and Swagger-aligned transport contracts.
-default_prompt: Review or implement a Go backend change for request and response model structure, SafeTime serialization, handler success payload shaping, and Swagger contract alignment.
+short_description: Guide explicit request and response models, API SafeTime usage, and Swagger-aligned transport contracts.
+default_prompt: Review or implement a Go backend change for request and response model structure, API SafeTime serialization, handler success payload shaping, and Swagger contract alignment.

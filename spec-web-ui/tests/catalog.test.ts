@@ -185,6 +185,7 @@ describe("loadCatalogAssets", () => {
     const catalog = await loadCatalogAssets();
     const orchestratorAgent = catalog.find((asset) => asset.id === "agent-go-pack-orchestrator");
     const apiGovernanceSkill = catalog.find((asset) => asset.id === "skill-api-contract-governance");
+    const timeGovernanceSkill = catalog.find((asset) => asset.id === "skill-go-time-governance");
     const routingTemplate = catalog.find((asset) => asset.id === "template-go-pack-routing");
 
     expect(orchestratorAgent?.type).toBe("agent_role");
@@ -202,6 +203,14 @@ describe("loadCatalogAssets", () => {
     );
     expect(apiGovernanceSkill?.files).toContain(
       "spec-web-ui/catalog/skills/api-contract-governance/references/api-contract-rules.md"
+    );
+
+    expect(timeGovernanceSkill?.type).toBe("skill");
+    expect(timeGovernanceSkill?.sourcePath).toBe(
+      "spec-web-ui/catalog/skills/go-time-governance/SKILL.md"
+    );
+    expect(timeGovernanceSkill?.files).toContain(
+      "spec-web-ui/catalog/skills/go-time-governance/references/clock-and-business-time.md"
     );
 
     expect(routingTemplate?.type).toBe("spec_template");
