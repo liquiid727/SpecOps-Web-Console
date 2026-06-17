@@ -1,6 +1,6 @@
 # Generate Tests
 
-Generate tests from an accepted spec by following this order:
+Generate tests from a SpecOS Contract by following this order:
 
 1. Derive a normalized `test-plan`.
 2. Split the plan into API and Scenario/E2E execution assets.

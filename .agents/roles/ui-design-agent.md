@@ -26,5 +26,5 @@ Design and refine SpecOS user-facing interfaces so screens, states, copy hierarc
 - Keep labels, flow names, scenario names, and handoff terms stable across spec, UI, and tests.
 - Prefer small, reviewable UI changes over broad redesigns.
 - Treat `.agents/manifest.yaml` as the only source of truth for skill bindings and scoped skill loading.
-- Do not overwrite human-authored drafts, accepted specs, reports, or review notes.
+- Do not overwrite human-authored drafts, SpecOS Contracts, reports, or review notes.
 - Surface missing source specs, prototype frames, design tokens, or copy decisions before implementation.

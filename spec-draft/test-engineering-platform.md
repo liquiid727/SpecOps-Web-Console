@@ -8,7 +8,7 @@
   - `README.md`: SpecOS is a Spec-Driven AI IDE.
   - `tests/README.md`: test assets must be spec-driven and normalized for the test console.
   - `rules/ci/spec-release-gates.md`: release checks must verify spec, generated contracts, tests, and bundle outputs stay aligned.
-  - `ai/workflows/test-console-v1.yaml`: accepted spec -> test plan -> execution -> normalized result -> report UI.
+  - `ai/workflows/test-console-v1.yaml`: SpecOS Contract -> test plan -> execution -> normalized result -> report UI.
   - `.agents/manifest.yaml`: existing test-related agent boundaries.
 
 This draft describes the production-grade testing system for SpecOS, including test agents, test design, test execution, test UI, performance and concurrency checks, and CI release gates.
@@ -17,7 +17,7 @@ This draft describes the production-grade testing system for SpecOS, including t
 
 SpecOS should treat testing as part of the spec delivery chain, not as an isolated engineering afterthought.
 
-The testing platform should answer five questions for every accepted spec or active change:
+The testing platform should answer five questions for every SpecOS Contract or active change:
 
 1. What business behavior must be verified?
 2. Which test assets prove the behavior?
@@ -31,7 +31,7 @@ The test UI should therefore be an executable verification console, not only an 
 
 ### 2.1 Spec First
 
-All independent verification assets must be derived from accepted specs or from `specs/current/ + specs/changes/<change-id>/`.
+All independent verification assets must be derived from SpecOS Contracts or from `specs/current/ + specs/changes/<change-id>/`.
 
 Draft-only requirements may produce exploratory test plans, but the UI and CI must mark them as draft-only and must not treat them as release evidence.
 
@@ -652,7 +652,7 @@ Commands should include:
 Blocking conditions:
 
 - Invalid schema.
-- Missing required test plan for an affected accepted spec.
+- Missing required test plan for an affected SpecOS Contract.
 - Unit failures.
 - P0 coverage missing for touched critical modules.
 

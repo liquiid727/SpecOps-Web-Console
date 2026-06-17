@@ -1,6 +1,6 @@
 # Test Plan Schema
 
-Normalized `test-plan` artifacts should be generated from accepted specs before selecting execution tools.
+Normalized `test-plan` artifacts should be generated from SpecOS Contracts before selecting execution tools.
 
 Required fields:
 
@@ -61,7 +61,7 @@ Production standard requirement entries should define:
 
 ## Spec To Test Inference
 
-When a spec does not explicitly enumerate all tests, `test-editor` must derive a minimum matrix from the accepted spec:
+When a spec does not explicitly enumerate all tests, `test-editor` must derive a minimum matrix from the SpecOS Contract:
 
 - `api[]` implies API contract, auth/error-code, idempotency, compatibility, and security requirements.
 - `userFlows[]` or scenario flows imply scenario/E2E requirements with happy, error, edge, and limit branches.

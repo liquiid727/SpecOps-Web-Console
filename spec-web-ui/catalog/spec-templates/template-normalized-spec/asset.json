@@ -1,8 +1,8 @@
 {
   "id": "template-normalized-spec",
   "type": "spec_template",
-  "title": "Normalized Spec Bundle",
-  "summary": "Formalized spec shape for accepted features and downstream automation.",
+  "title": "SpecOS Contract Template",
+  "summary": "Formalized contract shape for Change Workspaces and downstream automation.",
   "direction": "fullstack",
   "stacks": [
     "go",
@@ -12,7 +12,7 @@
   "tags": [
     "spec",
     "template",
-    "bundle"
+    "contract"
   ],
   "appliesTo": [
     "backend",
@@ -33,7 +33,7 @@
     "把业务规则映射到规范化章节",
     "确认 Data Model、Security 和 Observability 都已覆盖"
   ],
-  "sampleOutput": "一套正式 spec、模型和变更记录模板。",
+  "sampleOutput": "一套 SpecOS Contract、模型和变更记录模板。",
   "contentFiles": {
     "specs/_template/feature/spec.example.md": "spec-web-ui/catalog/spec-templates/template-normalized-spec/spec.example.md",
     "specs/_template/feature/model.example.md": "spec-web-ui/catalog/spec-templates/template-normalized-spec/model.example.md",

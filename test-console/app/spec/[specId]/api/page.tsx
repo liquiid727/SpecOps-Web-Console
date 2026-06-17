@@ -55,7 +55,7 @@ export default async function ApiTestPage({
                   <div className="rounded-lg border border-slate-800 p-3">security: {plan?.securityPolicy?.baseline ?? "not configured"}</div>
                 </div>
                 <div className="mt-3 text-xs text-slate-300">
-                  owner: {runItem?.ownerAgent ?? "bruno-test-agent"} · requirement: {runItem?.requirementId ?? "pending"} · evidence: {runItem?.artifactRefs?.map((ref) => ref.type).join(", ") ?? "missing"}
+                  owner: {runItem?.ownerAgent ?? "test-editor"} · requirement: {runItem?.requirementId ?? "pending"} · evidence: {runItem?.artifactRefs?.map((ref) => ref.type).join(", ") ?? "missing"}
                 </div>
                 <p className="mt-3 text-sm text-muted">{runItem?.summary ?? "No API run evidence yet."}</p>
               </div>

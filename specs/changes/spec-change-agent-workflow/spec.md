@@ -9,7 +9,7 @@
 
 ## Goal
 
-Make every new requirement move through a traceable lifecycle from draft intake to accepted current state, with execution and testing handled by isolated agent tracks after architecture and design review.
+Make every new requirement move through a traceable lifecycle from draft intake to SpecOS Contract, Task Plan, evidence, and accepted Project Memory update, with execution and testing handled by isolated agent tracks after architecture and design review.
 
 ## Non-Goals
 
@@ -21,24 +21,36 @@ Make every new requirement move through a traceable lifecycle from draft intake 
 
 1. A human requirement enters `spec-draft/`.
 2. The spec-draft agent refines the draft into structured intent, assumptions, open questions, and stable vocabulary.
-3. The spec agent reads `specs/current/` and creates `specs/changes/<change-id>/` for the proposed delta.
+3. The spec agent reads Project Memory and creates a Change Workspace at `specs/changes/<change-id>/` for the proposed delta.
 4. Architecture and design agents review the change before execution or test work starts.
 5. The workflow creates two isolated tracks:
    - execution track: implementation work plus implementation-coupled unit tests.
    - testing track: spec-and-contract-only API, E2E, UI, and business scenario verification.
-6. The tracks may run in parallel or testing may wait for implementation completion, but their agent context remains isolated.
-7. Review, architecture, risk, and test gates evaluate the combined evidence.
-8. After implementation and tests pass, the spec agent records the changelog, promotes accepted facts into `specs/current/`, and archives the change.
+6. The workflow creates an explicit task layer between the spec and evidence layers.
+7. The tracks may run in parallel or testing may wait for implementation completion, but their agent context remains isolated.
+8. Review, architecture, risk, and test gates evaluate the combined evidence.
+9. After implementation and tests pass, the spec agent records the changelog, promotes accepted facts into Project Memory, and archives the change evidence.
 
-## Change Package Shape
+## Data Flow Layers
 
-Each active change should keep its lifecycle evidence in one directory:
+```text
+spec layer -> task layer -> evidence layer
+```
+
+- Spec layer: `spec-draft/`, `specs/current/`, `specs/changes/<change-id>/spec.md`, rules, contracts, open questions, and stable vocabulary.
+- Task layer: `task-plan.md`, `execution-plan.md`, `test-strategy.md`, and generated `tests/schedules/*.test-schedule.json`.
+- Evidence layer: implementation reports, normalized test results, gate reports, review reports, changelogs, promotion notes, and archive records.
+
+## Change Workspace Shape
+
+Each active Change Workspace should keep its lifecycle evidence in one directory:
 
 ```text
 specs/changes/<change-id>/
   spec.md
   architecture-review.md
   design-review.md
+  task-plan.md
   execution-plan.md
   test-plan.json
   test-schedule.json
@@ -49,6 +61,8 @@ specs/changes/<change-id>/
 ```
 
 `spec.md` is the coordination contract. Other files record the agent outputs and gate evidence derived from that contract.
+
+`task-plan.md` is the human-readable task layer. It records task IDs, owner agents, inputs, outputs, dependencies, status, and required acceptance evidence. Generated `test-schedule.json` is the machine-readable test-side task layer.
 
 ## Agent Boundaries
 
@@ -70,7 +84,7 @@ specs/changes/<change-id>/
 ### Execution Agent
 
 - Owns implementation artifacts and implementation-coupled unit tests.
-- Allowed inputs: current specs, active change spec, architecture review, design review, explicit implementation plan.
+- Allowed inputs: Project Memory, active SpecOS Contract, architecture review, design review, explicit implementation plan.
 - Forbidden inputs: independent E2E/scenario/API/UI test implementation details, generated independent test assertions, raw independent test result explanations.
 - Produces implementation changes and `implementation-report.md`.
 - May produce unit-test files under `tests/unit/` or existing module-local test paths.
@@ -78,7 +92,7 @@ specs/changes/<change-id>/
 ### Test Agent
 
 - Owns test-plan, test-schedule, API/UI/scenario test assets, real execution, and normalized result mapping.
-- Allowed inputs: current specs, active change spec, OpenAPI/API contract, user flows, acceptance conditions, rules.
+- Allowed inputs: Project Memory, active SpecOS Contract, OpenAPI/API contract, user flows, acceptance conditions, rules.
 - Forbidden inputs: implementation explanations, source-code strategy notes, execution-agent private assumptions.
 - Produces `test-plan.json`, `test-schedule.json`, test assets, and `test-result-summary.md`.
 - Does not own implementation-coupled unit tests.
@@ -99,6 +113,21 @@ The generated `test-schedule.json` records the split between execution and testi
 
 The execution track may write implementation-coupled unit tests under `tests/unit/` or module-local test paths. It must not write independent verification assets under `tests/bruno/`, `tests/scenarios/`, `tests/e2e/`, `tests/playwright/`, or `tests/results/`. The testing track must not write implementation source paths or unit tests.
 
+## Task Plan Contract
+
+Every active change should include `task-plan.md` before implementation or verification starts. Each task must define:
+
+- task id
+- owner agent
+- source spec, draft, rule, or review gate
+- inputs
+- outputs
+- dependencies
+- acceptance evidence
+- status
+
+Tasks are the engineering bridge between project knowledge and executable work. A task without traceable source or required evidence cannot satisfy promotion.
+
 ## First Implementation Slice
 
 The first implementation slice provides a document-only CLI workflow before any hosted multi-agent runtime exists:
@@ -115,4 +144,4 @@ The first implementation slice provides a document-only CLI workflow before any 
 - `tests/schedules/<spec>.test-schedule.json`
 - validation that execution and testing responsibilities stay separated.
 
-The CLI workflow writes `workflow-state.json` inside the change package and enforces gate order, but it does not pretend to execute real implementation or hosted agent dispatch. Real agent runtime and API/UI runner integration can consume this state in the next slice without changing the lifecycle contract.
+The CLI workflow writes `workflow-state.json` inside the Change Workspace and enforces gate order, but it does not pretend to execute real implementation or hosted agent dispatch. Real agent runtime and API/UI runner integration can consume this state in the next slice without changing the lifecycle contract.

@@ -12,18 +12,19 @@ work_types:
       - rules/backend/redis-key-governance.md
       - rules/shared/error-code-governance.md
     agents:
+      - implementation-agent
       - ddd-domain-agent
       - openapi-agent
       - db-migration-agent
-      - bruno-test-agent
+      - test-editor
 
   frontend:
     rules:
       - rules/frontend/react-workbench-delivery.md
       - rules/shared/error-code-governance.md
     agents:
+      - implementation-agent
       - ui-design-agent
-      - playwright-test-agent
       - test-editor
 
   ui_prototype:
@@ -31,8 +32,9 @@ work_types:
       - rules/ui/pencil-prototype-ui.md
       - rules/frontend/react-workbench-delivery.md
     agents:
+      - architecture-agent
       - spec-editor
-      - playwright-test-agent
+      - ui-design-agent
 
   spec:
     rules:
@@ -40,6 +42,7 @@ work_types:
       - rules/testing/production-test-standards.md
       - rules/shared/error-code-governance.md
     agents:
+      - architecture-agent
       - spec-editor
       - ddd-domain-agent
       - test-editor
@@ -50,8 +53,8 @@ work_types:
       - rules/testing/production-test-standards.md
       - rules/ci/spec-release-gates.md
     agents:
+      - testing-agent
       - test-editor
-      - bruno-test-agent
       - playwright-test-agent
       - qa-agent
 
@@ -61,6 +64,7 @@ work_types:
       - rules/ci/spec-release-gates.md
       - scripts/checks/README.md
     agents:
+      - deployment-agent
       - ci-editor
       - execution-editor
       - qa-agent
@@ -71,6 +75,7 @@ work_types:
       - scripts/orchestration/README.md
       - rules/ci/spec-release-gates.md
     agents:
+      - deployment-agent
       - execution-editor
       - ci-editor
       - qa-agent

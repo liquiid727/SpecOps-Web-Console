@@ -1,8 +1,8 @@
 workflow: test-console-v1
-purpose: accepted spec -> test plan -> execution -> normalized result -> report ui
+purpose: SpecOS Contract -> task plan -> execution -> normalized result -> report ui
 
 inputs:
-  - accepted_spec
+  - specos_contract
   - spec_id
   - spec_version
   - run_scope
@@ -20,6 +20,6 @@ outputs:
   - test-console overview and detail pages
 
 gates:
-  - accepted_spec_required
+  - specos_contract_required
   - normalized_result_required
   - release_decision_visible

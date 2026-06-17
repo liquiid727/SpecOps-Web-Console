@@ -838,6 +838,7 @@ async function createChangeCommand(cwd: string, options: CreateChangeOptions): P
   await writeFile(join(changeDir, "architecture-review.md"), buildGateDoc("Architecture Review", options.changeId), "utf8");
   await writeFile(join(changeDir, "design-review.md"), buildGateDoc("Design Review", options.changeId), "utf8");
   await writeFile(join(changeDir, "test-strategy.md"), buildTestStrategy(options.changeId), "utf8");
+  await writeFile(join(changeDir, "task-plan.md"), buildTaskPlan(options.changeId), "utf8");
   await writeFile(join(changeDir, "execution-plan.md"), buildExecutionPlan(options.changeId), "utf8");
   await writeFile(join(changeDir, "review-report.md"), buildReviewReport(options.changeId), "utf8");
   await writeFile(join(changeDir, "changelog.md"), buildChangelog(options.changeId), "utf8");
@@ -1962,6 +1963,7 @@ function buildInitialWorkflowState(options: CreateChangeOptions): ChangeWorkflow
       "architecture-review.md",
       "design-review.md",
       "test-strategy.md",
+      "task-plan.md",
       "execution-plan.md",
       "review-report.md",
       "changelog.md",
@@ -2057,7 +2059,7 @@ function buildChangeSpec(options: CreateChangeOptions, draftSource: string): str
     "- Architecture agents own backend/frontend architecture, contracts, data, concurrency, and risk content.",
     "- Module-specific execution agents own implementation plans after architecture/design gates pass.",
     "- Spec agent owns document shape, traceability, wording consistency, and current/archive promotion.",
-    "- Test agents own independent scenario/API/E2E strategy from this change spec and contracts, not from implementation notes.",
+    "- Test agents own independent scenario/API/E2E strategy from this SpecOS Contract and contracts, not from implementation notes.",
     "",
     "## Required Gates",
     "",
@@ -2101,12 +2103,52 @@ function buildTestStrategy(changeId: string): string {
     "",
     "## Independence Rule",
     "",
-    "Scenario, API, and E2E tests are designed from the change spec, contracts, flows, and acceptance conditions. They must stay independent from execution-agent private implementation notes.",
+    "Scenario, API, and E2E tests are designed from the SpecOS Contract, contracts, flows, and acceptance conditions. They must stay independent from execution-agent private implementation notes.",
     "",
     "## Tracks",
     "",
     "- Unit tests: implementation-coupled and owned by execution agents after implementation.",
     "- Scenario/API/E2E tests: independent and owned by test agents from the change stage.",
+    "",
+  ].join("\n");
+}
+
+function buildTaskPlan(changeId: string): string {
+  return [
+    `# ${toTitle(changeId)} Task Plan`,
+    "",
+    `- Change ID: \`${changeId}\``,
+    "- Status: planned",
+    "",
+    "## Task Model",
+    "",
+    "Each task must connect the spec layer to the evidence layer. Keep tasks small enough for one owner agent to execute or verify without hidden context.",
+    "",
+    "Required fields for every task:",
+    "",
+    "- Task ID",
+    "- Owner agent",
+    "- Source spec, draft, rule, or review gate",
+    "- Inputs",
+    "- Outputs",
+    "- Dependencies",
+    "- Acceptance evidence",
+    "- Current status",
+    "",
+    "## Layers",
+    "",
+    "- Spec layer: `spec.md`, accepted context, rules, and open questions.",
+    "- Task layer: this `task-plan.md`, `execution-plan.md`, and generated `tests/schedules/*.test-schedule.json`.",
+    "- Evidence layer: implementation reports, normalized test results, gate reports, review reports, and promotion notes.",
+    "",
+    "## Initial Tasks",
+    "",
+    "| Task ID | Owner Agent | Inputs | Outputs | Depends On | Acceptance Evidence | Status |",
+    "| --- | --- | --- | --- | --- | --- | --- |",
+    `| ${changeId}.architecture-review | architecture-agent | spec.md, specs/current/ | architecture-review.md | draft confirmed | approved architecture/design gate | pending |`,
+    `| ${changeId}.implementation | implementation-agent | spec.md, architecture-review.md, design-review.md | implementation-report.md, implementation-coupled tests | architecture/design gate | implementation review decision | pending |`,
+    `| ${changeId}.verification | testing-agent | spec.md, test-strategy.md, contracts | tests/plans/, tests/results/, gate report | test plan ready | independent test decision | pending |`,
+    `| ${changeId}.deployment-readiness | deployment-agent | validation evidence, gate report, review report | release readiness notes | implementation and tests complete | promotion gate readiness | pending |`,
     "",
   ].join("\n");
 }

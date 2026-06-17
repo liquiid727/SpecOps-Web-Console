@@ -202,7 +202,7 @@
         "P0",
         "P1"
       ],
-      "ownerAgent": "bruno-test-agent",
+      "ownerAgent": "test-editor",
       "requiredEvidence": [
         "trace",
         "raw-report"
@@ -270,7 +270,7 @@
         "P0",
         "P1"
       ],
-      "ownerAgent": "bruno-test-agent",
+      "ownerAgent": "test-editor",
       "requiredEvidence": [
         "trace",
         "raw-report"

@@ -2,13 +2,13 @@
 
 ## Purpose
 
-Define release checks that ensure generated artifacts still match accepted spec decisions.
+Define release checks that ensure generated artifacts still match SpecOS Contract decisions.
 
 ## Required Practices
 
-- CI should verify spec, generated contract, tests, and bundle outputs stay aligned.
+- CI should verify SpecOS Contract, generated contract, tests, and evidence outputs stay aligned.
 - Failing scenario tests must block release for affected flows.
-- Reviewers should see which spec bundle version a release references.
+- Reviewers should see which SpecOS Contract version a release references.
 - Human approval is required before irreversible workflow steps in V1.
 - Production test plans must satisfy `rules/testing/production-test-standards.md`.
 - P0/P1 blocking evidence must be normalized under `tests/results/` before promotion.
@@ -19,7 +19,7 @@ Define release checks that ensure generated artifacts still match accepted spec 
 
 - Validate manifest, specs, test plans, schedules, and normalized result schemas.
 - Run unit tests and type/build checks for changed packages.
-- Block on invalid schemas, missing `standardVersion`, missing P0/P1 owner-agent assignments, missing P0 test-plan coverage, or failed unit tests in affected modules.
+- Block on invalid schemas, missing `standardVersion`, missing P0/P1 owner-agent assignments, missing P0 test-plan coverage, failed unit tests in affected modules, or missing `Sync Handoff` evidence for semantic changes.
 
 ### Change Verification Gate
 
@@ -40,7 +40,8 @@ Define release checks that ensure generated artifacts still match accepted spec 
 - Require all release-blocking normalized results to reference the same `spec_id`, `spec_version`, and `change_id`.
 - Require `standardCompliance`, `riskSummary`, and `agentEvidenceSummary` to show no P0/P1 blocking gaps.
 - Require `qa-agent` acceptance language for residual risks, waivers, and final promotion recommendation when a change has attached production test plans.
-- Archive gate evidence with the completed change package.
+- Require `sync_handoff_status: pass` or explicit waiver evidence before promotion when the change affects neighboring specs, rules, agents, workflows, tests, or CI gates.
+- Archive gate evidence with the completed Change Workspace.
 
 ## Local Command
 
@@ -56,4 +57,4 @@ The command writes gate reports through the CLI and exits non-zero when evidence
 
 - 说明哪些测试是发布阻断项。
 - 标记需要人工确认的 workflow step。
-- 记录本次功能对应的 spec version 或 bundle id。
+- 记录本次功能对应的 SpecOS Contract version 或 evidence id。

@@ -81,7 +81,7 @@ export default async function Page() {
           <div>
             <h1 className="text-4xl font-semibold text-white">Spec 驱动测试控制台</h1>
             <p className="mt-2 max-w-3xl text-sm text-muted">
-              面向开发者的本地测试工作台：从 accepted spec 生成测试矩阵，按 scope 运行验证，沉淀 normalized evidence，并把 release gate 变成可复现的日常闭环。
+              面向开发者的本地测试工作台：从 SpecOS Contract 生成测试矩阵，按 scope 运行验证，沉淀 normalized evidence，并把 release gate 变成可复现的日常闭环。
             </p>
             <p className="mt-2 max-w-3xl text-sm text-muted">
               当前控制台参考 AI 自动测试和传统测试平台的共同模式：场景可读、命令可跑、证据可查、门禁可阻断。
@@ -211,7 +211,7 @@ export default async function Page() {
       </SectionCard>
 
       <div className="grid gap-4 md:grid-cols-4">
-        <SectionCard title="Spec" description="当前展示的 accepted spec">
+        <SectionCard title="Spec" description="当前展示的 SpecOS Contract">
           <div className="space-y-2 text-sm">
             <div className="font-medium text-white">{latestRun.featureName}</div>
             <div className="text-muted">

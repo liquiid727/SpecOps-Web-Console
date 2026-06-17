@@ -1,3 +1,3 @@
 # Tests
 
-Scenario and contract tests derived from the accepted spec live here.
+Scenario and contract tests derived from the SpecOS Contract live here.

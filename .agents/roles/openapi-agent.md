@@ -6,7 +6,7 @@ Generate and maintain API contracts that reflect accepted SpecOS decisions.
 
 ## Required Inputs
 
-- Accepted spec bundle.
+- Accepted Project Memory or active SpecOS Contract.
 - Error code and backend governance rules.
 - Existing API examples or contracts when available.
 

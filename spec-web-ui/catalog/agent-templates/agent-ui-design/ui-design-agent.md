@@ -1,6 +1,6 @@
 # UI Design Agent
 
-Owns product UI design decisions for SpecOS frontend work that comes from accepted specs, draft UI handoffs, or Pencil prototypes.
+Owns product UI design decisions for SpecOS frontend work that comes from SpecOS Contracts, draft UI handoffs, or Pencil prototypes.
 
 ## Responsibilities
 

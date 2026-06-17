@@ -38,7 +38,7 @@ const catalog: CatalogAsset[] = [
     id: "agent-spec-editor",
     type: "agent_role",
     title: "Spec Editor",
-    summary: "Compiles drafts into normalized spec artifacts.",
+    summary: "Compiles drafts into SpecOS Contract artifacts.",
     direction: "fullstack",
     stacks: ["go", "react"],
     tags: ["spec", "openapi"],

@@ -8,18 +8,19 @@ The project is building toward an AI IDE experience where teams can define work 
 
 Most AI-assisted development breaks down when context becomes inconsistent. Requirements live in one place, prompts in another, tests somewhere else, and delivery rules often stay tribal.
 
-SpecOS is designed to make that chain explicit:
+SpecOS is designed to make that chain operational:
 
 ```text
-draft -> change spec -> implementation assets -> tests -> review -> accepted current state
+project memory + change contract -> task plan -> evidence -> accepted project memory
 ```
 
 That model helps teams:
 
 - keep requirements and generated artifacts aligned
+- turn specs into explicit owner-agent tasks before implementation starts
 - reuse engineering rules, templates, skills, and agent packs
 - export project-ready bundles instead of copying ad-hoc files
-- make testing and review traceable to the original spec
+- make testing, review, and promotion traceable to the same contract
 
 ## What Is In This Repository
 
@@ -35,7 +36,7 @@ It also includes reusable project assets such as:
 - `skills/` and `.skills/`: reusable skill packs and local skill assets
 - `ai/agents/`: agent role definitions
 - `agent-teams/`: reusable agent team packs
-- `specs/`, `spec-draft/`, and `tests/`: the spec and verification backbone
+- `specs/`, `spec-draft/`, and `tests/`: the SpecOS project memory, task, and evidence backbone
 
 ## Current Status
 
@@ -95,17 +96,17 @@ rules/               reusable engineering governance
 agent-teams/         reusable agent team packs
 ai/agents/           agent role definitions
 spec-draft/          draft requirement inputs
-specs/               accepted specs, changes, and archive
+specs/               project memory, change workspaces, and evidence archive
 tests/               plans, schedules, and result assets
 ```
 
 ## For Contributors
 
-The repository is organized around a spec-first delivery model. If you are contributing implementation or workflow changes, the best starting points are:
+The repository is organized around the SpecOS delivery model: spec layer -> task layer -> evidence layer. If you are contributing implementation or workflow changes, the best starting points are:
 
 - [AGENTS.md](AGENTS.md)
 - [rules/README.md](rules/README.md)
 - [specs/README.md](specs/README.md)
 - [spec-web-ui/README.md](spec-web-ui/README.md)
 
-In general, changes should stay traceable to a draft, a spec change, a rule, or a test artifact.
+In general, changes should stay traceable to a draft, a SpecOS contract, a task, a rule, or evidence.

@@ -32,21 +32,24 @@ In these cases, creating a fully independent spec is usually not the best choice
 ## Workflow / 工作流程
 
 1. Engineers convert product requirements into a structured `spec-draft`.
-2. The `spec-draft` agent formats and normalizes the draft using project rules.
-3. Spec and architecture agents collaborate to turn the draft into a formal change package under `specs/changes/<change-id>/`.
-4. Implementation and tests run against `specs/current/` plus the active change package.
-5. After implementation, tests, review, and acceptance are complete, the accepted change content is promoted into `specs/current/` and the completed change is archived.
+2. `architecture-agent` and `spec-editor` classify the draft, record assumptions, and normalize it using project rules.
+3. The normalized draft becomes a SpecOS Contract inside a Change Workspace under `specs/changes/<change-id>/`.
+4. The Change Workspace creates a task layer through `task-plan.md`, `execution-plan.md`, and generated test schedules.
+5. Implementation and tests run against Project Memory in `specs/current/` plus the active Change Workspace.
+6. After implementation, tests, review, and acceptance are complete, the accepted change content is promoted into `specs/current/` and the completed change is archived.
 1. 研发将产品需求整理为结构化 `spec-draft`。
 2. `spec-draft` agent 基于项目规则完成格式化与规范化。
 3. spec 与架构相关 agent 协同，将 draft 转化为 `specs/changes/<change-id>/` 下可落地的正式变更包。
-4. 开发与测试基于 `specs/current/` 和当前 change package 一起执行。
+4. 开发与测试基于 `specs/current/` 的 Project Memory 和当前 Change Workspace 一起执行。
 5. 实现、测试、评审和验收完成后，再把已接受内容更新到 `specs/current/`，并归档完成的 change。
 
 ## Responsibilities / 职责分工
 
 - Engineers: capture requirement intent, business context, and technical constraints in the draft.
-- `spec-draft` agent: enforce format consistency and apply rules for IDs, error codes, response conventions, and related standards.
+- `architecture-agent`: classify impact, identify affected contexts, and decide whether the draft updates existing specs or starts a new change.
+- `spec-editor`: enforce format consistency and apply rules for IDs, error codes, response conventions, and related standards.
 - `spec-draft`: provide a clear, engineer-oriented intermediate document that improves the accuracy and efficiency of formal spec generation.
 - 研发：在 draft 中明确需求意图、业务上下文与技术约束。
-- `spec-draft` agent：统一格式与排版，并应用规则生成符合项目规范的 ID、错误码、响应处理等内容。
+- `architecture-agent`：判断影响面、识别上下文边界，并决定 draft 应并入既有 spec 还是形成新 change。
+- `spec-editor`：统一格式与排版，并应用规则生成符合项目规范的 ID、错误码、响应处理等内容。
 - `spec-draft`：作为面向研发的中间文档，提升后续正式 spec 产出的准确度与效率。

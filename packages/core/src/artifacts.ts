@@ -156,7 +156,6 @@ export type TestLayer =
 export type TestOwnerAgent =
   | "test-editor"
   | "unit-test-agent"
-  | "bruno-test-agent"
   | "playwright-test-agent"
   | "e2e-test-agent"
   | "performance-test-agent"
@@ -184,12 +183,15 @@ export type RequestWorkType =
   | "ci"
   | "orchestration";
 export type RequestRouteAgentRole =
+  | "architecture-agent"
+  | "implementation-agent"
+  | "deployment-agent"
+  | "testing-agent"
   | "spec-editor"
   | "ui-design-agent"
   | "ddd-domain-agent"
   | "openapi-agent"
   | "db-migration-agent"
-  | "bruno-test-agent"
   | "e2e-test-agent"
   | "playwright-test-agent"
   | "unit-test-agent"
@@ -367,7 +369,7 @@ export interface TestScheduleTrack {
 export interface TestScheduleTask {
   id: string;
   trackId: TestScheduleTrackId;
-  agentRole: "execution-editor" | "bruno-test-agent" | "playwright-test-agent";
+  agentRole: "execution-editor" | "test-editor" | "playwright-test-agent";
   type: TestScheduleTaskType;
   status: TestScheduleTaskStatus;
   reason?: string;
@@ -583,6 +585,7 @@ const requestRoutingRules: Record<RequestWorkType, string[]> = {
 
 const requestRoutingAgents: Record<RequestWorkType, RequestRouteAgentRole[]> = {
   architecture: [
+    "spec-editor",
     "ddd-domain-agent",
     "openapi-agent",
     "db-migration-agent",
@@ -591,11 +594,19 @@ const requestRoutingAgents: Record<RequestWorkType, RequestRouteAgentRole[]> = {
     "concurrency-test-agent",
     "reviewer",
   ],
-  backend: ["ddd-domain-agent", "openapi-agent", "db-migration-agent", "bruno-test-agent"],
-  frontend: ["ui-design-agent", "playwright-test-agent", "test-editor"],
-  ui_prototype: ["spec-editor", "playwright-test-agent"],
+  backend: ["ddd-domain-agent", "openapi-agent", "db-migration-agent", "unit-test-agent"],
+  frontend: ["ui-design-agent", "test-editor"],
+  ui_prototype: ["spec-editor", "ui-design-agent"],
   spec: ["spec-editor", "ddd-domain-agent", "test-editor"],
-  tests: ["test-editor", "bruno-test-agent", "playwright-test-agent", "qa-agent"],
+  tests: [
+    "test-editor",
+    "unit-test-agent",
+    "playwright-test-agent",
+    "e2e-test-agent",
+    "performance-test-agent",
+    "concurrency-test-agent",
+    "qa-agent",
+  ],
   ci: ["ci-editor", "execution-editor", "qa-agent"],
   orchestration: ["execution-editor", "ci-editor", "qa-agent", "reviewer"],
 };
@@ -616,7 +627,7 @@ export function buildRequestRoute(rawRequest: string): RequestRouteDecision {
 
   const hasRawRequirementSignal = match("raw-requirement", ["需求", "想法", "prd", "还没有 spec", "new requirement", "requirement"]);
   const hasDraftSignal = match("draft-only", ["draft", "草稿", "设计文档", "文档", "整理一下"]);
-  const hasActiveChangeSignal = match("active-change", ["change", "specs/changes", "变更", "change package"]);
+  const hasActiveChangeSignal = match("active-change", ["change", "specs/changes", "变更", "change package", "Change Workspace"]);
   const hasImplementationSignal = match("implementation", ["实现", "开发", "代码", "修复", "bug", "接口实现", "implement", "fix"]);
   const hasTestSignal = match("test", ["测试", "test", "unit", "e2e", "scenario", "api", "contract", "性能", "并发", "concurrency", "performance", "latency"]);
   const hasReviewSignal = match("review", ["评审", "review", "检查", "审查"]);
@@ -652,7 +663,7 @@ export function buildRequestRoute(rawRequest: string): RequestRouteDecision {
   if (match("ui_prototype", ["prototype", "原型", "pencil", "交互稿"])) {
     workTypes.add("ui_prototype");
   }
-  if (hasRawRequirementSignal || hasDraftSignal || hasActiveChangeSignal || match("spec", ["spec", "规格", "规范", "change package"])) {
+  if (hasRawRequirementSignal || hasDraftSignal || hasActiveChangeSignal || match("spec", ["spec", "规格", "规范", "change package", "SpecOS Contract"])) {
     workTypes.add("spec");
   }
   if (hasTestSignal) {
@@ -677,7 +688,7 @@ export function buildRequestRoute(rawRequest: string): RequestRouteDecision {
   if (normalized.includes("unit") || normalized.includes("单元")) supportingAgents.add("unit-test-agent");
   if (normalized.includes("性能") || normalized.includes("performance") || normalized.includes("latency")) supportingAgents.add("performance-test-agent");
   if (normalized.includes("并发") || normalized.includes("concurrency")) supportingAgents.add("concurrency-test-agent");
-  if (normalized.includes("api") || normalized.includes("contract") || normalized.includes("接口")) supportingAgents.add("bruno-test-agent");
+  if (normalized.includes("api") || normalized.includes("contract") || normalized.includes("接口")) supportingAgents.add("test-editor");
   if (hasAcceptanceSignal || hasExplicitQaAcceptanceSignal) supportingAgents.add("qa-agent");
 
   const requestKind: RequestKind = hasRawRequirementSignal && !hasActiveChangeSignal
@@ -737,15 +748,16 @@ export function buildRequestRoute(rawRequest: string): RequestRouteDecision {
 }
 
 function primaryAgentForRequest(kind: RequestKind, workTypes: Set<RequestWorkType>): RequestRouteAgentRole {
-  if (kind === "raw-requirement" || kind === "draft-only" || kind === "active-change") return "spec-editor";
-  if (workTypes.has("architecture")) return "ddd-domain-agent";
-  if (kind === "test") return "test-editor";
-  if (kind === "review") return "reviewer";
-  if (kind === "acceptance") return "qa-agent";
-  if (kind === "tooling-configuration") return "execution-editor";
-  if (workTypes.has("frontend")) return "ui-design-agent";
-  if (workTypes.has("backend")) return "implementation-editor";
-  return "spec-editor";
+  if (workTypes.has("architecture")) return "architecture-agent";
+  if (kind === "test") return "testing-agent";
+  if (kind === "acceptance") return "testing-agent";
+  if (kind === "implementation") return "implementation-agent";
+  if (kind === "tooling-configuration") return workTypes.has("ci") ? "deployment-agent" : "architecture-agent";
+  if (workTypes.has("ci")) return "deployment-agent";
+  if (kind === "review") return "architecture-agent";
+  if (workTypes.has("frontend") || workTypes.has("backend")) return "implementation-agent";
+  if (kind === "raw-requirement" || kind === "draft-only" || kind === "active-change") return "architecture-agent";
+  return "architecture-agent";
 }
 
 function nextStepForRequest(kind: RequestKind, needsDraft: boolean, needsChangePackage: boolean): string {
@@ -900,7 +912,7 @@ function buildDefaultStandardRequirements(
       layer: "api",
       appliesTo: endpointTargets,
       requiredFor: ["P0", "P1"],
-      ownerAgent: "bruno-test-agent",
+      ownerAgent: "test-editor",
       requiredEvidence: ["trace"],
       gateImpact: "blocking",
     },
@@ -980,7 +992,7 @@ export function buildSpecChangeTestSchedule(
       {
         id: `api-tests-${plan.specId}`,
         trackId: "testing",
-        agentRole: "bruno-test-agent",
+        agentRole: "test-editor",
         type: "api-test",
         status: "ready",
         inputs: [
@@ -1035,7 +1047,7 @@ export function buildBlockedApiScenarioResult(
     durationMs: 0,
     summary: options.reason,
     requirementId: "std.p0.api.contract",
-    ownerAgent: "bruno-test-agent" as const,
+    ownerAgent: "test-editor" as const,
     evidenceQuality: "partial" as const,
     attempts: 1,
     flakeClassification: "not-flaky" as const,
@@ -1110,7 +1122,7 @@ export function buildExecutedApiScenarioResult(
     durationMs: execution.durationMs ?? 0,
     summary,
     requirementId: "std.p0.api.contract",
-    ownerAgent: "bruno-test-agent" as const,
+    ownerAgent: "test-editor" as const,
     evidenceQuality: passed ? "complete" as const : "partial" as const,
     attempts: 1,
     flakeClassification: "not-flaky" as const,
@@ -1172,7 +1184,7 @@ export function buildBrunoCollectionAssets(plan: SpecosTestPlan): GeneratedTextA
     `Spec id: \`${plan.specId}\``,
     `Spec version: \`${plan.specVersion}\``,
     "",
-    "Generated from `tests/plans/` for the `bruno-test-agent` track.",
+    "Generated from `tests/plans/` for the `test-editor` API track.",
     "",
     "## Endpoints",
     "",
@@ -1378,7 +1390,7 @@ function ownerAgentForTestType(testType: TestType): TestOwnerAgent {
     case "api":
     case "security":
     case "compatibility":
-      return "bruno-test-agent";
+      return "test-editor";
     case "scenario":
       return "playwright-test-agent";
     case "unit":
@@ -1908,7 +1920,6 @@ function requireOwnerAgent(
     [
       "test-editor",
       "unit-test-agent",
-      "bruno-test-agent",
       "playwright-test-agent",
       "e2e-test-agent",
       "performance-test-agent",
@@ -2236,7 +2247,7 @@ function requireTestScheduleTasks(state: MutableValidation, value: unknown): voi
     requireOneOf(
       state,
       task?.agentRole,
-      ["execution-editor", "bruno-test-agent", "playwright-test-agent"],
+      ["execution-editor", "test-editor", "playwright-test-agent"],
       "SPECOS_TEST_SCHEDULE_INVALID",
       `${path}.agentRole`,
     );

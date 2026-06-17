@@ -51,7 +51,7 @@ vi.mock("@/lib/catalog", () => ({
       id: "agent-spec-editor",
       type: "agent_role",
       title: "Spec Editor Agent",
-      summary: "Refines drafts into reviewable SpecOS change packages.",
+      summary: "Refines drafts into reviewable SpecOS Change Workspaces.",
       direction: "fullstack",
       categories: ["product", "backend"],
       stacks: ["specos"],

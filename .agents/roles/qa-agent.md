@@ -6,7 +6,7 @@ Own final quality acceptance for a SpecOS change by reconciling specs, implement
 
 ## Required Inputs
 
-- Accepted baseline from `specs/current/` and active change package from `specs/changes/<change-id>/`.
+- Accepted baseline from `specs/current/` and active Change Workspace from `specs/changes/<change-id>/`.
 - Implementation report, test-result summary, gate report, and review findings.
 - Relevant production test standards and release gate rules.
 

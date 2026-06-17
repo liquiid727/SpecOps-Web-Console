@@ -2,15 +2,15 @@
 
 ## Status
 
-This file records accepted architecture facts and placement rules for SpecOS. Proposed architecture changes should start under `specs/changes/<change-id>/` and be promoted here only after acceptance.
+This file records accepted architecture facts and placement rules for SpecOS. Proposed architecture changes should start in a Change Workspace under `specs/changes/<change-id>/` and update Project Memory only after acceptance.
 
 ## Architectural Model
 
-SpecOS uses a current/change/archive model for formal system knowledge:
+SpecOS uses its own project-memory delivery model:
 
-- `specs/current/`: accepted baseline facts.
-- `specs/changes/<change-id>/`: proposed changes and active implementation context.
-- `specs/archive/<change-id>/`: completed changes after accepted content has been merged into `current`.
+- `specs/current/`: Project Memory with accepted baseline facts.
+- `specs/changes/<change-id>/`: Change Workspace with contract, task plan, active work context, and evidence.
+- `specs/archive/<change-id>/`: Evidence Archive after accepted facts update Project Memory.
 
 Agent work is routed through `.agents/manifest.yaml`. The manifest defines role prompts, canonical agent descriptions, scoped skills, context includes, owned surfaces, and expected outputs.
 
@@ -20,12 +20,12 @@ Agent work is routed through `.agents/manifest.yaml`. The manifest defines role 
 - `ai/agents/` contains canonical agent responsibilities.
 - `.agents/manifest.yaml` is the routing and context assembly source of truth.
 - Role prompts should describe how an agent works; they should not duplicate project background or accepted system facts.
-- Stable project, architecture, and domain context belongs under `specs/current/`.
+- Stable project, architecture, and domain context belongs under Project Memory in `specs/current/`.
 
 ## Workflow Boundaries
 
 - `spec-draft/` captures early human-authored intent and exploratory requirements.
-- `specs/changes/<change-id>/` captures normalized active work, assumptions, design notes, generated artifacts, and review evidence for a bounded change.
+- `specs/changes/<change-id>/` captures active SpecOS contracts, task plans, assumptions, design notes, generated artifacts, and review evidence for a bounded change.
 - `tests/` captures scenario, API, UI, result, and test-plan assets tied to specs.
 - `ai/workflows/` documents orchestration flows that connect prompts, agent roles, review stages, gates, and QA acceptance.
 - `rules/` and `.rules/` define reusable governance and compact agent-facing rule entrypoints.

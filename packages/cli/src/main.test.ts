@@ -94,14 +94,14 @@ describe("specos cli", () => {
     const route = JSON.parse(routed.stdout.split("\n").slice(1).join("\n"));
     expect(route).toMatchObject({
       requestKind: "test",
-      primaryAgent: "test-editor",
+      primaryAgent: "testing-agent",
       needsChangePackage: true,
     });
     expect(route.workTypes).toEqual(expect.arrayContaining(["frontend", "tests", "ci"]));
     expect(route.supportingAgents).toEqual(expect.arrayContaining(["ui-design-agent", "ci-editor"]));
   });
 
-  it("routes architecture orchestration previews to the DDD domain agent", async () => {
+  it("routes architecture orchestration previews to the architecture agent", async () => {
     const cwd = await tempProject();
 
     const routed = await runCli(
@@ -117,7 +117,7 @@ describe("specos cli", () => {
     expect(routed.stderr).toBe("");
     const route = JSON.parse(routed.stdout.split("\n").slice(1).join("\n"));
     expect(route).toMatchObject({
-      primaryAgent: "ddd-domain-agent",
+      primaryAgent: "architecture-agent",
       requestKind: "test",
     });
     expect(route.supportingAgents).toEqual(
@@ -125,7 +125,7 @@ describe("specos cli", () => {
     );
   });
 
-  it("routes pure architecture review previews to the DDD domain agent", async () => {
+  it("routes pure architecture review previews to the architecture agent", async () => {
     const cwd = await tempProject();
 
     const routed = await runCli(
@@ -141,7 +141,7 @@ describe("specos cli", () => {
     expect(routed.stderr).toBe("");
     const route = JSON.parse(routed.stdout.split("\n").slice(1).join("\n"));
     expect(route).toMatchObject({
-      primaryAgent: "ddd-domain-agent",
+      primaryAgent: "architecture-agent",
       requestKind: "review",
       needsDraft: false,
     });
@@ -184,8 +184,8 @@ describe("specos cli", () => {
 
     expect(init.exitCode).toBe(0);
     await expect(readFile(join(cwd, ".specos/manifest.yaml"), "utf8")).resolves.toContain("type: spec-only");
-    await expect(readFile(join(cwd, "specs/README.md"), "utf8")).resolves.toContain("current/change/archive");
-    await expect(readFile(join(cwd, "specs/current/README.md"), "utf8")).resolves.toContain("Accepted");
+    await expect(readFile(join(cwd, "specs/README.md"), "utf8")).resolves.toContain("spec layer -> task layer -> evidence layer");
+    await expect(readFile(join(cwd, "specs/current/README.md"), "utf8")).resolves.toContain("Project Memory");
     await expect(readFile(join(cwd, "specs/changes/README.md"), "utf8")).resolves.toContain("Proposed");
     await expect(readFile(join(cwd, "specs/archive/README.md"), "utf8")).resolves.toContain("Completed");
   });
@@ -332,6 +332,12 @@ describe("specos cli", () => {
     await expect(
       readFile(join(cwd, "specs", "changes", "reward-flow", "test-strategy.md"), "utf8"),
     ).resolves.toContain("independent");
+    await expect(
+      readFile(join(cwd, "specs", "changes", "reward-flow", "task-plan.md"), "utf8"),
+    ).resolves.toContain("## Task Model");
+    await expect(
+      readFile(join(cwd, "specs", "changes", "reward-flow", "workflow-state.json"), "utf8"),
+    ).resolves.toContain('"task-plan.md"');
 
     const designGate = await runCli(["review-change", "reward-flow", "--stage", "design-gate", "--decision", "approved"], {
       cwd,
@@ -472,7 +478,7 @@ describe("specos cli", () => {
     expect(promoted.stdout).toContain("SPECOS_PROMOTE_OK reward-flow");
   });
 
-  it("generates a test plan and isolated test schedule from a normalized spec", async () => {
+  it("generates a test plan and isolated test schedule from a SpecOS Contract", async () => {
     const cwd = await tempProject();
     await runCli(["init"], { cwd });
     await mkdir(join(cwd, "specs", "changes", "reward-order-create"), { recursive: true });
@@ -528,7 +534,7 @@ describe("specos cli", () => {
     expect(schedule.changeId).toBe("reward-order-create");
     expect(schedule.tracks.map((track: { id: string }) => track.id)).toEqual(["execution", "testing"]);
     expect(schedule.tasks.map((task: { agentRole: string }) => task.agentRole)).toEqual(
-      expect.arrayContaining(["execution-editor", "bruno-test-agent", "playwright-test-agent"]),
+      expect.arrayContaining(["execution-editor", "test-editor", "playwright-test-agent"]),
     );
   });
 
@@ -607,7 +613,7 @@ describe("specos cli", () => {
             {
               id: "api-tests-reward-order",
               trackId: "testing",
-              agentRole: "bruno-test-agent",
+              agentRole: "test-editor",
               type: "api-test",
               status: "ready",
               inputs: ["tests/plans/reward-order.test-plan.json"],
@@ -770,7 +776,7 @@ describe("specos cli", () => {
             {
               id: "api-tests-reward-order",
               trackId: "testing",
-              agentRole: "bruno-test-agent",
+              agentRole: "test-editor",
               type: "api-test",
               status: "ready",
               inputs: ["tests/plans/reward-order.test-plan.json"],

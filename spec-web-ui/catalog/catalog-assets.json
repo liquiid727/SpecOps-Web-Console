@@ -135,7 +135,7 @@
     "id": "rule-ci-release-gates",
     "type": "rule",
     "title": "Spec Release Gates",
-    "summary": "Release check guidance that keeps tests, contracts, and bundles aligned with the spec.",
+    "summary": "Release check guidance that keeps tests, contracts, and export bundles aligned with the SpecOS Contract.",
     "direction": "fullstack",
     "stacks": [
       "go",
@@ -162,7 +162,7 @@
     "version": "1.0.0",
     "draftHints": [
       "说明哪些测试是发布阻断项",
-      "记录本次功能对应的 spec version 或 bundle id"
+      "记录本次功能对应的 SpecOS Contract version 或 evidence id"
     ],
     "sampleOutput": "发布阻断项和人工确认节点。"
   },
@@ -295,12 +295,12 @@
   {
     "id": "template-normalized-spec",
     "type": "spec_template",
-    "title": "Normalized Spec Bundle",
-    "summary": "Formalized spec shape for accepted features and downstream automation.",
+    "title": "SpecOS Contract Template",
+    "summary": "Formalized contract shape for Change Workspaces and downstream automation.",
     "direction": "fullstack",
     "categories": ["product", "backend", "frontend", "testing"],
     "stacks": ["go", "react", "python"],
-    "tags": ["spec", "template", "bundle"],
+    "tags": ["spec", "template", "contract"],
     "appliesTo": ["backend", "frontend"],
     "dependsOn": ["template-feature-draft"],
     "conflictsWith": [],
@@ -315,13 +315,13 @@
       "把业务规则映射到规范化章节",
       "确认 Data Model、Security 和 Observability 都已覆盖"
     ],
-    "sampleOutput": "一套正式 spec、模型和变更记录模板。"
+    "sampleOutput": "一套 SpecOS Contract、模型和变更记录模板。"
   },
   {
     "id": "agent-spec-editor",
     "type": "agent_role",
     "title": "Spec Editor",
-    "summary": "Compiles draft intent into normalized spec artifacts and bundle structure.",
+    "summary": "Compiles draft intent into SpecOS Contracts and Change Workspace structure.",
     "direction": "fullstack",
     "categories": ["product", "backend", "frontend"],
     "stacks": ["go", "react", "python"],
@@ -335,7 +335,7 @@
     "draftHints": [
       "检查 Draft 中是否缺少边界、状态、权限和观测性内容"
     ],
-    "sampleOutput": "标准化 spec bundle 和待确认差异项。"
+    "sampleOutput": "SpecOS Contract 和待确认差异项。"
   },
   {
     "id": "agent-ddd-domain",
@@ -431,26 +431,6 @@
     "sampleOutput": "Bruno / 场景测试模板和覆盖建议。"
   },
   {
-    "id": "agent-bruno-test",
-    "type": "agent_role",
-    "title": "Bruno Test Agent",
-    "summary": "Generates Bruno collections and spec-aligned API scenario assertions.",
-    "direction": "backend",
-    "categories": ["testing", "backend"],
-    "stacks": ["go", "python"],
-    "tags": ["bruno", "api", "scenario"],
-    "appliesTo": ["backend"],
-    "dependsOn": ["agent-openapi", "template-normalized-spec"],
-    "conflictsWith": [],
-    "sourcePath": "ai/agents/bruno-test-agent.md",
-    "files": ["ai/agents/bruno-test-agent.md", "tests/bruno/README.md"],
-    "version": "1.0.0",
-    "draftHints": [
-      "为主流程补齐请求、响应和断言"
-    ],
-    "sampleOutput": "Bruno collection 和接口场景断言。"
-  },
-  {
     "id": "skill-tool-config-ui",
     "type": "skill",
     "title": "Tool Config UI Skill",
@@ -506,7 +486,7 @@
     "id": "skill-openapi-contract",
     "type": "skill",
     "title": "OpenAPI Contract Skill",
-    "summary": "Converts accepted specs into stable OpenAPI contracts, examples, and schema gap questions.",
+    "summary": "Converts SpecOS Contracts into stable OpenAPI contracts, examples, and schema gap questions.",
     "direction": "fullstack",
     "categories": ["backend", "frontend", "product"],
     "stacks": ["go", "react"],
@@ -632,7 +612,7 @@
     "id": "skill-spec-normalization",
     "type": "skill",
     "title": "Spec Normalization Skill",
-    "summary": "Normalizes business drafts into structured change packages and preserves promotion traceability.",
+    "summary": "Shapes business drafts into SpecOS Contracts and preserves promotion traceability.",
     "direction": "fullstack",
     "categories": ["product", "backend", "frontend"],
     "stacks": ["go", "react", "python"],
@@ -644,16 +624,16 @@
     "files": [".skills/spec-normalization/SKILL.md"],
     "version": "1.0.0",
     "draftHints": [
-      "把 draft 收敛成可审查 change 包",
+      "把 draft 收敛成可审查 SpecOS Contract",
       "记录 promotion gate 和 archive handoff 条件"
     ],
-    "sampleOutput": "结构化 change 包、追踪说明和门禁清单。"
+    "sampleOutput": "结构化 SpecOS Contract、追踪说明和门禁清单。"
   },
   {
     "id": "skill-test-plan-generation",
     "type": "skill",
     "title": "Test Plan Generation Skill",
-    "summary": "Generates normalized test plans and traceable verification assets from accepted specs.",
+    "summary": "Generates test plans and traceable verification assets from SpecOS Contracts.",
     "direction": "fullstack",
     "categories": ["testing", "frontend", "backend"],
     "stacks": ["go", "react"],
@@ -665,7 +645,7 @@
     "files": [".skills/test-plan-generation/SKILL.md"],
     "version": "1.0.0",
     "draftHints": [
-      "从 accepted spec 生成 test-plan 和验证资产",
+      "从 SpecOS Contract 生成 test-plan 和验证资产",
       "补充覆盖缺口和 release 风险说明"
     ],
     "sampleOutput": "test-plan、验证资产和覆盖缺口说明。"
@@ -716,7 +696,7 @@
     "id": "skill-ui-design-handoff",
     "type": "skill",
     "title": "UI Design Handoff Skill",
-    "summary": "Turns accepted specs, UI drafts, and Pencil prototypes into reusable screen plans with explicit state coverage.",
+    "summary": "Turns SpecOS Contracts, UI drafts, and Pencil prototypes into reusable screen plans with explicit state coverage.",
     "direction": "frontend",
     "categories": ["product", "frontend"],
     "stacks": ["react", "next"],
@@ -737,7 +717,7 @@
     "id": "skill-execution-implementation",
     "type": "skill",
     "title": "Execution Implementation Skill",
-    "summary": "Applies accepted change specs to code, scripts, configuration, migrations, and nearby unit tests with explicit validation evidence.",
+    "summary": "Applies active Change Workspaces to code, scripts, configuration, migrations, and nearby unit tests with explicit validation evidence.",
     "direction": "fullstack",
     "categories": ["backend", "frontend", "deployment"],
     "stacks": ["go", "react", "python"],
@@ -749,7 +729,7 @@
     "files": [".skills/execution-implementation/SKILL.md"],
     "version": "1.0.0",
     "draftHints": [
-      "把实现范围限定在 accepted change 上",
+      "把实现范围限定在 active Change Workspace 上",
       "记录实现耦合单测、跳过的验证和风险项"
     ],
     "sampleOutput": "实现更新、执行入口说明和验证风险摘要。"
@@ -758,7 +738,7 @@
     "id": "skill-unit-test-coverage",
     "type": "skill",
     "title": "Unit Test Coverage Skill",
-    "summary": "Plans and reviews module-level unit-test coverage tied to accepted specs and changed implementation.",
+    "summary": "Plans and reviews module-level unit-test coverage tied to SpecOS Contracts and changed implementation.",
     "direction": "fullstack",
     "categories": ["testing", "backend", "frontend"],
     "stacks": ["go", "react", "python"],
@@ -770,7 +750,7 @@
     "files": [".skills/unit-test-coverage/SKILL.md"],
     "version": "1.0.0",
     "draftHints": [
-      "把 accepted spec 规则映射到模块级断言",
+      "把 SpecOS Contract 规则映射到模块级断言",
       "标记薄弱覆盖区和未达阈值模块"
     ],
     "sampleOutput": "单测覆盖说明、模块风险和阈值缺口。"
@@ -842,7 +822,7 @@
     "id": "skill-ci-release-integration",
     "type": "skill",
     "title": "CI Release Integration Skill",
-    "summary": "Connects spec validation, test execution, bundle checks, and approval gates into traceable release pipelines.",
+    "summary": "Connects SpecOS Contract validation, test execution, bundle checks, and approval gates into traceable release pipelines.",
     "direction": "fullstack",
     "categories": ["operations", "deployment", "testing"],
     "stacks": ["go", "react", "python"],
@@ -854,7 +834,7 @@
     "files": [".skills/ci-release-integration/SKILL.md"],
     "version": "1.0.0",
     "draftHints": [
-      "记录阻断项、spec version 或 bundle id、人工审批点",
+      "记录阻断项、SpecOS Contract version、evidence id、人工审批点",
       "把测试执行和 bundle 校验接到统一发布门禁里"
     ],
     "sampleOutput": "CI 门禁矩阵、人工审批说明和发布校验摘要。"
@@ -883,7 +863,7 @@
     "id": "agent-openapi",
     "type": "agent_role",
     "title": "OpenAPI Agent",
-    "summary": "Transforms accepted spec decisions into stable API contracts and examples.",
+    "summary": "Transforms SpecOS Contract decisions into stable API contracts and examples.",
     "direction": "fullstack",
     "categories": ["backend", "frontend", "product"],
     "stacks": ["go", "react"],

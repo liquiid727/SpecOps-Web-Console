@@ -23,14 +23,15 @@ describe("artifact validation", () => {
 
     expect(route).toMatchObject({
       requestKind: "test",
-      primaryAgent: "test-editor",
+      primaryAgent: "testing-agent",
       needsChangePackage: true,
     });
     expect(route.workTypes).toEqual(expect.arrayContaining(["frontend", "tests", "ci"]));
     expect(route.supportingAgents).toEqual(
       expect.arrayContaining([
         "ui-design-agent",
-        "bruno-test-agent",
+        "test-editor",
+        "test-editor",
         "playwright-test-agent",
         "performance-test-agent",
         "concurrency-test-agent",
@@ -44,26 +45,26 @@ describe("artifact validation", () => {
     expect(route.skills).toContain(".codex/skills/specos-ui-design/SKILL.md");
   });
 
-  it("routes QA acceptance requests to the QA agent", () => {
+  it("routes QA acceptance requests to the testing agent", () => {
     const route = buildRequestRoute("请 QA agent 做最终质量验收，汇总 gate report 和 review findings");
 
     expect(route).toMatchObject({
       requestKind: "acceptance",
-      primaryAgent: "qa-agent",
+      primaryAgent: "testing-agent",
       needsChangePackage: true,
     });
     expect(route.workTypes).toEqual(expect.arrayContaining(["tests", "ci", "orchestration"]));
     expect(route.supportingAgents).toEqual(expect.arrayContaining(["test-editor", "ci-editor", "reviewer"]));
   });
 
-  it("routes architecture orchestration requests to the DDD domain agent with bounded supporting agents", () => {
+  it("routes architecture orchestration requests to the architecture agent with bounded supporting agents", () => {
     const route = buildRequestRoute(
       "让架构 agent 评估订单 API、数据库迁移、性能和并发风险，并输出子 agent 分工",
     );
 
     expect(route).toMatchObject({
       requestKind: "test",
-      primaryAgent: "ddd-domain-agent",
+      primaryAgent: "architecture-agent",
     });
     expect(route.workTypes).toEqual(expect.arrayContaining(["architecture", "backend", "tests", "orchestration"]));
     expect(route.supportingAgents).toEqual(
@@ -79,12 +80,12 @@ describe("artifact validation", () => {
     expect(route.rules).toEqual(expect.arrayContaining(["ai/workflows/nested-agent-orchestration.md"]));
   });
 
-  it("routes pure architecture reviews to the DDD domain agent before spec intake", () => {
+  it("routes pure architecture reviews to the architecture agent before spec intake", () => {
     const route = buildRequestRoute("请评估这个领域边界和跨服务架构风险");
 
     expect(route).toMatchObject({
       requestKind: "review",
-      primaryAgent: "ddd-domain-agent",
+      primaryAgent: "architecture-agent",
       needsDraft: false,
     });
     expect(route.workTypes).toEqual(expect.arrayContaining(["architecture"]));
@@ -96,7 +97,7 @@ describe("artifact validation", () => {
 
     expect(route).toMatchObject({
       requestKind: "raw-requirement",
-      primaryAgent: "spec-editor",
+      primaryAgent: "architecture-agent",
       needsDraft: true,
       needsChangePackage: true,
     });
@@ -293,7 +294,7 @@ describe("artifact validation", () => {
         expect.objectContaining({
           id: "std.p0.api.contract",
           layer: "api",
-          ownerAgent: "bruno-test-agent",
+          ownerAgent: "test-editor",
           requiredFor: ["P0", "P1"],
           requiredEvidence: ["trace"],
           gateImpact: "blocking",
@@ -448,7 +449,7 @@ describe("artifact validation", () => {
     });
     expect(schedule.tasks.map((task) => task.agentRole)).toEqual([
       "execution-editor",
-      "bruno-test-agent",
+      "test-editor",
       "playwright-test-agent",
     ]);
     expect(schedule.tasks.find((task) => task.id === "implement-reward-order")?.outputs).toEqual([
@@ -499,7 +500,7 @@ describe("artifact validation", () => {
         {
           id: "api-tests",
           trackId: "testing",
-          agentRole: "bruno-test-agent",
+          agentRole: "test-editor",
           type: "api-test",
           status: "ready",
           inputs: ["tests/plans/reward-order.test-plan.json"],
@@ -1007,7 +1008,7 @@ describe("artifact validation", () => {
     expect(report.riskSummary.P0.blocked).toBeGreaterThan(0);
     expect(report.agentEvidenceSummary).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ ownerAgent: "bruno-test-agent", passed: 1 }),
+        expect.objectContaining({ ownerAgent: "test-editor", passed: 1 }),
         expect.objectContaining({ ownerAgent: "concurrency-test-agent", failed: 1 }),
       ]),
     );

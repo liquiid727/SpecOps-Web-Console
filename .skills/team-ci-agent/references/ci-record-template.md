@@ -4,6 +4,9 @@
 ## CI Record
 intent_class: change | review | analysis | release
 change_validation_status: pass | fail | partial | not_applicable
+sync_handoff_status: pass | fail | partial | not_applicable
+sync_handoff_evidence:
+  - <Sync Handoff path/summary, waiver reason, or not_applicable reason>
 executed_checks:
   - <command + result, write none if empty>
 skipped_checks:

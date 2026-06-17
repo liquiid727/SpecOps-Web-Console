@@ -2,7 +2,7 @@
 
 ## Status
 
-This file records accepted project-level facts for SpecOS. Agents may use it as baseline context together with active change packages under `specs/changes/`.
+This file records accepted project-level facts for SpecOS. Agents may use it as Project Memory together with active Change Workspaces under `specs/changes/`.
 
 ## Product Intent
 
@@ -13,8 +13,9 @@ The system should help teams move work through this chain:
 ```text
 raw requirement
 -> spec-draft/
--> specs/changes/<change-id>/
--> development, tests, review, and reports
+-> specs/changes/<change-id>/spec.md
+-> task-plan.md + execution-plan.md + tests/schedules/
+-> implementation, tests, review, and gate evidence
 -> specs/current/
 -> specs/archive/<change-id>/
 ```
@@ -22,8 +23,8 @@ raw requirement
 ## Core Principles
 
 - Specs are the coordination protocol across agents, code, tests, and delivery artifacts.
-- `specs/current/` is the accepted system baseline, not the first write target for new requirements.
-- `specs/changes/<change-id>/` is the working area for proposed or in-progress changes.
+- `specs/current/` is Project Memory, not the first write target for new requirements.
+- `specs/changes/<change-id>/` is the Change Workspace for proposed or in-progress work.
 - Human-authored drafts, review notes, reports, and task files must not be overwritten without explicit approval.
 - Every meaningful output should cite the spec, draft, rule, or workflow it uses.
 
@@ -41,8 +42,8 @@ Agents should load context in this order unless a role-specific manifest narrows
 1. Repository README.
 2. `.rules/` and `rules/`.
 3. `spec-draft/`.
-4. `specs/current/`.
-5. `specs/changes/`.
+4. `specs/current/` Project Memory.
+5. `specs/changes/` Change Workspaces.
 6. `tests/`.
 7. `ai/agents/` and `.agents/`.
 

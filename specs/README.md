@@ -1,23 +1,38 @@
-# Specs
+# SpecOS Knowledge Spine
 
-SpecOS keeps formal spec work under `specs/`.
+SpecOS keeps project memory, active work, and delivery evidence under `specs/`.
 
-The structure follows an OpenSpec-inspired current/change/archive model, but it remains SpecOS-owned:
+The directory names stay simple for tooling, but their product meaning is SpecOS-specific:
 
-- `current/`: accepted and active system facts. Agents should treat this as the baseline source of truth, not as the first write target for new requirements.
-- `changes/`: proposed or in-progress business changes. Each change should live in its own folder until accepted, and active development should use it together with `current/`.
-- `archive/`: completed changes after their accepted content has been merged into `current/`.
-- `_rules/`: spec governance and normalization rules.
-- `_template/`: reusable spec bundle templates.
+- `current/` is **Project Memory**: accepted system facts, vocabulary, architecture context, and domain language.
+- `changes/` is the **Change Workspace**: proposed deltas, contracts, task plans, review gates, and evidence while work is active.
+- `archive/` is the **Evidence Archive**: completed change history after accepted facts have updated Project Memory.
+- `_rules/` holds contract-writing governance and normalization rules.
+- `_template/` holds reusable SpecOS contract and task templates.
 
 Recommended lifecycle:
 
 ```text
 spec-draft/
-  -> specs/changes/<change-id>/
-  -> develop / test / review against specs/current/ + specs/changes/<change-id>/
-  -> promote accepted content into specs/current/
-  -> archive completed change in specs/archive/<change-id>/
+  -> specs/changes/<change-id>/spec.md
+  -> task-plan.md + execution-plan.md + tests/schedules/
+  -> implementation / tests / review / gate evidence
+  -> accepted facts update specs/current/
+  -> completed history moves to specs/archive/<change-id>/
 ```
 
-Spec bundles should keep both human-readable Markdown and machine-readable YAML when applicable. Agents working on active changes must read YAML and Markdown from both `specs/current/` and the relevant `specs/changes/<change-id>/`. Agents should write to `specs/current/` only as a final promotion step after the change has implementation, test, review, and acceptance evidence.
+SpecOS contracts should keep both human-readable Markdown and machine-readable YAML when applicable. Agents working on active changes must read both Project Memory and the relevant Change Workspace. Agents should write to `specs/current/` only as a final promotion step after the change has implementation, test, review, and acceptance evidence.
+
+## Data Flow Layers
+
+SpecOS keeps project knowledge maintainable by separating three layers:
+
+```text
+spec layer -> task layer -> evidence layer
+```
+
+- **Spec layer** records durable project memory and proposed deltas: `spec-draft/`, `specs/current/`, `specs/changes/<change-id>/spec.md`, rules, contracts, open questions, and accepted vocabulary.
+- **Task layer** turns the spec into assigned work: `task-plan.md`, `execution-plan.md`, generated `tests/schedules/*.test-schedule.json`, owner agents, inputs, outputs, dependencies, and acceptance evidence.
+- **Evidence layer** records what actually happened: implementation reports, normalized test results, gate reports, review reports, changelogs, promotion notes, and archived change workspaces.
+
+New requirements should not jump directly from spec text to implementation. They should pass through a task layer so each agent has explicit ownership, traceable inputs, and required evidence.
