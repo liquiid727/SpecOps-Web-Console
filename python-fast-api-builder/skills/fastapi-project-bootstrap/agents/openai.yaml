@@ -1,0 +1,4 @@
+interface:
+  display_name: "FastAPI Project Bootstrap"
+  short_description: "Bootstrap FastAPI services with a production base"
+  default_prompt: "Use $fastapi-project-bootstrap to scaffold a production-ready FastAPI service."

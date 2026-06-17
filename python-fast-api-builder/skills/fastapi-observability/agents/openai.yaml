@@ -1,0 +1,4 @@
+interface:
+  display_name: "FastAPI Observability"
+  short_description: "Design FastAPI logging, tracing, and metrics"
+  default_prompt: "Use $fastapi-observability to design structured logging, tracing, and metrics for a FastAPI service."
