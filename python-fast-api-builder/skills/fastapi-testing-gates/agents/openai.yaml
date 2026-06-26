@@ -1,0 +1,4 @@
+interface:
+  display_name: "FastAPI Testing Gates"
+  short_description: "Define FastAPI test layers and quality gates"
+  default_prompt: "Use $fastapi-testing-gates to define unit, integration, and e2e gates for a FastAPI project."

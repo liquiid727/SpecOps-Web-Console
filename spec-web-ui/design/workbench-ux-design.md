@@ -8,7 +8,7 @@
 - UI role: [.agents/roles/ui-design-agent.md](../../.agents/roles/ui-design-agent.md)
 - Requirement flow draft: [spec-draft/requirement-intake-flow.md](../../spec-draft/requirement-intake-flow.md)
 
-This document is the working UX reference for `spec-web-ui`. It is draft-only until a normalized spec bundle accepts it.
+This document is the working UX reference for `spec-web-ui`. It is draft-only until a SpecOS Contract accepts it.
 
 ## Product Positioning
 

@@ -6,12 +6,13 @@ Implement the first slice of the spec-change agent workflow:
 
 - Core test schedule model and validation.
 - Deterministic test schedule generation from a normalized test plan.
-- CLI command that reads a normalized spec and writes both test-plan and test-schedule artifacts.
+- CLI command that reads a SpecOS Contract and writes both test-plan and test-schedule artifacts.
+- CLI change creation that writes `task-plan.md` as the human-readable task layer.
 - Documentation for the active change lifecycle and agent isolation rules.
 
 ## Commands
 
-Generate artifacts from a normalized spec file:
+Generate artifacts from a SpecOS Contract file:
 
 ```bash
 node packages/cli/dist/main.js generate-test-plan specs/changes/<change-id>/spec.json --change <change-id>
@@ -27,8 +28,9 @@ node packages/cli/dist/main.js generate-test-plan specs/changes/<change-id>/spec
 
 - `tests/plans/<spec-id>.test-plan.json`
 - `tests/schedules/<spec-id>.test-schedule.json`
+- `specs/changes/<change-id>/task-plan.md`
 
-The schedule must include separate `execution` and `testing` tracks. Execution tasks can write implementation-coupled unit tests such as `tests/unit/<spec-id>/`. Execution tasks cannot write independent verification directories such as `tests/bruno/`, `tests/scenarios/`, `tests/e2e/`, `tests/playwright/`, or `tests/results/`. Testing tasks cannot write implementation source or unit-test paths.
+The human-readable task plan must name owner agents, inputs, outputs, dependencies, statuses, and required evidence. The schedule must include separate `execution` and `testing` tracks. Execution tasks can write implementation-coupled unit tests such as `tests/unit/<spec-id>/`. Execution tasks cannot write independent verification directories such as `tests/bruno/`, `tests/scenarios/`, `tests/e2e/`, `tests/playwright/`, or `tests/results/`. Testing tasks cannot write implementation source or unit-test paths.
 
 ## API Test Execution
 

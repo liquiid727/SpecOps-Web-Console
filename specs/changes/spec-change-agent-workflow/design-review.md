@@ -7,7 +7,7 @@ The workflow keeps user-facing scenario language stable from draft to test repor
 ## Required States
 
 - Draft refined: requirement has structured intent and open questions.
-- Change created: active change package exists and references current baseline.
+- Change created: active Change Workspace exists and references Project Memory baseline.
 - Architecture/design reviewed: implementation and test tracks can start.
 - Execution ready: execution agent has implementation context only.
 - Test ready: test agent has spec, API contract, and scenario context only.

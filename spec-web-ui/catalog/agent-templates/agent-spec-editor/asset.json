@@ -2,7 +2,7 @@
   "id": "agent-spec-editor",
   "type": "agent_role",
   "title": "Spec Editor",
-  "summary": "Compiles draft intent into normalized spec artifacts and bundle structure.",
+  "summary": "Compiles draft intent into SpecOS Contracts and Change Workspace structure.",
   "direction": "fullstack",
   "stacks": [
     "go",
@@ -30,7 +30,7 @@
   "draftHints": [
     "检查 Draft 中是否缺少边界、状态、权限和观测性内容"
   ],
-  "sampleOutput": "标准化 spec bundle 和待确认差异项。",
+  "sampleOutput": "SpecOS Contract 和待确认差异项。",
   "contentFiles": {
     "ai/agents/spec-editor.md": "spec-web-ui/catalog/agent-templates/agent-spec-editor/spec-editor.md"
   }

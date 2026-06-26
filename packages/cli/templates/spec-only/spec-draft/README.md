@@ -1,3 +1,3 @@
 # Spec Draft
 
-Draft feature intent here before normalizing it into an accepted spec bundle.
+Draft feature intent here before shaping it into a SpecOS Contract inside a Change Workspace.

@@ -2,7 +2,7 @@
 
 ## 2026-05-28
 
-- Created draft and formal change package.
+- Created draft and formal Change Workspace.
 - Added production test-plan and normalized-result fields.
 - Added gate report builder and CLI gate validation.
 - Added performance and concurrency adapter commands.

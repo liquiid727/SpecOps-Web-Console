@@ -11,20 +11,33 @@ This directory defines local agent routing, role contracts, and scoped skill loa
 - Keep role outputs aligned with canonical assets under `ai/agents/`.
 - Prefer assigning one role per bounded task.
 
-## Role Selection
+## Main Agent Selection
+
+Use main agents for phase ownership and user-facing routing:
+
+- Architecture and spec impact: `architecture-agent`
+- Implementation execution: `implementation-agent`
+- Deployment, CI, and release readiness: `deployment-agent`
+- Independent verification and acceptance: `testing-agent`
+
+Specialist agents remain registered roles, but they should normally be delegated by a main agent instead of becoming the default user-facing entrypoint:
 
 - Spec normalization: `spec-editor`
-- Product UI design: `ui-design-agent`
-- Architecture and domain boundaries: `ddd-domain-agent`
+- Domain boundaries and invariants: `ddd-domain-agent`
 - API contract generation: `openapi-agent`
 - Database and migration planning: `db-migration-agent`
-- API scenario tests: `bruno-test-agent`
-- End-to-end business journeys: `e2e-test-agent`
-- UI scenario tests: `playwright-test-agent`
-- CI and release gates: `ci-editor`
-- Final quality acceptance: `qa-agent`
-- Local scripts and workflow wiring: `execution-editor`
+- Product UI design: `ui-design-agent`
 - Test structure and coverage: `test-editor`
+- Unit coverage analysis: `unit-test-agent`
+- API scenario tests and Bruno assets: `test-editor`
+- Browser behavior and UI state verification: `playwright-test-agent`
+- End-to-end business journeys: `e2e-test-agent`
+- Performance and latency evidence: `performance-test-agent`
+- Concurrency and invariant evidence: `concurrency-test-agent`
+- CI checks and release gates: `ci-editor`
+- Local scripts and workflow wiring: `execution-editor`
+- Final quality acceptance: `qa-agent`
+- Cross-rule review: `reviewer`
 
 ## Dispatch Flow
 
@@ -44,11 +57,14 @@ The command returns `requestKind`, `workTypes`, `primaryAgent`, `supportingAgent
 
 Nested dispatch follows this contract:
 
-- The entry agent classifies the request and chooses a `primaryAgent` from `.agents/manifest.yaml`.
+- The entry agent classifies the request and chooses a main `primaryAgent` from `.agents/manifest.yaml`.
 - The primary agent receives only its declared role prompt, canonical prompt, skills, and context includes.
-- The primary agent may propose bounded supporting-agent tasks when the work crosses ownership boundaries.
+- The primary agent may propose bounded specialist-agent tasks when the work crosses ownership boundaries.
 - Supporting agents must also be registered in `.agents/manifest.yaml`; do not invent ad-hoc roles inside a task.
-- For architecture and domain-boundary work, prefer `ddd-domain-agent` as the primary role. It may ask for focused input from `openapi-agent`, `db-migration-agent`, `ui-design-agent`, `test-editor`, `performance-test-agent`, `concurrency-test-agent`, `ci-editor`, `reviewer`, or `qa-agent` when those surfaces are involved.
+- For architecture, domain-boundary, and cross-surface risk work, use `architecture-agent` as the primary role. It may ask for focused input from `spec-editor`, `ddd-domain-agent`, `openapi-agent`, `db-migration-agent`, `ui-design-agent`, `test-editor`, `performance-test-agent`, `concurrency-test-agent`, `ci-editor`, `reviewer`, or `qa-agent` when those surfaces are involved.
+- For implementation work, use `implementation-agent` as the primary role. It may delegate to existing specialists such as `ui-design-agent`, `openapi-agent`, `db-migration-agent`, `unit-test-agent`, or `specialized-check-agent`. Future frontend implementation specialists for state management, component rendering, interactions, styling, and API integration must be added to `.agents/manifest.yaml` before use.
+- For deployment and release work, use `deployment-agent` as the primary role. It may delegate to `ci-editor`, `execution-editor`, `qa-agent`, or `reviewer`.
+- For independent verification, use `testing-agent` as the primary role. `playwright-test-agent` belongs here as a browser/UI verification specialist, not under frontend implementation.
 - Runtime execution is outside this directory. Host systems may run 2 to 4 subagents in parallel, but this repository only defines the routing contract, prompt assembly, and expected outputs.
 - The final output should be one actionable synthesis from `pola`, not a concatenation of every subagent report.
 
@@ -65,35 +81,22 @@ A useful subagent task should state:
 flowchart TD
   A["User request / business context"] --> B["Default entry agent"]
   B --> C["Read context in order: readme, rules, spec-draft, specs, tests, agents"]
-  C --> D{"Work type?"}
+  C --> D{"Main track?"}
 
-  D -->|Draft or spec normalization| E["spec-editor"]
-  D -->|Domain boundary or invariant| F["ddd-domain-agent"]
-  D -->|API contract| G["openapi-agent"]
-  D -->|DB migration planning| H["db-migration-agent"]
-  D -->|UI design / handoff| I["ui-design-agent"]
-  D -->|Test planning| J["test-editor"]
-  D -->|API scenario tests| K["bruno-test-agent"]
-  D -->|Business E2E journey| L["e2e-test-agent"]
-  D -->|UI browser coverage| M["playwright-test-agent"]
-  D -->|CI / release gates| N["ci-editor"]
-  D -->|Workflow scripts| O["execution-editor"]
-  D -->|QA acceptance| P["qa-agent"]
-  D -->|Review / risk check| AA["reviewer"]
+  D -->|Architecture / spec impact| E["architecture-agent"]
+  D -->|Implementation| F["implementation-agent"]
+  D -->|Deployment / release| G["deployment-agent"]
+  D -->|Testing / acceptance| H["testing-agent"]
 
-  E --> Q{"Output target"}
-  F --> Q
-  G --> Q
-  H --> Q
-  I --> Q
-  J --> Q
-  K --> Q
-  L --> Q
-  M --> Q
-  N --> Q
-  O --> Q
-  P --> Q
-  AA --> Q
+  E --> E1["spec-editor / ddd-domain-agent / openapi-agent / db-migration-agent / reviewer"]
+  F --> F1["ui-design-agent / openapi-agent / db-migration-agent / unit-test-agent / specialized-check-agent"]
+  G --> G1["ci-editor / execution-editor / qa-agent / reviewer"]
+  H --> H1["test-editor / unit-test-agent / playwright-test-agent / e2e-test-agent / performance-test-agent / concurrency-test-agent / qa-agent"]
+
+  E1 --> Q{"Output target"}
+  F1 --> Q
+  G1 --> Q
+  H1 --> Q
 
   Q -->|Proposed change| R["specs/changes/<change-id>"]
   Q -->|Accepted source of truth| S["specs/current/"]
@@ -113,10 +116,10 @@ flowchart TD
 flowchart TD
   A["User request"] --> B["pola coordinator"]
   B --> C["route-request / classify-request preview"]
-  C --> D["Primary agent from manifest"]
+  C --> D["Main primary agent from manifest"]
   D --> E{"Need bounded support?"}
   E -->|No| F["Primary role output"]
-  E -->|Yes| G["2-4 supporting agents from manifest"]
+  E -->|Yes| G["2-4 specialist agents from manifest"]
   G --> H["Short scoped findings"]
   F --> I["pola synthesis"]
   H --> I
@@ -157,3 +160,5 @@ Role prompts should reference these files through `.agents/manifest.yaml` `conte
 - Every role must cite the current spec, proposed change, draft, rule, or workflow it is using.
 - Every output must include open questions when information is missing.
 - Role work should be narrow, reviewable, and safe to compose with other agents.
+- Semantic changes that affect specs, rules, agents, skills, workflows, tests, checks, or release evidence must include a `Sync Handoff` following `ai/workflows/sync-handoff-gateway.md` before CI, PR, release, or promotion claims.
+- `pola` owns the final sync judgment and should reject false-positive neighbor updates instead of forwarding every local subagent concern.

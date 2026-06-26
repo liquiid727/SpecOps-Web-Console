@@ -58,7 +58,7 @@ function findStageNameForEndpoint(plan, endpointTarget) {
 
 function productionFields(testType, passed, gateImpact) {
   const ownerByType = {
-    api: "bruno-test-agent",
+    api: "test-editor",
     scenario: "playwright-test-agent",
     performance: "performance-test-agent",
     concurrency: "concurrency-test-agent",

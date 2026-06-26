@@ -2,12 +2,12 @@
 
 Generated `test-schedule` artifacts live here.
 
-Schedules split one active spec change into isolated work tracks:
+Schedules are machine-readable task-layer artifacts. They split one active spec change into isolated work tracks:
 
 - `execution`: implementation work plus implementation-coupled unit tests.
 - `testing`: spec-and-contract-only API, E2E, UI, and business scenario verification.
 
-The schedule is generated from a normalized spec through:
+The schedule is generated from a SpecOS Contract through:
 
 ```bash
 node packages/cli/dist/main.js generate-test-plan specs/changes/<change-id>/spec.json --change <change-id>

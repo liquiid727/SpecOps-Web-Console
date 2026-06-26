@@ -40,11 +40,136 @@ calling_convention:
     - Do not preload repository or external skills unless they are declared on the selected role.
     - Prefer switching agents or splitting tasks over broadening one agent's skill set.
     - Roles with empty skills run as role-and-rules-only agents.
-    - Do not invent ad-hoc roles; primary and supporting agents must be registered in this manifest.
+    - Do not invent ad-hoc roles; main primary and specialist agents must be registered in this manifest.
     - Treat route-request and classify-request as routing previews, not agent execution.
     - For nested host-side dispatch, use pola as coordinator and follow ai/workflows/nested-agent-orchestration.md.
 
 roles:
+  architecture-agent:
+    role_prompt: roles/architecture-agent.md
+    canonical: ai/agents/architecture-agent.md
+    skill_mode: scoped_only
+    skills: []
+    delegates_to:
+      - spec-editor
+      - ddd-domain-agent
+      - openapi-agent
+      - db-migration-agent
+      - ui-design-agent
+      - test-editor
+      - performance-test-agent
+      - concurrency-test-agent
+      - reviewer
+    context_includes:
+      - .rules/project.md
+      - specs/current/project-context.md
+      - specs/current/architecture-context.md
+      - specs/current/domain-context.md
+      - ai/workflows/nested-agent-orchestration.md
+      - spec-draft/
+      - specs/current/
+      - specs/changes/
+    owns:
+      - architecture decision synthesis
+      - cross-surface impact boundaries
+      - main-agent delegation plan
+    outputs:
+      - architecture recommendation
+      - delegated specialist task list
+      - assumptions and unresolved questions
+
+  implementation-agent:
+    role_prompt: roles/implementation-agent.md
+    canonical: ai/agents/implementation-agent.md
+    skill_mode: scoped_only
+    skills: []
+    delegates_to:
+      - ui-design-agent
+      - openapi-agent
+      - db-migration-agent
+      - unit-test-agent
+      - specialized-check-agent
+    context_includes:
+      - .rules/project.md
+      - rules/frontend/react-workbench-delivery.md
+      - rules/backend/go-backend-governance.md
+      - rules/shared/error-code-governance.md
+      - specs/current/
+      - specs/changes/
+    owns:
+      - implementation execution plan
+      - frontend and backend implementation handoff
+      - implementation-coupled unit coverage
+    outputs:
+      - focused implementation plan
+      - changed surface summary
+      - validation notes
+
+  deployment-agent:
+    role_prompt: roles/deployment-agent.md
+    canonical: ai/agents/deployment-agent.md
+    skill_mode: scoped_only
+    skills:
+      - name: team-ci-agent
+        path: .skills/team-ci-agent/SKILL.md
+        required: false
+        purpose: Git action readiness, staged scope validation, commit/PR/merge gates, and CI Record output.
+    delegates_to:
+      - ci-editor
+      - execution-editor
+      - qa-agent
+      - reviewer
+    context_includes:
+      - .rules/project.md
+      - rules/ci/spec-release-gates.md
+      - rules/testing/production-test-standards.md
+      - scripts/checks/README.md
+      - scripts/orchestration/README.md
+    owns:
+      - release and deployment readiness
+      - CI and gate execution plan
+      - delivery evidence handoff
+    outputs:
+      - release gate checklist
+      - validation command notes
+      - deployment readiness risks
+
+  testing-agent:
+    role_prompt: roles/testing-agent.md
+    canonical: ai/agents/testing-agent.md
+    skill_mode: scoped_only
+    skills: []
+    delegates_to:
+      - test-editor
+      - unit-test-agent
+      - playwright-test-agent
+      - e2e-test-agent
+      - performance-test-agent
+      - concurrency-test-agent
+      - specialized-check-agent
+      - qa-agent
+    context_includes:
+      - .rules/project.md
+      - rules/testing/production-test-standards.md
+      - rules/ci/spec-release-gates.md
+      - tests/README.md
+      - tests/plans/
+      - tests/scenarios/
+      - tests/bruno/
+      - tests/performance/
+      - tests/concurrency/
+      - tests/results/
+      - specs/current/
+      - specs/changes/
+    owns:
+      - independent verification strategy
+      - test evidence orchestration
+      - QA acceptance handoff
+    outputs:
+      - test strategy and owner map
+      - evidence gap summary
+      - acceptance readiness recommendation
+
   spec-editor:
     role_prompt: roles/spec-editor.md
     canonical: ai/agents/spec-editor.md
@@ -62,7 +187,7 @@ roles:
       - specs/current/
       - specs/changes/
     outputs:
-      - normalized spec bundle
+      - SpecOS Contract
       - assumptions and unresolved questions
 
   ui-design-agent:
@@ -149,24 +274,6 @@ roles:
     outputs:
       - migration checklist
       - compatibility risks
-
-  bruno-test-agent:
-    role_prompt: roles/bruno-test-agent.md
-    canonical: ai/agents/bruno-test-agent.md
-    skill_mode: scoped_only
-    skills: []
-    context_includes:
-      - .rules/project.md
-      - rules/shared/error-code-governance.md
-      - tests/README.md
-      - tests/bruno/
-      - specs/current/
-    owns:
-      - tests/bruno/
-      - API scenario assertions
-    outputs:
-      - Bruno collections
-      - environment notes
 
   e2e-test-agent:
     role_prompt: roles/e2e-test-agent.md

@@ -9,7 +9,7 @@ Support UI-first features that begin in Pencil and later feed the spec, API, and
 - Reference the prototype frame or screen group that anchors the feature.
 - Keep UI specs aligned with the same flow names used in the draft.
 - Attach component states that matter to downstream frontend implementation.
-- Preserve the handoff between Pencil prototype decisions and the formal spec bundle.
+- Preserve the handoff between Pencil prototype decisions and the formal SpecOS Contract.
 
 ## Draft Injection Hints
 

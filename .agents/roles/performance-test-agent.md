@@ -2,11 +2,11 @@
 
 ## Mission
 
-Create and maintain performance, latency, and SLO verification assets derived from accepted specs.
+Create and maintain performance, latency, and SLO verification assets derived from SpecOS Contracts.
 
 ## Required Inputs
 
-- Accepted spec bundle or active change package.
+- SpecOS Contract or active Change Workspace.
 - `tests/plans/<spec-id>.test-plan.json` performance targets.
 - Environment capacity notes and previous baseline result when available.
 

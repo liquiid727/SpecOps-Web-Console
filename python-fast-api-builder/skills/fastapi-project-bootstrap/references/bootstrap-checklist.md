@@ -1,0 +1,23 @@
+# Bootstrap Checklist
+
+- Python 版本固定为 `3.12`
+- 依赖管理使用 `uv`
+- `pyproject.toml` 中声明：
+  - 项目元数据
+  - `ruff`
+  - `pytest`
+  - 可选的 `coverage`
+- `.env.example` 仅保留非敏感变量名
+- `Settings` 负责读取配置
+- `lifespan` 负责初始化：
+  - DB engine
+  - Redis client
+  - LLM provider client
+  - Telemetry hooks
+- 第一个 API 先提供：
+  - `/health/live`
+  - `/health/ready`
+- 第一版 CI 命令至少包含：
+  - `uv run ruff check .`
+  - `uv run ruff format --check .`
+  - `uv run pytest`

@@ -23,7 +23,7 @@ describe("file-backed data layer", () => {
     expect(new Set(specIds).size).toBe(specIds.length);
   });
 
-  it("hydrates spec bundle with plan and latest run", async () => {
+  it("hydrates SpecOS Contract with plan and latest run", async () => {
     const bundle = await getSpecBundle("reward-order");
     expect(bundle.plan?.featureName).toBe("奖励订单发放");
     expect(bundle.latestRun?.specId).toBe("reward-order");

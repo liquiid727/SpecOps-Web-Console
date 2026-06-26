@@ -2,7 +2,7 @@
   "id": "agent-unit-test",
   "type": "agent_role",
   "title": "Unit Test Agent",
-  "summary": "Maps accepted spec rules to module-level unit assertions and coverage risk notes.",
+  "summary": "Maps SpecOS Contract rules to module-level unit assertions and coverage risk notes.",
   "direction": "fullstack",
   "stacks": [
     "go",

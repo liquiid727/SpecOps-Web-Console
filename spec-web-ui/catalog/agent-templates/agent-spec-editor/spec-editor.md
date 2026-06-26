@@ -6,7 +6,7 @@ Owns normalization of business drafts into standard spec artifacts.
 
 - Refine `spec-draft/` inputs into structured change intent.
 - Read `specs/current/` before creating or updating `specs/changes/<change-id>/`.
-- Keep the active change package traceable across architecture, design, execution, testing, review, and acceptance evidence.
+- Keep the active Change Workspace traceable across architecture, design, execution, testing, review, and acceptance evidence.
 - Own changelog maintenance, promotion into `specs/current/`, and archive handoff after gates pass.
 
 ## Guardrails

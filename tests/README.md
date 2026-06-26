@@ -8,7 +8,7 @@ Spec-driven verification assets live here.
 - `tests/plans/`: spec-derived `test-plan` artifacts that define business flows, stages, endpoints, scenarios, branches, and preconditions.
 - `tests/schedules/`: generated agent routing schedules that split execution work, implementation-coupled unit tests, and independent testing work.
 - `tests/results/`: normalized `scenario-result` artifacts that the independent test console consumes.
-- `tests/bruno/`: API request collections and HTTP assertions derived from accepted specs.
+- `tests/bruno/`: API request collections and HTTP assertions derived from SpecOS Contracts.
 - `tests/scenarios/`: business-flow and E2E scenario assets.
 
 ## Result Model
@@ -31,7 +31,7 @@ Production runs must also include `standardVersion`, `qualityProfile`, item-leve
 
 ## Agent Isolation
 
-For active changes, generate `test-plan` and `test-schedule` artifacts from the normalized spec before assigning implementation and testing tasks.
+For active Change Workspaces, generate `task-plan`, `test-plan`, and `test-schedule` artifacts from the SpecOS Contract before assigning implementation and testing tasks.
 
 ```bash
 node packages/cli/dist/main.js generate-test-plan specs/changes/<change-id>/spec.json --change <change-id>

@@ -1,0 +1,4 @@
+interface:
+  display_name: "FastAPI API Governance"
+  short_description: "Standardize FastAPI API names and contracts"
+  default_prompt: "Use $fastapi-api-governance to standardize FastAPI endpoint naming, schemas, and error contracts."

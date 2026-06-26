@@ -1,10 +1,10 @@
-# Current Specs
+# Project Memory
 
-Accepted, active SpecOS spec bundles live here.
+Accepted SpecOS project memory lives here.
 
 This directory is the accepted system baseline. It represents facts that have already passed implementation, tests, review, and acceptance.
 
-Agents should not update `specs/current/` at the start of a new requirement. New work should first be captured under `spec-draft/`, then normalized into `specs/changes/<change-id>/`. During implementation and testing, agents should read `specs/current/` together with the active change package. Only after the change is accepted should its final content be promoted into `specs/current/`.
+Agents should not update Project Memory at the start of a new requirement. New work should first be captured under `spec-draft/`, then shaped in `specs/changes/<change-id>/`. During implementation and testing, agents should read Project Memory together with the active Change Workspace. Only after the change is accepted should its final content be promoted into `specs/current/`.
 
 ## Baseline Context Files
 

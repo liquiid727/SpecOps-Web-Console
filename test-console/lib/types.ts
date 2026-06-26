@@ -17,7 +17,6 @@ export type QualityProfile = "backend-api" | "frontend-ui" | "fullstack-flow" | 
 export type TestOwnerAgent =
   | "test-editor"
   | "unit-test-agent"
-  | "bruno-test-agent"
   | "playwright-test-agent"
   | "e2e-test-agent"
   | "performance-test-agent"

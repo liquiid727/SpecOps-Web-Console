@@ -2,7 +2,7 @@
   "id": "agent-implementation-editor",
   "type": "agent_role",
   "title": "Implementation Editor",
-  "summary": "Applies accepted specs to code, contracts, scripts, and close-to-code tests with narrow changes.",
+  "summary": "Applies SpecOS Contracts to code, contracts, scripts, and close-to-code tests with narrow changes.",
   "direction": "fullstack",
   "stacks": [
     "go",

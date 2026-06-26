@@ -1,3 +1,3 @@
-# Current Specs
+# Project Memory
 
-Accepted SpecOS spec bundles belong here.
+Accepted SpecOS project memory belongs here.

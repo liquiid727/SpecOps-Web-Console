@@ -13,7 +13,7 @@
       "agent-ddd-domain",
       "agent-db-migration",
       "agent-openapi",
-      "agent-bruno-test"
+      "agent-test-editor"
     ],
     "projectTypes": ["backend", "mixed"],
     "featured": true
@@ -35,7 +35,7 @@
   {
     "id": "fullstack-release-guardrails",
     "title": "Fullstack Release Guardrails",
-    "summary": "Adds release gates, architecture review, and risk review around a normalized fullstack bundle.",
+    "summary": "Adds release gates, architecture review, and risk review around a fullstack SpecOS guardrail setup.",
     "assetIds": [
       "template-normalized-spec",
       "rule-ci-release-gates",

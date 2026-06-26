@@ -102,7 +102,7 @@ function statusForItems(items: TestRun["items"]): "pass" | "warning" | "fail" | 
 }
 
 function ownerAgentForTestType(testType: TestType): TestOwnerAgent {
-  if (testType === "api" || testType === "security" || testType === "compatibility") return "bruno-test-agent";
+  if (testType === "api" || testType === "security" || testType === "compatibility") return "test-editor";
   if (testType === "scenario") return "playwright-test-agent";
   if (testType === "unit") return "unit-test-agent";
   if (testType === "performance" || testType === "latency") return "performance-test-agent";
