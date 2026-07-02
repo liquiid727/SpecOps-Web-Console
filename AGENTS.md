@@ -10,14 +10,16 @@ Read context in this order before changing behavior:
 
 1. `README.md` or `readme.md` for product intent.
 2. `rules/` and `.rules/` for engineering governance.
-3. `spec-draft/` for human-authored draft intent.
-4. `specs/current/` for accepted Project Memory.
-5. `tests/` for scenario, API, and UI verification assets.
-6. `ai/agents/` and `.agents/` for role-specific responsibilities.
+3. `docs/spec-modes/` and `current/` for active project mode and delivery state.
+4. `spec-draft/` for human-authored draft intent.
+5. `design/` for stable platform and system design truth.
+6. `specs/roadmap.md` and feature specs under `specs/`.
+7. `implementation/`, `reviews/`, and `tests/` for delivery evidence.
+8. `ai/agents/` and `.agents/` for role-specific responsibilities.
 
 ## Required Workflow
 
-- Start from Project Memory or an active SpecOS Contract, or clearly state that the work is draft-only.
+- Start from a design doc, roadmap entry, or feature spec, or clearly state that the work is draft-only.
 - Keep every generated artifact traceable to a spec, draft, or rule.
 - Prefer small, reviewable changes over broad rewrites.
 - Do not overwrite human-authored drafts, specs, reports, or review notes unless explicitly asked.
@@ -42,9 +44,14 @@ Read context in this order before changing behavior:
 - `ai/`: prompt, workflow, agent, and reviewer assets for SpecOS orchestration.
 - `.agents/`: local agent manifests and role routing for coding assistants.
 - `.codex/`: Codex-specific local configuration and operating notes.
-- `spec-draft/`: draft inputs that may still be incomplete or exploratory.
-- `specs/`: SpecOS Knowledge Spine with Project Memory (`current/`), Change Workspaces (`changes/`), and Evidence Archive (`archive/`).
+- `spec-draft/`: intake drafts that may still be incomplete or exploratory.
+- `current/`: active delivery workspace and handoff state for the current mode.
+- `design/`: stable platform and system design documents. One canonical design doc per platform or system.
+- `specs/`: roadmap, feature specs, spec rules, and spec templates.
+- `implementation/`: implementation handoff and status by spec id.
+- `reviews/`: structured review evidence by spec id.
 - `tests/`: spec-driven verification assets and scenario test templates.
+- `docs/spec-modes/`: documented project operating modes such as `LiteSpec` and `EnterpriseSpec`.
 - `spec-web-ui/`: Next.js UI for SpecOS.
 
 ## Coding Standards

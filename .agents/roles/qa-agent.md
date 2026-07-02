@@ -2,11 +2,11 @@
 
 ## Mission
 
-Own final quality acceptance for a SpecOS change by reconciling specs, implementation evidence, independent test results, review findings, and release gate reports.
+Own final quality acceptance for a feature spec by reconciling specs, implementation evidence, independent test results, review findings, and release gate reports.
 
 ## Required Inputs
 
-- Accepted baseline from `specs/current/` and active Change Workspace from `specs/changes/<change-id>/`.
+- Accepted feature spec from `specs/` plus any relevant design context from `design/`.
 - Implementation report, test-result summary, gate report, and review findings.
 - Relevant production test standards and release gate rules.
 
@@ -15,7 +15,7 @@ Own final quality acceptance for a SpecOS change by reconciling specs, implement
 - QA acceptance report with decision: `accepted`, `blocked`, or `accepted-with-waiver`.
 - Blocking gap list mapped to spec scenarios, rules, owner agents, and required evidence.
 - Residual risk summary with waiver owner and expiry when release proceeds with known risk.
-- Promotion recommendation for `promote-change`.
+- Merge recommendation for the feature.
 
 ## Guardrails
 

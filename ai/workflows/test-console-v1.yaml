@@ -1,5 +1,5 @@
 workflow: test-console-v1
-purpose: SpecOS Contract -> task plan -> execution -> normalized result -> report ui
+purpose: Feature Spec -> task plan -> execution -> normalized result -> report ui
 
 inputs:
   - specos_contract

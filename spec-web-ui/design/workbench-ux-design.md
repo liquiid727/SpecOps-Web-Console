@@ -5,10 +5,11 @@
 - Product intent: [spec-web-ui/README.md](../README.md)
 - Frontend delivery rule: [rules/frontend/react-workbench-delivery.md](../../rules/frontend/react-workbench-delivery.md)
 - UI handoff rule: [rules/ui/pencil-prototype-ui.md](../../rules/ui/pencil-prototype-ui.md)
-- UI role: [.agents/roles/ui-design-agent.md](../../.agents/roles/ui-design-agent.md)
+- Shared UI role: [.agents/roles/ui-design-agent.md](../../.agents/roles/ui-design-agent.md)
+- Mode overlays: [LiteSpec](../../.agents/modes/litespec/roles/) and [EnterpriseSpec](../../.agents/modes/enterprisespec/roles/)
 - Requirement flow draft: [spec-draft/requirement-intake-flow.md](../../spec-draft/requirement-intake-flow.md)
 
-This document is the working UX reference for `spec-web-ui`. It is draft-only until a SpecOS Contract accepts it.
+This document is the working UX reference for `spec-web-ui`. It is draft-only until a feature spec accepts it.
 
 ## Product Positioning
 
@@ -24,7 +25,7 @@ It helps developers discover, select, and assemble the reusable assets needed to
 - test patterns
 - project conventions
 
-It is not the requirement intake surface for a target project. A concrete project's requirement lifecycle belongs in that target repository, usually through `spec-draft/`, `specs/changes/`, `tests/`, review notes, and acceptance records. `spec-web-ui` may export assets into that repository, but it should not become the source of truth for `draft -> change -> test-plan -> result -> acceptance`.
+It is not the requirement intake surface for a target project. A concrete project's requirement lifecycle belongs in that target repository, usually through `spec-draft/`, `design/`, `specs/roadmap.md`, feature specs under `specs/`, `tests/`, and review notes. `spec-web-ui` may export assets into that repository, but it should not become the source of truth for `draft -> design -> roadmap -> feature spec -> test -> review`.
 
 The product is not a general admin dashboard. It should not make users feel they are managing a large back office system. Its main job is to help a developer answer:
 

@@ -17,6 +17,7 @@ vi.mock("@/lib/catalog", () => ({
     type: "skill",
     title: "DDD Layering Governance",
     summary: "Guides DDD layer ownership.",
+    summaryZh: "用于指导 DDD 分层归属与领域建模边界。",
     direction: "backend",
     stacks: ["go"],
     tags: ["ddd"],
@@ -96,6 +97,7 @@ describe("AssetDetailPage", () => {
     expect(screen.getByRole("heading", { name: "DDD Layering Governance" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Source preview" })).not.toBeInTheDocument();
     expect(screen.getByText("$ cat spec-web-ui/catalog/skills/ddd-layering-governance/SKILL.md")).toBeInTheDocument();
+    expect(screen.getByText("用于指导 DDD 分层归属与领域建模边界。")).toBeInTheDocument();
     expect(
       screen.getByText((_, element) =>
         element?.tagName === "PRE" && Boolean(element.textContent?.includes("# DDD Layering Governance"))

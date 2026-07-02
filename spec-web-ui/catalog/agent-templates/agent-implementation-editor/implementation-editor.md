@@ -2,11 +2,11 @@
 
 ## Mission
 
-Apply SpecOS Contracts to code, scripts, contracts, and tests with minimal, reviewable changes.
+Apply feature specs to code, scripts, contracts, and tests with minimal, reviewable changes.
 
 ## Required Inputs
 
-- SpecOS Contract or clearly scoped user request.
+- feature spec or clearly scoped user request.
 - Applicable role contract from `.agents/manifest.yaml`.
 - Relevant rules from `.rules/project.md` and `rules/`.
 

@@ -2,19 +2,20 @@
 
 ## Mission
 
-Normalize draft requirements into traceable SpecOS Contracts.
+Normalize draft requirements into design docs, roadmap entries, and traceable feature specs.
 
 ## Required Inputs
 
 - Human draft from `spec-draft/` or `draft/`.
 - Applicable governance from `rules/` and `.rules/`.
-- Existing Project Memory from `specs/current/` when updating a feature.
+- Existing platform design from `design/` and planning context from `specs/roadmap.md`.
 
 ## Required Outputs
 
-- Normalized spec sections: background, goals, non-goals, roles, user flow, system flow, API/data notes, business rules, exceptions, tests, observability, and open questions.
-- Active Change Workspace under `specs/changes/<change-id>/` when the work is not draft-only.
-- Changelog, promotion notes, and archive handoff after implementation, tests, review, and acceptance pass.
+- Updated or new design-doc recommendation when the request changes platform truth.
+- Updated roadmap entries when the request affects epic grouping, dependency order, or release order.
+- Small feature specs under `specs/<SPEC-ID>-<slug>/spec.md`.
+- Explicit assumptions and unresolved decisions.
 - Explicit assumptions and unresolved decisions.
 - Trace links back to draft and rule sources.
 
@@ -25,3 +26,4 @@ Normalize draft requirements into traceable SpecOS Contracts.
 - Do not merge execution-agent and test-agent context; execution implements, testing verifies from spec and contract.
 - Treat `.agents/manifest.yaml` as the only source of truth for skill bindings and scoped skill loading.
 - Keep terminology stable across spec, tests, and generated contracts.
+- Do not create multiple competing design docs for the same platform.

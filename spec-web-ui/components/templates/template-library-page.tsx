@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
 
+import { CatalogAssetSummary } from "@/components/catalog/asset-summary";
 import { WindowSection } from "@/components/ui/window-section";
 import { filterCatalogAssets, loadCatalogAssets } from "@/lib/catalog";
 import { buildShellCommandTitle } from "@/lib/shell";
@@ -62,7 +63,13 @@ function TemplateCard({ asset }: { asset: CatalogAsset }) {
         ))}
       </div>
       <h3 className="mt-3 text-base font-semibold text-ink">{asset.title}</h3>
-      <p className="mt-2 text-sm leading-6 text-slate-400">{asset.summary}</p>
+      <div className="mt-2">
+        <CatalogAssetSummary
+          asset={asset}
+          englishClassName="text-sm leading-6 text-slate-400"
+          chineseClassName="text-sm leading-6 text-slate-300"
+        />
+      </div>
       <div className="mt-3 flex flex-wrap gap-1.5">
         {categories.slice(0, 3).map((category) => (
           <span key={category} className="rounded-md border border-line px-2 py-0.5 font-mono text-[10px] text-slate-500">

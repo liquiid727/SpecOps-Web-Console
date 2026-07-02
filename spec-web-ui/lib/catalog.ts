@@ -69,6 +69,7 @@ export function filterCatalogAssets(assets: CatalogAsset[], filters: CatalogFilt
       const haystacks = [
         asset.title,
         asset.summary,
+        asset.summaryZh ?? "",
         asset.id,
         asset.sourcePath,
         ...asset.tags,

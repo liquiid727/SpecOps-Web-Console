@@ -12,8 +12,8 @@ export default async function HomePage() {
   const copy = getLocaleCopy(locale).home;
 
   return (
-    <div>
-      <section className="mx-auto max-w-5xl">
+    <div className="space-y-6 md:space-y-8">
+      <section>
         <WindowSection
           eyebrow={buildShellCommandTitle("cat", "README.md")}
           title={copy.heroTitle}

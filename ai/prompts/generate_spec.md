@@ -1,3 +1,3 @@
 # Generate Spec
 
-Prompt template placeholder for turning draft business intent into a SpecOS Contract.
+Prompt template placeholder for turning draft business intent into a feature spec.

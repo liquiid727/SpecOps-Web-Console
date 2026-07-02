@@ -19,12 +19,25 @@ Let a new project reuse the SpecOS agent system without turning `AGENTS.md` into
 ## Dispatch Contract
 
 1. Run or mentally apply `route-request --request "<text>"`.
-2. Load only the selected main primary role's manifest metadata, role prompt, canonical prompt, declared skills, and context includes.
-3. If the main primary role needs help, create 2 to 4 specialist tasks with strict boundaries.
-4. Each specialist task must name the manifest role, source spec or rule, inspectable surfaces, exact question, expected short output, and non-goals.
-5. Specialist agents return concise findings with preconditions, root cause or design risk, and recommended action.
-6. `pola` filters duplicated or local-only findings, identifies false positives, and emits one consolidated recommendation.
-7. If the task makes a semantic change, `pola` applies `sync-handoff-gateway.md` before CI, PR, release, or promotion claims and records which neighboring assets were updated or waived.
+2. Resolve `projectMode` from `.specos/manifest.yaml`, then load `.agents/modes/<projectMode>/manifest.overlay.yaml`.
+3. Load only the selected main primary role's manifest metadata, shared prompt pair, mode overlay prompt pair when present, declared skills, and context includes.
+4. If the main primary role needs help, create 2 to 4 specialist tasks with strict boundaries. `buildSpecialistDispatchPlan(...)` is the reusable host-side helper for this compression step.
+5. Each specialist task must name the manifest role, source spec or rule, inspectable surfaces, exact question, expected short output, and non-goals.
+6. Specialist agents return concise findings with preconditions, root cause or design risk, and recommended action.
+7. `pola` filters duplicated or local-only findings, identifies false positives, and emits one consolidated recommendation.
+8. If the task makes a semantic change, `pola` applies `sync-handoff-gateway.md` before CI, PR, release, or promotion claims and records which neighboring assets were updated or waived.
+
+When a host persists `route-request` output, it should validate that payload before agent startup. Use `validateRouteRequestOutput(...)` directly in-process, or call `validate-route-output --file <path> --format <full|dispatch-json|primary-json|execution-plan-json>` for a deterministic CLI check that matches the same core schema rules.
+
+When a host wants the preview object, it should prefer `buildValidatedRouteRequestOutput(...)` so the route projection is built and checked through the same path as the CLI. That helper now supports `full`, `dispatch-json`, `primary-json`, and `execution-plan-json`. When a host wants the runtime object instead of the preview object, it should prefer `buildValidatedAgentExecutionPlan(...)`. That helper builds the execution plan, prompt assembly, primary envelope, and specialist envelopes, then validates the assembled object before dispatch. If the host needs a narrow schema contract for the prompt-assembly layer, use `buildHostPromptAssemblySchema(...)`. If it needs a narrow schema contract for the envelope layer, use `buildDispatchPromptEnvelopeSchema(...)`, or the role-specific aliases `buildPrimaryDispatchPromptEnvelopeSchema(...)` and `buildSpecialistDispatchPromptEnvelopeSchema(...)`. If it needs a narrow schema contract for the runtime object, use `buildExecutionPlanOutputSchema(...)`. These schema helpers all return the shared `ArtifactShapeSchema` shape, so host code can consume `artifact`, `rootType`, and field-list metadata consistently across assembly, envelope, and execution-plan artifacts. If it needs a validation helper with execution-plan naming instead of route-output naming, use `validateExecutionPlanOutput(...)`. If it wants envelope validation with role semantics instead of a generic dispatch name, use `validatePrimaryDispatchPromptEnvelope(...)` for the main agent payload and `validateSpecialistDispatchPromptEnvelope(...)` for specialist payloads. Hosts that assemble roles manually can validate narrower pieces with `validateHostPromptAssembly(...)`, `validateAgentExecutionPlan(...)`, and `validateDispatchPromptEnvelope(...)`.
+
+If a host persists the execution plan itself, it should validate that file before startup with `validateExecutionPlanOutput(...)` in-process or `validate-execution-plan --file <path>` from the CLI.
+
+## Canonical Artifact Flow
+
+```text
+docs/spec-modes/ -> current/ -> spec-draft/ -> design/ -> specs/roadmap.md -> specs/<SPEC-ID>-<slug>/spec.md -> implementation/ -> reviews/ -> tests/
+```
 
 ## Architecture Requests
 
@@ -39,7 +52,7 @@ Main agents:
 
 Typical specialist agents:
 
-- `spec-editor`: draft-to-Contract shaping and active Change Workspace structure.
+- `spec-editor`: draft-to-design, roadmap, and feature-spec shaping.
 - `ddd-domain-agent`: bounded contexts, invariants, and domain risk.
 - `openapi-agent`: API contract and error semantics.
 - `db-migration-agent`: schema, migration, compatibility, rollout, and rollback.
@@ -59,7 +72,9 @@ Typical specialist agents:
 
 `pola` should return:
 
-- source spec, draft, rule, or current context used
+- active project mode and current delivery context used
+- overlay manifest and role prompt load order used
+- source design doc, feature spec, draft, rule, or current context used
 - main primary agent and specialist agents considered
 - actionable findings to execute
 - findings rejected as false positives or out of scope

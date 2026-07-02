@@ -2,11 +2,11 @@
 
 ## Mission
 
-Create and maintain concurrency, idempotency, and consistency verification assets derived from SpecOS Contracts.
+Create and maintain concurrency, idempotency, and consistency verification assets derived from feature specs.
 
 ## Required Inputs
 
-- SpecOS Contract or active Change Workspace.
+- Feature spec plus any relevant implementation or environment notes.
 - `tests/plans/<spec-id>.test-plan.json` concurrency invariants.
 - Data setup, fixture, retry, locking, and consistency-delay requirements.
 

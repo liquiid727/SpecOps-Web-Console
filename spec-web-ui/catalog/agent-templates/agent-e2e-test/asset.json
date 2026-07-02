@@ -19,7 +19,7 @@
     "ui"
   ],
   "dependsOn": [
-    "template-normalized-spec"
+    "template-feature-spec"
   ],
   "conflictsWith": [],
   "sourcePath": "spec-web-ui/catalog/agent-templates/agent-e2e-test/e2e-test-agent.md",

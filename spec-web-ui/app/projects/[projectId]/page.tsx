@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { setProjectAssetSelectionAction } from "@/app/actions";
+import { CatalogAssetSummary } from "@/components/catalog/asset-summary";
 import { Badge } from "@/components/ui/badge";
 import { WindowSection } from "@/components/ui/window-section";
 import { buildShellCommandTitle } from "@/lib/shell";
@@ -76,7 +77,13 @@ export default async function ProjectWorkspacePage({
                         <Badge className="border-line bg-transparent text-slate-500">{asset.direction}</Badge>
                       </div>
                       <h3 className="mt-3 text-lg font-bold text-ink">{asset.title}</h3>
-                      <p className="mt-2 text-sm leading-6 text-slate-400">{asset.summary}</p>
+                      <div className="mt-2">
+                        <CatalogAssetSummary
+                          asset={asset}
+                          englishClassName="text-sm leading-6 text-slate-400"
+                          chineseClassName="text-sm leading-6 text-slate-300"
+                        />
+                      </div>
                     </div>
                     <form action={setProjectAssetSelectionAction}>
                       <input type="hidden" name="projectId" value={projectId} />
@@ -119,7 +126,13 @@ export default async function ProjectWorkspacePage({
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <h3 className="text-lg font-bold text-ink">{asset.title}</h3>
-                        <p className="mt-1 text-sm text-slate-400">{asset.summary}</p>
+                        <div className="mt-1">
+                          <CatalogAssetSummary
+                            asset={asset}
+                            englishClassName="text-sm text-slate-400"
+                            chineseClassName="text-sm text-slate-300"
+                          />
+                        </div>
                       </div>
                       <form action={setProjectAssetSelectionAction}>
                         <input type="hidden" name="projectId" value={projectId} />

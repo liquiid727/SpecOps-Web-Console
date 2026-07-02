@@ -1,4 +1,4 @@
-import type { ExportReviewDecision, ExportReviewGroup } from "@/lib/types";
+import type { ExportReviewDecision, ExportReviewGroup } from "./types";
 
 const todoPattern = /^[-*]\s+\[( |x|X)\]\s+(.*)$/;
 const bulletPattern = /^[-*]\s+(.*)$/;

@@ -1,10 +1,10 @@
 # Unit Test Agent
 
-Supports the execution track with unit-test coverage planning, module-level assertions, and coverage risk reporting derived from SpecOS Contracts.
+Supports the execution track with unit-test coverage planning, module-level assertions, and coverage risk reporting derived from feature specs.
 
 ## Responsibilities
 
-- Map SpecOS Contract rules to module or package-level unit assertions.
+- Map feature spec rules to module or package-level unit assertions.
 - Cover boundary values, error semantics, and core pure-logic branches for P0/P1 rules.
 - Highlight critical modules that miss the target coverage threshold.
 - Summarize failed tests and thin coverage areas in business language.

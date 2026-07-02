@@ -136,6 +136,32 @@ describe("filterCatalogAssets", () => {
     expect(result.map((asset) => asset.id)).toEqual(["skill-tool-config-ui"]);
   });
 
+  it("matches localized summaries while searching catalog assets", () => {
+    const localizedAssets: CatalogAsset[] = [
+      {
+        id: "skill-go-backend-governance",
+        type: "skill",
+        title: "Go Backend Governance",
+        summary: "English summary.",
+        summaryZh: "Go 后端治理总入口。",
+        direction: "backend",
+        categories: ["backend"],
+        stacks: ["go"],
+        tags: ["governance"],
+        appliesTo: ["backend"],
+        dependsOn: [],
+        conflictsWith: [],
+        sourcePath: "spec-web-ui/catalog/skills/go-backend-governance/SKILL.md",
+        files: ["spec-web-ui/catalog/skills/go-backend-governance/SKILL.md"],
+        version: "1.0.0"
+      }
+    ];
+
+    const result = filterCatalogAssets(localizedAssets, { query: "总入口" });
+
+    expect(result.map((asset) => asset.id)).toEqual(["skill-go-backend-governance"]);
+  });
+
   it("filters catalog assets by shared business category", () => {
     const result = filterCatalogAssets(assets, { categories: ["operations"] });
 
@@ -166,6 +192,8 @@ describe("loadCatalogAssets", () => {
   it("loads spec and agent template assets from directory-backed manifests", async () => {
     const catalog = await loadCatalogAssets();
     const specTemplate = catalog.find((asset) => asset.id === "template-feature-draft");
+    const modesTemplate = catalog.find((asset) => asset.id === "template-project-modes");
+    const currentTemplate = catalog.find((asset) => asset.id === "template-current-workspace");
     const agentTemplate = catalog.find((asset) => asset.id === "agent-spec-editor");
 
     expect(specTemplate?.sourcePath).toBe(
@@ -174,6 +202,18 @@ describe("loadCatalogAssets", () => {
     expect(specTemplate?.files).toEqual(["spec-draft/_template/feature/product-ui.template.md"]);
     expect(specTemplate?.contentFiles?.["spec-draft/_template/feature/product-ui.template.md"]).toBe(
       "spec-web-ui/catalog/spec-templates/template-feature-draft/product-ui.template.md"
+    );
+    expect(modesTemplate?.files).toEqual([
+      "docs/spec-modes/README.md",
+      "docs/spec-modes/LiteSpec/README.md",
+      "docs/spec-modes/EnterpriseSpec/README.md"
+    ]);
+    expect(modesTemplate?.contentFiles?.["docs/spec-modes/LiteSpec/README.md"]).toBe(
+      "spec-web-ui/catalog/spec-templates/template-project-modes/LiteSpec.md"
+    );
+    expect(currentTemplate?.files).toContain("current/project-status.md");
+    expect(currentTemplate?.contentFiles?.["current/handoff.md"]).toBe(
+      "spec-web-ui/catalog/spec-templates/template-current-workspace/handoff.md"
     );
     expect(agentTemplate?.sourcePath).toBe(
       "spec-web-ui/catalog/agent-templates/agent-spec-editor/spec-editor.md"
@@ -185,6 +225,7 @@ describe("loadCatalogAssets", () => {
     const catalog = await loadCatalogAssets();
     const orchestratorAgent = catalog.find((asset) => asset.id === "agent-go-pack-orchestrator");
     const apiGovernanceSkill = catalog.find((asset) => asset.id === "skill-api-contract-governance");
+    const backendGovernanceSkill = catalog.find((asset) => asset.id === "skill-go-backend-governance");
     const timeGovernanceSkill = catalog.find((asset) => asset.id === "skill-go-time-governance");
     const routingTemplate = catalog.find((asset) => asset.id === "template-go-pack-routing");
 
@@ -204,6 +245,21 @@ describe("loadCatalogAssets", () => {
     expect(apiGovernanceSkill?.files).toContain(
       "spec-web-ui/catalog/skills/api-contract-governance/references/api-contract-rules.md"
     );
+    expect(apiGovernanceSkill?.categories).toEqual(["backend"]);
+    expect(apiGovernanceSkill?.summaryZh).toContain("接口契约治理");
+
+    expect(backendGovernanceSkill?.type).toBe("skill");
+    expect(backendGovernanceSkill?.sourcePath).toBe(
+      "spec-web-ui/catalog/skills/go-backend-governance/SKILL.md"
+    );
+    expect(backendGovernanceSkill?.dependsOn).toEqual([
+      "skill-api-contract-governance",
+      "skill-go-time-governance",
+      "skill-error-logging-governance",
+      "skill-ddd-layering-governance"
+    ]);
+    expect(backendGovernanceSkill?.categories).toEqual(["backend"]);
+    expect(backendGovernanceSkill?.summaryZh).toContain("总入口");
 
     expect(timeGovernanceSkill?.type).toBe("skill");
     expect(timeGovernanceSkill?.sourcePath).toBe(
@@ -212,6 +268,8 @@ describe("loadCatalogAssets", () => {
     expect(timeGovernanceSkill?.files).toContain(
       "spec-web-ui/catalog/skills/go-time-governance/references/clock-and-business-time.md"
     );
+    expect(timeGovernanceSkill?.categories).toEqual(["backend"]);
+    expect(timeGovernanceSkill?.summaryZh).toContain("时间治理");
 
     expect(routingTemplate?.type).toBe("spec_template");
     expect(routingTemplate?.sourcePath).toBe(
@@ -269,7 +327,7 @@ describe("buildAssetCompositionPreview", () => {
           ],
           draftTemplateId: "template-react-feature",
           draftPath: "spec-web-ui/workspace/projects/rewards-platform/draft.md",
-          exportTargets: ["rules/", "specs/_template/", "ai/agents/", "agent-teams/", "project-manifest.yaml"]
+          exportTargets: ["docs/", "current/", "rules/", "specs/_template/", "ai/agents/", "agent-teams/", "project-manifest.yaml"]
         },
         selectedAssets: assets.filter((asset) =>
           ["rule-go-backend", "template-react-feature"].includes(asset.id)

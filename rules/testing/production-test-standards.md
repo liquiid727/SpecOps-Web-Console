@@ -2,7 +2,7 @@
 
 ## Purpose
 
-SpecOS test artifacts must be executable release evidence, not loose test notes. Every production test plan must connect a spec change to risk-ranked requirements, owned test agents, normalized results, gate reports, and promotion decisions.
+SpecOS test artifacts must be executable release evidence, not loose test notes. Every production test plan must connect a feature spec to risk-ranked requirements, owned test agents, normalized results, gate reports, and merge-readiness decisions.
 
 ## Standard Version
 
@@ -64,6 +64,6 @@ Allowed local scopes are:
 
 ## Release Enforcement
 
-- `validate-test-gates <specId> --change <changeId>` must block when P0/P1 blocking evidence is missing, invalid, failed, or unclassified flaky.
-- `promote-change --accept` must require a ready gate report for attached test plans.
+- `validate-test-gates <specId>` must block when P0/P1 blocking evidence is missing, invalid, failed, or unclassified flaky.
+- Merge or release readiness must require a ready gate report for the attached feature spec.
 - Raw runner output is not gate evidence until normalized into `tests/results/`.

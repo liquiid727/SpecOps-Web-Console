@@ -8,6 +8,7 @@ export interface CatalogAsset {
   type: CatalogAssetType;
   title: string;
   summary: string;
+  summaryZh?: string;
   direction: CatalogDirection;
   categories?: CatalogCategory[];
   stacks: string[];
@@ -138,6 +139,7 @@ export interface SpecosBundleManifest {
   };
   entrypoints: {
     draftTemplate: string;
+    designTemplate: string;
     specTemplate: string;
     workflowId: string;
   };

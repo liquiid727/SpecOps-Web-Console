@@ -1,0 +1,30 @@
+{
+  "id": "template-project-modes",
+  "type": "spec_template",
+  "title": "Project Modes Guide",
+  "summary": "Documents LiteSpec and EnterpriseSpec so a project can choose its operating mode explicitly.",
+  "direction": "fullstack",
+  "categories": ["product", "operations"],
+  "stacks": ["go", "react", "python"],
+  "tags": ["docs", "mode", "litespec", "enterprisespec"],
+  "appliesTo": ["backend", "frontend"],
+  "dependsOn": [],
+  "conflictsWith": [],
+  "sourcePath": "spec-web-ui/catalog/spec-templates/template-project-modes/README.md",
+  "files": [
+    "docs/spec-modes/README.md",
+    "docs/spec-modes/LiteSpec/README.md",
+    "docs/spec-modes/EnterpriseSpec/README.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "先明确项目默认运行模式",
+    "把 QA、审计和交付边界映射到模式选择"
+  ],
+  "sampleOutput": "一套说明 LiteSpec 与 EnterpriseSpec 的项目模式文档。",
+  "contentFiles": {
+    "docs/spec-modes/README.md": "spec-web-ui/catalog/spec-templates/template-project-modes/README.md",
+    "docs/spec-modes/LiteSpec/README.md": "spec-web-ui/catalog/spec-templates/template-project-modes/LiteSpec.md",
+    "docs/spec-modes/EnterpriseSpec/README.md": "spec-web-ui/catalog/spec-templates/template-project-modes/EnterpriseSpec.md"
+  }
+}

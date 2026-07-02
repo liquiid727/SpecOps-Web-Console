@@ -14,12 +14,14 @@ context_order:
   - README.md
   - .rules/project.md
   - rules/
+  - docs/spec-modes/
+  - current/
   - spec-draft/
-  - specs/current/project-context.md
-  - specs/current/architecture-context.md
-  - specs/current/domain-context.md
-  - specs/current/
-  - specs/changes/
+  - design/
+  - specs/roadmap.md
+  - specs/
+  - implementation/
+  - reviews/
   - tests/
   - ai/agents/
 
@@ -27,12 +29,19 @@ calling_convention:
   selection_source: .agents/manifest.yaml
   role_path_base: .agents/
   canonical_path_base: repository root
+  mode_overlay_roots:
+    role_overlays: .agents/modes/
+    canonical_overlays: ai/agents/modes/
   prompt_assembly_order:
     - AGENTS.md
     - .codex/instructions.md
+    - .specos/manifest.yaml projectMode
     - selected role metadata from .agents/manifest.yaml
-    - selected role_prompt
-    - selected canonical
+    - selected mode overlay manifest from .agents/modes/<projectMode>/manifest.overlay.yaml
+    - selected shared role_prompt
+    - selected shared canonical
+    - selected mode overlay role_prompt when present
+    - selected mode overlay canonical when present
     - selected skills
     - selected context_includes
   routing_rules:
@@ -42,7 +51,17 @@ calling_convention:
     - Roles with empty skills run as role-and-rules-only agents.
     - Do not invent ad-hoc roles; main primary and specialist agents must be registered in this manifest.
     - Treat route-request and classify-request as routing previews, not agent execution.
+    - route-request and classify-request should resolve projectMode first, then expose the resulting overlay manifest and role prompt load order.
     - For nested host-side dispatch, use pola as coordinator and follow ai/workflows/nested-agent-orchestration.md.
+    - Shared prompts are the default backbone; mode overlay prompts add only the selected mode's differences.
+
+mode_overlays:
+  litespec:
+    manifest_overlay: .agents/modes/litespec/manifest.overlay.yaml
+    purpose: Feature-driven, low-token, daily delivery mode.
+  enterprisespec:
+    manifest_overlay: .agents/modes/enterprisespec/manifest.overlay.yaml
+    purpose: Governed delivery mode with stronger QA, release, and audit evidence requirements.
 
 roles:
   architecture-agent:
@@ -62,13 +81,15 @@ roles:
       - reviewer
     context_includes:
       - .rules/project.md
-      - specs/current/project-context.md
-      - specs/current/architecture-context.md
-      - specs/current/domain-context.md
+      - docs/spec-modes/
+      - current/
+      - design/
+      - specs/roadmap.md
       - ai/workflows/nested-agent-orchestration.md
       - spec-draft/
-      - specs/current/
-      - specs/changes/
+      - specs/
+      - implementation/
+      - reviews/
     owns:
       - architecture decision synthesis
       - cross-surface impact boundaries
@@ -91,11 +112,15 @@ roles:
       - specialized-check-agent
     context_includes:
       - .rules/project.md
+      - docs/spec-modes/
+      - current/
       - rules/frontend/react-workbench-delivery.md
       - rules/backend/go-backend-governance.md
       - rules/shared/error-code-governance.md
-      - specs/current/
-      - specs/changes/
+      - design/
+      - specs/roadmap.md
+      - specs/
+      - implementation/
     owns:
       - implementation execution plan
       - frontend and backend implementation handoff
@@ -121,10 +146,16 @@ roles:
       - reviewer
     context_includes:
       - .rules/project.md
+      - docs/spec-modes/
+      - current/
       - rules/ci/spec-release-gates.md
       - rules/testing/production-test-standards.md
       - scripts/checks/README.md
       - scripts/orchestration/README.md
+      - specs/roadmap.md
+      - specs/
+      - implementation/
+      - reviews/
     owns:
       - release and deployment readiness
       - CI and gate execution plan
@@ -150,6 +181,8 @@ roles:
       - qa-agent
     context_includes:
       - .rules/project.md
+      - docs/spec-modes/
+      - current/
       - rules/testing/production-test-standards.md
       - rules/ci/spec-release-gates.md
       - tests/README.md
@@ -159,8 +192,10 @@ roles:
       - tests/performance/
       - tests/concurrency/
       - tests/results/
-      - specs/current/
-      - specs/changes/
+      - design/
+      - specs/roadmap.md
+      - specs/
+      - reviews/
     owns:
       - independent verification strategy
       - test evidence orchestration
@@ -177,17 +212,26 @@ roles:
     skills: []
     context_includes:
       - .rules/project.md
+      - docs/spec-modes/
+      - current/
       - specs/_rules/README.md
       - spec-draft/
-      - specs/current/
-      - specs/changes/
+      - design/
+      - specs/roadmap.md
+      - specs/
+      - implementation/
+      - reviews/
       - tests/
     owns:
       - spec-draft/
-      - specs/current/
-      - specs/changes/
+      - design/
+      - specs/
+      - implementation/
+      - reviews/
     outputs:
-      - SpecOS Contract
+      - design update recommendation
+      - roadmap update recommendation
+      - feature spec
       - assumptions and unresolved questions
 
   ui-design-agent:
@@ -205,8 +249,12 @@ roles:
         purpose: SpecOS-specific UI design flow for spec-web-ui layouts, states, and handoff notes.
     context_includes:
       - .rules/project.md
+      - docs/spec-modes/
       - rules/frontend/react-workbench-delivery.md
+      - rules/ui/design-governance.md
       - rules/ui/pencil-prototype-ui.md
+      - design/
+      - specs/
       - spec-web-ui/
     owns:
       - spec-web-ui/
@@ -224,15 +272,17 @@ roles:
     skills: []
     context_includes:
       - .rules/project.md
+      - docs/spec-modes/
+      - current/
       - rules/backend/go-backend-governance.md
       - rules/shared/error-code-governance.md
-      - specs/current/project-context.md
-      - specs/current/architecture-context.md
-      - specs/current/domain-context.md
+      - design/
+      - specs/roadmap.md
       - ai/workflows/nested-agent-orchestration.md
       - spec-draft/
-      - specs/current/
-      - specs/changes/
+      - specs/
+      - implementation/
+      - reviews/
     owns:
       - domain boundary notes
       - aggregate and invariant proposals
@@ -247,9 +297,12 @@ roles:
     skills: []
     context_includes:
       - .rules/project.md
+      - docs/spec-modes/
+      - current/
       - rules/backend/go-backend-governance.md
       - rules/shared/error-code-governance.md
-      - specs/current/
+      - design/
+      - specs/
       - tests/bruno/
     owns:
       - API contracts
@@ -265,9 +318,12 @@ roles:
     skills: []
     context_includes:
       - .rules/project.md
+      - docs/spec-modes/
+      - current/
       - rules/backend/go-backend-governance.md
       - rules/backend/goose-migration-standards.md
-      - specs/current/
+      - design/
+      - specs/
     owns:
       - migration planning
       - rollout and rollback notes
@@ -282,13 +338,16 @@ roles:
     skills: []
     context_includes:
       - .rules/project.md
+      - docs/spec-modes/
+      - current/
       - rules/frontend/react-workbench-delivery.md
       - rules/shared/error-code-governance.md
       - tests/README.md
       - tests/plans/
       - tests/scenarios/
       - tests/results/
-      - specs/current/
+      - design/
+      - specs/
     owns:
       - end-to-end business journey coverage
       - scenario fixtures and preconditions
@@ -305,10 +364,13 @@ roles:
     skills: []
     context_includes:
       - .rules/project.md
+      - docs/spec-modes/
+      - current/
       - rules/frontend/react-workbench-delivery.md
       - tests/README.md
       - spec-web-ui/
-      - specs/current/
+      - design/
+      - specs/
     owns:
       - browser scenario plans
       - UI state coverage
@@ -323,8 +385,10 @@ roles:
     skills: []
     context_includes:
       - .rules/project.md
+      - docs/spec-modes/
+      - current/
       - tests/README.md
-      - specs/current/
+      - specs/
     owns:
       - unit test coverage notes
       - module risk summaries
@@ -339,8 +403,10 @@ roles:
     skills: []
     context_includes:
       - .rules/project.md
+      - docs/spec-modes/
+      - current/
       - tests/README.md
-      - specs/current/
+      - specs/
     owns:
       - specialized verification notes
       - smoke and contract results
@@ -355,13 +421,16 @@ roles:
     skills: []
     context_includes:
       - .rules/project.md
+      - docs/spec-modes/
+      - current/
       - rules/ci/spec-release-gates.md
       - tests/README.md
       - tests/plans/
       - tests/performance/
       - tests/results/
-      - specs/current/
-      - specs/changes/
+      - design/
+      - specs/
+      - implementation/
     owns:
       - tests/performance/
       - performance and latency result normalization notes
@@ -378,13 +447,16 @@ roles:
     skills: []
     context_includes:
       - .rules/project.md
+      - docs/spec-modes/
+      - current/
       - rules/ci/spec-release-gates.md
       - tests/README.md
       - tests/plans/
       - tests/concurrency/
       - tests/results/
-      - specs/current/
-      - specs/changes/
+      - design/
+      - specs/
+      - implementation/
     owns:
       - tests/concurrency/
       - concurrency invariant result normalization notes
@@ -405,6 +477,8 @@ roles:
         purpose: Git action readiness, staged scope validation, commit/PR/merge gates, and CI Record output.
     context_includes:
       - .rules/project.md
+      - docs/spec-modes/
+      - current/
       - rules/ci/spec-release-gates.md
       - scripts/checks/README.md
     owns:
@@ -421,6 +495,8 @@ roles:
     skills: []
     context_includes:
       - .rules/project.md
+      - docs/spec-modes/
+      - current/
       - ai/workflows/README.md
       - ai/workflows/nested-agent-orchestration.md
       - scripts/README.md
@@ -439,8 +515,10 @@ roles:
     skills: []
     context_includes:
       - .rules/project.md
+      - docs/spec-modes/
+      - current/
       - tests/README.md
-      - specs/current/
+      - specs/
     owns:
       - tests/
     outputs:
@@ -454,10 +532,14 @@ roles:
     skills: []
     context_includes:
       - .rules/project.md
+      - docs/spec-modes/
+      - current/
       - rules/testing/production-test-standards.md
       - rules/ci/spec-release-gates.md
-      - specs/current/
-      - specs/changes/
+      - design/
+      - specs/roadmap.md
+      - specs/
+      - implementation/
       - tests/plans/
       - tests/results/
       - reviews/
@@ -477,9 +559,10 @@ roles:
     skills: []
     context_includes:
       - .rules/project.md
-      - specs/current/project-context.md
-      - specs/current/architecture-context.md
-      - specs/current/domain-context.md
+      - docs/spec-modes/
+      - current/
+      - design/
+      - specs/roadmap.md
       - rules/
       - tests/
       - specs/

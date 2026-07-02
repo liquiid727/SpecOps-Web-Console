@@ -1,7 +1,7 @@
 spec UI
 这个是个面向内部的工具站点，你可以理解为一个 spec kit / asset workbench。
 
-它维护平时积累的 spec 模板、agent 模板、workflow 模板、skill 内容、rules 和 test patterns。它不承载某个目标项目的需求生命周期；目标项目自己的需求流程仍然在目标项目仓库里走 `spec-draft -> specs/changes -> tests -> results -> acceptance -> specs/current`。
+它维护平时积累的 spec 模板、agent 模板、workflow 模板、skill 内容、rules 和 test patterns。它不承载某个目标项目的需求生命周期；目标项目自己的需求流程仍然在目标项目仓库里走 `spec-draft -> design -> specs/roadmap.md -> specs/<SPEC-ID>-<slug> -> implementation -> reviews -> tests -> merge`。
 
 UI spec：
 

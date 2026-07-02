@@ -3,11 +3,18 @@ name: Default Fullstack
 inputs:
   - spec-draft
 outputs:
+  - design
+  - roadmap
   - spec
+  - implementation
+  - reviews
   - tests
 gates:
   - draft accepted by human
-  - spec normalized by agent
+  - design updated or confirmed
+  - roadmap updated
+  - feature spec normalized by agent
+  - implementation handoff prepared
   - test plan reviewed by human
   - tests generated
   - tests executed

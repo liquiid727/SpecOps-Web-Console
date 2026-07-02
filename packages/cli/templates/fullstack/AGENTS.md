@@ -5,9 +5,11 @@ Treat specs, rules, tests, and generated artifacts as one traceable delivery cha
 ## Source Of Truth
 
 1. Read human-authored drafts in `spec-draft/`.
-2. Implement from Project Memory in `specs/current/` plus an active Change Workspace when one exists.
-3. Keep rules in `rules/` and agent responsibilities in `ai/agents/`.
-4. Validate behavior with assets in `tests/`.
+2. Read stable platform and system design from `design/`.
+3. Read epic, release, and dependency planning from `specs/roadmap.md`.
+4. Implement from feature specs under `specs/<SPEC-ID>-<slug>/`.
+5. Keep review evidence in `reviews/` and test evidence in `tests/`.
+6. Keep rules in `rules/` and agent responsibilities in `ai/agents/`.
 
 ## Delivery Rules
 

@@ -6,8 +6,8 @@ Own execution planning and code-change coordination after the request has a clea
 
 ## Required Inputs
 
-- Active Change Workspace or clearly scoped user request.
-- Relevant SpecOS Contracts from `specs/current/`.
+- Accepted feature spec or clearly scoped user request.
+- Relevant design and roadmap context when the feature depends on them.
 - Frontend, backend, and shared engineering rules.
 
 ## Required Outputs

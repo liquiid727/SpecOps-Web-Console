@@ -1,0 +1,45 @@
+name: Publish Internal Packages
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "packages-v*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://npm.pkg.github.com
+          scope: "@specos"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build workspace packages
+        run: npm run build
+
+      - name: Publish core
+        run: npm publish --workspace @specos/core
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish templates
+        run: npm publish --workspace @specos/templates
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish cli
+        run: npm publish --workspace @specos/cli
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -2,11 +2,15 @@
 
 This directory defines local agent routing, role contracts, and scoped skill loading for SpecOS.
 
+Shared role prompts live under `.agents/roles/`.
+
+Mode-specific differences live under `.agents/modes/<mode>/roles/`.
+
 ## How To Use
 
 - Start with `manifest.yaml` to choose the correct agent role.
 - Resolve `role_prompt` paths relative to `.agents/`; resolve `canonical`, `skills[*].path`, and `context_includes` from the repository root unless noted otherwise.
-- After selecting a role, only load that role's declared `role_prompt`, `canonical`, `skills`, and `context_includes`.
+- After selecting a role, load the shared prompt first, then the selected mode overlay when one exists.
 - Use `roles/` for local role-specific responsibilities, inputs, outputs, and guardrails.
 - Keep role outputs aligned with canonical assets under `ai/agents/`.
 - Prefer assigning one role per bounded task.
@@ -49,7 +53,51 @@ For a deterministic local route preview, run:
 node packages/cli/dist/main.js route-request --request "<需求文本>"
 ```
 
-The command returns `requestKind`, `workTypes`, `primaryAgent`, `supportingAgents`, required rules, role-bound skills, and the next lifecycle step. It does not execute the selected agents; it makes the routing decision explicit before intake, implementation, testing, review, or release work starts.
+The command returns `projectMode`, `requestKind`, `workTypes`, `primaryAgent`, `supportingAgents`, required rules, role-bound skills, prompt assembly load order, and the next lifecycle step. It resolves `projectMode` from `.specos/manifest.yaml` first, then points at the selected mode overlay manifest and per-role overlay prompt paths. It does not execute the selected agents; it makes the routing decision explicit before intake, implementation, testing, review, or release work starts.
+
+For host runtimes that only need subagent dispatch payloads, use:
+
+```bash
+node packages/cli/dist/main.js route-request --request "<需求文本>" --format dispatch-json
+```
+
+That mode returns only `specialistDispatchPlan.tasks[*].dispatchPromptEnvelope`.
+
+For host runtimes that only need the main agent payload, use:
+
+```bash
+node packages/cli/dist/main.js route-request --request "<需求文本>" --format primary-json
+```
+
+That mode returns only `executionPlan.primaryDispatchPromptEnvelope`.
+
+For host runtimes that want the full execution object directly, use:
+
+```bash
+node packages/cli/dist/main.js route-request --request "<需求文本>" --format execution-plan-json
+```
+
+That mode returns only `executionPlan`.
+
+To validate a saved route payload before dispatching it into a host runtime, use:
+
+```bash
+node packages/cli/dist/main.js validate-route-output --file ./tmp/route.json --format dispatch-json
+```
+
+This reuses `validateRouteRequestOutput(...)` from `@specos/core`, so CLI and host-side consumers can enforce the same shape checks for `full`, `dispatch-json`, `primary-json`, and `execution-plan-json`.
+
+To validate a saved runtime execution plan instead of a preview payload, use:
+
+```bash
+node packages/cli/dist/main.js validate-execution-plan --file ./tmp/execution-plan.json
+```
+
+This reuses `validateExecutionPlanOutput(...)` from `@specos/core`.
+
+If another host surface needs the same projections without shelling out to the CLI, use `buildValidatedRouteRequestOutput(...)` from `@specos/core` when you want a preview payload that has already passed the same projection checks as the CLI. For stable consumer-side validation, use `buildRouteRequestOutputSchema(...)`, `buildHostPromptAssemblySchema(...)`, `buildDispatchPromptEnvelopeSchema(...)`, `buildPrimaryDispatchPromptEnvelopeSchema(...)`, `buildSpecialistDispatchPromptEnvelopeSchema(...)`, `buildExecutionPlanOutputSchema(...)`, `validateRouteRequestOutput(...)`, `validateExecutionPlanOutput(...)`, `validateHostPromptAssembly(...)`, `validateAgentExecutionPlan(...)`, `validateDispatchPromptEnvelope(...)`, `validatePrimaryDispatchPromptEnvelope(...)`, or `validateSpecialistDispatchPromptEnvelope(...)`. All schema helpers return the shared `ArtifactShapeSchema` shape, with an `artifact` discriminator and the relevant top-level field lists.
+
+For host runtimes that need a reusable execution object instead of a preview, use `buildValidatedAgentExecutionPlan(...)` from `@specos/core`. It wraps `buildAgentExecutionPlan(...)`, then validates the resulting route, prompt assembly, and dispatch envelopes before the host starts any agent. Use `buildSpecialistDispatchPlan(...)` when the host already has an execution plan and only needs 2 to 4 dispatchable specialist tasks. Each dispatch task now includes `dispatchPromptEnvelope`, which is the host-ready prompt payload for a subagent. Use `buildHostPromptAssembly(...)` as the lower-level helper when the host already has a selected role set and only needs prompt/context assembly.
 
 ## Nested Dispatch
 
@@ -68,6 +116,26 @@ Nested dispatch follows this contract:
 - Runtime execution is outside this directory. Host systems may run 2 to 4 subagents in parallel, but this repository only defines the routing contract, prompt assembly, and expected outputs.
 - The final output should be one actionable synthesis from `pola`, not a concatenation of every subagent report.
 
+## Canonical Lifecycle
+
+SpecOS now routes work through this model:
+
+```text
+Draft -> Design -> Roadmap/Epic -> Feature Spec -> Agent Implementation -> Review -> Merge
+```
+
+Canonical storage targets:
+
+- `docs/spec-modes/`: project operating mode guidance
+- `current/`: active delivery state and handoff context
+- `spec-draft/`: intake drafts
+- `design/`: stable platform or system design
+- `specs/roadmap.md`: epic and release planning
+- `specs/<SPEC-ID>-<slug>/spec.md`: feature specs
+- `implementation/`: implementation notes and handoff
+- `reviews/`: review evidence
+- `tests/`: shared verification assets
+
 A useful subagent task should state:
 
 - target role from `manifest.yaml`
@@ -80,7 +148,7 @@ A useful subagent task should state:
 ```mermaid
 flowchart TD
   A["User request / business context"] --> B["Default entry agent"]
-  B --> C["Read context in order: readme, rules, spec-draft, specs, tests, agents"]
+  B --> C["Read context in order: readme, rules, docs/spec-modes, current, spec-draft, design, specs, evidence, agents"]
   C --> D{"Main track?"}
 
   D -->|Architecture / spec impact| E["architecture-agent"]
@@ -98,18 +166,18 @@ flowchart TD
   G1 --> Q
   H1 --> Q
 
-  Q -->|Proposed change| R["specs/changes/<change-id>"]
-  Q -->|Accepted source of truth| S["specs/current/"]
-  Q -->|Tests and results| T["tests/"]
-  Q -->|Scripts / workflows| U["scripts/ or ai/workflows/"]
-  Q -->|Review output| V["review findings / open questions"]
+  Q -->|Design truth| R["design/"]
+  Q -->|Feature planning| S["specs/roadmap.md + specs/<SPEC-ID>-<slug>/"]
+  Q -->|Implementation| T["implementation/"]
+  Q -->|Tests and results| U["tests/"]
+  Q -->|Review output| V["reviews/"]
 
-  R --> W{"Human approval gate"}
-  W -->|Accepted| S
+  S --> W{"Human approval gate"}
+  W -->|Accepted| T
   W -->|Needs work| B
-  S --> X["Implementation, test, and review agents read current specs"]
+  T --> X["Implementation, test, and review agents read design and feature specs"]
   X --> Y["Report validation evidence and unresolved questions"]
-  Y --> Z["Archive completed change under specs/archive/"]
+  Y --> Z["Merge with traceable review and test evidence"]
 ```
 
 ```mermaid
@@ -132,21 +200,32 @@ When a role is selected, assemble prompt context in this order:
 
 1. Root `AGENTS.md`
 2. `.codex/instructions.md`
-3. Selected role metadata from `manifest.yaml`
-4. Selected `role_prompt`
-5. Selected canonical file under `ai/agents/`
-6. Selected declared skills
-7. Selected required rules and context includes
+3. `.specos/manifest.yaml` `projectMode`
+4. Selected role metadata from `manifest.yaml`
+5. Selected mode overlay manifest under `.agents/modes/<projectMode>/manifest.overlay.yaml`
+6. Selected shared `role_prompt`
+7. Selected shared canonical file under `ai/agents/`
+8. Selected mode overlay role prompt when present
+9. Selected mode overlay canonical prompt when present
+10. Selected declared skills
+11. Selected required rules and context includes
+
+When the project mode or active handoff state changes task boundaries, read `docs/spec-modes/` and `current/` before loading broader feature context.
+
+## Shared Plus Overlay
+
+- Shared local role prompts: `.agents/roles/<role>.md`
+- Shared canonical prompts: `ai/agents/<role>.md`
+- Mode overlay local prompts: `.agents/modes/<mode>/roles/<role>.md`
+- Mode overlay canonical prompts: `ai/agents/modes/<mode>/<role>.md`
+
+Only keep differences in the mode overlay files. The shared files remain the default backbone.
 
 ## Project Context Placement
 
-Stable project background, architecture facts, and domain language belong under `specs/current/`:
+Stable platform and system design belongs under `design/`. Epic ordering belongs in `specs/roadmap.md`. Implementation-ready feature slices belong under `specs/<SPEC-ID>-<slug>/`.
 
-- `specs/current/project-context.md`
-- `specs/current/architecture-context.md`
-- `specs/current/domain-context.md`
-
-Role prompts should reference these files through `.agents/manifest.yaml` `context_includes` instead of duplicating accepted project facts inside `.agents/roles/` or `ai/agents/`.
+Role prompts should reference those surfaces through `.agents/manifest.yaml` `context_includes` instead of duplicating accepted project facts inside `.agents/roles/` or `ai/agents/`.
 
 ## Skill Loading Rules
 
@@ -157,7 +236,7 @@ Role prompts should reference these files through `.agents/manifest.yaml` `conte
 
 ## Shared Rules
 
-- Every role must cite the current spec, proposed change, draft, rule, or workflow it is using.
+- Every role must cite the current design doc, feature spec, draft, rule, or workflow it is using.
 - Every output must include open questions when information is missing.
 - Role work should be narrow, reviewable, and safe to compose with other agents.
 - Semantic changes that affect specs, rules, agents, skills, workflows, tests, checks, or release evidence must include a `Sync Handoff` following `ai/workflows/sync-handoff-gateway.md` before CI, PR, release, or promotion claims.

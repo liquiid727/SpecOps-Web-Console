@@ -3,7 +3,11 @@
   "type": "skill",
   "title": "Go Time Governance",
   "summary": "Use when a Go backend task touches time fields, clock sources, expiration logic, TTLs, scheduled jobs, database timestamps, time serialization, fake clocks, or tests that depend on the current time.",
+  "summaryZh": "适用于 Go 后端时间治理，包括时钟源注入、TTL 与过期语义、数据库时间字段、时间序列化以及依赖当前时间的测试设计。",
   "direction": "backend",
+  "categories": [
+    "backend"
+  ],
   "stacks": [
     "go"
   ],

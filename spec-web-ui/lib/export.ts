@@ -695,7 +695,8 @@ function buildSpecosBundleManifest(project: ProjectManifest, files: ExportFile[]
     },
     entrypoints: {
       draftTemplate: project.draftTemplateId,
-      specTemplate: "feature-spec-v1",
+      designTemplate: "template-platform-design",
+      specTemplate: "template-feature-spec",
       workflowId: "spec-driven-default"
     },
     capabilities: {
@@ -713,8 +714,14 @@ function deriveInstallMappings(files: ExportFile[]) {
     ".skills/",
     "agent-teams/",
     "ai/agents/",
+    "current/",
+    "design/",
+    "docs/",
+    "implementation/",
+    "reviews/",
     "rules/",
     "spec-draft/_template/",
+    "specs/_rules/",
     "specs/_template/",
     ".specos/workflows/"
   ];
@@ -741,7 +748,13 @@ function resolveInstallTarget(targetPath: string) {
   if (targetPath.startsWith(".skills/")) return ".skills/";
   if (targetPath.startsWith("agent-teams/")) return "agent-teams/";
   if (targetPath.startsWith("ai/agents/")) return "ai/agents/";
+  if (targetPath.startsWith("current/")) return "current/";
+  if (targetPath.startsWith("design/")) return "design/";
+  if (targetPath.startsWith("docs/")) return "docs/";
+  if (targetPath.startsWith("implementation/")) return "implementation/";
+  if (targetPath.startsWith("reviews/")) return "reviews/";
   if (targetPath.startsWith("spec-draft/_template/")) return "spec-draft/_template/";
+  if (targetPath.startsWith("specs/_rules/")) return "specs/_rules/";
   if (targetPath.startsWith("specs/_template/")) return "specs/_template/";
   if (targetPath.startsWith("rules/")) return "rules/";
 

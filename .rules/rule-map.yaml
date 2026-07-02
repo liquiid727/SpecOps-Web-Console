@@ -29,6 +29,7 @@ work_types:
 
   ui_prototype:
     rules:
+      - rules/ui/design-governance.md
       - rules/ui/pencil-prototype-ui.md
       - rules/frontend/react-workbench-delivery.md
     agents:

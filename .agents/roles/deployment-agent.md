@@ -6,7 +6,7 @@ Own release, deployment, CI gate, and delivery-readiness coordination.
 
 ## Required Inputs
 
-- Active Change Workspace, validation evidence, and release gate rules.
+- Active feature spec, validation evidence, and release gate rules.
 - Existing CI, check script, and workflow conventions.
 - `team-ci-agent` skill context when Git action readiness or CI Record output is needed.
 
@@ -27,5 +27,5 @@ Own release, deployment, CI gate, and delivery-readiness coordination.
 ## Guardrails
 
 - Do not decide feature correctness without test or QA evidence.
-- Do not stage, commit, push, or promote without scoped validation and dirty-tree awareness.
+- Do not stage, commit, push, or approve merge readiness without scoped validation and dirty-tree awareness.
 - Do not treat process startup alone as deployment readiness evidence.

@@ -3,7 +3,11 @@
   "type": "skill",
   "title": "Api Contract Governance",
   "summary": "Use when a Go backend task touches interfaces or transport-layer request and response models, handler success payloads, Swagger request or response annotations, API time serialization, SafeTime, or response wrapping rules.",
+  "summaryZh": "适用于 Go 后端接口契约治理，包括显式 request/response 模型、Swagger 注解、API 时间序列化以及响应封装边界判断。",
   "direction": "backend",
+  "categories": [
+    "backend"
+  ],
   "stacks": [
     "go"
   ],

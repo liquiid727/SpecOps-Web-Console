@@ -12,9 +12,10 @@ Keep SpecOS specs useful by making every semantic change declare which neighbori
 
 Require a `Sync Handoff` when a task changes meaning, behavior, ownership, routing, validation, or release evidence in any of these surfaces:
 
-- `spec-draft/`, `specs/changes/`, or `specs/current/`
+- `docs/spec-modes/` or `current/`
+- `spec-draft/`, `design/`, `specs/roadmap.md`, or `specs/<SPEC-ID>-<slug>/`
 - `.agents/manifest.yaml`
-- `.agents/roles/` or `ai/agents/`
+- `.agents/roles/`, `.agents/modes/`, `ai/agents/`, or `ai/agents/modes/`
 - `.skills/`
 - `rules/` or `.rules/`
 - `ai/workflows/`
@@ -29,11 +30,13 @@ Use this matrix to decide what must be checked before handoff.
 
 | Changed surface | Neighbor assets to check | Typical owner agent |
 | --- | --- | --- |
-| `specs/changes/*/spec.md` | test plan, schedules, review reports, current context impact, agent ownership, release gates | `spec-editor` |
-| `specs/current/` | Project Memory, Change Workspace, archive notes, tests, rules, role context includes | `spec-editor` |
-| `.agents/manifest.yaml` | `.agents/roles/*`, `ai/agents/*`, `.agents/README.md`, route preview expectations, scoped skills | `pola` with affected role owner |
-| `.agents/roles/*` | matching `ai/agents/*`, manifest metadata, context includes, role outputs | affected role owner |
-| `ai/agents/*` | matching `.agents/roles/*`, manifest outputs, workflow docs | affected role owner |
+| `docs/spec-modes/*` or `current/*` | agent loading order, active handoff notes, release gates, template defaults | `pola` or `spec-editor` |
+| `design/*` | roadmap, feature specs, UI design notes, rules, review gates | `spec-editor` |
+| `specs/roadmap.md` | dependent feature specs, release gates, implementation ordering, tests | `spec-editor` |
+| `specs/*/spec.md` | implementation notes, tests, reviews, API contracts, release gates | `spec-editor` |
+| `.agents/manifest.yaml` | `.agents/roles/*`, `.agents/modes/*`, `ai/agents/*`, `ai/agents/modes/*`, `.agents/README.md`, route preview expectations, scoped skills | `pola` with affected role owner |
+| `.agents/roles/*` or `.agents/modes/*` | matching `ai/agents/*` or `ai/agents/modes/*`, manifest metadata, context includes, role outputs | affected role owner |
+| `ai/agents/*` or `ai/agents/modes/*` | matching `.agents/roles/*` or `.agents/modes/*`, manifest outputs, workflow docs | affected role owner |
 | `.skills/*` | manifest skill binding, role prompt assumptions, skill references, CI evidence if delivery-related | skill owner role |
 | `rules/*` or `.rules/*` | affected specs, tests, role prompts, release gates, rule map | `reviewer` or domain owner |
 | `ai/workflows/*` | `.agents/README.md`, route preview docs, role contracts, CI/release handoff | `execution-editor` |
@@ -56,7 +59,7 @@ waived_assets:
 open_sync_risks:
   - <risk, or none>
 owner_agent: <registered role from .agents/manifest.yaml, or pola>
-next_gate: <review | test | ci | qa | promote | none>
+next_gate: <review | test | ci | qa | merge | none>
 ```
 
 ## Coordinator Rules

@@ -1,6 +1,6 @@
 # OpenAPI Agent
 
-Owns API contract generation from SpecOS Contracts and keeps machine-readable contracts aligned with draft intent.
+Owns API contract generation from feature specs and keeps machine-readable contracts aligned with draft intent.
 
 ## Responsibilities
 

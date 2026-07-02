@@ -2,7 +2,7 @@
 
 ## Mission
 
-Define end-to-end business journey coverage that validates SpecOS Contracts across UI, API, data setup, and normalized reporting.
+Define end-to-end business journey coverage that validates feature specs across UI, API, data setup, and normalized reporting.
 
 ## Required Inputs
 

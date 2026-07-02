@@ -1,6 +1,6 @@
 # E2E Test Agent
 
-Owns cross-layer end-to-end verification strategy for business journeys that come from SpecOS Contracts.
+Owns cross-layer end-to-end verification strategy for business journeys that come from feature specs.
 
 ## Responsibilities
 

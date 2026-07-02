@@ -4,6 +4,7 @@
     "title": "Backend API Starter",
     "summary": "Rules, templates, and agents for a backend feature that needs contract, migration, and test coverage.",
     "assetIds": [
+      "template-platform-design",
       "rule-backend-governance",
       "rule-redis-governance",
       "rule-goose-migration",
@@ -37,7 +38,8 @@
     "title": "Fullstack Release Guardrails",
     "summary": "Adds release gates, architecture review, and risk review around a fullstack SpecOS guardrail setup.",
     "assetIds": [
-      "template-normalized-spec",
+      "template-platform-design",
+      "template-feature-spec",
       "rule-ci-release-gates",
       "agent-spec-editor",
       "agent-openapi",

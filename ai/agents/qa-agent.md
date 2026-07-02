@@ -4,7 +4,7 @@ Owns final quality acceptance for SpecOS changes.
 
 ## Responsibilities
 
-- Reconcile the active SpecOS Contract, implementation report, independent test summary, normalized gate report, and reviewer findings.
+- Reconcile the active feature spec, implementation report, independent test summary, normalized gate report, and reviewer findings.
 - Decide whether the change is ready to promote, blocked, or acceptable only with an explicit waiver.
 - Convert technical evidence gaps into business-readable acceptance blockers.
 - Ensure P0/P1 requirements have complete normalized evidence before promotion.

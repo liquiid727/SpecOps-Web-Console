@@ -1,14 +1,35 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildAgentExecutionPlan,
+  buildDispatchPromptEnvelopeSchema,
+  buildExecutionPlanOutputSchema,
+  buildHostPromptAssemblySchema,
+  buildPrimaryDispatchPromptEnvelopeSchema,
+  buildSpecialistDispatchPromptEnvelopeSchema,
+  buildValidatedAgentExecutionPlan,
+  buildValidatedRouteRequestOutput,
   buildBlockedApiScenarioResult,
   buildBrunoCollectionAssets,
   buildDeterministicTestPlan,
   buildExecutedApiScenarioResult,
+  buildHostPromptAssembly,
+  buildPrimaryDispatchPromptEnvelope,
   buildRequestRoute,
+  buildRouteRequestOutputSchema,
+  buildSpecialistDispatchPlan,
+  buildSpecialistDispatchPromptEnvelope,
   buildTestGateReport,
   buildSpecChangeTestSchedule,
+  formatRouteRequestOutput,
+  validateAgentExecutionPlan,
+  validateDispatchPromptEnvelope,
+  validateExecutionPlanOutput,
+  validatePrimaryDispatchPromptEnvelope,
+  validateSpecialistDispatchPromptEnvelope,
   validateBundle,
+  validateHostPromptAssembly,
   validateManifest,
+  validateRouteRequestOutput,
   validateScenarioResult,
   validateSpec,
   validateTestSchedule,
@@ -22,6 +43,7 @@ describe("artifact validation", () => {
     );
 
     expect(route).toMatchObject({
+      projectMode: "litespec",
       requestKind: "test",
       primaryAgent: "testing-agent",
       needsChangePackage: true,
@@ -43,6 +65,33 @@ describe("artifact validation", () => {
       expect.arrayContaining(["rules/testing/production-test-standards.md", "rules/ci/spec-release-gates.md"]),
     );
     expect(route.skills).toContain(".codex/skills/specos-ui-design/SKILL.md");
+    expect(route.requiredContext).toEqual(expect.arrayContaining([".specos/manifest.yaml", "current/", "docs/spec-modes/LiteSpec/README.md"]));
+    expect(route.promptAssembly).toMatchObject({
+      manifestPath: ".agents/manifest.yaml",
+      overlayManifest: ".agents/modes/litespec/manifest.overlay.yaml",
+    });
+    expect(route.promptAssembly.loadOrder).toEqual(
+      expect.arrayContaining([
+        ".specos/manifest.yaml projectMode",
+        "selected mode overlay manifest from .agents/modes/<projectMode>/manifest.overlay.yaml",
+      ]),
+    );
+    expect(route.promptAssembly.roles).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: "testing-agent",
+          overlayApplied: true,
+          modeRolePrompt: ".agents/modes/litespec/roles/testing-agent.md",
+          modeCanonicalPrompt: "ai/agents/modes/litespec/testing-agent.md",
+        }),
+        expect.objectContaining({
+          role: "ui-design-agent",
+          overlayApplied: true,
+          modeRolePrompt: ".agents/modes/litespec/roles/ui-design-agent.md",
+          modeCanonicalPrompt: "ai/agents/modes/litespec/ui-design-agent.md",
+        }),
+      ]),
+    );
   });
 
   it("routes QA acceptance requests to the testing agent", () => {
@@ -58,11 +107,12 @@ describe("artifact validation", () => {
   });
 
   it("routes architecture orchestration requests to the architecture agent with bounded supporting agents", () => {
-    const route = buildRequestRoute(
-      "让架构 agent 评估订单 API、数据库迁移、性能和并发风险，并输出子 agent 分工",
-    );
+    const route = buildRequestRoute("让架构 agent 评估订单 API、数据库迁移、性能和并发风险，并输出子 agent 分工", {
+      projectMode: "enterprisespec",
+    });
 
     expect(route).toMatchObject({
+      projectMode: "enterprisespec",
       requestKind: "test",
       primaryAgent: "architecture-agent",
     });
@@ -78,6 +128,559 @@ describe("artifact validation", () => {
       ]),
     );
     expect(route.rules).toEqual(expect.arrayContaining(["ai/workflows/nested-agent-orchestration.md"]));
+    expect(route.requiredContext).toContain("docs/spec-modes/EnterpriseSpec/README.md");
+    expect(route.promptAssembly.overlayManifest).toBe(".agents/modes/enterprisespec/manifest.overlay.yaml");
+    expect(route.promptAssembly.roles).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: "openapi-agent",
+          overlayApplied: true,
+          modeRolePrompt: ".agents/modes/enterprisespec/roles/openapi-agent.md",
+          modeCanonicalPrompt: "ai/agents/modes/enterprisespec/openapi-agent.md",
+        }),
+        expect.objectContaining({
+          role: "db-migration-agent",
+          overlayApplied: true,
+          modeRolePrompt: ".agents/modes/enterprisespec/roles/db-migration-agent.md",
+          modeCanonicalPrompt: "ai/agents/modes/enterprisespec/db-migration-agent.md",
+        }),
+      ]),
+    );
+  });
+
+  it("builds host prompt assembly from manifest and overlay metadata", () => {
+    const assembly = buildHostPromptAssembly(
+      {
+        calling_convention: {
+          role_path_base: ".agents",
+          mode_overlay_roots: {
+            role_overlays: ".agents/modes",
+            canonical_overlays: "ai/agents/modes",
+          },
+          prompt_assembly_order: [
+            "AGENTS.md",
+            ".codex/instructions.md",
+            ".specos/manifest.yaml projectMode",
+            "selected role metadata from .agents/manifest.yaml",
+            "selected mode overlay manifest from .agents/modes/<projectMode>/manifest.overlay.yaml",
+            "selected shared role_prompt",
+            "selected shared canonical",
+            "selected mode overlay role_prompt when present",
+            "selected mode overlay canonical when present",
+            "selected skills",
+            "selected context_includes",
+          ],
+        },
+        mode_overlays: {
+          enterprisespec: {
+            manifest_overlay: ".agents/modes/enterprisespec/manifest.overlay.yaml",
+          },
+        },
+        roles: {
+          "testing-agent": {
+            role_prompt: "roles/testing-agent.md",
+            canonical: "ai/agents/testing-agent.md",
+            skill_mode: "scoped_only",
+            skills: [],
+            delegates_to: ["test-editor", "qa-agent"],
+            context_includes: ["tests/README.md", "tests/results/"],
+            owns: ["independent verification strategy"],
+            outputs: ["test strategy and owner map"],
+          },
+          "test-editor": {
+            role_prompt: "roles/test-editor.md",
+            canonical: "ai/agents/test-editor.md",
+            skill_mode: "scoped_only",
+            skills: [],
+            context_includes: ["tests/README.md", "specs/"],
+            owns: ["tests/"],
+            outputs: ["scenario coverage"],
+          },
+          "ddd-domain-agent": {
+            role_prompt: "roles/ddd-domain-agent.md",
+            canonical: "ai/agents/ddd-domain-agent.md",
+            skills: [],
+            context_includes: ["design/", "specs/"],
+            owns: ["domain boundaries"],
+            outputs: ["domain risk review"],
+          },
+        },
+      },
+      {
+        projectMode: "enterprisespec",
+        manifestPath: ".agents/manifest.yaml",
+        primaryAgent: "testing-agent",
+        supportingAgents: ["test-editor", "ddd-domain-agent"],
+        overlayManifest: {
+          mode: "enterprisespec",
+          overrides: ["testing-agent", "test-editor"],
+        },
+      },
+    );
+
+    expect(assembly).toMatchObject({
+      projectMode: "enterprisespec",
+      manifestPath: ".agents/manifest.yaml",
+      overlayManifest: ".agents/modes/enterprisespec/manifest.overlay.yaml",
+    });
+    expect(assembly.sharedContext).toEqual(
+      expect.arrayContaining([
+        "AGENTS.md",
+        ".codex/instructions.md",
+        ".agents/manifest.yaml",
+        ".specos/manifest.yaml projectMode",
+      ]),
+    );
+    const testingAgent = assembly.roles.find((role) => role.role === "testing-agent");
+    const testEditor = assembly.roles.find((role) => role.role === "test-editor");
+    const domainAgent = assembly.roles.find((role) => role.role === "ddd-domain-agent");
+
+    expect(testingAgent).toMatchObject({
+      role: "testing-agent",
+      overlayApplied: true,
+      modeRolePrompt: ".agents/modes/enterprisespec/roles/testing-agent.md",
+      skills: [],
+      contextIncludes: ["tests/README.md", "tests/results/"],
+      delegatesTo: ["test-editor", "qa-agent"],
+    });
+    expect(testEditor).toMatchObject({
+      role: "test-editor",
+      overlayApplied: true,
+      modeRolePrompt: ".agents/modes/enterprisespec/roles/test-editor.md",
+      contextIncludes: ["tests/README.md", "specs/"],
+    });
+    expect(domainAgent).toMatchObject({
+      role: "ddd-domain-agent",
+      overlayApplied: false,
+      contextIncludes: ["design/", "specs/"],
+    });
+    expect(domainAgent?.modeRolePrompt).toBeUndefined();
+  });
+
+  it("builds an agent execution plan from route plus prompt assembly", () => {
+    const plan = buildAgentExecutionPlan(
+      "让架构 agent 评估订单 API、数据库迁移、性能和并发风险，并输出子 agent 分工",
+      {
+        projectMode: "enterprisespec",
+        manifest: {
+          calling_convention: {
+            role_path_base: ".agents",
+            mode_overlay_roots: {
+              role_overlays: ".agents/modes",
+              canonical_overlays: "ai/agents/modes",
+            },
+          },
+          mode_overlays: {
+            enterprisespec: {
+              manifest_overlay: ".agents/modes/enterprisespec/manifest.overlay.yaml",
+            },
+          },
+          roles: {
+            "architecture-agent": {
+              role_prompt: "roles/architecture-agent.md",
+              canonical: "ai/agents/architecture-agent.md",
+              skills: [],
+              context_includes: ["design/", "specs/roadmap.md"],
+              delegates_to: ["openapi-agent", "db-migration-agent", "reviewer"],
+              owns: ["architecture decision synthesis"],
+              outputs: ["architecture recommendation"],
+            },
+            "openapi-agent": {
+              role_prompt: "roles/openapi-agent.md",
+              canonical: "ai/agents/openapi-agent.md",
+              skills: [],
+              context_includes: ["specs/", "rules/shared/error-code-governance.md"],
+              outputs: ["OpenAPI contract updates"],
+            },
+            "ddd-domain-agent": {
+              role_prompt: "roles/ddd-domain-agent.md",
+              canonical: "ai/agents/ddd-domain-agent.md",
+              skills: [],
+              context_includes: ["design/", "specs/"],
+              outputs: ["domain risk review"],
+            },
+          },
+        },
+      },
+    );
+
+    expect(plan).toMatchObject({
+      request: "让架构 agent 评估订单 API、数据库迁移、性能和并发风险，并输出子 agent 分工",
+      projectMode: "enterprisespec",
+      specialistDispatch: "bounded-parallel",
+      recommendedParallelism: {
+        suggested: 4,
+        max: 4,
+      },
+    });
+    expect(plan.route.primaryAgent).toBe("architecture-agent");
+    expect(plan.primaryTask).toMatchObject({
+      role: "architecture-agent",
+      dispatch: "primary",
+      parallelizable: false,
+    });
+    expect(plan.primaryDispatchPromptEnvelope).toMatchObject({
+      role: "architecture-agent",
+      sharedPromptStack: expect.arrayContaining(["AGENTS.md", ".codex/instructions.md"]),
+    });
+    expect(plan.primaryTask.requiredContext).toEqual(
+      expect.arrayContaining(["design/", "specs/roadmap.md", "ai/workflows/nested-agent-orchestration.md"]),
+    );
+    expect(plan.supportingTasks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: "openapi-agent",
+          dispatch: "supporting",
+          parallelizable: true,
+          requestedRuntimeSkills: expect.arrayContaining([]),
+        }),
+        expect.objectContaining({
+          role: "ddd-domain-agent",
+          dispatch: "supporting",
+          parallelizable: true,
+        }),
+      ]),
+    );
+    expect(plan.specialistDispatchPlan.tasks).toHaveLength(4);
+    expect(plan.specialistDispatchPlan.tasks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: "openapi-agent",
+          parallelizable: true,
+          dispatchPromptEnvelope: expect.objectContaining({
+            role: "openapi-agent",
+          }),
+        }),
+        expect.objectContaining({
+          role: "db-migration-agent",
+          parallelizable: true,
+        }),
+        expect.objectContaining({
+          role: "performance-test-agent",
+          parallelizable: true,
+        }),
+        expect.objectContaining({
+          role: "concurrency-test-agent",
+          parallelizable: true,
+        }),
+      ]),
+    );
+  });
+
+  it("builds bounded specialist dispatch tasks with deferred roles", () => {
+    const executionPlan = buildAgentExecutionPlan(
+      "强化测试 UI，覆盖 API、E2E、性能、并发，并接入 CI gate",
+      {
+        projectMode: "litespec",
+      },
+    );
+
+    const specialistPlan = buildSpecialistDispatchPlan(executionPlan, {
+      minTasks: 2,
+      maxTasks: 4,
+    });
+
+    expect(specialistPlan).toMatchObject({
+      primaryRole: "testing-agent",
+      minTasks: 2,
+      maxTasks: 4,
+    });
+    expect(specialistPlan.tasks.length).toBeGreaterThanOrEqual(2);
+    expect(specialistPlan.tasks.length).toBeLessThanOrEqual(4);
+    expect(specialistPlan.tasks[0]).toMatchObject({
+      id: expect.stringContaining("dispatch-1-"),
+      parallelizable: true,
+      exactQuestion: expect.stringContaining("强化测试 UI"),
+    });
+    expect(specialistPlan.tasks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: "test-editor",
+          expectedOutput: expect.arrayContaining(["concise findings"]),
+          dispatchPromptEnvelope: expect.objectContaining({
+            role: "test-editor",
+          }),
+        }),
+        expect.objectContaining({
+          role: "performance-test-agent",
+        }),
+      ]),
+    );
+    expect(specialistPlan.deferredRoles.length).toBeGreaterThan(0);
+  });
+
+  it("builds a direct specialist dispatch prompt envelope", () => {
+    const executionPlan = buildAgentExecutionPlan(
+      "强化测试 UI，覆盖 API、E2E、性能、并发，并接入 CI gate",
+      {
+        projectMode: "litespec",
+      },
+    );
+    const task = executionPlan.specialistDispatchPlan.tasks[0];
+    const envelope = buildSpecialistDispatchPromptEnvelope(task, executionPlan);
+
+    expect(envelope).toMatchObject({
+      role: task.role,
+      sharedPromptStack: expect.arrayContaining([
+        "AGENTS.md",
+        ".codex/instructions.md",
+      ]),
+      rolePromptStack: expect.arrayContaining([
+        expect.stringContaining(`.agents/roles/${task.role}.md`),
+        expect.stringContaining(`ai/agents/${task.role}.md`),
+      ]),
+      contextPaths: expect.arrayContaining(task.inspectableSurfaces),
+      requestedRuntimeSkills: task.requestedRuntimeSkills,
+      taskBrief: {
+        reason: task.reason,
+        exactQuestion: task.exactQuestion,
+        inspectableSurfaces: task.inspectableSurfaces,
+        expectedOutput: task.expectedOutput,
+        nonGoals: task.nonGoals,
+      },
+    });
+    expect(envelope.message).toContain(`Role: ${task.role}`);
+    expect(envelope.message).toContain("Exact Question");
+    expect(envelope.message).toContain("Inspectable Surfaces");
+  });
+
+  it("builds a direct primary dispatch prompt envelope", () => {
+    const executionPlan = buildAgentExecutionPlan(
+      "让架构 agent 评估订单 API、数据库迁移、性能和并发风险，并输出子 agent 分工",
+      {
+        projectMode: "enterprisespec",
+      },
+    );
+    const envelope = buildPrimaryDispatchPromptEnvelope(executionPlan);
+
+    expect(envelope).toMatchObject({
+      role: "architecture-agent",
+      sharedPromptStack: expect.arrayContaining([
+        "AGENTS.md",
+        ".codex/instructions.md",
+      ]),
+      rolePromptStack: expect.arrayContaining([
+        ".agents/roles/architecture-agent.md",
+        "ai/agents/architecture-agent.md",
+      ]),
+    });
+    expect(envelope.taskBrief.exactQuestion).toContain("smallest correct cross-surface plan");
+    expect(envelope.message).toContain("Dispatch: primary");
+    expect(envelope.message).toContain("Expected Output");
+  });
+
+  it("formats route request output projections from one execution plan", () => {
+    const executionPlan = buildAgentExecutionPlan(
+      "让架构 agent 评估订单 API、数据库迁移、性能和并发风险，并输出子 agent 分工",
+      { projectMode: "enterprisespec" },
+    );
+
+    const full = formatRouteRequestOutput(executionPlan, "full");
+    const dispatchJson = formatRouteRequestOutput(executionPlan, "dispatch-json");
+    const primaryJson = formatRouteRequestOutput(executionPlan, "primary-json");
+
+    expect(full).toMatchObject({
+      primaryAgent: "architecture-agent",
+      executionPlan: expect.objectContaining({
+        projectMode: "enterprisespec",
+      }),
+    });
+    expect(Array.isArray(dispatchJson)).toBe(true);
+    expect(dispatchJson).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: "openapi-agent",
+        }),
+      ]),
+    );
+    expect(primaryJson).toMatchObject({
+      role: "architecture-agent",
+    });
+  });
+
+  it("builds route request output schemas for all exported formats", () => {
+    expect(buildDispatchPromptEnvelopeSchema()).toMatchObject({
+      artifact: "dispatch-prompt-envelope",
+      rootType: "object",
+      requiredTopLevel: expect.arrayContaining(["role", "taskBrief", "message"]),
+    });
+    expect(buildPrimaryDispatchPromptEnvelopeSchema()).toEqual(buildDispatchPromptEnvelopeSchema());
+    expect(buildSpecialistDispatchPromptEnvelopeSchema()).toEqual(buildDispatchPromptEnvelopeSchema());
+    expect(buildRouteRequestOutputSchema("full")).toMatchObject({
+      artifact: "route-output",
+      format: "full",
+      rootType: "object",
+      requiredTopLevel: expect.arrayContaining(["projectMode", "executionPlan"]),
+    });
+    expect(buildRouteRequestOutputSchema("dispatch-json")).toMatchObject({
+      artifact: "route-output",
+      format: "dispatch-json",
+      rootType: "array",
+      itemRequiredTopLevel: expect.arrayContaining(["role", "message"]),
+    });
+    expect(buildRouteRequestOutputSchema("primary-json")).toMatchObject({
+      artifact: "route-output",
+      format: "primary-json",
+      rootType: "object",
+      requiredTopLevel: expect.arrayContaining(["role", "taskBrief", "message"]),
+    });
+    expect(buildRouteRequestOutputSchema("primary-json").requiredTopLevel).toEqual(
+      buildDispatchPromptEnvelopeSchema().requiredTopLevel,
+    );
+    expect(buildRouteRequestOutputSchema("dispatch-json").itemRequiredTopLevel).toEqual(
+      buildDispatchPromptEnvelopeSchema().requiredTopLevel,
+    );
+    expect(buildRouteRequestOutputSchema("execution-plan-json")).toMatchObject({
+      artifact: "execution-plan-output",
+      format: "execution-plan-json",
+      rootType: "object",
+      requiredTopLevel: expect.arrayContaining(["request", "route", "primaryTask", "specialistDispatchPlan"]),
+    });
+    expect(buildExecutionPlanOutputSchema()).toEqual(buildRouteRequestOutputSchema("execution-plan-json"));
+    expect(buildHostPromptAssemblySchema()).toMatchObject({
+      artifact: "host-prompt-assembly",
+      rootType: "object",
+      requiredTopLevel: expect.arrayContaining(["projectMode", "manifestPath", "roles"]),
+      roleRequiredTopLevel: expect.arrayContaining(["role", "sharedRolePrompt", "overlayApplied", "loadOrder"]),
+    });
+  });
+
+  it("validates route request output projections", () => {
+    const executionPlan = buildAgentExecutionPlan(
+      "让架构 agent 评估订单 API、数据库迁移、性能和并发风险，并输出子 agent 分工",
+      { projectMode: "enterprisespec" },
+    );
+
+    const full = formatRouteRequestOutput(executionPlan, "full");
+    const dispatchJson = formatRouteRequestOutput(executionPlan, "dispatch-json");
+    const primaryJson = formatRouteRequestOutput(executionPlan, "primary-json");
+    const executionPlanJson = formatRouteRequestOutput(executionPlan, "execution-plan-json");
+
+    expect(validateRouteRequestOutput(full, "full").ok).toBe(true);
+    expect(validateRouteRequestOutput(dispatchJson, "dispatch-json").ok).toBe(true);
+    expect(validateRouteRequestOutput(primaryJson, "primary-json").ok).toBe(true);
+    expect(validateRouteRequestOutput(executionPlanJson, "execution-plan-json").ok).toBe(true);
+    expect(validateDispatchPromptEnvelope(primaryJson).ok).toBe(true);
+    expect(validatePrimaryDispatchPromptEnvelope(primaryJson).ok).toBe(true);
+    expect(validateSpecialistDispatchPromptEnvelope(dispatchJson[0]).ok).toBe(true);
+  });
+
+  it("validates host prompt assemblies and execution plans for runtime reuse", () => {
+    const executionPlan = buildAgentExecutionPlan(
+      "让架构 agent 评估订单 API、数据库迁移、性能和并发风险，并输出子 agent 分工",
+      { projectMode: "enterprisespec" },
+    );
+
+    expect(validateHostPromptAssembly(executionPlan.promptAssembly).ok).toBe(true);
+    expect(validateAgentExecutionPlan(executionPlan).ok).toBe(true);
+    expect(validateExecutionPlanOutput(executionPlan).ok).toBe(true);
+  });
+
+  it("builds validated execution plans for host runtimes", () => {
+    const executionPlan = buildValidatedAgentExecutionPlan(
+      "强化测试 UI，覆盖 API、E2E、性能、并发，并接入 CI gate",
+      { projectMode: "litespec" },
+    );
+
+    expect(executionPlan.primaryTask.role).toBe("testing-agent");
+    expect(executionPlan.primaryDispatchPromptEnvelope.role).toBe("testing-agent");
+    expect(executionPlan.specialistDispatchPlan.tasks.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("builds validated route request output projections for host reuse", () => {
+    const { executionPlan, output } = buildValidatedRouteRequestOutput(
+      "让架构 agent 评估订单 API、数据库迁移、性能和并发风险，并输出子 agent 分工",
+      "dispatch-json",
+      { projectMode: "enterprisespec" },
+    );
+
+    expect(executionPlan.primaryTask.role).toBe("architecture-agent");
+    expect(Array.isArray(output)).toBe(true);
+    expect(validateRouteRequestOutput(output, "dispatch-json").ok).toBe(true);
+  });
+
+  it("builds validated execution-plan-json projections for host reuse", () => {
+    const { executionPlan, output } = buildValidatedRouteRequestOutput(
+      "让架构 agent 评估订单 API、数据库迁移、性能和并发风险，并输出子 agent 分工",
+      "execution-plan-json",
+      { projectMode: "enterprisespec" },
+    );
+
+    expect(executionPlan.primaryTask.role).toBe("architecture-agent");
+    expect(output).toMatchObject({
+      request: expect.stringContaining("订单 API"),
+      primaryTask: expect.objectContaining({
+        role: "architecture-agent",
+      }),
+    });
+    expect(validateRouteRequestOutput(output, "execution-plan-json").ok).toBe(true);
+  });
+
+  it("rejects invalid route request output projections", () => {
+    const invalidPrimary = {
+      sharedPromptStack: ["AGENTS.md"],
+      rolePromptStack: [".agents/roles/testing-agent.md"],
+      contextPaths: ["design/"],
+      requestedRuntimeSkills: [],
+      taskBrief: {
+        reason: "x",
+        exactQuestion: "y",
+        inspectableSurfaces: ["design/"],
+        expectedOutput: ["plan"],
+        nonGoals: ["none"],
+      },
+      message: "missing role",
+    };
+
+    const invalidDispatch = [
+      {
+        role: "openapi-agent",
+        sharedPromptStack: ["AGENTS.md"],
+        rolePromptStack: ["ai/agents/openapi-agent.md"],
+        contextPaths: ["specs/"],
+        requestedRuntimeSkills: [],
+        taskBrief: {
+          reason: "x",
+          exactQuestion: "y",
+          inspectableSurfaces: ["specs/"],
+          expectedOutput: ["contract"],
+          nonGoals: ["none"],
+        },
+      },
+    ];
+
+    expect(validateRouteRequestOutput(invalidPrimary, "primary-json").ok).toBe(false);
+    expect(validateRouteRequestOutput(invalidDispatch, "dispatch-json").ok).toBe(false);
+    expect(validateDispatchPromptEnvelope(invalidPrimary).ok).toBe(false);
+    expect(validatePrimaryDispatchPromptEnvelope(invalidPrimary).ok).toBe(false);
+    expect(validateSpecialistDispatchPromptEnvelope(invalidDispatch[0]).ok).toBe(false);
+    expect(validateRouteRequestOutput(invalidPrimary, "primary-json").errors.map((error) => error.code)).toContain("SPECOS_ROUTE_OUTPUT_INVALID");
+  });
+
+  it("rejects invalid host prompt assemblies and execution plans", () => {
+    expect(
+      validateHostPromptAssembly({
+        projectMode: "litespec",
+        manifestPath: ".agents/manifest.yaml",
+      }).ok,
+    ).toBe(false);
+
+    expect(
+      validateAgentExecutionPlan({
+        request: "bad plan",
+        promptAssembly: {
+          projectMode: "litespec",
+        },
+      }).ok,
+    ).toBe(false);
+    expect(
+      validateExecutionPlanOutput({
+        request: "bad plan",
+        promptAssembly: {
+          projectMode: "litespec",
+        },
+      }).ok,
+    ).toBe(false);
   });
 
   it("routes pure architecture reviews to the architecture agent before spec intake", () => {
@@ -108,10 +711,11 @@ describe("artifact validation", () => {
   it("accepts a minimal fullstack manifest", () => {
     const result = validateManifest({
       project: { name: "demo", type: "fullstack" },
+      projectMode: "litespec",
       stacks: { frontend: "next", backend: "node-api" },
       artifacts: {
         draftsDir: "spec-draft",
-        specsDir: "specs/current",
+        specsDir: "specs",
         testsDir: "tests",
         resultsDir: "tests/results",
       },
@@ -127,10 +731,11 @@ describe("artifact validation", () => {
   it("accepts a minimal spec-only manifest", () => {
     const result = validateManifest({
       project: { name: "demo", type: "spec-only" },
+      projectMode: "enterprisespec",
       stacks: { frontend: "none", backend: "none" },
       artifacts: {
         draftsDir: "spec-draft",
-        specsDir: "specs/current",
+        specsDir: "specs",
         testsDir: "tests",
         resultsDir: "tests/results",
       },
@@ -143,13 +748,34 @@ describe("artifact validation", () => {
     expect(result.ok).toBe(true);
   });
 
+  it("rejects an unknown project mode", () => {
+    const result = validateManifest({
+      project: { name: "demo", type: "fullstack" },
+      projectMode: "legacy",
+      stacks: { frontend: "next", backend: "node-api" },
+      artifacts: {
+        draftsDir: "spec-draft",
+        specsDir: "specs",
+        testsDir: "tests",
+        resultsDir: "tests/results",
+      },
+      rulePacks: ["fullstack-base"],
+      agentTemplates: ["spec-editor"],
+      workflows: ["default-fullstack"],
+      ci: { checkCommand: "npx specos check" },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errors.map((error) => error.path)).toContain("projectMode");
+  });
+
   it("rejects a manifest without rule packs and agent templates", () => {
     const result = validateManifest({
       project: { name: "demo", type: "fullstack" },
       stacks: { frontend: "next", backend: "node-api" },
       artifacts: {
         draftsDir: "spec-draft",
-        specsDir: "specs/current",
+        specsDir: "specs",
         testsDir: "tests",
         resultsDir: "tests/results",
       },
@@ -169,7 +795,7 @@ describe("artifact validation", () => {
       stacks: { frontend: "next", backend: "node-api" },
       artifacts: {
         draftsDir: "spec-draft",
-        specsDir: "specs/current",
+        specsDir: "specs",
         testsDir: "tests",
         resultsDir: "tests/results",
       },
@@ -428,13 +1054,14 @@ describe("artifact validation", () => {
     };
 
     const schedule = buildSpecChangeTestSchedule(plan, {
-      changeId: "reward-order-create",
+      changeId: "RP-002",
       executionMode: "parallel",
+      specPath: "specs/RP-002-reward-order-create/spec.md",
     });
     const validation = validateTestSchedule(schedule);
 
     expect(validation.ok).toBe(true);
-    expect(schedule.changeId).toBe("reward-order-create");
+    expect(schedule.changeId).toBe("RP-002");
     expect(schedule.executionMode).toBe("parallel");
     expect(schedule.tracks.map((track) => track.id)).toEqual(["execution", "testing"]);
     expect(schedule.tracks[0]).toMatchObject({
@@ -453,7 +1080,7 @@ describe("artifact validation", () => {
       "playwright-test-agent",
     ]);
     expect(schedule.tasks.find((task) => task.id === "implement-reward-order")?.outputs).toEqual([
-      "specs/changes/reward-order-create/implementation-report.md",
+      "implementation/RP-002-reward-order-create/implementation-report.md",
       "tests/unit/reward-order/",
     ]);
     expect(schedule.tasks.find((task) => task.id === "ui-gap-Happy")).toMatchObject({
@@ -467,14 +1094,14 @@ describe("artifact validation", () => {
       specId: "reward-order",
       specVersion: "1.0.0",
       featureName: "Reward Order",
-      changeId: "reward-order-create",
+      changeId: "RP-002",
       executionMode: "parallel",
       tracks: [
         {
           id: "execution",
           agentRole: "execution-editor",
           isolation: "implementation-only",
-          allowedInputs: ["specs/changes/reward-order-create/spec.md"],
+          allowedInputs: ["specs/RP-002-reward-order-create/spec.md"],
           forbiddenInputs: ["tests/results/", "tests/bruno/", "tests/scenarios/"],
         },
         {
@@ -492,7 +1119,7 @@ describe("artifact validation", () => {
           agentRole: "execution-editor",
           type: "implementation",
           status: "ready",
-          inputs: ["specs/changes/reward-order-create/spec.md"],
+          inputs: ["specs/RP-002-reward-order-create/spec.md"],
           outputs: ["src/reward.ts", "tests/unit/reward-order/"],
           dependsOn: [],
           traceability: { scenarios: ["Happy"], endpoints: ["POST /api/reward-orders"] },
@@ -519,14 +1146,14 @@ describe("artifact validation", () => {
     const result = validateTestSchedule({
       specId: "reward-order",
       specVersion: "1.0.0",
-      changeId: "reward-order-create",
+      changeId: "RP-002",
       executionMode: "parallel",
       tracks: [
         {
           id: "execution",
           agentRole: "execution-editor",
           isolation: "implementation-only",
-          allowedInputs: ["specs/changes/reward-order-create/spec.md"],
+          allowedInputs: ["specs/RP-002-reward-order-create/spec.md"],
           forbiddenInputs: ["tests/results/"],
         },
       ],
@@ -537,7 +1164,7 @@ describe("artifact validation", () => {
           agentRole: "execution-editor",
           type: "implementation",
           status: "ready",
-          inputs: ["specs/changes/reward-order-create/spec.md"],
+          inputs: ["specs/RP-002-reward-order-create/spec.md"],
           outputs: ["src/reward.ts", "tests/bruno/reward-order/"],
           dependsOn: [],
           traceability: { scenarios: ["Happy"], endpoints: ["POST /api/reward-orders"] },
@@ -1050,8 +1677,9 @@ describe("artifact validation", () => {
       ],
     };
     const schedule = buildSpecChangeTestSchedule(plan, {
-      changeId: "reward-order-create",
+      changeId: "RP-002",
       executionMode: "parallel",
+      specPath: "specs/RP-002-reward-order-create/spec.md",
     });
 
     const result = buildBlockedApiScenarioResult(plan, schedule, {
@@ -1176,8 +1804,9 @@ describe("artifact validation", () => {
       ],
     };
     const schedule = buildSpecChangeTestSchedule(plan, {
-      changeId: "reward-order-create",
+      changeId: "RP-002",
       executionMode: "parallel",
+      specPath: "specs/RP-002-reward-order-create/spec.md",
     });
 
     const result = buildExecutedApiScenarioResult(plan, schedule, {
@@ -1243,7 +1872,8 @@ describe("artifact validation", () => {
       },
       entrypoints: {
         draftTemplate: "template-feature-draft",
-        specTemplate: "feature-spec-v1",
+        designTemplate: "template-platform-design",
+        specTemplate: "template-feature-spec",
         workflowId: "spec-driven-default",
       },
       capabilities: {
@@ -1290,6 +1920,7 @@ describe("artifact validation", () => {
       },
       entrypoints: {
         draftTemplate: "spec-draft/_template/feature/product-ui.template.md",
+        designTemplate: "design/_template/platform-design.template.md",
         specTemplate: "specs/_template/feature/spec.example.md",
         workflowId: "spec-driven-default",
       },
@@ -1319,7 +1950,8 @@ describe("artifact validation", () => {
       },
       entrypoints: {
         draftTemplate: "template-feature-draft",
-        specTemplate: "feature-spec-v1",
+        designTemplate: "template-platform-design",
+        specTemplate: "template-feature-spec",
         workflowId: "missing-workflow",
       },
       capabilities: {
@@ -1351,7 +1983,8 @@ describe("artifact validation", () => {
       },
       entrypoints: {
         draftTemplate: "template-feature-draft",
-        specTemplate: "feature-spec-v1",
+        designTemplate: "template-platform-design",
+        specTemplate: "template-feature-spec",
         workflowId: "spec-driven-default",
       },
       capabilities: {

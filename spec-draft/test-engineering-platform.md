@@ -8,7 +8,7 @@
   - `README.md`: SpecOS is a Spec-Driven AI IDE.
   - `tests/README.md`: test assets must be spec-driven and normalized for the test console.
   - `rules/ci/spec-release-gates.md`: release checks must verify spec, generated contracts, tests, and bundle outputs stay aligned.
-  - `ai/workflows/test-console-v1.yaml`: SpecOS Contract -> test plan -> execution -> normalized result -> report UI.
+  - `ai/workflows/test-console-v1.yaml`: Feature Spec -> test plan -> execution -> normalized result -> report UI.
   - `.agents/manifest.yaml`: existing test-related agent boundaries.
 
 This draft describes the production-grade testing system for SpecOS, including test agents, test design, test execution, test UI, performance and concurrency checks, and CI release gates.
@@ -17,7 +17,7 @@ This draft describes the production-grade testing system for SpecOS, including t
 
 SpecOS should treat testing as part of the spec delivery chain, not as an isolated engineering afterthought.
 
-The testing platform should answer five questions for every SpecOS Contract or active change:
+The testing platform should answer five questions for every feature spec or active implementation slice:
 
 1. What business behavior must be verified?
 2. Which test assets prove the behavior?
@@ -31,7 +31,7 @@ The test UI should therefore be an executable verification console, not only an 
 
 ### 2.1 Spec First
 
-All independent verification assets must be derived from SpecOS Contracts or from `specs/current/ + specs/changes/<change-id>/`.
+All independent verification assets must be derived from feature specs plus any required `design/` and `specs/roadmap.md` context.
 
 Draft-only requirements may produce exploratory test plans, but the UI and CI must mark them as draft-only and must not treat them as release evidence.
 
@@ -61,7 +61,7 @@ Missing evidence is not equivalent to success.
 
 ```text
 spec-draft/
-  -> specs/changes/<change-id>/
+  -> specs/<SPEC-ID>-<slug>/
   -> tests/plans/<spec-id>.test-plan.json
   -> tests/schedules/<change-id>.test-schedule.json
   -> generated execution assets
@@ -75,7 +75,7 @@ spec-draft/
   -> tests/results/<spec-id>.<run-id>.json
   -> test-console
   -> CI gate decision
-  -> specs/current/ promotion when accepted
+  -> merge when accepted
 ```
 
 The core rule is:
@@ -652,7 +652,7 @@ Commands should include:
 Blocking conditions:
 
 - Invalid schema.
-- Missing required test plan for an affected SpecOS Contract.
+- Missing required test plan for an affected feature spec.
 - Unit failures.
 - P0 coverage missing for touched critical modules.
 
@@ -707,7 +707,7 @@ Blocking conditions:
 
 Goal:
 
-- Decide whether `specs/changes/<change-id>/` can be promoted to `specs/current/`.
+- Decide whether a reviewed feature spec is ready for merge and release.
 
 Blocking conditions:
 
@@ -850,7 +850,7 @@ For local-first projects, URLs may be relative artifact paths.
 
 ## 15. Acceptance Criteria for a Formal Change
 
-This draft can be converted into `specs/changes/test-engineering-platform/` when the following decisions are made:
+This draft can be converted into a formal feature spec when the following decisions are made:
 
 - Test result schema extension is approved.
 - New agent roles are approved or rejected.

@@ -2,12 +2,14 @@
 
 import { exec as execCallback } from "node:child_process";
 import { createHash } from "node:crypto";
-import { realpathSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { access, copyFile, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import {
+  buildValidatedRouteRequestOutput,
   buildBlockedApiScenarioResult,
   buildBrunoCollectionAssets,
   buildDeterministicTestPlan,
@@ -17,12 +19,17 @@ import {
   buildTestGateReport,
   copyTemplateDirectory,
   validateBundle,
+  validateExecutionPlanOutput,
   validateManifest,
+  validateRouteRequestOutput,
   validateSpec,
   validateScenarioResult,
   validateTestPlan,
   validateTestSchedule,
   validateWorkflow,
+  type AgentModeOverlayManifest,
+  type AgentRuntimeManifest,
+  type RouteRequestOutputFormat,
   type SpecosBundleManifest,
   type SpecosManifest,
   type ScenarioResult,
@@ -46,6 +53,7 @@ export interface RunCliResult {
 type ManifestRecord = Record<string, unknown>;
 interface InitOptions {
   template: string;
+  mode: ProjectMode;
 }
 
 interface CliContext {
@@ -54,16 +62,20 @@ interface CliContext {
 
 interface TemplateDefinition {
   name: string;
-  relativePath: string;
+  packageSubpath: string;
 }
 
+type ProjectMode = "litespec" | "enterprisespec";
+
 const templates: TemplateDefinition[] = [
-  { name: "fullstack", relativePath: "../templates/fullstack" },
-  { name: "spec-only", relativePath: "../templates/spec-only" },
+  { name: "fullstack", packageSubpath: "@specos/templates/fullstack/AGENTS.md" },
+  { name: "spec-only", packageSubpath: "@specos/templates/spec-only/AGENTS.md" },
 ];
 const templateNames = templates.map((template) => template.name).join(", ");
 const exec = promisify(execCallback);
-const supportedCommands = "Supported commands: init, check, route-request, classify-request, intake, create-change, review-change, run-change, test-change, promote-change, export-agent-kit, validate-bundle, install-bundle, list-workflows, run-workflow, generate-test-plan, generate-bruno-tests, run-api-tests, run-performance-tests, run-concurrency-tests, validate-test-gates";
+const packageRequire = createRequire(import.meta.url);
+const supportedCommands =
+  "Supported commands: init, check, route-request, classify-request, validate-route-output, validate-execution-plan, validate-bundle, install-bundle, list-workflows, run-workflow";
 const commandHelp = `${supportedCommands}\nTemplates: ${templateNames}`;
 const agentKitBundleId = "specos-agent-team-kit";
 const agentKitWorkflowId = "spec-driven-default";
@@ -78,11 +90,6 @@ interface ExportAgentKitOptions {
   outDir: string;
 }
 
-type ReviewStage = "design-gate" | "implementation";
-type ReviewDecision = "approved" | "changes-requested" | "blocked";
-type ExecutionResult = "planned" | "implemented";
-type TestDecision = "passed" | "failed" | "blocked";
-
 interface IntakeOptions {
   id: string;
   request: string;
@@ -90,56 +97,16 @@ interface IntakeOptions {
 
 interface RouteRequestOptions {
   request: string;
+  format: RouteRequestOutputFormat;
 }
 
-interface CreateChangeOptions {
-  draftId: string;
-  changeId: string;
+interface ValidateRouteOutputOptions {
+  file: string;
+  format: RouteRequestOutputFormat;
 }
 
-interface ReviewChangeOptions {
-  changeId: string;
-  stage: ReviewStage;
-  decision: ReviewDecision;
-}
-
-interface RunChangeOptions {
-  changeId: string;
-  result: ExecutionResult;
-}
-
-interface TestChangeOptions {
-  changeId: string;
-  decision: TestDecision;
-}
-
-interface PromoteChangeOptions {
-  changeId: string;
-  accept: boolean;
-}
-
-interface ChangeWorkflowState {
-  changeId: string;
-  draftId: string;
-  status: string;
-  gates: {
-    draftConfirmed: boolean;
-    architectureReviewed: boolean;
-    designReviewed: boolean;
-    executionHandoffReady: boolean;
-    implementationDone: boolean;
-    implementationReviewed: boolean;
-    independentTestsPassed: boolean;
-    promoted: boolean;
-    archived: boolean;
-  };
-  decisions: {
-    designGate?: ReviewDecision;
-    implementationReview?: ReviewDecision;
-    test?: TestDecision;
-  };
-  artifacts: string[];
-  updatedAt: string;
+interface ValidateExecutionPlanOptions {
+  file: string;
 }
 
 const agentKitSources: AgentKitSource[] = [
@@ -152,8 +119,13 @@ const agentKitSources: AgentKitSource[] = [
   { source: ".codex/instructions.md", target: ".codex/instructions.md" },
   { source: ".skills/ui-design-handoff/SKILL.md", target: ".codex/skills/specos-ui-design/SKILL.md" },
   { source: ".skills", target: ".skills" },
+  { source: "current", target: "current" },
+  { source: "docs/spec-modes", target: "docs/spec-modes" },
+  { source: "design", target: "design" },
   { source: "spec-draft", target: "spec-draft" },
   { source: "specs", target: "specs" },
+  { source: "implementation", target: "implementation" },
+  { source: "reviews", target: "reviews" },
   {
     source: "tests",
     target: "tests",
@@ -175,8 +147,13 @@ const agentKitInstalls: SpecosBundleManifest["installs"] = [
   { target: ".codex/instructions.md", from: "files/.codex/instructions.md" },
   { target: ".codex/skills/", from: "files/.codex/skills/" },
   { target: ".skills/", from: "files/.skills/" },
+  { target: "current/", from: "files/current/" },
+  { target: "docs/spec-modes/", from: "files/docs/spec-modes/" },
   { target: "spec-draft/", from: "files/spec-draft/" },
+  { target: "design/", from: "files/design/" },
   { target: "specs/", from: "files/specs/" },
+  { target: "implementation/", from: "files/implementation/" },
+  { target: "reviews/", from: "files/reviews/" },
   { target: "tests/", from: "files/tests/" },
   { target: "scripts/README.md", from: "files/scripts/README.md" },
   { target: "scripts/orchestration/README.md", from: "files/scripts/orchestration/README.md" },
@@ -206,7 +183,23 @@ export async function runCli(args: string[], options: RunCliOptions): Promise<Ru
     if (!parsedRoute.ok) {
       return parsedRoute.error;
     }
-    return routeRequestCommand(parsedRoute.value);
+    return routeRequestCommand(context.cwd, parsedRoute.value);
+  }
+
+  if (command === "validate-route-output") {
+    const parsedValidateRouteOutput = parseValidateRouteOutputArgs(args.slice(1), context.cwd);
+    if (!parsedValidateRouteOutput.ok) {
+      return parsedValidateRouteOutput.error;
+    }
+    return validateRouteOutputCommand(context.cwd, parsedValidateRouteOutput.value);
+  }
+
+  if (command === "validate-execution-plan") {
+    const parsedValidateExecutionPlan = parseValidateExecutionPlanArgs(args.slice(1), context.cwd);
+    if (!parsedValidateExecutionPlan.ok) {
+      return parsedValidateExecutionPlan.error;
+    }
+    return validateExecutionPlanCommand(context.cwd, parsedValidateExecutionPlan.value);
   }
 
   if (command === "intake") {
@@ -215,46 +208,6 @@ export async function runCli(args: string[], options: RunCliOptions): Promise<Ru
       return parsedIntake.error;
     }
     return intakeCommand(context.cwd, parsedIntake.value);
-  }
-
-  if (command === "create-change") {
-    const parsedCreate = parseCreateChangeArgs(args.slice(1));
-    if (!parsedCreate.ok) {
-      return parsedCreate.error;
-    }
-    return createChangeCommand(context.cwd, parsedCreate.value);
-  }
-
-  if (command === "review-change") {
-    const parsedReview = parseReviewChangeArgs(args.slice(1));
-    if (!parsedReview.ok) {
-      return parsedReview.error;
-    }
-    return reviewChangeCommand(context.cwd, parsedReview.value);
-  }
-
-  if (command === "run-change") {
-    const parsedRun = parseRunChangeArgs(args.slice(1));
-    if (!parsedRun.ok) {
-      return parsedRun.error;
-    }
-    return runChangeCommand(context.cwd, parsedRun.value);
-  }
-
-  if (command === "test-change") {
-    const parsedTest = parseTestChangeArgs(args.slice(1));
-    if (!parsedTest.ok) {
-      return parsedTest.error;
-    }
-    return testChangeCommand(context.cwd, parsedTest.value);
-  }
-
-  if (command === "promote-change") {
-    const parsedPromote = parsePromoteChangeArgs(args.slice(1));
-    if (!parsedPromote.ok) {
-      return parsedPromote.error;
-    }
-    return promoteChangeCommand(context.cwd, parsedPromote.value);
   }
 
   if (command === "export-agent-kit") {
@@ -318,16 +271,21 @@ async function initProject(context: CliContext, options: InitOptions): Promise<R
     return failure("SPECOS_TEMPLATE_UNKNOWN", `Unknown template: ${options.template}\nAvailable templates: ${templateNames}`);
   }
 
-  const templateDir = resolve(dirname(fileURLToPath(import.meta.url)), template.relativePath);
-  const result = await copyTemplateDirectory(templateDir, context.cwd);
+  const templateEntry = resolveTemplateEntry(template.packageSubpath);
+  const templateDir = dirname(templateEntry);
+  const templatePackageRoot = dirname(templateDir);
+  const baseResult = await copyTemplateDirectory(templateDir, context.cwd);
+  const overlayResult = await applyProjectModeOverlay(templatePackageRoot, template.name, options.mode, context.cwd);
+  await persistProjectMode(join(context.cwd, ".specos", "manifest.yaml"), options.mode);
 
   await mkdir(join(context.cwd, "tests/results"), { recursive: true });
 
   const lines = [
     "SPECOS_INIT_OK",
     `template ${template.name}`,
-    `written ${result.written.length}`,
-    `skipped ${result.skipped.length}`,
+    `mode ${options.mode}`,
+    `written ${baseResult.written.length + overlayResult.written.length}`,
+    `skipped ${baseResult.skipped.length + overlayResult.skipped.length}`,
   ];
 
   return {
@@ -367,11 +325,17 @@ async function checkProject(cwd: string): Promise<RunCliResult> {
     return failure("SPECOS_DIRECTORY_MISSING", `Missing required directories: ${missingDirs.join(", ")}`);
   }
 
+  const missingWorkflows = await missingRequiredWorkflowDefs(cwd, validManifest);
+
+  if (missingWorkflows.length > 0) {
+    return failure("SPECOS_WORKFLOW_MISSING", `Missing required workflows: ${missingWorkflows.join(", ")}`);
+  }
+
   const specs = await discoverYamlFiles(join(cwd, validManifest.artifacts.specsDir));
 
   return {
     exitCode: 0,
-    stdout: `SPECOS_CHECK_OK manifest valid; directories valid; specs ${specs.length}\n`,
+    stdout: `SPECOS_CHECK_OK manifest valid; directories valid; workflows valid; specs ${specs.length}\n`,
     stderr: "",
   };
 }
@@ -409,6 +373,19 @@ async function missingRequiredDirs(cwd: string, manifest: SpecosManifest): Promi
     const absolutePath = join(cwd, dir);
     if (!(await pathExists(absolutePath))) {
       missing.push(dir);
+    }
+  }
+
+  return missing;
+}
+
+async function missingRequiredWorkflowDefs(cwd: string, manifest: SpecosManifest): Promise<string[]> {
+  const missing: string[] = [];
+
+  for (const workflowId of manifest.workflows) {
+    const workflowPath = join(cwd, ".specos", "workflows", `${workflowId}.yaml`);
+    if (!(await pathExists(workflowPath))) {
+      missing.push(`.specos/workflows/${workflowId}.yaml`);
     }
   }
 
@@ -475,6 +452,7 @@ function toPosixPath(path: string): string {
 
 function parseInitArgs(args: string[]): { ok: true; value: InitOptions } | { ok: false; error: RunCliResult } {
   let template = "fullstack";
+  let mode: ProjectMode = "litespec";
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
@@ -489,10 +467,26 @@ function parseInitArgs(args: string[]): { ok: true; value: InitOptions } | { ok:
       continue;
     }
 
+    if (arg === "--mode") {
+      const value = args[index + 1];
+      if (!value) {
+        return { ok: false, error: failure("SPECOS_ARGUMENT_INVALID", "--mode requires a value") };
+      }
+      if (value !== "litespec" && value !== "enterprisespec") {
+        return {
+          ok: false,
+          error: failure("SPECOS_ARGUMENT_INVALID", "--mode must be litespec or enterprisespec"),
+        };
+      }
+      mode = value;
+      index += 1;
+      continue;
+    }
+
     return { ok: false, error: failure("SPECOS_ARGUMENT_INVALID", `Unsupported init argument: ${arg}\n${commandHelp}`) };
   }
 
-  return { ok: true, value: { template } };
+  return { ok: true, value: { template, mode } };
 }
 
 function parseExportAgentKitArgs(
@@ -559,12 +553,37 @@ function parseIntakeArgs(args: string[]): { ok: true; value: IntakeOptions } | {
 
 function parseRouteRequestArgs(args: string[]): { ok: true; value: RouteRequestOptions } | { ok: false; error: RunCliResult } {
   let request: string | undefined;
+  let format: RouteRequestOptions["format"] = "full";
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
 
     if (arg === "--request") {
       request = args[index + 1];
+      index += 1;
+      continue;
+    }
+
+    if (arg === "--format") {
+      const value = args[index + 1];
+      if (!value) {
+        return { ok: false, error: failure("SPECOS_ARGUMENT_INVALID", "--format requires a value") };
+      }
+      if (
+        value !== "full" &&
+        value !== "dispatch-json" &&
+        value !== "primary-json" &&
+        value !== "execution-plan-json"
+      ) {
+        return {
+          ok: false,
+          error: failure(
+            "SPECOS_ARGUMENT_INVALID",
+            "--format must be full, dispatch-json, primary-json, or execution-plan-json",
+          ),
+        };
+      }
+      format = value;
       index += 1;
       continue;
     }
@@ -576,153 +595,140 @@ function parseRouteRequestArgs(args: string[]): { ok: true; value: RouteRequestO
     return { ok: false, error: failure("SPECOS_ARGUMENT_INVALID", "route-request requires --request <text>") };
   }
 
-  return { ok: true, value: { request: request.trim() } };
+  return { ok: true, value: { request: request.trim(), format } };
 }
 
-function parseCreateChangeArgs(args: string[]): { ok: true; value: CreateChangeOptions } | { ok: false; error: RunCliResult } {
-  const draftId = args[0];
-  let changeId: string | undefined;
+function parseValidateRouteOutputArgs(
+  args: string[],
+  cwd: string,
+): { ok: true; value: ValidateRouteOutputOptions } | { ok: false; error: RunCliResult } {
+  let file: string | undefined;
+  let format: ValidateRouteOutputOptions["format"] = "full";
 
-  for (let index = 1; index < args.length; index += 1) {
+  for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
-    if (arg === "--change") {
-      changeId = args[index + 1];
-      index += 1;
-      continue;
-    }
-    return { ok: false, error: failure("SPECOS_ARGUMENT_INVALID", `Unsupported create-change argument: ${arg}`) };
-  }
 
-  if (!draftId || !isStableId(draftId)) {
-    return { ok: false, error: failure("SPECOS_ARGUMENT_INVALID", "create-change requires <draft-id>") };
-  }
-
-  if (!changeId || !isStableId(changeId)) {
-    return { ok: false, error: failure("SPECOS_ARGUMENT_INVALID", "create-change requires --change <change-id>") };
-  }
-
-  return { ok: true, value: { draftId, changeId } };
-}
-
-function parseReviewChangeArgs(args: string[]): { ok: true; value: ReviewChangeOptions } | { ok: false; error: RunCliResult } {
-  const changeId = args[0];
-  let stage: ReviewStage | undefined;
-  let decision: ReviewDecision | undefined;
-
-  for (let index = 1; index < args.length; index += 1) {
-    const arg = args[index];
-    if (arg === "--stage") {
+    if (arg === "--file") {
       const value = args[index + 1];
-      if (value !== "design-gate" && value !== "implementation") {
-        return { ok: false, error: failure("SPECOS_ARGUMENT_INVALID", "--stage must be design-gate or implementation") };
+      if (!value) {
+        return { ok: false, error: failure("SPECOS_ARGUMENT_INVALID", "validate-route-output requires --file <path>") };
       }
-      stage = value;
+      file = resolve(cwd, value);
       index += 1;
       continue;
     }
-    if (arg === "--decision") {
+
+    if (arg === "--format") {
       const value = args[index + 1];
-      if (value !== "approved" && value !== "changes-requested" && value !== "blocked") {
-        return { ok: false, error: failure("SPECOS_ARGUMENT_INVALID", "--decision must be approved, changes-requested, or blocked") };
+      if (!value) {
+        return { ok: false, error: failure("SPECOS_ARGUMENT_INVALID", "--format requires a value") };
       }
-      decision = value;
+      if (
+        value !== "full" &&
+        value !== "dispatch-json" &&
+        value !== "primary-json" &&
+        value !== "execution-plan-json"
+      ) {
+        return {
+          ok: false,
+          error: failure(
+            "SPECOS_ARGUMENT_INVALID",
+            "--format must be full, dispatch-json, primary-json, or execution-plan-json",
+          ),
+        };
+      }
+      format = value;
       index += 1;
       continue;
     }
-    return { ok: false, error: failure("SPECOS_ARGUMENT_INVALID", `Unsupported review-change argument: ${arg}`) };
+
+    return { ok: false, error: failure("SPECOS_ARGUMENT_INVALID", `Unsupported validate-route-output argument: ${arg}`) };
   }
 
-  if (!changeId || !isStableId(changeId)) {
-    return { ok: false, error: failure("SPECOS_ARGUMENT_INVALID", "review-change requires <change-id>") };
-  }
-  if (!stage || !decision) {
-    return { ok: false, error: failure("SPECOS_ARGUMENT_INVALID", "review-change requires --stage and --decision") };
+  if (!file) {
+    return { ok: false, error: failure("SPECOS_ARGUMENT_INVALID", "validate-route-output requires --file <path>") };
   }
 
-  return { ok: true, value: { changeId, stage, decision } };
+  return { ok: true, value: { file, format } };
 }
 
-function parseRunChangeArgs(args: string[]): { ok: true; value: RunChangeOptions } | { ok: false; error: RunCliResult } {
-  const changeId = args[0];
-  let result: ExecutionResult = "planned";
+function parseValidateExecutionPlanArgs(
+  args: string[],
+  cwd: string,
+): { ok: true; value: ValidateExecutionPlanOptions } | { ok: false; error: RunCliResult } {
+  let file: string | undefined;
 
-  for (let index = 1; index < args.length; index += 1) {
+  for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
-    if (arg === "--result") {
+
+    if (arg === "--file") {
       const value = args[index + 1];
-      if (value !== "planned" && value !== "implemented") {
-        return { ok: false, error: failure("SPECOS_ARGUMENT_INVALID", "--result must be planned or implemented") };
+      if (!value) {
+        return {
+          ok: false,
+          error: failure("SPECOS_ARGUMENT_INVALID", "validate-execution-plan requires --file <path>"),
+        };
       }
-      result = value;
+      file = resolve(cwd, value);
       index += 1;
       continue;
     }
-    return { ok: false, error: failure("SPECOS_ARGUMENT_INVALID", `Unsupported run-change argument: ${arg}`) };
+
+    return { ok: false, error: failure("SPECOS_ARGUMENT_INVALID", `Unsupported validate-execution-plan argument: ${arg}`) };
   }
 
-  if (!changeId || !isStableId(changeId)) {
-    return { ok: false, error: failure("SPECOS_ARGUMENT_INVALID", "run-change requires <change-id>") };
+  if (!file) {
+    return {
+      ok: false,
+      error: failure("SPECOS_ARGUMENT_INVALID", "validate-execution-plan requires --file <path>"),
+    };
   }
 
-  return { ok: true, value: { changeId, result } };
-}
-
-function parseTestChangeArgs(args: string[]): { ok: true; value: TestChangeOptions } | { ok: false; error: RunCliResult } {
-  const changeId = args[0];
-  let decision: TestDecision | undefined;
-
-  for (let index = 1; index < args.length; index += 1) {
-    const arg = args[index];
-    if (arg === "--decision") {
-      const value = args[index + 1];
-      if (value !== "passed" && value !== "failed" && value !== "blocked") {
-        return { ok: false, error: failure("SPECOS_ARGUMENT_INVALID", "--decision must be passed, failed, or blocked") };
-      }
-      decision = value;
-      index += 1;
-      continue;
-    }
-    return { ok: false, error: failure("SPECOS_ARGUMENT_INVALID", `Unsupported test-change argument: ${arg}`) };
-  }
-
-  if (!changeId || !isStableId(changeId)) {
-    return { ok: false, error: failure("SPECOS_ARGUMENT_INVALID", "test-change requires <change-id>") };
-  }
-  if (!decision) {
-    return { ok: false, error: failure("SPECOS_ARGUMENT_INVALID", "test-change requires --decision <passed|failed|blocked>") };
-  }
-
-  return { ok: true, value: { changeId, decision } };
-}
-
-function parsePromoteChangeArgs(args: string[]): { ok: true; value: PromoteChangeOptions } | { ok: false; error: RunCliResult } {
-  const changeId = args[0];
-  let accept = false;
-
-  for (let index = 1; index < args.length; index += 1) {
-    const arg = args[index];
-    if (arg === "--accept") {
-      accept = true;
-      continue;
-    }
-    return { ok: false, error: failure("SPECOS_ARGUMENT_INVALID", `Unsupported promote-change argument: ${arg}`) };
-  }
-
-  if (!changeId || !isStableId(changeId)) {
-    return { ok: false, error: failure("SPECOS_ARGUMENT_INVALID", "promote-change requires <change-id>") };
-  }
-
-  return { ok: true, value: { changeId, accept } };
+  return { ok: true, value: { file } };
 }
 
 function resolveTemplate(name: string): TemplateDefinition | undefined {
   return templates.find((template) => template.name === name);
 }
 
+function resolveTemplateEntry(packageSubpath: string): string {
+  return realpathSync(packageRequire.resolve(packageSubpath));
+}
+
+async function applyProjectModeOverlay(
+  templatePackageRoot: string,
+  templateName: string,
+  mode: ProjectMode,
+  cwd: string,
+) {
+  if (mode === "litespec") {
+    return { written: [], skipped: [] };
+  }
+
+  const overlayDir = join(templatePackageRoot, "modes", mode, templateName);
+  if (!(await pathExists(overlayDir))) {
+    return { written: [], skipped: [] };
+  }
+
+  return copyTemplateDirectory(overlayDir, cwd, { overwrite: true });
+}
+
+async function persistProjectMode(manifestPath: string, mode: ProjectMode) {
+  if (!(await pathExists(manifestPath))) {
+    return;
+  }
+
+  const source = await readFile(manifestPath, "utf8");
+  const manifest = parseManifestYaml(source);
+  manifest.projectMode = mode;
+  await writeFile(manifestPath, stringify(manifest), "utf8");
+}
+
 async function exportAgentKitCommand(cwd: string, options: ExportAgentKitOptions): Promise<RunCliResult> {
   const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
   const bundleRoot = join(options.outDir, ".specos-bundle");
   const filesRoot = join(bundleRoot, "files");
+  const manifestPath = join(filesRoot, ".specos", "manifest.yaml");
   const workflowPath = join(filesRoot, ".specos", "workflows", `${agentKitWorkflowId}.yaml`);
 
   await rm(bundleRoot, { recursive: true, force: true });
@@ -737,6 +743,8 @@ async function exportAgentKitCommand(cwd: string, options: ExportAgentKitOptions
     );
   }
 
+  await mkdir(dirname(manifestPath), { recursive: true });
+  await writeFile(manifestPath, buildAgentKitProjectManifest(), "utf8");
   await mkdir(dirname(workflowPath), { recursive: true });
   await writeFile(workflowPath, buildAgentKitWorkflow(), "utf8");
   copiedFiles += 1;
@@ -803,7 +811,7 @@ async function intakeCommand(cwd: string, options: IntakeOptions): Promise<RunCl
       "",
       "- Spec-draft agent owns requirement wording, assumptions, and open questions.",
       "- Architecture agent owns initial architecture impact and risk questions.",
-      "- Human confirmation is required before this draft becomes `specs/changes/<change-id>/`.",
+      "- Human confirmation is required before this draft updates `design/`, `specs/roadmap.md`, or a feature spec under `specs/`.",
       "",
     ].join("\n"),
     "utf8",
@@ -816,201 +824,132 @@ async function intakeCommand(cwd: string, options: IntakeOptions): Promise<RunCl
   };
 }
 
-function routeRequestCommand(options: RouteRequestOptions): RunCliResult {
-  const route = buildRequestRoute(options.request);
-  return {
-    exitCode: 0,
-    stdout: `SPECOS_REQUEST_ROUTE_OK ${route.primaryAgent}\n${JSON.stringify(route, null, 2)}\n`,
-    stderr: "",
-  };
-}
+function routeRequestCommand(cwd: string, options: RouteRequestOptions): RunCliResult {
+  try {
+    const projectMode = detectProjectMode(cwd);
+    const manifest = loadAgentRuntimeManifest(cwd);
+    const overlayManifest = loadAgentModeOverlayManifest(cwd, projectMode);
+    const { executionPlan, output } = buildValidatedRouteRequestOutput(options.request, options.format, {
+      projectMode,
+      manifest,
+      manifestPath: ".agents/manifest.yaml",
+      overlayManifest,
+    });
+    const route = executionPlan.route;
 
-async function createChangeCommand(cwd: string, options: CreateChangeOptions): Promise<RunCliResult> {
-  const draftPath = join(cwd, "spec-draft", `${options.draftId}.md`);
-  if (!(await pathExists(draftPath))) {
-    return failure("SPECOS_DRAFT_MISSING", `Draft not found: spec-draft/${options.draftId}.md`);
+    return {
+      exitCode: 0,
+      stdout: `SPECOS_REQUEST_ROUTE_OK ${route.primaryAgent} format ${options.format}\n${JSON.stringify(output, null, 2)}\n`,
+      stderr: "",
+    };
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    return failure("SPECOS_ROUTE_OUTPUT_INVALID", reason);
   }
-
-  const draftSource = await readFile(draftPath, "utf8");
-  const changeDir = changeDirectory(cwd, options.changeId);
-  await mkdir(changeDir, { recursive: true });
-  await writeFile(join(changeDir, "spec.md"), buildChangeSpec(options, draftSource), "utf8");
-  await writeFile(join(changeDir, "architecture-review.md"), buildGateDoc("Architecture Review", options.changeId), "utf8");
-  await writeFile(join(changeDir, "design-review.md"), buildGateDoc("Design Review", options.changeId), "utf8");
-  await writeFile(join(changeDir, "test-strategy.md"), buildTestStrategy(options.changeId), "utf8");
-  await writeFile(join(changeDir, "task-plan.md"), buildTaskPlan(options.changeId), "utf8");
-  await writeFile(join(changeDir, "execution-plan.md"), buildExecutionPlan(options.changeId), "utf8");
-  await writeFile(join(changeDir, "review-report.md"), buildReviewReport(options.changeId), "utf8");
-  await writeFile(join(changeDir, "changelog.md"), buildChangelog(options.changeId), "utf8");
-  await saveWorkflowState(cwd, buildInitialWorkflowState(options));
-
-  return {
-    exitCode: 0,
-    stdout: `SPECOS_CHANGE_OK ${options.changeId} specs/changes/${options.changeId}/\n`,
-    stderr: "",
-  };
 }
 
-async function reviewChangeCommand(cwd: string, options: ReviewChangeOptions): Promise<RunCliResult> {
-  const loaded = await loadWorkflowState(cwd, options.changeId);
-  if (!loaded.ok) return loaded.error;
-  const state = loaded.value;
+async function validateRouteOutputCommand(cwd: string, options: ValidateRouteOutputOptions): Promise<RunCliResult> {
+  let source: string;
 
-  if (options.stage === "design-gate") {
-    state.decisions.designGate = options.decision;
-    state.gates.architectureReviewed = options.decision === "approved";
-    state.gates.designReviewed = options.decision === "approved";
-    state.status = options.decision === "approved" ? "design_gate_approved" : "design_gate_blocked";
-    await appendFileSection(
-      join(changeDirectory(cwd, options.changeId), "architecture-review.md"),
-      "Gate Decision",
-      `Decision: ${options.decision}`,
-    );
-    await appendFileSection(
-      join(changeDirectory(cwd, options.changeId), "design-review.md"),
-      "Gate Decision",
-      `Decision: ${options.decision}`,
-    );
-  } else {
-    if (options.decision === "approved" && !state.gates.implementationDone) {
-      return failure("SPECOS_GATE_BLOCKED", "Implementation review requires implementation evidence from run-change");
-    }
-    state.decisions.implementationReview = options.decision;
-    state.gates.implementationReviewed = options.decision === "approved";
-    state.status = options.decision === "approved" ? "implementation_reviewed" : "implementation_review_blocked";
-    await appendFileSection(
-      join(changeDirectory(cwd, options.changeId), "review-report.md"),
-      "Implementation Review Decision",
-      `Decision: ${options.decision}`,
+  try {
+    source = await readFile(options.file, "utf8");
+  } catch {
+    return failure(
+      "SPECOS_ROUTE_OUTPUT_INVALID",
+      `Route output file not found: ${toPosixPath(relative(cwd, options.file))}`,
     );
   }
 
-  await saveWorkflowState(cwd, touchState(state));
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(source);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    return failure(
+      "SPECOS_ROUTE_OUTPUT_INVALID",
+      `Invalid JSON in route output file ${toPosixPath(relative(cwd, options.file))}: ${reason}`,
+    );
+  }
+
+  const validation = validateRouteRequestOutput(parsed, options.format);
+  if (!validation.ok) {
+    return failure(
+      "SPECOS_ROUTE_OUTPUT_INVALID",
+      validation.errors.map((issue) => `${issue.path ?? "route-output"} ${issue.message}`).join("; "),
+    );
+  }
+
   return {
     exitCode: 0,
-    stdout: `SPECOS_REVIEW_OK ${options.changeId} ${options.stage} ${options.decision}\n`,
+    stdout: `SPECOS_ROUTE_OUTPUT_OK format ${options.format} ${toPosixPath(relative(cwd, options.file))}\n`,
     stderr: "",
   };
 }
 
-async function runChangeCommand(cwd: string, options: RunChangeOptions): Promise<RunCliResult> {
-  const loaded = await loadWorkflowState(cwd, options.changeId);
-  if (!loaded.ok) return loaded.error;
-  const state = loaded.value;
+async function validateExecutionPlanCommand(cwd: string, options: ValidateExecutionPlanOptions): Promise<RunCliResult> {
+  let source: string;
 
-  if (!state.gates.architectureReviewed || !state.gates.designReviewed) {
-    return failure("SPECOS_GATE_BLOCKED", "run-change requires approved architecture/design gate");
+  try {
+    source = await readFile(options.file, "utf8");
+  } catch {
+    return failure(
+      "SPECOS_ROUTE_OUTPUT_INVALID",
+      `Execution plan file not found: ${toPosixPath(relative(cwd, options.file))}`,
+    );
   }
 
-  state.gates.executionHandoffReady = true;
-  state.gates.implementationDone = options.result === "implemented";
-  state.status = options.result === "implemented" ? "implementation_done" : "execution_handoff_ready";
-  await writeFile(
-    join(changeDirectory(cwd, options.changeId), "implementation-report.md"),
-    [
-      `# ${toTitle(options.changeId)} Implementation Report`,
-      "",
-      `- Change ID: \`${options.changeId}\``,
-      `- Result: ${options.result}`,
-      "",
-      "## Notes",
-      "",
-      options.result === "implemented"
-        ? "Implementation evidence was recorded for the document-only workflow."
-        : "Execution handoff is ready. Real implementation is expected outside this CLI step.",
-      "",
-    ].join("\n"),
-    "utf8",
-  );
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(source);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    return failure(
+      "SPECOS_ROUTE_OUTPUT_INVALID",
+      `Invalid JSON in execution plan file ${toPosixPath(relative(cwd, options.file))}: ${reason}`,
+    );
+  }
 
-  await saveWorkflowState(cwd, touchState(state));
+  const validation = validateExecutionPlanOutput(parsed);
+  if (!validation.ok) {
+    return failure(
+      "SPECOS_ROUTE_OUTPUT_INVALID",
+      validation.errors.map((issue) => `${issue.path ?? "executionPlan"} ${issue.message}`).join("; "),
+    );
+  }
+
   return {
     exitCode: 0,
-    stdout: `SPECOS_CHANGE_RUN_OK ${options.changeId} ${options.result}\n`,
+    stdout: `SPECOS_EXECUTION_PLAN_OK ${toPosixPath(relative(cwd, options.file))}\n`,
     stderr: "",
   };
 }
 
-async function testChangeCommand(cwd: string, options: TestChangeOptions): Promise<RunCliResult> {
-  const loaded = await loadWorkflowState(cwd, options.changeId);
-  if (!loaded.ok) return loaded.error;
-  const state = loaded.value;
-
-  state.decisions.test = options.decision;
-  state.gates.independentTestsPassed = options.decision === "passed";
-  state.status = options.decision === "passed" ? "independent_tests_passed" : "independent_tests_blocked";
-  await writeFile(
-    join(changeDirectory(cwd, options.changeId), "test-result-summary.md"),
-    [
-      `# ${toTitle(options.changeId)} Test Result Summary`,
-      "",
-      `- Change ID: \`${options.changeId}\``,
-      `- Decision: ${options.decision}`,
-      "- Scope: independent scenario/API/E2E verification track",
-      "",
-      "## Independence Rule",
-      "",
-      "This result records the independent test track. It must not be derived from execution-agent private notes.",
-      "",
-    ].join("\n"),
-    "utf8",
-  );
-
-  await saveWorkflowState(cwd, touchState(state));
-  return {
-    exitCode: 0,
-    stdout: `SPECOS_CHANGE_TEST_OK ${options.changeId} ${options.decision}\n`,
-    stderr: "",
-  };
+function detectProjectMode(cwd: string): ProjectMode {
+  try {
+    const manifestPath = join(cwd, ".specos", "manifest.yaml");
+    const manifest = parseManifestYaml(readFileSync(manifestPath, "utf8"));
+    return manifest.projectMode === "enterprisespec" ? "enterprisespec" : "litespec";
+  } catch {
+    return "litespec";
+  }
 }
 
-async function promoteChangeCommand(cwd: string, options: PromoteChangeOptions): Promise<RunCliResult> {
-  if (!options.accept) {
-    return failure("SPECOS_ARGUMENT_INVALID", "promote-change requires --accept");
+function loadAgentRuntimeManifest(cwd: string): AgentRuntimeManifest | undefined {
+  try {
+    return parseManifestYaml(readFileSync(join(cwd, ".agents", "manifest.yaml"), "utf8")) as AgentRuntimeManifest;
+  } catch {
+    return undefined;
   }
+}
 
-  const loaded = await loadWorkflowState(cwd, options.changeId);
-  if (!loaded.ok) return loaded.error;
-  const state = loaded.value;
-  const missing = requiredPromotionGates(state);
-  if (missing.length > 0) {
-    return failure("SPECOS_GATE_BLOCKED", `Cannot promote before gates pass: ${missing.join(", ")}`);
+function loadAgentModeOverlayManifest(cwd: string, projectMode: ProjectMode): AgentModeOverlayManifest | undefined {
+  try {
+    return parseManifestYaml(
+      readFileSync(join(cwd, ".agents", "modes", projectMode, "manifest.overlay.yaml"), "utf8"),
+    ) as AgentModeOverlayManifest;
+  } catch {
+    return undefined;
   }
-
-  const gateMissing = await missingPromotionGateReports(cwd, options.changeId);
-  if (gateMissing.length > 0) {
-    return failure("SPECOS_GATE_BLOCKED", `Cannot promote before ready gate report: ${gateMissing.join(", ")}`);
-  }
-
-  state.gates.promoted = true;
-  state.gates.archived = true;
-  state.status = "promoted_and_archived";
-  await saveWorkflowState(cwd, touchState(state));
-
-  const currentPath = join(cwd, "specs", "current", "accepted-changes", `${options.changeId}.md`);
-  await mkdir(dirname(currentPath), { recursive: true });
-  await writeFile(
-    currentPath,
-    [
-      `# Accepted Change: ${options.changeId}`,
-      "",
-      `- Source: specs/changes/${options.changeId}/`,
-      `- Archived: specs/archive/${options.changeId}/`,
-      "- Status: accepted",
-      "",
-    ].join("\n"),
-    "utf8",
-  );
-
-  const archiveDir = join(cwd, "specs", "archive", options.changeId);
-  await rm(archiveDir, { recursive: true, force: true });
-  await copyInstallSource(changeDirectory(cwd, options.changeId), archiveDir);
-
-  return {
-    exitCode: 0,
-    stdout: `SPECOS_PROMOTE_OK ${options.changeId} specs/current/accepted-changes/${options.changeId}.md specs/archive/${options.changeId}/\n`,
-    stderr: "",
-  };
 }
 
 async function validateBundleCommand(cwd: string, bundlePathArg: string | undefined): Promise<RunCliResult> {
@@ -1210,6 +1149,7 @@ async function generateTestPlanCommand(cwd: string, args: string[]): Promise<Run
   const schedule = buildSpecChangeTestSchedule(testPlan, {
     changeId,
     executionMode: parsed.value.executionMode,
+    specPath: toPosixPath(relative(cwd, specPath)),
   });
   const scheduleValidation = validateTestSchedule(schedule);
 
@@ -1448,7 +1388,8 @@ async function validateTestGatesCommand(cwd: string, args: string[]): Promise<Ru
   await writeFile(jsonPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
 
   if (parsed.value.changeId) {
-    const markdownPath = join(cwd, "specs", "changes", parsed.value.changeId, "gate-report.md");
+    const specDirectory = (await findFeatureSpecDirectoryById(cwd, parsed.value.changeId)) ?? parsed.value.changeId;
+    const markdownPath = join(cwd, "reviews", specDirectory, "gate-report.md");
     await mkdir(dirname(markdownPath), { recursive: true });
     await writeFile(markdownPath, buildGateReportMarkdown(report), "utf8");
   }
@@ -1874,11 +1815,30 @@ function buildGateReportMarkdown(report: ReturnType<typeof buildTestGateReport>)
 
 function inferChangeIdFromSpecPath(cwd: string, specPath: string): string | undefined {
   const parts = toPosixPath(relative(cwd, specPath)).split("/");
+  const specsIndex = parts.indexOf("specs");
+  const featureDir = specsIndex >= 0 ? parts[specsIndex + 1] : undefined;
+  if (featureDir) {
+    const featureMatch = featureDir.match(/^([A-Z]+-\d{3})-/u);
+    if (featureMatch) {
+      return featureMatch[1];
+    }
+  }
   const changesIndex = parts.indexOf("changes");
   if (changesIndex >= 0 && parts[changesIndex + 1]) {
     return parts[changesIndex + 1];
   }
   return undefined;
+}
+
+async function findFeatureSpecDirectoryById(cwd: string, specId: string): Promise<string | undefined> {
+  const specsRoot = join(cwd, "specs");
+  if (!(await pathExists(specsRoot))) {
+    return undefined;
+  }
+
+  const entries = await readdir(specsRoot, { withFileTypes: true });
+  const prefix = `${specId}-`;
+  return entries.find((entry) => entry.isDirectory() && entry.name.startsWith(prefix))?.name;
 }
 
 async function resolveBundleLocation(cwd: string, bundlePathArg: string): Promise<{ rootDir: string; manifestPath: string } | undefined> {
@@ -1921,14 +1881,6 @@ async function copyInstallSource(sourcePath: string, targetPath: string): Promis
   return 1;
 }
 
-function changeDirectory(cwd: string, changeId: string): string {
-  return join(cwd, "specs", "changes", changeId);
-}
-
-function workflowStatePath(cwd: string, changeId: string): string {
-  return join(changeDirectory(cwd, changeId), "workflow-state.json");
-}
-
 function isStableId(value: string): boolean {
   return /^[a-z0-9][a-z0-9-]*$/.test(value);
 }
@@ -1939,252 +1891,6 @@ function toTitle(id: string): string {
     .filter(Boolean)
     .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
     .join(" ");
-}
-
-function buildInitialWorkflowState(options: CreateChangeOptions): ChangeWorkflowState {
-  return {
-    changeId: options.changeId,
-    draftId: options.draftId,
-    status: "change_created",
-    gates: {
-      draftConfirmed: true,
-      architectureReviewed: false,
-      designReviewed: false,
-      executionHandoffReady: false,
-      implementationDone: false,
-      implementationReviewed: false,
-      independentTestsPassed: false,
-      promoted: false,
-      archived: false,
-    },
-    decisions: {},
-    artifacts: [
-      "spec.md",
-      "architecture-review.md",
-      "design-review.md",
-      "test-strategy.md",
-      "task-plan.md",
-      "execution-plan.md",
-      "review-report.md",
-      "changelog.md",
-      "workflow-state.json",
-    ],
-    updatedAt: new Date().toISOString(),
-  };
-}
-
-function touchState(state: ChangeWorkflowState): ChangeWorkflowState {
-  return { ...state, updatedAt: new Date().toISOString() };
-}
-
-async function saveWorkflowState(cwd: string, state: ChangeWorkflowState): Promise<void> {
-  const statePath = workflowStatePath(cwd, state.changeId);
-  await mkdir(dirname(statePath), { recursive: true });
-  await writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
-}
-
-async function loadWorkflowState(
-  cwd: string,
-  changeId: string,
-): Promise<{ ok: true; value: ChangeWorkflowState } | { ok: false; error: RunCliResult }> {
-  const statePath = workflowStatePath(cwd, changeId);
-  if (!(await pathExists(statePath))) {
-    return { ok: false, error: failure("SPECOS_CHANGE_MISSING", `Change workflow state not found: specs/changes/${changeId}/workflow-state.json`) };
-  }
-
-  return { ok: true, value: JSON.parse(await readFile(statePath, "utf8")) as ChangeWorkflowState };
-}
-
-async function appendFileSection(path: string, heading: string, body: string): Promise<void> {
-  const existing = (await pathExists(path)) ? await readFile(path, "utf8") : "";
-  await writeFile(path, `${existing.trimEnd()}\n\n## ${heading}\n\n${body}\n`, "utf8");
-}
-
-function requiredPromotionGates(state: ChangeWorkflowState): string[] {
-  const required: Array<[string, boolean]> = [
-    ["architectureReviewed", state.gates.architectureReviewed],
-    ["designReviewed", state.gates.designReviewed],
-    ["implementationDone", state.gates.implementationDone],
-    ["implementationReviewed", state.gates.implementationReviewed],
-    ["independentTestsPassed", state.gates.independentTestsPassed],
-  ];
-  return required.filter(([, passed]) => !passed).map(([name]) => name);
-}
-
-async function missingPromotionGateReports(cwd: string, changeId: string): Promise<string[]> {
-  const planFiles = await discoverJsonFiles(join(cwd, "tests", "plans"));
-  const attachedPlans: SpecosTestPlan[] = [];
-
-  for (const file of planFiles.filter((item) => item.endsWith(".test-plan.json"))) {
-    const planPath = join(cwd, "tests", "plans", file);
-    const plan = parseArtifactObject(await readFile(planPath, "utf8"), planPath) as unknown as SpecosTestPlan;
-    if (plan.changeId === changeId) {
-      attachedPlans.push(plan);
-    }
-  }
-
-  const missing: string[] = [];
-  for (const plan of attachedPlans) {
-    const reportPath = join(cwd, "tests", "results", `${plan.specId}.${changeId}.gate-report.json`);
-    if (!(await pathExists(reportPath))) {
-      missing.push(`${plan.specId} gate report missing`);
-      continue;
-    }
-
-    const report = parseArtifactObject(await readFile(reportPath, "utf8"), reportPath);
-    if (report.decision !== "ready") {
-      missing.push(`${plan.specId} gate report is ${String(report.decision ?? "invalid")}`);
-    }
-  }
-
-  return missing;
-}
-
-function buildChangeSpec(options: CreateChangeOptions, draftSource: string): string {
-  return [
-    `# ${toTitle(options.changeId)} Change Spec`,
-    "",
-    "## Meta",
-    "",
-    `- Change ID: \`${options.changeId}\``,
-    `- Source Draft: spec-draft/${options.draftId}.md`,
-    "- Status: executable-change",
-    "",
-    "## Draft Summary",
-    "",
-    extractRawRequest(draftSource),
-    "",
-    "## Agent Content Ownership",
-    "",
-    "- Architecture agents own backend/frontend architecture, contracts, data, concurrency, and risk content.",
-    "- Module-specific execution agents own implementation plans after architecture/design gates pass.",
-    "- Spec agent owns document shape, traceability, wording consistency, and current/archive promotion.",
-    "- Test agents own independent scenario/API/E2E strategy from this SpecOS Contract and contracts, not from implementation notes.",
-    "",
-    "## Required Gates",
-    "",
-    "- Architecture and design review before execution.",
-    "- Independent test strategy before final acceptance.",
-    "- Implementation review and independent test pass before promotion.",
-    "",
-  ].join("\n");
-}
-
-function extractRawRequest(draftSource: string): string {
-  const marker = "## Raw Request";
-  const nextHeading = "\n## ";
-  const start = draftSource.indexOf(marker);
-  if (start < 0) return draftSource.trim();
-  const afterMarker = draftSource.slice(start + marker.length).trim();
-  const end = afterMarker.indexOf(nextHeading);
-  return (end >= 0 ? afterMarker.slice(0, end) : afterMarker).trim();
-}
-
-function buildGateDoc(title: string, changeId: string): string {
-  return [
-    `# ${toTitle(changeId)} ${title}`,
-    "",
-    `- Change ID: \`${changeId}\``,
-    "- Status: pending",
-    "",
-    "## Scope",
-    "",
-    "Record review findings, blockers, assumptions, and approval decision for this gate.",
-    "",
-  ].join("\n");
-}
-
-function buildTestStrategy(changeId: string): string {
-  return [
-    `# ${toTitle(changeId)} Test Strategy`,
-    "",
-    `- Change ID: \`${changeId}\``,
-    "- Status: planned",
-    "",
-    "## Independence Rule",
-    "",
-    "Scenario, API, and E2E tests are designed from the SpecOS Contract, contracts, flows, and acceptance conditions. They must stay independent from execution-agent private implementation notes.",
-    "",
-    "## Tracks",
-    "",
-    "- Unit tests: implementation-coupled and owned by execution agents after implementation.",
-    "- Scenario/API/E2E tests: independent and owned by test agents from the change stage.",
-    "",
-  ].join("\n");
-}
-
-function buildTaskPlan(changeId: string): string {
-  return [
-    `# ${toTitle(changeId)} Task Plan`,
-    "",
-    `- Change ID: \`${changeId}\``,
-    "- Status: planned",
-    "",
-    "## Task Model",
-    "",
-    "Each task must connect the spec layer to the evidence layer. Keep tasks small enough for one owner agent to execute or verify without hidden context.",
-    "",
-    "Required fields for every task:",
-    "",
-    "- Task ID",
-    "- Owner agent",
-    "- Source spec, draft, rule, or review gate",
-    "- Inputs",
-    "- Outputs",
-    "- Dependencies",
-    "- Acceptance evidence",
-    "- Current status",
-    "",
-    "## Layers",
-    "",
-    "- Spec layer: `spec.md`, accepted context, rules, and open questions.",
-    "- Task layer: this `task-plan.md`, `execution-plan.md`, and generated `tests/schedules/*.test-schedule.json`.",
-    "- Evidence layer: implementation reports, normalized test results, gate reports, review reports, and promotion notes.",
-    "",
-    "## Initial Tasks",
-    "",
-    "| Task ID | Owner Agent | Inputs | Outputs | Depends On | Acceptance Evidence | Status |",
-    "| --- | --- | --- | --- | --- | --- | --- |",
-    `| ${changeId}.architecture-review | architecture-agent | spec.md, specs/current/ | architecture-review.md | draft confirmed | approved architecture/design gate | pending |`,
-    `| ${changeId}.implementation | implementation-agent | spec.md, architecture-review.md, design-review.md | implementation-report.md, implementation-coupled tests | architecture/design gate | implementation review decision | pending |`,
-    `| ${changeId}.verification | testing-agent | spec.md, test-strategy.md, contracts | tests/plans/, tests/results/, gate report | test plan ready | independent test decision | pending |`,
-    `| ${changeId}.deployment-readiness | deployment-agent | validation evidence, gate report, review report | release readiness notes | implementation and tests complete | promotion gate readiness | pending |`,
-    "",
-  ].join("\n");
-}
-
-function buildExecutionPlan(changeId: string): string {
-  return [
-    `# ${toTitle(changeId)} Execution Plan`,
-    "",
-    `- Change ID: \`${changeId}\``,
-    "- Status: pending-gates",
-    "",
-    "## Rule",
-    "",
-    "Execution agents may start only after architecture and design gates are approved.",
-    "",
-  ].join("\n");
-}
-
-function buildReviewReport(changeId: string): string {
-  return [
-    `# ${toTitle(changeId)} Review Report`,
-    "",
-    `- Change ID: \`${changeId}\``,
-    "- Status: pending",
-    "",
-  ].join("\n");
-}
-
-function buildChangelog(changeId: string): string {
-  return [
-    `# ${toTitle(changeId)} Changelog`,
-    "",
-    `- Change ID: \`${changeId}\``,
-    "- Status: pending-promotion",
-    "",
-  ].join("\n");
 }
 
 async function copyAgentKitSource(
@@ -2236,6 +1942,7 @@ function buildAgentKitBundleManifest(): SpecosBundleManifest {
     },
     entrypoints: {
       draftTemplate: "spec-draft/_template/feature/product-ui.template.md",
+      designTemplate: "design/_template/platform-design.template.md",
       specTemplate: "specs/_template/feature/spec.example.md",
       workflowId: agentKitWorkflowId,
     },
@@ -2249,13 +1956,39 @@ function buildAgentKitBundleManifest(): SpecosBundleManifest {
   };
 }
 
+function buildAgentKitProjectManifest(): string {
+  return stringify({
+    project: {
+      name: "specos-agent-team-kit",
+      type: "fullstack",
+    },
+    projectMode: "litespec",
+    stacks: {
+      frontend: "next",
+      backend: "node-api",
+    },
+    artifacts: {
+      draftsDir: "spec-draft",
+      specsDir: "specs",
+      testsDir: "tests",
+      resultsDir: "tests/results",
+    },
+    rulePacks: ["spec-driven-delivery"],
+    agentTemplates: ["fullstack-agent"],
+    workflows: [agentKitWorkflowId],
+    ci: {
+      checkCommand: "npx specos check",
+    },
+  });
+}
+
 function buildAgentKitWorkflow(): string {
   return [
     `id: ${agentKitWorkflowId}`,
     "name: Spec Driven Default",
     "steps:",
     "  - id: smoke-agent-kit",
-    `    run: "node -e \\"const fs=require('fs'); for (const p of ['.agents/manifest.yaml','ai/agents/spec-editor.md','rules/README.md','specs/current/README.md','tests/README.md']) { if (!fs.existsSync(p)) throw new Error('Missing '+p); } console.log('agent-kit-smoke-ok');\\""`,
+    `    run: "node -e \\"const fs=require('fs'); for (const p of ['.agents/manifest.yaml','ai/agents/spec-editor.md','rules/README.md','current/README.md','docs/spec-modes/README.md','design/README.md','specs/README.md','specs/roadmap.md','implementation/README.md','reviews/README.md','tests/README.md']) { if (!fs.existsSync(p)) throw new Error('Missing '+p); } console.log('agent-kit-smoke-ok');\\""`,
     "",
   ].join("\n");
 }
@@ -2302,10 +2035,11 @@ async function loadWorkflowById(cwd: string, workflowId: string): Promise<Record
 }
 
 if (isCliEntrypoint()) {
-  const result = await runCli(process.argv.slice(2), { cwd: process.cwd() });
-  process.stdout.write(result.stdout);
-  process.stderr.write(result.stderr);
-  process.exitCode = result.exitCode;
+  void runCli(process.argv.slice(2), { cwd: process.cwd() }).then((result) => {
+    process.stdout.write(result.stdout);
+    process.stderr.write(result.stderr);
+    process.exitCode = result.exitCode;
+  });
 }
 
 function isCliEntrypoint(): boolean {
@@ -2322,10 +2056,42 @@ function parseYamlObject(source: string): Record<string, unknown> {
   return typeof parsed === "object" && parsed !== null ? (parsed as Record<string, unknown>) : {};
 }
 
+function parseMarkdownFrontmatter(source: string): Record<string, unknown> | undefined {
+  const lines = source.split(/\r?\n/);
+  if (lines[0] !== "---") {
+    return undefined;
+  }
+
+  let closingIndex = -1;
+  for (let index = 1; index < lines.length; index += 1) {
+    if (lines[index] === "---" || lines[index] === "...") {
+      closingIndex = index;
+      break;
+    }
+  }
+
+  if (closingIndex < 0) {
+    return undefined;
+  }
+
+  const frontmatterSource = lines.slice(1, closingIndex).join("\n");
+  if (frontmatterSource.trim().length === 0) {
+    return {};
+  }
+  return parseYamlObject(frontmatterSource);
+}
+
 function parseArtifactObject(source: string, filePath: string): Record<string, unknown> {
   if (filePath.endsWith(".json")) {
     const parsed = JSON.parse(source);
     return typeof parsed === "object" && parsed !== null ? (parsed as Record<string, unknown>) : {};
+  }
+
+  if (filePath.endsWith(".md")) {
+    const frontmatter = parseMarkdownFrontmatter(source);
+    if (frontmatter !== undefined) {
+      return frontmatter;
+    }
   }
 
   return parseYamlObject(source);

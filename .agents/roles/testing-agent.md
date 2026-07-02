@@ -6,9 +6,9 @@ Own independent verification strategy and evidence orchestration across unit, AP
 
 ## Required Inputs
 
-- Active Change Workspace or SpecOS Contract baseline.
+- Active feature spec or clearly accepted spec baseline.
 - Test plans, scenario assets, normalized results, and production test standards.
-- Release gate requirements when the request touches readiness or promotion.
+- Release gate requirements when the request touches readiness or merge approval.
 
 ## Required Outputs
 
