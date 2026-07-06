@@ -30,3 +30,4 @@ tests/results/*.json
 # private planning scratch
 todo/*
 docs/superpowers/plans/
+temp/
