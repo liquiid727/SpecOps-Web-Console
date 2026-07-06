@@ -7,7 +7,7 @@ Define release checks that ensure generated artifacts still match feature-spec d
 ## Required Practices
 
 - CI should verify feature specs, generated contracts, tests, and evidence outputs stay aligned.
-- Release validation should respect `projectMode`; `EnterpriseSpec` requires explicit release, review, and categorized test evidence, while `LiteSpec` may keep more evidence close to the feature slice.
+- Release validation should respect `projectMode`; `EnterpriseSpec` requires explicit release, review, and categorized test evidence, `GoalSpec` requires a passing `/review-it` and `/ship-it` gate traceable to an issue, while `LiteSpec` may keep more evidence close to the feature slice.
 - Failing scenario tests must block release for affected flows.
 - Reviewers should see which `spec_id` and spec revision a release references.
 - Human approval is required before irreversible workflow steps in V1.

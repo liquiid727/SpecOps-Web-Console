@@ -59,6 +59,9 @@ mode_overlays:
   litespec:
     manifest_overlay: .agents/modes/litespec/manifest.overlay.yaml
     purpose: Feature-driven, low-token, daily delivery mode.
+  goalspec:
+    manifest_overlay: .agents/modes/goalspec/manifest.overlay.yaml
+    purpose: Workflow-driven mode built around the six-step goal loop (prd, prd-to-spec, to-issues, goal, review-it, ship-it).
   enterprisespec:
     manifest_overlay: .agents/modes/enterprisespec/manifest.overlay.yaml
     purpose: Governed delivery mode with stronger QA, release, and audit evidence requirements.

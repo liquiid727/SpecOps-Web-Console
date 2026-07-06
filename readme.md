@@ -13,7 +13,7 @@ Draft -> Design -> Roadmap/Epic -> Feature Spec -> Agent Implementation -> Revie
 The canonical repository model is:
 
 ```text
-docs/spec-modes/  project operating modes such as LiteSpec and EnterpriseSpec
+docs/spec-modes/  project operating modes: LiteSpec, GoalSpec, and EnterpriseSpec
 current/          active delivery workspace for the selected mode
 spec-draft/        intake-only requirement drafts
 design/            one canonical design doc per platform or system
@@ -45,9 +45,10 @@ It also includes reusable project assets:
 
 ## Project Modes
 
-SpecOS now documents two official project authoring modes:
+SpecOS now documents three official project authoring modes:
 
 - [LiteSpec](docs/spec-modes/LiteSpec/README.md): feature-driven, low-token, default for daily agent development
+- [GoalSpec](docs/spec-modes/GoalSpec/README.md): workflow-driven, built around the six-step goal loop (prd -> prd-to-spec -> to-issues -> goal -> review-it -> ship-it)
 - [EnterpriseSpec](docs/spec-modes/EnterpriseSpec/README.md): delivery-driven, high-governance, for QA-heavy and audited environments
 
 Mode selection guidance lives in [docs/spec-modes/README.md](docs/spec-modes/README.md).
@@ -117,7 +118,7 @@ test-console/        normalized test-plan and result console
 rules/               reusable engineering governance
 agent-teams/         reusable agent team packs
 ai/agents/           agent role definitions
-docs/spec-modes/     mode playbooks for LiteSpec and EnterpriseSpec
+docs/spec-modes/     mode playbooks for LiteSpec, GoalSpec, and EnterpriseSpec
 current/             active project status and handoff context
 spec-draft/          intake drafts
 design/              canonical platform design documents

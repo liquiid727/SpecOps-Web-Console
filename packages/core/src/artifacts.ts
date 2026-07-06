@@ -29,7 +29,7 @@ export interface SpecosManifest {
     name: string;
     type: "backend" | "frontend" | "fullstack" | "spec-only";
   };
-  projectMode?: "litespec" | "enterprisespec";
+  projectMode?: "litespec" | "goalspec" | "enterprisespec";
   stacks: {
     frontend?: string;
     backend?: string;
@@ -207,7 +207,7 @@ export type RequestRouteAgentRole =
   | "test-editor"
   | "qa-agent"
   | "reviewer";
-export type ProjectMode = "litespec" | "enterprisespec";
+export type ProjectMode = "litespec" | "goalspec" | "enterprisespec";
 
 const productionTestStandardVersion: TestStandardVersion = "specos-test-standard/v1";
 
@@ -808,6 +808,20 @@ const routeModeRoleOverrides: Record<ProjectMode, RequestRouteAgentRole[]> = {
     "performance-test-agent",
     "concurrency-test-agent",
   ],
+  goalspec: [
+    "spec-editor",
+    "implementation-agent",
+    "testing-agent",
+    "reviewer",
+    "ci-editor",
+    "deployment-agent",
+    "openapi-agent",
+    "db-migration-agent",
+    "ui-design-agent",
+    "test-editor",
+    "performance-test-agent",
+    "concurrency-test-agent",
+  ],
   enterprisespec: [
     "architecture-agent",
     "spec-editor",
@@ -876,6 +890,9 @@ const defaultRoutePromptManifest: AgentRuntimeManifest = {
   mode_overlays: {
     litespec: {
       manifest_overlay: ".agents/modes/litespec/manifest.overlay.yaml",
+    },
+    goalspec: {
+      manifest_overlay: ".agents/modes/goalspec/manifest.overlay.yaml",
     },
     enterprisespec: {
       manifest_overlay: ".agents/modes/enterprisespec/manifest.overlay.yaml",
@@ -1150,7 +1167,9 @@ export function buildRequestRoute(
   const orderedRoles = [primaryAgent, ...[...supportingAgents].sort()] as RequestRouteAgentRole[];
   const modeReadme = projectMode === "enterprisespec"
     ? "docs/spec-modes/EnterpriseSpec/README.md"
-    : "docs/spec-modes/LiteSpec/README.md";
+    : projectMode === "goalspec"
+      ? "docs/spec-modes/GoalSpec/README.md"
+      : "docs/spec-modes/LiteSpec/README.md";
   const promptAssembly = buildHostPromptAssembly(defaultRoutePromptManifest, {
     projectMode,
     manifestPath: ".agents/manifest.yaml",
@@ -1528,7 +1547,7 @@ export function validateRouteRequestOutput(
     return result(state.errors);
   }
 
-  requireOneOf(state, output.projectMode, ["litespec", "enterprisespec"], "SPECOS_ROUTE_OUTPUT_INVALID", "projectMode");
+  requireOneOf(state, output.projectMode, ["litespec", "goalspec", "enterprisespec"], "SPECOS_ROUTE_OUTPUT_INVALID", "projectMode");
   requireOneOf(
     state,
     output.requestKind,
@@ -2149,7 +2168,7 @@ function requirePromptAssemblyShape(state: MutableValidation, value: unknown, pa
     return;
   }
 
-  requireOneOf(state, assembly.projectMode, ["litespec", "enterprisespec"], "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.projectMode`);
+  requireOneOf(state, assembly.projectMode, ["litespec", "goalspec", "enterprisespec"], "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.projectMode`);
   requireString(state, assembly, "manifestPath", "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.manifestPath`);
   requireString(state, assembly, "overlayManifest", "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.overlayManifest`);
   requireStringArray(state, assembly.sharedContext, "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.sharedContext`);
@@ -2191,7 +2210,7 @@ function requireExecutionPlanShape(state: MutableValidation, value: unknown, pat
   }
 
   requireString(state, plan, "request", "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.request`);
-  requireOneOf(state, plan.projectMode, ["litespec", "enterprisespec"], "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.projectMode`);
+  requireOneOf(state, plan.projectMode, ["litespec", "goalspec", "enterprisespec"], "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.projectMode`);
   requireStringArray(state, plan.sharedContext, "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.sharedContext`);
   requireOneOf(state, plan.specialistDispatch, ["primary-only", "bounded-parallel"], "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.specialistDispatch`);
   requirePromptEnvelopeShape(state, plan.primaryDispatchPromptEnvelope, `${path}.primaryDispatchPromptEnvelope`);
@@ -2354,7 +2373,7 @@ export function validateManifest(value: unknown): ValidationResult {
     requireOneOf(
       state,
       manifest.projectMode,
-      ["litespec", "enterprisespec"],
+      ["litespec", "goalspec", "enterprisespec"],
       "SPECOS_MANIFEST_INVALID",
       "projectMode",
     );

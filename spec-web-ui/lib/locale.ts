@@ -139,11 +139,11 @@ export const localeCopy = {
       projectModes: {
         eyebrow: "$ cat docs/spec-modes/README.md",
         title: "项目模式说明",
-        description: "SpecOS 只有两种正式项目 mode。about 页这里直接说明它们的类型、结构重点和实际作用，方便在进入项目之前先选对交付模型。",
+        description: "SpecOS 有三种正式项目 mode。about 页这里直接说明它们的类型、结构重点和实际作用，方便在进入项目之前先选对交付模型。",
         sharedLabel: "共享约束",
         sharedPoints: [
-          "两种 mode 都保留 README、design 和 current 作为稳定上下文入口。",
-          "两种 mode 都要求按 Spec ID 保持 feature、实现、评审和测试的可追踪关系。",
+          "三种 mode 都保留 README、design 和 current 作为稳定上下文入口。",
+          "三种 mode 都要求按 Spec ID 保持 feature、实现、评审和测试的可追踪关系。",
           "差异不在命名，而在交付证据的拆分粒度、角色边界和治理强度。"
         ],
         modes: [
@@ -184,6 +184,46 @@ export const localeCopy = {
               "MVP、个人项目、小团队日常开发。",
               "希望低 token 成本快速迭代，交付证据可以紧贴 feature 保存。",
               "平台、基础设施、内部工具这类需要频繁试错的工作。"
+            ]
+          },
+          {
+            name: "GoalSpec",
+            typeLabel: "类型",
+            typeValue: "Workflow Driven",
+            treeLabel: "目录树缩略图",
+            treeCommand: "$ tree project/",
+            tree: [
+              { text: "project/" },
+              { text: "|-- README.md", note: "入口说明" },
+              { text: "|-- design/", note: "稳定设计真相" },
+              { text: "|-- current/", note: "六步闭环进度" },
+              { text: "|-- docs/workflow.md", note: "六步命令链路" },
+              { text: "|-- specs/", note: "issue 索引 + feature" },
+              { text: "|   |-- issues/README.md", note: "/to-issues 产出" },
+              { text: "|   `-- RP-001-feature/" },
+              { text: "|       |-- spec.md" },
+              { text: "|       |-- tasks.md" },
+              { text: "|       |-- review.md", note: "/review-it 产出" },
+              { text: "|       `-- changelog.md", note: "/ship-it 产出" },
+              { text: "|-- implementation/", note: "变更面记录" },
+              { text: "`-- .agents/", note: "轻量 agent 上下文" }
+            ],
+            loadLabel: "加载顺序",
+            loadPath: ["README", "current", "design", "specs/issues", "specs/RP-xxx"],
+            loadNote: "在 feature 加载顺序之外多一层 issue 索引，定位当前在六步闭环里的哪一步。",
+            purposeLabel: "作用",
+            purposeValue: "把 /prd -> /prd-to-spec -> /to-issues -> /goal -> /review-it -> /ship-it 六步闭环当成标准交付链路，逐个 issue 推进。",
+            structureLabel: "结构重点",
+            structure: [
+              "specs/issues/ 维护 /to-issues 拆出的 issue 索引与依赖，每个 issue 控制在一次 /goal 能完成的范围。",
+              "review、ship 环节仍是 feature 内单文件（review.md、changelog.md），不引入 EnterpriseSpec 的多阶段 reviews/ 目录。",
+              "docs/workflow.md 把六步命令链路写进项目内，作为团队协作的标准操作说明。"
+            ],
+            fitLabel: "适用场景",
+            fit: [
+              "已经习惯按 issue 拆解和推进的小团队。",
+              "希望有明确的 review 和 ship 关卡，但还不需要 EnterpriseSpec 的分角色治理。",
+              "从 LiteSpec 往 EnterpriseSpec 过渡，但暂时不需要全套交付证据体系的项目。"
             ]
           },
           {
@@ -230,7 +270,7 @@ export const localeCopy = {
         ],
         decisionLabel: "选择原则",
         decision:
-          "默认从 LiteSpec 开始；当 feature 已经需要独立 QA、发布治理、性能或安全证明，或者一个 feature 不再适合由单个 agent 在一条链路里完成时，再升级到 EnterpriseSpec。"
+          "默认从 LiteSpec 开始；当团队想要一条标准化的 issue 拆解 -> 实现 -> 审查 -> 交付闭环、并且需要明确的 review/ship 关卡时，升级到 GoalSpec；当 feature 已经需要独立 QA、发布治理、性能或安全证明，或者一个 feature 不再适合由单个 agent 在一条链路里完成时，再升级到 EnterpriseSpec。"
       },
       testUiDemo: {
         eyebrow: "$ open test-console/demo",
@@ -412,11 +452,11 @@ export const localeCopy = {
         eyebrow: "$ cat docs/spec-modes/README.md",
         title: "Project modes",
         description:
-          "SpecOS has only two official project modes. The about page spells out their type, structural focus, and operating purpose so the delivery model can be chosen before project assembly starts.",
+          "SpecOS has three official project modes. The about page spells out their type, structural focus, and operating purpose so the delivery model can be chosen before project assembly starts.",
         sharedLabel: "Shared rules",
         sharedPoints: [
-          "Both modes keep README, design, and current as the stable context entry points.",
-          "Both modes require feature, implementation, review, and test artifacts to stay traceable by Spec ID.",
+          "All three modes keep README, design, and current as the stable context entry points.",
+          "All three modes require feature, implementation, review, and test artifacts to stay traceable by Spec ID.",
           "The real difference is the granularity of delivery evidence, role boundaries, and governance strength."
         ],
         modes: [
@@ -458,6 +498,47 @@ export const localeCopy = {
               "MVPs, personal projects, and small-team day-to-day development.",
               "Low-token, fast-iteration work where delivery evidence can stay close to the feature.",
               "Platform, infrastructure, and internal-tool projects that need rapid trial and adjustment."
+            ]
+          },
+          {
+            name: "GoalSpec",
+            typeLabel: "Type",
+            typeValue: "Workflow Driven",
+            treeLabel: "Tree preview",
+            treeCommand: "$ tree project/",
+            tree: [
+              { text: "project/" },
+              { text: "|-- README.md", note: "entry context" },
+              { text: "|-- design/", note: "stable system truth" },
+              { text: "|-- current/", note: "six-step loop status" },
+              { text: "|-- docs/workflow.md", note: "the six-step command chain" },
+              { text: "|-- specs/", note: "issue index + feature" },
+              { text: "|   |-- issues/README.md", note: "produced by /to-issues" },
+              { text: "|   `-- RP-001-feature/" },
+              { text: "|       |-- spec.md" },
+              { text: "|       |-- tasks.md" },
+              { text: "|       |-- review.md", note: "produced by /review-it" },
+              { text: "|       `-- changelog.md", note: "produced by /ship-it" },
+              { text: "|-- implementation/", note: "changed-surface record" },
+              { text: "`-- .agents/", note: "small shared agent context" }
+            ],
+            loadLabel: "Loading order",
+            loadPath: ["README", "current", "design", "specs/issues", "specs/RP-xxx"],
+            loadNote: "Adds one issue-index layer on top of the feature track so an agent can tell which step of the loop it's on.",
+            purposeLabel: "Purpose",
+            purposeValue:
+              "Treat the six-step loop (/prd -> /prd-to-spec -> /to-issues -> /goal -> /review-it -> /ship-it) as the standard delivery chain, one issue at a time.",
+            structureLabel: "Structure focus",
+            structure: [
+              "specs/issues/ tracks the issue index and dependencies produced by /to-issues; each issue stays small enough for one /goal run.",
+              "Review and ship stay single-file per feature (review.md, changelog.md), without EnterpriseSpec's multi-stage reviews/ tree.",
+              "docs/workflow.md writes the six-step command chain into the project as a standing operating note."
+            ],
+            fitLabel: "Best for",
+            fit: [
+              "Small teams that already work issue by issue.",
+              "Projects that want explicit review and ship gates without EnterpriseSpec's role-separated governance.",
+              "Teams moving from LiteSpec toward EnterpriseSpec that don't need the full delivery-evidence apparatus yet."
             ]
           },
           {
@@ -506,7 +587,7 @@ export const localeCopy = {
         ],
         decisionLabel: "Selection rule",
         decision:
-          "Start with LiteSpec by default. Move to EnterpriseSpec when the feature needs independent QA, release governance, performance or security evidence, or when a single agent can no longer carry the whole change in one narrow execution track."
+          "Start with LiteSpec by default. Move to GoalSpec when the team wants a standard issue-split -> implement -> review -> ship loop with explicit review/ship gates. Move to EnterpriseSpec when the feature needs independent QA, release governance, performance or security evidence, or when a single agent can no longer carry the whole change in one narrow execution track."
       },
       testUiDemo: {
         eyebrow: "$ open test-console/demo",

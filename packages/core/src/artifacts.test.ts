@@ -106,6 +106,44 @@ describe("artifact validation", () => {
     expect(route.supportingAgents).toEqual(expect.arrayContaining(["test-editor", "ci-editor", "reviewer"]));
   });
 
+  it("routes QA acceptance requests under goalspec with the goalspec overlay applied", () => {
+    const route = buildRequestRoute("请 QA agent 做最终质量验收，汇总 gate report 和 review findings", {
+      projectMode: "goalspec",
+    });
+
+    expect(route).toMatchObject({
+      projectMode: "goalspec",
+      requestKind: "acceptance",
+      primaryAgent: "testing-agent",
+      needsChangePackage: true,
+    });
+    expect(route.supportingAgents).toEqual(expect.arrayContaining(["test-editor", "ci-editor", "reviewer"]));
+    expect(route.requiredContext).toContain("docs/spec-modes/GoalSpec/README.md");
+    expect(route.promptAssembly.overlayManifest).toBe(".agents/modes/goalspec/manifest.overlay.yaml");
+    expect(route.promptAssembly.roles).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: "testing-agent",
+          overlayApplied: true,
+          modeRolePrompt: ".agents/modes/goalspec/roles/testing-agent.md",
+          modeCanonicalPrompt: "ai/agents/modes/goalspec/testing-agent.md",
+        }),
+        expect.objectContaining({
+          role: "reviewer",
+          overlayApplied: true,
+          modeRolePrompt: ".agents/modes/goalspec/roles/reviewer.md",
+          modeCanonicalPrompt: "ai/agents/modes/goalspec/reviewer.md",
+        }),
+        expect.objectContaining({
+          role: "ci-editor",
+          overlayApplied: true,
+          modeRolePrompt: ".agents/modes/goalspec/roles/ci-editor.md",
+          modeCanonicalPrompt: "ai/agents/modes/goalspec/ci-editor.md",
+        }),
+      ]),
+    );
+  });
+
   it("routes architecture orchestration requests to the architecture agent with bounded supporting agents", () => {
     const route = buildRequestRoute("让架构 agent 评估订单 API、数据库迁移、性能和并发风险，并输出子 agent 分工", {
       projectMode: "enterprisespec",

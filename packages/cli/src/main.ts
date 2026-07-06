@@ -65,7 +65,7 @@ interface TemplateDefinition {
   packageSubpath: string;
 }
 
-type ProjectMode = "litespec" | "enterprisespec";
+type ProjectMode = "litespec" | "goalspec" | "enterprisespec";
 
 const templates: TemplateDefinition[] = [
   { name: "fullstack", packageSubpath: "@specos/templates/fullstack/AGENTS.md" },
@@ -472,10 +472,10 @@ function parseInitArgs(args: string[]): { ok: true; value: InitOptions } | { ok:
       if (!value) {
         return { ok: false, error: failure("SPECOS_ARGUMENT_INVALID", "--mode requires a value") };
       }
-      if (value !== "litespec" && value !== "enterprisespec") {
+      if (value !== "litespec" && value !== "goalspec" && value !== "enterprisespec") {
         return {
           ok: false,
-          error: failure("SPECOS_ARGUMENT_INVALID", "--mode must be litespec or enterprisespec"),
+          error: failure("SPECOS_ARGUMENT_INVALID", "--mode must be litespec, goalspec, or enterprisespec"),
         };
       }
       mode = value;
@@ -928,7 +928,10 @@ function detectProjectMode(cwd: string): ProjectMode {
   try {
     const manifestPath = join(cwd, ".specos", "manifest.yaml");
     const manifest = parseManifestYaml(readFileSync(manifestPath, "utf8"));
-    return manifest.projectMode === "enterprisespec" ? "enterprisespec" : "litespec";
+    if (manifest.projectMode === "enterprisespec" || manifest.projectMode === "goalspec") {
+      return manifest.projectMode;
+    }
+    return "litespec";
   } catch {
     return "litespec";
   }

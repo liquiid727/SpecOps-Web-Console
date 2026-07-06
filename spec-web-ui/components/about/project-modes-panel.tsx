@@ -1,8 +1,14 @@
 import React from "react";
 
 import { WindowSection } from "@/components/ui/window-section";
-import { buildGlassSurfaceClassName } from "@/lib/theme";
+import { buildGlassSurfaceClassName, type GlassSurfaceTint } from "@/lib/theme";
 import { cn } from "@/lib/utils";
+
+const modeTints: readonly GlassSurfaceTint[] = ["blue", "emerald", "amber"];
+
+function tintForModeIndex(index: number): GlassSurfaceTint {
+  return modeTints[index] ?? "neutral";
+}
 
 type ProjectMode = {
   name: string;
@@ -53,7 +59,7 @@ export function ProjectModesPanel({
           <article
             key={mode.name}
             className={cn(
-              buildGlassSurfaceClassName("panel", index === 0 ? "blue" : "amber"),
+              buildGlassSurfaceClassName("panel", tintForModeIndex(index)),
               "rounded-lg p-4"
             )}
           >
@@ -90,7 +96,7 @@ export function ProjectModesPanel({
               <div>
                 <dt className="font-mono text-[11px] uppercase tracking-[0.14em] text-slate-500">{mode.loadLabel}</dt>
                 <dd className="mt-2">
-                  <div className={cn(buildGlassSurfaceClassName("row", index === 0 ? "blue" : "amber"), "rounded-lg px-3 py-3")}>
+                  <div className={cn(buildGlassSurfaceClassName("row", tintForModeIndex(index)), "rounded-lg px-3 py-3")}>
                     <div className="flex flex-wrap items-center gap-2 font-mono text-[11px] leading-5 text-ink">
                       {mode.loadPath.map((step, stepIndex) => (
                         <React.Fragment key={`${mode.name}-${step}`}>

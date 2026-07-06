@@ -6,7 +6,7 @@
 - Frontend delivery rule: [rules/frontend/react-workbench-delivery.md](../../rules/frontend/react-workbench-delivery.md)
 - UI handoff rule: [rules/ui/pencil-prototype-ui.md](../../rules/ui/pencil-prototype-ui.md)
 - Shared UI role: [.agents/roles/ui-design-agent.md](../../.agents/roles/ui-design-agent.md)
-- Mode overlays: [LiteSpec](../../.agents/modes/litespec/roles/) and [EnterpriseSpec](../../.agents/modes/enterprisespec/roles/)
+- Mode overlays: [LiteSpec](../../.agents/modes/litespec/roles/), [GoalSpec](../../.agents/modes/goalspec/roles/), and [EnterpriseSpec](../../.agents/modes/enterprisespec/roles/)
 - Requirement flow draft: [spec-draft/requirement-intake-flow.md](../../spec-draft/requirement-intake-flow.md)
 
 This document is the working UX reference for `spec-web-ui`. It is draft-only until a feature spec accepts it.

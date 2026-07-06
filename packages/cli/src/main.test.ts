@@ -532,6 +532,35 @@ describe("specos cli", () => {
     );
   });
 
+  it("initializes a fullstack project in goalspec mode", async () => {
+    const cwd = await tempProject();
+
+    const init = await runCli(["init", "--template", "fullstack", "--mode", "goalspec"], { cwd });
+
+    expect(init.exitCode).toBe(0);
+    expect(init.stdout).toContain("mode goalspec");
+    await expect(readFile(join(cwd, ".specos/manifest.yaml"), "utf8")).resolves.toContain("projectMode: goalspec");
+    await expect(readFile(join(cwd, "current", "project-status.md"), "utf8")).resolves.toContain("GoalSpec");
+    await expect(readFile(join(cwd, "specs", "issues", "README.md"), "utf8")).resolves.toContain("Issues");
+    await expect(readFile(join(cwd, "docs", "workflow.md"), "utf8")).resolves.toContain("/prd");
+
+    const routed = await runCli(
+      [
+        "route-request",
+        "--request",
+        "请 QA agent 做最终质量验收，汇总 gate report 和 review findings",
+      ],
+      { cwd },
+    );
+
+    const route = JSON.parse(routed.stdout.split("\n").slice(1).join("\n"));
+    expect(route).toMatchObject({
+      projectMode: "goalspec",
+      primaryAgent: "testing-agent",
+    });
+    expect(route.promptAssembly.overlayManifest).toBe(".agents/modes/goalspec/manifest.overlay.yaml");
+  });
+
   it("uses real host prompt assembly metadata when agent manifests are present", async () => {
     const cwd = await tempProject();
     await mkdir(join(cwd, ".specos"), { recursive: true });
@@ -665,7 +694,7 @@ describe("specos cli", () => {
 
     expect(init.exitCode).toBe(1);
     expect(init.stderr).toContain("SPECOS_ARGUMENT_INVALID");
-    expect(init.stderr).toContain("--mode must be litespec or enterprisespec");
+    expect(init.stderr).toContain("--mode must be litespec, goalspec, or enterprisespec");
   });
 
   it("rejects unknown route-request formats with a stable error code", async () => {

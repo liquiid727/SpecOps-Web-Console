@@ -67,7 +67,7 @@ const selectedAssets: CatalogAsset[] = [
     id: "template-project-modes",
     type: "spec_template",
     title: "Project Modes Guide",
-    summary: "Mode guidance for LiteSpec and EnterpriseSpec.",
+    summary: "Mode guidance for LiteSpec, GoalSpec, and EnterpriseSpec.",
     direction: "fullstack",
     stacks: ["go", "react"],
     tags: ["docs", "mode"],
@@ -78,6 +78,7 @@ const selectedAssets: CatalogAsset[] = [
     files: [
       "docs/spec-modes/README.md",
       "docs/spec-modes/LiteSpec/README.md",
+      "docs/spec-modes/GoalSpec/README.md",
       "docs/spec-modes/EnterpriseSpec/README.md"
     ],
     contentFiles: {
@@ -85,6 +86,8 @@ const selectedAssets: CatalogAsset[] = [
         "spec-web-ui/catalog/spec-templates/template-project-modes/README.md",
       "docs/spec-modes/LiteSpec/README.md":
         "spec-web-ui/catalog/spec-templates/template-project-modes/LiteSpec.md",
+      "docs/spec-modes/GoalSpec/README.md":
+        "spec-web-ui/catalog/spec-templates/template-project-modes/GoalSpec.md",
       "docs/spec-modes/EnterpriseSpec/README.md":
         "spec-web-ui/catalog/spec-templates/template-project-modes/EnterpriseSpec.md"
     },
@@ -167,6 +170,7 @@ describe("buildExportBundle", () => {
       "specs/_template/feature/spec.example.md",
       "docs/spec-modes/README.md",
       "docs/spec-modes/LiteSpec/README.md",
+      "docs/spec-modes/GoalSpec/README.md",
       "docs/spec-modes/EnterpriseSpec/README.md",
       "current/README.md",
       "agent-teams/governance-pack/README.md",

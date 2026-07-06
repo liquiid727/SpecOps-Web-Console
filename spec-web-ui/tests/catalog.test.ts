@@ -206,6 +206,7 @@ describe("loadCatalogAssets", () => {
     expect(modesTemplate?.files).toEqual([
       "docs/spec-modes/README.md",
       "docs/spec-modes/LiteSpec/README.md",
+      "docs/spec-modes/GoalSpec/README.md",
       "docs/spec-modes/EnterpriseSpec/README.md"
     ]);
     expect(modesTemplate?.contentFiles?.["docs/spec-modes/LiteSpec/README.md"]).toBe(

@@ -23,7 +23,7 @@ If a task skips any link in the chain, call that out explicitly.
 ## Artifact Rules
 
 - Design docs must remain broad, durable, and singular for a platform or system.
-- `LiteSpec` and `EnterpriseSpec` are the two documented operating modes. Default to `LiteSpec` unless delivery governance requires `EnterpriseSpec`.
+- `LiteSpec`, `GoalSpec`, and `EnterpriseSpec` are the three documented operating modes. Default to `LiteSpec`; use `GoalSpec` for a standing issue-driven six-step goal loop; use `EnterpriseSpec` when delivery governance requires it.
 - Feature specs must include: meta, goal, why this exists, out of scope, deliverables, domain, application, repository, API, database impact, test plan, and definition of done.
 - Specs must express dependencies by spec id and prerequisites as upstream contracts already provided.
 - API artifacts must include request/response examples and stable error semantics.

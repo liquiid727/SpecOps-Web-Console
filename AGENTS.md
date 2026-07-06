@@ -51,7 +51,7 @@ Read context in this order before changing behavior:
 - `implementation/`: implementation handoff and status by spec id.
 - `reviews/`: structured review evidence by spec id.
 - `tests/`: spec-driven verification assets and scenario test templates.
-- `docs/spec-modes/`: documented project operating modes such as `LiteSpec` and `EnterpriseSpec`.
+- `docs/spec-modes/`: documented project operating modes: `LiteSpec`, `GoalSpec`, and `EnterpriseSpec`.
 - `spec-web-ui/`: Next.js UI for SpecOS.
 
 ## Coding Standards
