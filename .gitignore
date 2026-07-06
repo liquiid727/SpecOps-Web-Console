@@ -3,6 +3,9 @@
 .vscode/
 .idea/
 
+# Claude Code local-only settings
+.claude/settings.local.json
+
 # env / local config
 .env
 .env.*
