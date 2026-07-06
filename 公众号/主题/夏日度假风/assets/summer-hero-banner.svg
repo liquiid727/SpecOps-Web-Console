@@ -1,0 +1,34 @@
+<svg viewBox="0 0 600 340" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="heroSkyA" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1B5C8A"/>
+      <stop offset="55%" stop-color="#4FA8E0"/>
+      <stop offset="100%" stop-color="#8FD4F5"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="340" fill="url(#heroSkyA)"/>
+  <circle cx="520" cy="60" r="50" fill="#FFC66B" opacity="0.35"/>
+  <circle cx="520" cy="60" r="30" fill="#FFC66B" opacity="0.7"/>
+  <g transform="translate(30,40)" opacity="0.9">
+    <path d="M0 0 Q40 20 30 70" stroke="#0E3A57" stroke-width="7" fill="none" stroke-linecap="round"/>
+    <g fill="#1B5C8A">
+      <path d="M0 0 Q-50 -10 -70 20 Q-30 5 0 0Z"/>
+      <path d="M0 0 Q40 -30 70 -10 Q25 -10 0 0Z"/>
+      <path d="M0 0 Q-10 -50 20 -70 Q10 -30 0 0Z"/>
+    </g>
+  </g>
+  <path d="M200 50 q10 -12 20 0 q10 -12 20 0" stroke="#FFFFFF" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.85"/>
+  <path d="M260 34 q8 -9 16 0 q8 -9 16 0" stroke="#FFFFFF" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.7"/>
+  <g transform="translate(500,150)">
+    <circle r="26" fill="#FFFDF7"/>
+    <path d="M-26 0 Q0 -14 26 0 Q0 14 -26 0" fill="none" stroke="#FF8FA3" stroke-width="2.5"/>
+    <path d="M0 -26 Q10 0 0 26" fill="none" stroke="#6EC6FF" stroke-width="2.5"/>
+  </g>
+  <path d="M0 260 Q40 245 80 260 T160 260 T240 260 T320 260 T400 260 T480 260 T560 260 T600 260 L600 340 L0 340 Z" fill="#FFFDF7" opacity="0.12"/>
+  <path d="M0 285 Q40 270 80 285 T160 285 T240 285 T320 285 T400 285 T480 285 T560 285 T600 285 L600 340 L0 340 Z" fill="#FFFDF7" opacity="0.2"/>
+  <text x="46" y="180" fill="#FFFFFF" font-size="42" font-weight="800" font-family="-apple-system,'PingFang SC',sans-serif">夏日度假</text>
+  <text x="46" y="228" fill="#FFFFFF" font-size="30" font-weight="800" font-family="-apple-system,'PingFang SC',sans-serif">去海边吧！</text>
+  <path d="M46 244 q12 10 24 0 t24 0 t24 0 t24 0 t24 0 t24 0 t24 0" stroke="#FFC66B" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <text x="46" y="278" fill="#EAF8FF" font-size="14" font-family="-apple-system,'PingFang SC',sans-serif" letter-spacing="1">阳光 · 沙滩 · 海浪 · 排球</text>
+  <text x="46" y="304" fill="#DCEEFB" font-size="13" font-family="-apple-system,'PingFang SC',sans-serif">海风轻拂，阳光正好，把生活调成度假模式。</text>
+</svg>

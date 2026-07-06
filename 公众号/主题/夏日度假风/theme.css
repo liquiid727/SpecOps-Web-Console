@@ -1,0 +1,224 @@
+/*
+  公众号主题：盐甜夏日度假风
+  ------------------------------------------------------------
+  使用方式：
+  1. 这不是给公众号编辑器直接加载的文件——微信公众号正文不支持 <style> 或外链 CSS，
+     只认每个标签自己的行内 style="..."。
+  2. 正确用法：把这份 CSS 导入 mdnice / 135编辑器 / 秀米 一类支持"自定义 CSS 主题"的
+     排版工具，工具会把下面这些规则自动转成每个标签的行内样式，再用它的
+     "复制到公众号"按钮粘贴到公众号编辑器里，样式才会保留。
+  3. 已经去掉了公众号环境里高风险、经常被过滤/表现不一致的写法：
+     - 多列 flex/grid 布局 → 改用说明，建议在正文里用表格 <table> 实现，兼容性最好
+     - 复杂 SVG 图标/插画 → 一律不放在 CSS 里，改成导出好的图片，见 assets/ 目录
+  4. 标题的渐变描字（background-clip: text）在现代客户端渲染没问题，保留了一个
+     纯色兜底类 .h1-solid，遇到旧客户端显示异常时切换成纯色版本即可。
+  ------------------------------------------------------------
+*/
+
+body {
+  background: linear-gradient(180deg, #EAF8FF 0%, #FFFDF7 45%, #FFF2D8 100%);
+  color: #2E3A46;
+  font-size: 16px;
+  line-height: 1.85;
+  letter-spacing: 0.4px;
+}
+
+.article {
+  padding: 20px 16px;
+  background: #FFFDF7;
+  border-radius: 18px;
+}
+
+/* 一级标题：渐变描字版（推荐，现代客户端表现正常） */
+h1 {
+  font-size: 24px;
+  font-weight: 800;
+  text-align: center;
+  margin: 32px 0 20px;
+  padding-bottom: 12px;
+  background: linear-gradient(90deg, #6EC6FF, #FFB347, #FF8FA3);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* 一级标题：纯色兜底版，渐变描字显示异常时用这个类名替换 h1 即可 */
+.h1-solid {
+  font-size: 24px;
+  font-weight: 800;
+  text-align: center;
+  margin: 32px 0 20px;
+  padding-bottom: 12px;
+  color: #227C9D;
+}
+
+/* 二级标题 */
+h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #227C9D;
+  margin: 32px 0 16px;
+  padding: 10px 14px;
+  border-left: 6px solid #FFB347;
+  background: linear-gradient(90deg, #EAF8FF, #FFFDF7);
+  border-radius: 12px;
+}
+
+/* 编号小节标题（对应 01 / 02 样式），配合正文里手写 <span class="num">01</span> 使用 */
+.num-head { margin: 0 0 12px; }
+.num-head .num { font-size: 22px; font-weight: 900; color: #1B5C8A; }
+.num-head .slash { color: #6EC6FF; font-weight: 900; font-size: 20px; margin: 0 6px; }
+.num-head .title { font-size: 19px; font-weight: 800; color: #1B5C8A; }
+
+/* 三级标题 */
+h3 {
+  font-size: 17px;
+  color: #FF8A3D;
+  margin: 24px 0 12px;
+  padding-left: 10px;
+  border-left: 4px solid #FF8FA3;
+}
+
+/* 正文 */
+p {
+  margin: 14px 0;
+  color: #2E3A46;
+}
+
+/* 强调文字 */
+strong {
+  color: #FF8A3D;
+  font-weight: 700;
+}
+
+/* 引用块：海边便签感 */
+blockquote {
+  margin: 20px 0;
+  padding: 16px 18px;
+  background: #FFF2D8;
+  border-left: 5px solid #FFB347;
+  border-radius: 14px;
+  color: #5A4A35;
+  box-shadow: 0 6px 16px rgba(255, 179, 71, 0.18);
+}
+
+/* 大引号引言块：quote-mark 用文字符号“ ” 实现，不依赖图片 */
+.quote-block { margin: 22px 0; }
+.quote-block .qmark {
+  font-size: 44px; line-height: 1; color: #6EC6FF;
+  font-family: Georgia, serif; font-weight: 900;
+}
+.quote-block .qtext {
+  font-size: 15px; line-height: 1.9; color: #1B5C8A; font-style: italic;
+}
+
+/* 重点卡片 */
+.tip-card {
+  margin: 22px 0;
+  padding: 18px;
+  background: linear-gradient(135deg, #EAF8FF, #FFFDF7);
+  border: 1px solid rgba(110, 198, 255, 0.45);
+  border-radius: 18px;
+  box-shadow: 0 8px 22px rgba(59, 175, 218, 0.12);
+}
+
+/* 小提示标签，配合 tip-card 使用 */
+.tip-tag {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: #6EC6FF;
+  padding: 3px 12px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+/* 夏日标签 / 贴纸：emoji 代替图标，全平台兼容，不需要图片 */
+.tag {
+  display: inline-block;
+  padding: 4px 10px;
+  margin: 4px 6px 4px 0;
+  border-radius: 999px;
+  background: #EAF8FF;
+  color: #227C9D;
+  font-size: 13px;
+}
+
+/* 分割线：海浪感 */
+hr {
+  border: none;
+  height: 18px;
+  margin: 28px 0;
+  background: radial-gradient(circle at 10px 10px, #6EC6FF 3px, transparent 4px);
+  background-size: 24px 18px;
+}
+
+/* 列表 */
+ul, ol {
+  padding-left: 20px;
+}
+
+li {
+  margin: 8px 0;
+}
+
+/*
+  夏日推荐清单（4 宫格）建议写法：
+  公众号正文不要用 display:flex / grid，兼容性没有保证，改用 <table> 实现等宽 4 列：
+
+  <table style="width:100%;border-collapse:collapse;">
+    <tr>
+      <td style="width:25%;text-align:center;padding:8px;">
+        <img src="icon-sunset.png" style="width:44px;" />
+        <div style="font-size:12.5px;font-weight:700;margin-top:6px;">看一场日落</div>
+      </td>
+      ... 其余 3 个 <td> 同理 ...
+    </tr>
+  </table>
+*/
+
+/* 图片（含前面导出的 icon / 插画 png，都套这个圆角+阴影） */
+img {
+  border-radius: 18px;
+  box-shadow: 0 8px 24px rgba(46, 58, 70, 0.12);
+}
+
+/* 拍立得收尾图外层容器：图片本身也走上面 img 规则，这里只加相框留白 */
+.polaroid {
+  background: #fff;
+  padding: 10px 10px 34px;
+  border-radius: 6px;
+  box-shadow: 0 12px 28px rgba(46, 58, 70, 0.18);
+}
+.polaroid img { box-shadow: none; border-radius: 2px; }
+.polaroid .cap {
+  text-align: center;
+  font-family: Georgia, serif;
+  font-style: italic;
+  color: #1B5C8A;
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+/* 结尾签名 */
+.footer-note {
+  margin-top: 36px;
+  padding: 18px;
+  text-align: center;
+  color: #6B7A86;
+  background: #FFF2D8;
+  border-radius: 18px;
+}
+
+:root {
+  --sky-blue: #6EC6FF;
+  --sea-blue: #3BAFDA;
+  --deep-blue: #1B5C8A;
+  --sun-orange: #FFB347;
+  --coral-pink: #FF8FA3;
+  --sand: #FFF2D8;
+  --coconut: #FFFDF7;
+  --text-main: #2E3A46;
+  --text-light: #6B7A86;
+}
