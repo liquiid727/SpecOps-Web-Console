@@ -37,7 +37,8 @@ export const localeCopy = {
       home: "首页",
       theme: "主题",
       day: "日间",
-      night: "夜间"
+      night: "夜间",
+      summerSurf: "夏日冲浪"
     },
     home: {
       heroTitle: "先搜索目录，找到要组合的项目资产。",
@@ -346,7 +347,8 @@ export const localeCopy = {
       home: "Home",
       theme: "Theme",
       day: "Day",
-      night: "Night"
+      night: "Night",
+      summerSurf: "Summer Surf"
     },
     home: {
       heroTitle: "Search the catalog first, then compose the assets you need.",
