@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preview</title>
+    <style>
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  font-size: 16px;
+  line-height: 1.75;
+  color: #1f2328;
+  background: #ffffff;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 20px;
+  word-wrap: break-word;
+}
+
+h1 {
+  font-size: 26px;
+  font-weight: 600;
+  color: #1f2328;
+  margin: 32px 0 16px 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #d1d9e0;
+  line-height: 1.4;
+}
+
+h2 {
+  font-size: 22px;
+  font-weight: 600;
+  color: #1f2328;
+  margin: 28px 0 14px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #d1d9e0;
+  line-height: 1.4;
+}
+
+h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2328;
+  margin: 24px 0 12px 0;
+  line-height: 1.4;
+}
+
+h4 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2328;
+  margin: 20px 0 10px 0;
+  line-height: 1.4;
+}
+
+p {
+  font-size: 16px;
+  line-height: 1.75;
+  color: #1f2328;
+  margin: 12px 0;
+}
+
+strong {
+  font-weight: 600;
+  color: #1f2328;
+}
+
+em {
+  font-style: italic;
+  color: #1f2328;
+}
+
+code {
+  font-family: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 13.6px;
+  background: rgba(175,184,193,0.2);
+  color: #1f2328;
+  padding: 3px 6px;
+  border-radius: 6px;
+}
+
+pre {
+  background: #f6f8fa;
+  color: #1f2328;
+  padding: 16px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 16px 0;
+  line-height: 1.5;
+  border: 1px solid #d1d9e0;
+}
+
+pre code {
+  font-family: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 13.6px;
+  background: none;
+  color: #1f2328;
+  padding: 0;
+  border-radius: 0;
+}
+
+blockquote {
+  border-left: 4px solid #d0d7de;
+  background: transparent;
+  margin: 16px 0;
+  padding: 4px 16px;
+  border-radius: 0;
+  color: #656d76;
+}
+
+blockquote p {
+  margin: 8px 0;
+  color: #656d76;
+}
+
+ul {
+  padding-left: 28px;
+  margin: 12px 0;
+}
+
+ol {
+  padding-left: 28px;
+  margin: 12px 0;
+}
+
+li {
+  font-size: 16px;
+  line-height: 1.75;
+  color: #1f2328;
+  margin: 4px 0;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 15px;
+}
+
+thead {
+  background: #f6f8fa;
+}
+
+th {
+  background: #f6f8fa;
+  color: #1f2328;
+  font-weight: 600;
+  padding: 8px 14px;
+  text-align: left;
+  border: 1px solid #d1d9e0;
+}
+
+td {
+  padding: 8px 14px;
+  border: 1px solid #d1d9e0;
+  color: #1f2328;
+}
+
+tr {
+  background: #ffffff;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 24px auto;
+  border-radius: 6px;
+}
+
+a {
+  color: #0969da;
+  text-decoration: none;
+  font-weight: 400;
+}
+
+hr {
+  border: none;
+  height: 2px;
+  background: #d1d9e0;
+  margin: 24px 0;
+}
+
+    </style>
+</head>
+<body>
+    <p style="font-size: 16px; line-height: 1.75; color: #1f2328; margin: 12px 0">现在 vibe coding 的比重越来越高， AI 生成的代码也越来越多。但先扛不住上下文的，不是 AI ，是我——同时开好几个项目，脑子先宕机。</p>
+<p style="font-size: 16px; line-height: 1.75; color: #1f2328; margin: 12px 0">Vibe coding 说白了是开盲盒。你压根不知道 AI 内部到底怎么实现的，改来改去总能跑起来，但跑起来之后呢？谁来维护？半年后谁还记得这段逻辑是怎么拼出来的？</p>
+<!-- ✏️ 编辑建议：在这里加一句你自己第一次被"跑起来但看不懂"坑到的经历 -->
+<p style="font-size: 16px; line-height: 1.75; color: #1f2328; margin: 12px 0">这就是 spec 这个东西冒出来的原因。</p>
+<h2 style="font-size: 22px; font-weight: 600; color: #1f2328; margin: 28px 0 14px 0; padding-bottom: 8px; border-bottom: 1px solid #d1d9e0; line-height: 1.4">spec 到底解决什么问题</h2>
+<p style="font-size: 16px; line-height: 1.75; color: #1f2328; margin: 12px 0">前半年断断续续聊过几次 spec ，团队开发那边基本会考虑用 openspec 来维护。说白了就是把项目的上下文，用某种规范和格式，写成文本存在一个固定目录里。以后 agent 不用再去翻全部代码，看这份 spec 就能大概摸清项目现状。</p>
+<p style="font-size: 16px; line-height: 1.75; color: #1f2328; margin: 12px 0">openspec 的思路我认可，但太重了——流程一多，人就懒得维护， spec 立刻就烂尾。</p>
+<h2 style="font-size: 22px; font-weight: 600; color: #1f2328; margin: 28px 0 14px 0; padding-bottom: 8px; border-bottom: 1px solid #d1d9e0; line-height: 1.4">我自己搞的三层 spec</h2>
+<p style="font-size: 16px; line-height: 1.75; color: #1f2328; margin: 12px 0">根据自己这几年的开发经验，我把 spec 拆成了三种复杂度：</p>
+<table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 15px">
+<thead style="background: #f6f8fa">
+<tr style="background: #fff">
+<th style="background: #f6f8fa; color: #1f2328; font-weight: 600; padding: 8px 14px; text-align: left; border: 1px solid #d1d9e0">模式</th>
+<th style="background: #f6f8fa; color: #1f2328; font-weight: 600; padding: 8px 14px; text-align: left; border: 1px solid #d1d9e0">定位</th>
+<th style="background: #f6f8fa; color: #1f2328; font-weight: 600; padding: 8px 14px; text-align: left; border: 1px solid #d1d9e0">场景</th>
+</tr>
+</thead>
+<tbody>
+<tr style="background: #fff">
+<td style="padding: 8px 14px; border: 1px solid #d1d9e0; color: #1f2328">LiteSpec （ Feature driven ）</td>
+<td style="padding: 8px 14px; border: 1px solid #d1d9e0; color: #1f2328">个人项目，自己玩</td>
+<td style="padding: 8px 14px; border: 1px solid #d1d9e0; color: #1f2328">一个人</td>
+</tr>
+<tr style="background: #fff">
+<td style="padding: 8px 14px; border: 1px solid #d1d9e0; color: #1f2328">PlusSpec （ Issues driven ）</td>
+<td style="padding: 8px 14px; border: 1px solid #d1d9e0; color: #1f2328">feature + issues 双维度</td>
+<td style="padding: 8px 14px; border: 1px solid #d1d9e0; color: #1f2328">小团队</td>
+</tr>
+<tr style="background: #fff">
+<td style="padding: 8px 14px; border: 1px solid #d1d9e0; color: #1f2328">ProSpec （ Delivery driven ）</td>
+<td style="padding: 8px 14px; border: 1px solid #d1d9e0; color: #1f2328">重测试、重交付</td>
+<td style="padding: 8px 14px; border: 1px solid #d1d9e0; color: #1f2328">中大型核心项目</td>
+</tr>
+</tbody>
+</table>
+<p style="font-size: 16px; line-height: 1.75; color: #1f2328; margin: 12px 0">这三层不是并列关系，是跟着项目往前走自然长出来的——issue 越修越多，交付越到后面越不能出岔子，测试和验收自然就得跟上。</p>
+<p style="font-size: 16px; line-height: 1.75; color: #1f2328; margin: 12px 0"><strong style="font-weight: 600; color: #1f2328">LiteSpec</strong>：以 feature 为单位管 spec 。新功能开一个 feature-xx 分支，每次先写这个 feature 的 spec ，再动手写代码。</p>
+<p style="font-size: 16px; line-height: 1.75; color: #1f2328; margin: 12px 0"><strong style="font-weight: 600; color: #1f2328">PlusSpec</strong>： feature 不断堆起来之后， issue 也跟着来了——修 bug ，老板天天堵在门口那种。</p>
+<p style="font-size: 16px; line-height: 1.75; color: #1f2328; margin: 12px 0"><strong style="font-weight: 600; color: #1f2328">ProSpec</strong>：说实话，这一层我自己都没跑出一个完整闭环，还在磨。重点在 TDD 那条链路上的测试交付。</p>
+<!-- ✏️ 编辑建议：在这里补充一个 ProSpec 具体卡住的场景/例子 -->
+<h2 style="font-size: 22px; font-weight: 600; color: #1f2328; margin: 28px 0 14px 0; padding-bottom: 8px; border-bottom: 1px solid #d1d9e0; line-height: 1.4">为什么不直接抄 openspec</h2>
+<p style="font-size: 16px; line-height: 1.75; color: #1f2328; margin: 12px 0">很大一部分原因是，这套体系得让我自己愿意维护它。 spec 这东西一旦没人管，就变成地狱——半吊子的内容、过时的说明， agent 理解出错，反而比不写 spec 还浪费时间。现在这压力，谁经得起被这么坑一次？</p>
+<p style="font-size: 16px; line-height: 1.75; color: #1f2328; margin: 12px 0">那怎么保证 spec 不烂尾？每个 spec 体系都配了一份 agent 清单，还加了对应的 CI 门禁——每次 CI 跑完，检查 spec 是不是该更新的都更新了，内容对不对得上。</p>
+<p style="font-size: 16px; line-height: 1.75; color: #1f2328; margin: 12px 0">这确实会多烧一些 token 。但项目要长期维护，这笔账躲不掉。毕竟出了问题要背锅的时候，还得靠它抢救。</p>
+<h2 style="font-size: 22px; font-weight: 600; color: #1f2328; margin: 28px 0 14px 0; padding-bottom: 8px; border-bottom: 1px solid #d1d9e0; line-height: 1.4">顺手做的几件事</h2>
+<p style="font-size: 16px; line-height: 1.75; color: #1f2328; margin: 12px 0">这套体系里我还塞了几个自己的 subagents ，把各个 skill 拆进对应的 agent 里，混了点 superpower 的编排思路进去。 CI 门禁也是同一套逻辑——每次跑都检查 spec 状态，别让人忘。</p>
+<!-- ✏️ 编辑建议：在这里说说你为什么坚持"不教用户、顺着习惯走"这个原则 -->
+<p style="font-size: 16px; line-height: 1.75; color: #1f2328; margin: 12px 0">用起来这块，我的原则是尽量简单——不改变用户习惯，不去"教"用户，顺着大家本来就爱用的方式走。个人用的话，再按具体场景客制化就是了——现在 agent 能力摆在这，客制化的成本其实不高。</p>
+</body>
+</html>
