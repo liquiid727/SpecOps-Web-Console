@@ -64,6 +64,21 @@ describe("copyTemplateDirectory", () => {
     await expect(readFile(join(target, "AGENTS.md"), "utf8")).resolves.toBe("template agents\n");
   });
 
+  it("skips excluded relative paths entirely", async () => {
+    const source = await tempProject();
+    const target = await tempProject();
+    await writeFile(join(source, "AGENTS.md"), "template agents\n");
+    await writeFile(join(source, ".gitignore.template"), "node_modules/\n");
+
+    const result = await copyTemplateDirectory(source, target, { exclude: [".gitignore.template"] });
+
+    expect(result).toEqual({
+      written: ["AGENTS.md"],
+      skipped: [],
+    });
+    await expect(readFile(join(target, ".gitignore.template"), "utf8")).rejects.toThrow();
+  });
+
   it("rejects symlinked target path segments before writing", async () => {
     const source = await tempProject();
     const target = await tempProject();

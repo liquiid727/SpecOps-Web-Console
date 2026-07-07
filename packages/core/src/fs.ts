@@ -3,6 +3,7 @@ import { dirname, join, relative, sep } from "node:path";
 
 export interface CopyTemplateOptions {
   overwrite?: boolean;
+  exclude?: string[];
 }
 
 export interface CopyTemplateResult {
@@ -16,7 +17,8 @@ export async function copyTemplateDirectory(
   options: CopyTemplateOptions = {},
 ): Promise<CopyTemplateResult> {
   await assertNotSymlink(target, target);
-  const files = await listFiles(source);
+  const excluded = new Set(options.exclude ?? []);
+  const files = (await listFiles(source)).filter((relativePath) => !excluded.has(relativePath));
   const result: CopyTemplateResult = { written: [], skipped: [] };
 
   for (const relativePath of files) {

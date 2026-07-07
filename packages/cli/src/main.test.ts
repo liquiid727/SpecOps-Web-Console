@@ -464,6 +464,27 @@ describe("specos cli", () => {
     await expect(readFile(join(cwd, ".specos/manifest.yaml"), "utf8")).resolves.toContain("type: fullstack");
   });
 
+  it("scaffolds a .gitignore from the template and never leaves the raw .gitignore.template behind", async () => {
+    const cwd = await tempProject();
+
+    const init = await runCli(["init", "--template", "fullstack"], { cwd });
+
+    expect(init.exitCode).toBe(0);
+    await expect(readFile(join(cwd, ".gitignore"), "utf8")).resolves.toContain("node_modules/");
+    await expect(readFile(join(cwd, ".gitignore"), "utf8")).resolves.toContain(".agent/runs/");
+    await expect(readFile(join(cwd, ".gitignore.template"), "utf8")).rejects.toThrow();
+  });
+
+  it("does not overwrite a human-authored .gitignore", async () => {
+    const cwd = await tempProject();
+    await writeFile(join(cwd, ".gitignore"), "custom-ignore/\n");
+
+    const init = await runCli(["init", "--template", "fullstack"], { cwd });
+
+    expect(init.exitCode).toBe(0);
+    await expect(readFile(join(cwd, ".gitignore"), "utf8")).resolves.toBe("custom-ignore/\n");
+  });
+
   it("initializes a fullstack project in enterprise mode", async () => {
     const cwd = await tempProject();
 

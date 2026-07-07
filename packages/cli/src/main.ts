@@ -274,9 +274,10 @@ async function initProject(context: CliContext, options: InitOptions): Promise<R
   const templateEntry = resolveTemplateEntry(template.packageSubpath);
   const templateDir = dirname(templateEntry);
   const templatePackageRoot = dirname(templateDir);
-  const baseResult = await copyTemplateDirectory(templateDir, context.cwd);
+  const baseResult = await copyTemplateDirectory(templateDir, context.cwd, { exclude: [".gitignore.template"] });
   const overlayResult = await applyProjectModeOverlay(templatePackageRoot, template.name, options.mode, context.cwd);
   await persistProjectMode(join(context.cwd, ".specos", "manifest.yaml"), options.mode);
+  const gitignoreResult = await writeGitignoreFromTemplate(templateDir, context.cwd);
 
   await mkdir(join(context.cwd, "tests/results"), { recursive: true });
 
@@ -284,8 +285,8 @@ async function initProject(context: CliContext, options: InitOptions): Promise<R
     "SPECOS_INIT_OK",
     `template ${template.name}`,
     `mode ${options.mode}`,
-    `written ${baseResult.written.length + overlayResult.written.length}`,
-    `skipped ${baseResult.skipped.length + overlayResult.skipped.length}`,
+    `written ${baseResult.written.length + overlayResult.written.length + gitignoreResult.written.length}`,
+    `skipped ${baseResult.skipped.length + overlayResult.skipped.length + gitignoreResult.skipped.length}`,
   ];
 
   return {
@@ -711,6 +712,22 @@ async function applyProjectModeOverlay(
   }
 
   return copyTemplateDirectory(overlayDir, cwd, { overwrite: true });
+}
+
+async function writeGitignoreFromTemplate(templateDir: string, cwd: string) {
+  const source = join(templateDir, ".gitignore.template");
+  const target = join(cwd, ".gitignore");
+
+  if (!(await pathExists(source))) {
+    return { written: [], skipped: [] };
+  }
+
+  if (await pathExists(target)) {
+    return { written: [], skipped: [".gitignore"] };
+  }
+
+  await copyFile(source, target);
+  return { written: [".gitignore"], skipped: [] };
 }
 
 async function persistProjectMode(manifestPath: string, mode: ProjectMode) {
