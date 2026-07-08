@@ -1,5 +1,7 @@
 # 一套 Agent + Mode
 
+![My Spec 03/05](hero-03.png)
+
 前两篇讲了我为什么设计三档 spec（LiteSpec / GoalSpec / EnterpriseSpec），以及什么信号提示该升级。这篇讲背后真正干活的那部分——一套 agent 是怎么同时服务三档不同项目的。
 
 三档 spec 定下来之后，我干了一件现在想起来挺蠢的事：给每一档都单独写了一份 agent 说明书。LiteSpec 一份，GoalSpec 一份，EnterpriseSpec 一份，每份都写清楚遇到这类活该找谁、这个角色该干什么、不该干什么。
@@ -10,6 +12,11 @@
 
 那就没必要写三份，该拆成一套共享的骨架，加上每档只写差异部分。这思路其实跟三档设计是一脉相承的：三档不是三套互相独立的东西，是同一套底子上叠加的治理强度，agent 的组织方式也该照这个逻辑来，不然就是自己打自己脸。
 
+<div style="display:flex;align-items:flex-start;gap:14px;margin:22px 0;">
+<div style="font-size:44px;line-height:1;color:#6EC6FF;font-family:Georgia,serif;font-weight:900;flex:0 0 auto;">"</div>
+<div style="font-size:15px;line-height:1.9;color:#1B5C8A;font-style:italic;">现在改一处分工逻辑，只用改共享层那一份，三档自动同步。</div>
+</div>
+
 共享层就四个主 agent，分工很直白：architecture-agent 管架构判断和 spec 影响面，判断一个改动会不会波及别的模块；implementation-agent 管具体实现，写代码接需求；deployment-agent 管部署、CI、发布就绪；testing-agent 管独立验证和验收，专门唱反调找问题。这四个之外还有一批更细分的 specialist，专门管 spec 规范化的、管数据库迁移的、管接口契约的、管 UI 设计的、管端到端场景测试的、管性能和并发证据的，但它们不直接对外接活，都是由上面四个主 agent 视情况拉进来帮忙。
 
 这个设计也是踩坑踩出来的。一开始我图省事，想把所有能力都塞进一个"全能 agent"，结果这 agent 的说明书越写越长，每次给出的答案都夹一堆不相关的考虑，反而没有专精 agent 的结论利落。后来干脆拆开，一个角色只认领一件事，跨界了就显式拉另一个角色进来，别让一个 agent 硬撑所有场景。
@@ -18,12 +25,21 @@
 
 光有分工还不够，还得有人负责派单，不然照样是各干各的，谁都不知道该找谁。这个角色我内部叫它 `Mentor`。
 
+![Agent 编排 & CI 门禁链路](agent-architecture-diagram-mentor.png)
+
 `Mentor` 自己不下场干活，就做几件事：接收 request、判断这活儿归谁管、把边界不清楚的部分拆成两三个小任务分给对应的 specialist、等大家都回话了再把结果合并、顺手把重复和不靠谱的结论过滤掉，最后只吐出一条能直接执行的建议——而不是把每个 specialist 的原始报告全部拼在一起甩给我。
 
-举个具体点的场景。假如我扔给它一句"这个接口改了字段类型，帮我看看有没有影响"，`Mentor` 会先判断这属于架构判断的活，把 architecture-agent 定为主责方；架构判断如果发现这个字段被数据库和接口文档两头引用，会再拉 db-migration-agent 和 openapi-agent 各自出一份简短结论；最后 `pola` 把这两份结论和主责方的判断合并，过滤掉重复的部分，给我一条"这个改动会影响哪些地方、建议怎么处理"的建议——不是三份各说各话的报告堆在我面前让我自己拼。
+举个具体点的场景。假如我扔给它一句"这个接口改了字段类型，帮我看看有没有影响"，`Mentor` 会先判断这属于架构判断的活，把 architecture-agent 定为主责方；架构判断如果发现这个字段被数据库和接口文档两头引用，会再拉 db-migration-agent 和 openapi-agent 各自出一份简短结论；最后把这两份结论和主责方的判断合并，过滤掉重复的部分，给我一条"这个改动会影响哪些地方、建议怎么处理"的建议——不是三份各说各话的报告堆在我面前让我自己拼。
 
 我自己试下来最有感觉的一点是，以前是我自己在几份 agent 报告里大海捞针，现在这活儿挪到了 `Mentor` 身上。
 
 现在改一处分工逻辑，只用改共享层那一份，三档自动同步。真正需要单独维护的，只剩每档那一点点差异——这才是我觉得真正省下来的地方，不是"少写了几份文档"，是"以后不用再祈祷自己没漏改哪一处"。
 
-这套共享骨架加派单协调的思路听着挺顺，但它其实是靠一整套死板的规则撑着的——比如谁先读、谁后读，共享说明书和档位覆盖说明书谁优先级更高，一旦顺序读错了，agent 拿到的其实是一份看起来对、实际上过时的拼装说明书。我自己就真的读错过一次顺序，agent 干出来的活跟我要的完全不是一回事，排查半天才发现是装配顺序出了岔子，不是 agent 理解错了需求。这套规则要是没有别的东西卡着，早晚也会跟 spec 一样慢慢烂掉——这个下一篇细说。
+<div style="background:#fff;border-radius:16px;padding:16px 18px;box-shadow:0 6px 16px rgba(46,58,70,0.08);margin-top:14px;">
+<span style="display:inline-block;font-size:12px;font-weight:700;color:#fff;background:#6EC6FF;padding:3px 12px;border-radius:8px;margin-bottom:10px;">踩过的坑</span>
+<div style="font-size:13.5px;line-height:1.9;color:#2E3A46;">这套共享骨架加派单协调的思路听着挺顺，但它其实是靠一整套死板的规则撑着的——比如谁先读、谁后读，共享说明书和档位覆盖说明书谁优先级更高，一旦顺序读错了，agent 拿到的其实是一份看起来对、实际上过时的拼装说明书。我自己就真的读错过一次顺序，agent 干出来的活跟我要的完全不是一回事，排查半天才发现是装配顺序出了岔子，不是 agent 理解错了需求。</div>
+</div>
+
+这套规则要是没有别的东西卡着，早晚也会跟 spec 一样慢慢烂掉——这个下一篇细说。
+
+![以后不用再祈祷自己没漏改哪一处](closing-polaroid-03.png)
