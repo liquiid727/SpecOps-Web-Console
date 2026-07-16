@@ -1,0 +1,54 @@
+{
+  "id": "agent-product-architect",
+  "type": "agent_role",
+  "title": "Product Architect Agent",
+  "summary": "Compiles raw ideas into a Spec Draft with Product, Architecture, Database, API, and UI branches before Spec Compiler normalization.",
+  "direction": "fullstack",
+  "categories": [
+    "product",
+    "operations"
+  ],
+  "stacks": [
+    "go",
+    "react",
+    "python",
+    "specos"
+  ],
+  "tags": [
+    "product",
+    "prd",
+    "spec",
+    "intake",
+    "agent"
+  ],
+  "appliesTo": [
+    "backend",
+    "frontend",
+    "ui"
+  ],
+  "dependsOn": [
+    "skill-product-architect",
+    "agent-frontend",
+    "agent-backend",
+    "agent-qa",
+    "template-spec-blueprint-yaml",
+    "template-task-graph-yaml",
+    "template-prd-draft",
+    "template-product-spec-yaml",
+    "template-feature-draft"
+  ],
+  "conflictsWith": [],
+  "sourcePath": "spec-web-ui/catalog/agent-templates/agent-product-architect/product-architect-agent.md",
+  "files": [
+    "ai/agents/product-architect-agent.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "先确认产品目标、Spec 分支、MVP 边界和验收口径",
+    "输出进入 spec-draft，再交给 spec-editor 规范化"
+  ],
+  "sampleOutput": "Idea -> Spec Draft(Product/Architecture/Database/API/UI)，再交给 Spec Compiler 输出 Canonical Spec 和 Task Graph IR。",
+  "contentFiles": {
+    "ai/agents/product-architect-agent.md": "spec-web-ui/catalog/agent-templates/agent-product-architect/product-architect-agent.md"
+  }
+}

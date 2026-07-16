@@ -1,0 +1,36 @@
+product:
+  name:
+  summary:
+
+actors:
+  - id:
+    description:
+
+flows:
+  - id:
+    goal:
+    steps: []
+
+constraints:
+  - id:
+    description:
+
+apis:
+  - id:
+    purpose:
+
+data:
+  - id:
+    description:
+
+metrics:
+  - id:
+    target:
+
+risks:
+  - id:
+    mitigation:
+
+acceptance:
+  - id:
+    criterion:

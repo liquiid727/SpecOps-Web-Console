@@ -1,0 +1,42 @@
+{
+  "id": "template-prd-draft",
+  "type": "spec_template",
+  "title": "PRD Draft Template",
+  "summary": "Draft-level PRD template for turning raw product ideas into business background, goals, personas, stories, functions, flows, boundaries, risks, and milestones.",
+  "direction": "fullstack",
+  "categories": [
+    "product"
+  ],
+  "stacks": [
+    "go",
+    "react",
+    "python",
+    "specos"
+  ],
+  "tags": [
+    "prd",
+    "product",
+    "draft",
+    "template"
+  ],
+  "appliesTo": [
+    "backend",
+    "frontend",
+    "ui"
+  ],
+  "dependsOn": [],
+  "conflictsWith": [],
+  "sourcePath": "spec-web-ui/catalog/spec-templates/template-prd-draft/prd-draft.template.md",
+  "files": [
+    "spec-draft/_template/product/prd-draft.template.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "不要把 PRD Draft 当作 accepted spec",
+    "补齐背景、目标、用户画像、用户故事、功能列表、业务流程、边界条件、风险和里程碑"
+  ],
+  "sampleOutput": "一份面向 spec-draft 的 PRD 草案。",
+  "contentFiles": {
+    "spec-draft/_template/product/prd-draft.template.md": "spec-web-ui/catalog/spec-templates/template-prd-draft/prd-draft.template.md"
+  }
+}

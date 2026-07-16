@@ -1,0 +1,18 @@
+id: lens-fitting-spec-chain
+name: Lens Fitting Spec Chain
+inputs:
+  - spec-draft/idea/lens-fitting-idea.md
+outputs:
+  - specs/current/lens-fitting.spec.yaml
+  - specs/changes/lens-fitting-mvp/
+  - tasks/task-graph.yaml
+  - tasks/lens-fitting-mvp.tasks.md
+  - tests/plans/lens-fitting-mvp.test-plan.json
+  - deploy/environments.md
+gates:
+  - idea accepted by human
+  - spec branches reviewed
+  - task graph reviewed
+  - code handoff accepted
+  - test plan reviewed
+  - deploy gate reviewed

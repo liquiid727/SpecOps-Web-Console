@@ -1,0 +1,26 @@
+project:
+  name: lens-fitting-specos
+  type: fullstack
+stacks:
+  frontend: mini-program-next
+  backend: node-api
+artifacts:
+  draftsDir: spec-draft
+  specsDir: specs/current
+  testsDir: tests
+  resultsDir: tests/results
+rulePacks:
+  - spec-driven-delivery
+  - product-architecture-baseline
+agentTemplates:
+  - product-architect-agent
+  - spec-editor
+  - frontend-agent
+  - backend-agent
+  - qa-agent
+  - ci-editor
+  - reviewer
+workflows:
+  - lens-fitting-spec-chain
+ci:
+  checkCommand: npx specos check
