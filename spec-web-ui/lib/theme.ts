@@ -9,7 +9,7 @@ export type BrowserColorScheme = "light" | "dark";
 
 export const THEME_MODE_STORAGE_KEY = "specos-theme-mode";
 export const THEME_CHANGE_EVENT = "specos-theme-change";
-export const DEFAULT_THEME_MODE: ThemeMode = "system";
+export const DEFAULT_THEME_MODE: ThemeMode = "summer-surf";
 export const WINDOW_TRAFFIC_LIGHTS: TrafficLightTone[] = ["red", "yellow", "green"];
 
 const VALID_THEME_MODES = ["light", "dark", "system", "auto", "summer-surf"] as const;

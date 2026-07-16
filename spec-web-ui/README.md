@@ -77,3 +77,13 @@
 - [Requirement Intake Flow](../spec-draft/requirement-intake-flow.md)
 
 这些文档共同定义两条边界：`spec-web-ui` 是独立工具站点和资产工作台；具体项目需求流程属于目标项目仓库。后续首页、Discover、Configuration Workspace、Export Preview 等用户界面改动，应优先保持“清爽、简单、明确下一步”的工具站点体验。
+
+## Vercel 部署
+
+在 Vercel 导入仓库时，将项目的 **Root Directory** 设置为 `spec-web-ui`，其余构建设置会由本目录的 `vercel.json` 提供：
+
+- Framework Preset：`Next.js`
+- Install Command：`npm ci`
+- Build Command：`npm run build`
+
+不要把 Root Directory 设置为仓库根目录，否则 Vercel 会读取根目录的 workspace 配置，而不是部署这个 Next.js 应用。

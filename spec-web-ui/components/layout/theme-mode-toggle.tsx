@@ -6,6 +6,7 @@ import { getLocaleCopy, type Locale } from "@/lib/locale";
 import {
   THEME_CHANGE_EVENT,
   buildThemeState,
+  DEFAULT_THEME_MODE,
   normalizeThemeMode,
   THEME_MODE_STORAGE_KEY,
   type ResolvedThemeMode,
@@ -40,13 +41,13 @@ function applyThemeMode(mode: ThemeMode) {
 }
 
 export function ThemeModeToggle({ compact = false, locale = "zh" }: { compact?: boolean; locale?: Locale }) {
-  const [mode, setMode] = useState<ThemeMode>("system");
-  const [resolvedMode, setResolvedMode] = useState<ResolvedThemeMode>("dark");
+  const [mode, setMode] = useState<ThemeMode>(DEFAULT_THEME_MODE);
+  const [resolvedMode, setResolvedMode] = useState<ResolvedThemeMode>("summer-surf");
   const [open, setOpen] = useState(false);
   const copy = getLocaleCopy(locale);
 
   useEffect(() => {
-    let storedMode: ThemeMode = "system";
+    let storedMode: ThemeMode = DEFAULT_THEME_MODE;
 
     try {
       storedMode = normalizeThemeMode(window.localStorage.getItem(THEME_MODE_STORAGE_KEY));
