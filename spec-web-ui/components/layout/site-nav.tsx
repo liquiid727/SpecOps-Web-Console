@@ -12,22 +12,24 @@ type NavItem =
   | { href: string; key: "home" | "about" | "specTemplates" | "skillTemplates" | "agentTemplates" | "agentTeams" | "projects" }
   | { disabled: true; key: "workflowTemplates" };
 
-const navItems: NavItem[] = [
+const baseNavItems: NavItem[] = [
   { href: "/", key: "home" },
   { href: "/about", key: "about" },
   { href: "/spec-templates", key: "specTemplates" },
   { href: "/skill-templates", key: "skillTemplates" },
   { href: "/agent-templates", key: "agentTemplates" },
   { href: "/agent-teams", key: "agentTeams" },
-  { key: "workflowTemplates", disabled: true },
-  { href: "/projects", key: "projects" }
+  { key: "workflowTemplates", disabled: true }
 ];
 
-export function SiteNav({ locale }: { locale: Locale }) {
+export function SiteNav({ locale, readOnly = false }: { locale: Locale; readOnly?: boolean }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const breadcrumbs = buildShellBreadcrumbs(pathname);
   const copy = getLocaleCopy(locale);
+  const navItems: NavItem[] = readOnly
+    ? baseNavItems
+    : [...baseNavItems, { href: "/projects", key: "projects" }];
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5">

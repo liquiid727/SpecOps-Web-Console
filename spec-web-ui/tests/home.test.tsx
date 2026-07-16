@@ -66,4 +66,23 @@ describe("HomePage", () => {
     expect(screen.queryByText("筛选器")).not.toBeInTheDocument();
     expect(screen.queryByText("工作区循环")).not.toBeInTheDocument();
   });
+
+  it("removes workspace links in read-only mode", async () => {
+    const previousMode = process.env.SPECOS_RUNTIME_MODE;
+    process.env.SPECOS_RUNTIME_MODE = "readonly";
+
+    try {
+      render(await HomePage());
+
+      expect(screen.getByRole("link", { name: "发现页" })).toHaveAttribute("href", "/discover");
+      expect(screen.queryByRole("link", { name: "项目页" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "导出页" })).not.toBeInTheDocument();
+    } finally {
+      if (previousMode === undefined) {
+        delete process.env.SPECOS_RUNTIME_MODE;
+      } else {
+        process.env.SPECOS_RUNTIME_MODE = previousMode;
+      }
+    }
+  });
 });

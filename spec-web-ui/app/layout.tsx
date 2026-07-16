@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { buildLocaleBootScript, getLocaleCopy, LOCALE_STORAGE_KEY, normalizeLocale } from "@/lib/locale";
 import { buildThemeBootScript, DEFAULT_THEME_MODE, resolveThemeMode } from "@/lib/theme";
+import { isReadOnlyMode } from "@/lib/runtime";
 
 import "./globals.css";
 
@@ -18,6 +19,7 @@ const defaultResolvedTheme = resolveThemeMode(DEFAULT_THEME_MODE, { systemPrefer
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const locale = normalizeLocale((await cookies()).get(LOCALE_STORAGE_KEY)?.value);
   const copy = getLocaleCopy(locale);
+  const readOnly = isReadOnlyMode();
 
   return (
     <html
@@ -33,7 +35,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: buildThemeBootScript() }} />
       </head>
       <body>
-        <AppShell locale={locale}>{children}</AppShell>
+        <AppShell locale={locale} readOnly={readOnly}>{children}</AppShell>
       </body>
     </html>
   );
