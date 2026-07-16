@@ -108,4 +108,27 @@ describe("AssetDetailPage", () => {
     expect(screen.getByText("Composition preview").tagName).toBe("SUMMARY");
     expect(screen.getByText("Good companions").tagName).toBe("SUMMARY");
   });
+
+  it("removes workspace composition controls in read-only mode", async () => {
+    const previousMode = process.env.SPECOS_RUNTIME_MODE;
+    process.env.SPECOS_RUNTIME_MODE = "readonly";
+
+    try {
+      render(
+        await AssetDetailPage({
+          params: Promise.resolve({ assetId: "skill-ddd-layering-governance" }),
+          searchParams: Promise.resolve({})
+        })
+      );
+
+      expect(screen.queryByText("Send To Workspace")).not.toBeInTheDocument();
+      expect(screen.getByText(/read-only catalog preview/)).toBeInTheDocument();
+    } finally {
+      if (previousMode === undefined) {
+        delete process.env.SPECOS_RUNTIME_MODE;
+      } else {
+        process.env.SPECOS_RUNTIME_MODE = previousMode;
+      }
+    }
+  });
 });
