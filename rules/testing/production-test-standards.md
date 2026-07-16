@@ -2,7 +2,7 @@
 
 ## Purpose
 
-SpecOS test artifacts must be executable release evidence, not loose test notes. Every production test plan must connect a spec change to risk-ranked requirements, owned test agents, normalized results, gate reports, and promotion decisions.
+SpecOS test artifacts must be executable release evidence, not loose test notes. Every production test plan must connect a feature spec to risk-ranked requirements, owned test agents, normalized results, gate reports, and merge-readiness decisions.
 
 ## Standard Version
 
@@ -39,11 +39,12 @@ Production `tests/results/*.json` artifacts must include:
 
 - `test-editor`: standard matrix, coverage gaps, evidence policy, and final risk language.
 - `unit-test-agent`: module-level assertions, branch and error semantics, and implementation-coupled unit coverage.
-- `bruno-test-agent`: API contract, status codes, error codes, auth, idempotency, compatibility, and API security assertions.
+- `test-editor`: API contract, status codes, error codes, auth, idempotency, compatibility, API security assertions, and Bruno execution assets.
 - `playwright-test-agent` and `e2e-test-agent`: UI state coverage, E2E journeys, screenshots, videos, traces, and failure recovery.
 - `performance-test-agent`: latency, throughput, SLO thresholds, baseline regression, and capacity risk.
 - `concurrency-test-agent`: retries, duplicate submissions, locking, idempotency, eventual consistency, and final-state invariants.
 - `ci-editor`: CI commands, gate report interpretation, and release-blocking enforcement.
+- `qa-agent`: final acceptance decision, residual risk language, waiver tracking, and promotion recommendation after test and review evidence exist.
 
 ## Developer Console Loop
 
@@ -63,6 +64,6 @@ Allowed local scopes are:
 
 ## Release Enforcement
 
-- `validate-test-gates <specId> --change <changeId>` must block when P0/P1 blocking evidence is missing, invalid, failed, or unclassified flaky.
-- `promote-change --accept` must require a ready gate report for attached test plans.
+- `validate-test-gates <specId>` must block when P0/P1 blocking evidence is missing, invalid, failed, or unclassified flaky.
+- Merge or release readiness must require a ready gate report for the attached feature spec.
 - Raw runner output is not gate evidence until normalized into `tests/results/`.

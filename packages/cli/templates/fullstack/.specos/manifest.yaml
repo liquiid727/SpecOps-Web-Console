@@ -6,7 +6,7 @@ stacks:
   backend: node-api
 artifacts:
   draftsDir: spec-draft
-  specsDir: specs/current
+  specsDir: specs
   testsDir: tests
   resultsDir: tests/results
 rulePacks:

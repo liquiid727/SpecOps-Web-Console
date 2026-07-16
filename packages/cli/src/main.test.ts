@@ -12,6 +12,10 @@ async function tempProject() {
   return dir;
 }
 
+function extractJsonPayload(stdout: string): unknown {
+  return JSON.parse(stdout.split("\n").slice(1).join("\n"));
+}
+
 async function writeBundleFixture(root: string) {
   await mkdir(join(root, ".specos-bundle", "files", "agent-teams", "sample-team"), { recursive: true });
   await mkdir(join(root, ".specos-bundle", "files", "rules", "backend"), { recursive: true });
@@ -39,7 +43,8 @@ async function writeBundleFixture(root: string) {
       "    - spec-driven-default",
       "entrypoints:",
       "  draftTemplate: template-feature-draft",
-      "  specTemplate: feature-spec-v1",
+      "  designTemplate: template-platform-design",
+      "  specTemplate: template-feature-spec",
       "  workflowId: spec-driven-default",
       "capabilities:",
       "  refineSpec: true",
@@ -91,42 +96,328 @@ describe("specos cli", () => {
     expect(routed.exitCode).toBe(0);
     expect(routed.stderr).toBe("");
     expect(routed.stdout).toContain("SPECOS_REQUEST_ROUTE_OK");
+    expect(routed.stdout).toContain("format full");
     const route = JSON.parse(routed.stdout.split("\n").slice(1).join("\n"));
     expect(route).toMatchObject({
+      projectMode: "litespec",
       requestKind: "test",
-      compilerLayer: "verification",
-      primaryAgent: "qa-agent",
+      primaryAgent: "testing-agent",
       needsChangePackage: true,
     });
-    expect(route.artifactFlow).toEqual(["Code", "Verification Evidence", "Verified Release"]);
     expect(route.workTypes).toEqual(expect.arrayContaining(["frontend", "tests", "ci"]));
-    expect(route.supportingAgents).toEqual(expect.arrayContaining(["frontend-agent", "ci-editor"]));
+    expect(route.supportingAgents).toEqual(expect.arrayContaining(["ui-design-agent", "ci-editor"]));
+    expect(route.promptAssembly.overlayManifest).toBe(".agents/modes/litespec/manifest.overlay.yaml");
+    expect(route.executionPlan).toMatchObject({
+      projectMode: "litespec",
+      specialistDispatch: "bounded-parallel",
+    });
+    expect(route.executionPlan.primaryTask).toMatchObject({
+      role: "testing-agent",
+      dispatch: "primary",
+      parallelizable: false,
+    });
+    expect(route.executionPlan.specialistDispatchPlan.tasks.length).toBeGreaterThanOrEqual(2);
+    expect(route.executionPlan.specialistDispatchPlan.tasks.length).toBeLessThanOrEqual(4);
+    expect(route.executionPlan.specialistDispatchPlan.tasks[0].dispatchPromptEnvelope).toMatchObject({
+      role: route.executionPlan.specialistDispatchPlan.tasks[0].role,
+      sharedPromptStack: expect.arrayContaining(["AGENTS.md"]),
+    });
+    expect(route.promptAssembly.roles).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: "testing-agent",
+          overlayApplied: true,
+          modeRolePrompt: ".agents/modes/litespec/roles/testing-agent.md",
+        }),
+        expect.objectContaining({
+          role: "ui-design-agent",
+          overlayApplied: true,
+          modeRolePrompt: ".agents/modes/litespec/roles/ui-design-agent.md",
+        }),
+      ]),
+    );
   });
 
-  it("routes raw product ideas to the Product Architect agent", async () => {
+  it("supports dispatch-json output for host specialist dispatch", async () => {
     const cwd = await tempProject();
 
-    const routed = await runCli(["route-request", "--request", "做一个眼镜验配小程序"], { cwd });
+    const routed = await runCli(
+      [
+        "route-request",
+        "--request",
+        "让架构 agent 评估订单 API、数据库迁移、性能和并发风险，并输出子 agent 分工",
+        "--format",
+        "dispatch-json",
+      ],
+      { cwd },
+    );
 
     expect(routed.exitCode).toBe(0);
-    expect(routed.stdout).toContain("SPECOS_REQUEST_ROUTE_OK product-architect-agent");
+    expect(routed.stderr).toBe("");
+    expect(routed.stdout).toContain("SPECOS_REQUEST_ROUTE_OK architecture-agent format dispatch-json");
+    const envelopes = JSON.parse(routed.stdout.split("\n").slice(1).join("\n"));
+    expect(Array.isArray(envelopes)).toBe(true);
+    expect(envelopes.length).toBeGreaterThanOrEqual(2);
+    expect(envelopes.length).toBeLessThanOrEqual(4);
+    expect(envelopes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: "openapi-agent",
+          sharedPromptStack: expect.arrayContaining(["AGENTS.md"]),
+          taskBrief: expect.objectContaining({
+            exactQuestion: expect.stringContaining("订单 API"),
+          }),
+        }),
+      ]),
+    );
+  });
+
+  it("supports primary-json output for host primary dispatch", async () => {
+    const cwd = await tempProject();
+
+    const routed = await runCli(
+      [
+        "route-request",
+        "--request",
+        "让架构 agent 评估订单 API、数据库迁移、性能和并发风险，并输出子 agent 分工",
+        "--format",
+        "primary-json",
+      ],
+      { cwd },
+    );
+
+    expect(routed.exitCode).toBe(0);
+    expect(routed.stderr).toBe("");
+    expect(routed.stdout).toContain("SPECOS_REQUEST_ROUTE_OK architecture-agent format primary-json");
+    const envelope = JSON.parse(routed.stdout.split("\n").slice(1).join("\n"));
+    expect(envelope).toMatchObject({
+      role: "architecture-agent",
+      sharedPromptStack: expect.arrayContaining(["AGENTS.md"]),
+      rolePromptStack: expect.arrayContaining([
+        ".agents/roles/architecture-agent.md",
+        "ai/agents/architecture-agent.md",
+      ]),
+      taskBrief: expect.objectContaining({
+        exactQuestion: expect.stringContaining("订单 API"),
+      }),
+    });
+    expect(envelope.message).toContain("Dispatch: primary");
+  });
+
+  it("supports execution-plan-json output for host runtime dispatch", async () => {
+    const cwd = await tempProject();
+
+    const routed = await runCli(
+      [
+        "route-request",
+        "--request",
+        "让架构 agent 评估订单 API、数据库迁移、性能和并发风险，并输出子 agent 分工",
+        "--format",
+        "execution-plan-json",
+      ],
+      { cwd },
+    );
+
+    expect(routed.exitCode).toBe(0);
+    expect(routed.stderr).toBe("");
+    expect(routed.stdout).toContain("SPECOS_REQUEST_ROUTE_OK architecture-agent format execution-plan-json");
+    const executionPlan = JSON.parse(routed.stdout.split("\n").slice(1).join("\n"));
+    expect(executionPlan).toMatchObject({
+      request: expect.stringContaining("订单 API"),
+      primaryTask: expect.objectContaining({
+        role: "architecture-agent",
+        dispatch: "primary",
+      }),
+      primaryDispatchPromptEnvelope: expect.objectContaining({
+        role: "architecture-agent",
+      }),
+    });
+  });
+
+  it("validates dispatch-json route output files", async () => {
+    const cwd = await tempProject();
+
+    const routed = await runCli(
+      [
+        "route-request",
+        "--request",
+        "让架构 agent 评估订单 API、数据库迁移、性能和并发风险，并输出子 agent 分工",
+        "--format",
+        "dispatch-json",
+      ],
+      { cwd },
+    );
+
+    expect(routed.exitCode).toBe(0);
+    const routeOutputPath = join(cwd, "dispatch-route.json");
+    await writeFile(routeOutputPath, `${JSON.stringify(extractJsonPayload(routed.stdout), null, 2)}\n`, "utf8");
+
+    const validated = await runCli(
+      ["validate-route-output", "--file", "dispatch-route.json", "--format", "dispatch-json"],
+      { cwd },
+    );
+
+    expect(validated.exitCode).toBe(0);
+    expect(validated.stderr).toBe("");
+    expect(validated.stdout).toContain("SPECOS_ROUTE_OUTPUT_OK format dispatch-json dispatch-route.json");
+  });
+
+  it("validates primary-json route output files", async () => {
+    const cwd = await tempProject();
+
+    const routed = await runCli(
+      [
+        "route-request",
+        "--request",
+        "让架构 agent 评估订单 API、数据库迁移、性能和并发风险，并输出子 agent 分工",
+        "--format",
+        "primary-json",
+      ],
+      { cwd },
+    );
+
+    expect(routed.exitCode).toBe(0);
+    const routeOutputPath = join(cwd, "primary-route.json");
+    await writeFile(routeOutputPath, `${JSON.stringify(extractJsonPayload(routed.stdout), null, 2)}\n`, "utf8");
+
+    const validated = await runCli(
+      ["validate-route-output", "--file", "primary-route.json", "--format", "primary-json"],
+      { cwd },
+    );
+
+    expect(validated.exitCode).toBe(0);
+    expect(validated.stderr).toBe("");
+    expect(validated.stdout).toContain("SPECOS_ROUTE_OUTPUT_OK format primary-json primary-route.json");
+  });
+
+  it("validates execution-plan-json route output files", async () => {
+    const cwd = await tempProject();
+
+    const routed = await runCli(
+      [
+        "route-request",
+        "--request",
+        "让架构 agent 评估订单 API、数据库迁移、性能和并发风险，并输出子 agent 分工",
+        "--format",
+        "execution-plan-json",
+      ],
+      { cwd },
+    );
+
+    expect(routed.exitCode).toBe(0);
+    const routeOutputPath = join(cwd, "execution-plan-route.json");
+    await writeFile(routeOutputPath, `${JSON.stringify(extractJsonPayload(routed.stdout), null, 2)}\n`, "utf8");
+
+    const validated = await runCli(
+      ["validate-route-output", "--file", "execution-plan-route.json", "--format", "execution-plan-json"],
+      { cwd },
+    );
+
+    expect(validated.exitCode).toBe(0);
+    expect(validated.stderr).toBe("");
+    expect(validated.stdout).toContain(
+      "SPECOS_ROUTE_OUTPUT_OK format execution-plan-json execution-plan-route.json",
+    );
+  });
+
+  it("rejects invalid route output files with a stable error code", async () => {
+    const cwd = await tempProject();
+    await writeFile(join(cwd, "invalid-route.json"), '{ "role": "architecture-agent" }\n', "utf8");
+
+    const validated = await runCli(["validate-route-output", "--file", "invalid-route.json"], { cwd });
+
+    expect(validated.exitCode).toBe(1);
+    expect(validated.stdout).toBe("");
+    expect(validated.stderr).toContain("SPECOS_ROUTE_OUTPUT_INVALID");
+  });
+
+  it("validates execution plan files", async () => {
+    const cwd = await tempProject();
+
+    const routed = await runCli(
+      [
+        "route-request",
+        "--request",
+        "让架构 agent 评估订单 API、数据库迁移、性能和并发风险，并输出子 agent 分工",
+      ],
+      { cwd },
+    );
+
+    expect(routed.exitCode).toBe(0);
+    const full = extractJsonPayload(routed.stdout) as {
+      executionPlan: unknown;
+    };
+    await writeFile(join(cwd, "execution-plan.json"), `${JSON.stringify(full.executionPlan, null, 2)}\n`, "utf8");
+
+    const validated = await runCli(["validate-execution-plan", "--file", "execution-plan.json"], { cwd });
+
+    expect(validated.exitCode).toBe(0);
+    expect(validated.stderr).toBe("");
+    expect(validated.stdout).toContain("SPECOS_EXECUTION_PLAN_OK execution-plan.json");
+  });
+
+  it("rejects invalid execution plan files with a stable error code", async () => {
+    const cwd = await tempProject();
+    await writeFile(join(cwd, "invalid-execution-plan.json"), '{ "request": "bad plan" }\n', "utf8");
+
+    const validated = await runCli(["validate-execution-plan", "--file", "invalid-execution-plan.json"], { cwd });
+
+    expect(validated.exitCode).toBe(1);
+    expect(validated.stdout).toBe("");
+    expect(validated.stderr).toContain("SPECOS_ROUTE_OUTPUT_INVALID");
+  });
+
+  it("routes architecture orchestration previews to the architecture agent", async () => {
+    const cwd = await tempProject();
+
+    const routed = await runCli(
+      [
+        "route-request",
+        "--request",
+        "让架构 agent 评估订单 API、数据库迁移、性能和并发风险，并输出子 agent 分工",
+      ],
+      { cwd },
+    );
+
+    expect(routed.exitCode).toBe(0);
+    expect(routed.stderr).toBe("");
     const route = JSON.parse(routed.stdout.split("\n").slice(1).join("\n"));
     expect(route).toMatchObject({
-      requestKind: "raw-requirement",
-      compilerLayer: "intent",
-      primaryAgent: "product-architect-agent",
-      needsDraft: true,
-      needsChangePackage: true,
+      projectMode: "litespec",
+      primaryAgent: "architecture-agent",
+      requestKind: "test",
     });
-    expect(route.artifactFlow).toEqual([
-      "Idea",
-      "Spec Draft",
-      "Canonical Spec",
-      "Task Graph IR",
-      "Code",
-      "Verified Release",
-    ]);
-    expect(route.workTypes).toEqual(expect.arrayContaining(["product", "spec"]));
+    expect(route.executionPlan.primaryTask).toMatchObject({
+      role: "architecture-agent",
+      dispatch: "primary",
+    });
+    expect(route.supportingAgents).toEqual(
+      expect.arrayContaining(["openapi-agent", "db-migration-agent", "performance-test-agent", "concurrency-test-agent"]),
+    );
+  });
+
+  it("routes pure architecture review previews to the architecture agent", async () => {
+    const cwd = await tempProject();
+
+    const routed = await runCli(
+      [
+        "classify-request",
+        "--request",
+        "请评估这个领域边界和跨服务架构风险",
+      ],
+      { cwd },
+    );
+
+    expect(routed.exitCode).toBe(0);
+    expect(routed.stderr).toBe("");
+    const route = JSON.parse(routed.stdout.split("\n").slice(1).join("\n"));
+    expect(route).toMatchObject({
+      projectMode: "litespec",
+      primaryAgent: "architecture-agent",
+      requestKind: "review",
+      needsDraft: false,
+    });
+    expect(route.executionPlan.specialistDispatch).toBe("bounded-parallel");
   });
 
   it("initializes a fullstack project and checks it", async () => {
@@ -136,8 +427,22 @@ describe("specos cli", () => {
 
     expect(init.exitCode).toBe(0);
     expect(init.stdout).toContain("written");
+    expect(init.stdout).toContain("mode litespec");
     await expect(readFile(join(cwd, ".specos/manifest.yaml"), "utf8")).resolves.toContain("type: fullstack");
+    await expect(readFile(join(cwd, ".specos/manifest.yaml"), "utf8")).resolves.toContain("projectMode: litespec");
     await expect(readFile(join(cwd, "AGENTS.md"), "utf8")).resolves.toContain("SpecOS");
+    await expect(readFile(join(cwd, "docs", "spec-modes", "README.md"), "utf8")).resolves.toContain("Spec Modes");
+    await expect(readFile(join(cwd, "docs", "spec-modes", "LiteSpec", "README.md"), "utf8")).resolves.toContain("LiteSpec");
+    await expect(readFile(join(cwd, "current", "README.md"), "utf8")).resolves.toContain("active delivery workspace");
+    await expect(readFile(join(cwd, "current", "project-status.md"), "utf8")).resolves.toContain("Project Status");
+    await expect(readFile(join(cwd, "design", "README.md"), "utf8")).resolves.toContain("Stable platform");
+    await expect(readFile(join(cwd, "implementation", "README.md"), "utf8")).resolves.toContain("Implementation handoff");
+    await expect(readFile(join(cwd, "specs", "roadmap.md"), "utf8")).resolves.toContain("Spec Roadmap");
+    await expect(readFile(join(cwd, "specs", "_draft", "README.md"), "utf8")).resolves.toContain("Draft Specs");
+    await expect(readFile(join(cwd, "specs", "_template", "feature", "spec.example.md"), "utf8")).resolves.toContain("Feature Spec Example");
+    await expect(readFile(join(cwd, "tests", "_template", "feature", "cases.example.md"), "utf8")).resolves.toContain("Test Cases Example");
+    await expect(readFile(join(cwd, "tests", "plans", "test-plan.schema.md"), "utf8")).resolves.toContain("Test Plan Schema");
+    await expect(readFile(join(cwd, "tests", "results", "scenario-result.schema.md"), "utf8")).resolves.toContain("Scenario Result Schema");
 
     const secondInit = await runCli(["init"], { cwd });
 
@@ -159,48 +464,294 @@ describe("specos cli", () => {
     await expect(readFile(join(cwd, ".specos/manifest.yaml"), "utf8")).resolves.toContain("type: fullstack");
   });
 
+  it("scaffolds a .gitignore from the template and never leaves the raw .gitignore.template behind", async () => {
+    const cwd = await tempProject();
+
+    const init = await runCli(["init", "--template", "fullstack"], { cwd });
+
+    expect(init.exitCode).toBe(0);
+    await expect(readFile(join(cwd, ".gitignore"), "utf8")).resolves.toContain("node_modules/");
+    await expect(readFile(join(cwd, ".gitignore"), "utf8")).resolves.toContain(".agent/runs/");
+    await expect(readFile(join(cwd, ".gitignore.template"), "utf8")).rejects.toThrow();
+  });
+
+  it("does not overwrite a human-authored .gitignore", async () => {
+    const cwd = await tempProject();
+    await writeFile(join(cwd, ".gitignore"), "custom-ignore/\n");
+
+    const init = await runCli(["init", "--template", "fullstack"], { cwd });
+
+    expect(init.exitCode).toBe(0);
+    await expect(readFile(join(cwd, ".gitignore"), "utf8")).resolves.toBe("custom-ignore/\n");
+  });
+
+  it("initializes a fullstack project in enterprise mode", async () => {
+    const cwd = await tempProject();
+
+    const init = await runCli(["init", "--template", "fullstack", "--mode", "enterprisespec"], { cwd });
+
+    expect(init.exitCode).toBe(0);
+    expect(init.stdout).toContain("mode enterprisespec");
+    await expect(readFile(join(cwd, ".specos/manifest.yaml"), "utf8")).resolves.toContain("projectMode: enterprisespec");
+    await expect(readFile(join(cwd, "current", "project-status.md"), "utf8")).resolves.toContain("EnterpriseSpec");
+    await expect(readFile(join(cwd, "current", "release-status.md"), "utf8")).resolves.toContain("Release Status");
+    await expect(readFile(join(cwd, "design", "security.md"), "utf8")).resolves.toContain("# Security");
+    await expect(readFile(join(cwd, "specs", "release-plan.md"), "utf8")).resolves.toContain("Release Plan");
+    await expect(readFile(join(cwd, "tests", "security", "README.md"), "utf8")).resolves.toContain("Security Tests");
+    await expect(readFile(join(cwd, "reviews", "release", "README.md"), "utf8")).resolves.toContain("Release Reviews");
+    await expect(readFile(join(cwd, "docs", "runbook", "README.md"), "utf8")).resolves.toContain("Runbook");
+
+    const routed = await runCli(
+      [
+        "route-request",
+        "--request",
+        "让架构 agent 评估订单 API、数据库迁移、性能和并发风险，并输出子 agent 分工",
+      ],
+      { cwd },
+    );
+
+    const route = JSON.parse(routed.stdout.split("\n").slice(1).join("\n"));
+    expect(route).toMatchObject({
+      projectMode: "enterprisespec",
+      primaryAgent: "architecture-agent",
+    });
+    expect(route.promptAssembly.overlayManifest).toBe(".agents/modes/enterprisespec/manifest.overlay.yaml");
+    expect(route.executionPlan).toMatchObject({
+      projectMode: "enterprisespec",
+      specialistDispatch: "bounded-parallel",
+    });
+    expect(route.executionPlan.specialistDispatchPlan.tasks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: "openapi-agent",
+          parallelizable: true,
+          dispatchPromptEnvelope: expect.objectContaining({
+            role: "openapi-agent",
+          }),
+        }),
+        expect.objectContaining({
+          role: "db-migration-agent",
+          parallelizable: true,
+        }),
+      ]),
+    );
+    expect(route.promptAssembly.roles).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: "openapi-agent",
+          modeRolePrompt: ".agents/modes/enterprisespec/roles/openapi-agent.md",
+        }),
+        expect.objectContaining({
+          role: "performance-test-agent",
+          modeRolePrompt: ".agents/modes/enterprisespec/roles/performance-test-agent.md",
+        }),
+        expect.objectContaining({
+          role: "ddd-domain-agent",
+          overlayApplied: false,
+        }),
+      ]),
+    );
+  });
+
+  it("initializes a fullstack project in goalspec mode", async () => {
+    const cwd = await tempProject();
+
+    const init = await runCli(["init", "--template", "fullstack", "--mode", "goalspec"], { cwd });
+
+    expect(init.exitCode).toBe(0);
+    expect(init.stdout).toContain("mode goalspec");
+    await expect(readFile(join(cwd, ".specos/manifest.yaml"), "utf8")).resolves.toContain("projectMode: goalspec");
+    await expect(readFile(join(cwd, "current", "project-status.md"), "utf8")).resolves.toContain("GoalSpec");
+    await expect(readFile(join(cwd, "specs", "issues", "README.md"), "utf8")).resolves.toContain("Issues");
+    await expect(readFile(join(cwd, "docs", "workflow.md"), "utf8")).resolves.toContain("/prd");
+
+    const routed = await runCli(
+      [
+        "route-request",
+        "--request",
+        "请 QA agent 做最终质量验收，汇总 gate report 和 review findings",
+      ],
+      { cwd },
+    );
+
+    const route = JSON.parse(routed.stdout.split("\n").slice(1).join("\n"));
+    expect(route).toMatchObject({
+      projectMode: "goalspec",
+      primaryAgent: "testing-agent",
+    });
+    expect(route.promptAssembly.overlayManifest).toBe(".agents/modes/goalspec/manifest.overlay.yaml");
+  });
+
+  it("uses real host prompt assembly metadata when agent manifests are present", async () => {
+    const cwd = await tempProject();
+    await mkdir(join(cwd, ".specos"), { recursive: true });
+    await mkdir(join(cwd, ".agents", "modes", "enterprisespec"), { recursive: true });
+
+    await writeFile(
+      join(cwd, ".specos", "manifest.yaml"),
+      ["projectMode: enterprisespec", ""].join("\n"),
+    );
+    await writeFile(
+      join(cwd, ".agents", "manifest.yaml"),
+      [
+        "calling_convention:",
+        "  role_path_base: .agents",
+        "  mode_overlay_roots:",
+        "    role_overlays: .agents/modes",
+        "    canonical_overlays: ai/agents/modes",
+        "  prompt_assembly_order:",
+        "    - AGENTS.md",
+        "    - .codex/instructions.md",
+        "    - .specos/manifest.yaml projectMode",
+        "    - selected role metadata from .agents/manifest.yaml",
+        "    - selected mode overlay manifest from .agents/modes/<projectMode>/manifest.overlay.yaml",
+        "    - selected shared role_prompt",
+        "    - selected shared canonical",
+        "    - selected mode overlay role_prompt when present",
+        "    - selected mode overlay canonical when present",
+        "    - selected skills",
+        "    - selected context_includes",
+        "mode_overlays:",
+        "  enterprisespec:",
+        "    manifest_overlay: .agents/modes/enterprisespec/manifest.overlay.yaml",
+        "roles:",
+        "  testing-agent:",
+        "    role_prompt: roles/testing-agent.md",
+        "    canonical: ai/agents/testing-agent.md",
+        "    skill_mode: scoped_only",
+        "    skills: []",
+        "    delegates_to:",
+        "      - test-editor",
+        "      - qa-agent",
+        "    context_includes:",
+        "      - tests/README.md",
+        "      - tests/results/",
+        "  test-editor:",
+        "    role_prompt: roles/test-editor.md",
+        "    canonical: ai/agents/test-editor.md",
+        "    skill_mode: scoped_only",
+        "    skills: []",
+        "    context_includes:",
+        "      - tests/README.md",
+        "      - specs/",
+        "  ddd-domain-agent:",
+        "    role_prompt: roles/ddd-domain-agent.md",
+        "    canonical: ai/agents/ddd-domain-agent.md",
+        "    skills: []",
+        "    context_includes:",
+        "      - design/",
+        "      - specs/",
+        "",
+      ].join("\n"),
+    );
+    await writeFile(
+      join(cwd, ".agents", "modes", "enterprisespec", "manifest.overlay.yaml"),
+      [
+        "mode: enterprisespec",
+        "overrides:",
+        "  - testing-agent",
+        "  - test-editor",
+        "",
+      ].join("\n"),
+    );
+
+    const routed = await runCli(
+      [
+        "route-request",
+        "--request",
+        "让架构 agent 评估订单 API、数据库迁移、性能和并发风险，并输出子 agent 分工",
+      ],
+      { cwd },
+    );
+
+    expect(routed.exitCode).toBe(0);
+    const route = JSON.parse(routed.stdout.split("\n").slice(1).join("\n"));
+    const testEditor = route.promptAssembly.roles.find((role: { role: string }) => role.role === "test-editor");
+    const domainAgent = route.promptAssembly.roles.find((role: { role: string }) => role.role === "ddd-domain-agent");
+
+    expect(route.promptAssembly.overlayManifest).toBe(".agents/modes/enterprisespec/manifest.overlay.yaml");
+    expect(route.executionPlan.primaryTask).toMatchObject({
+      role: "architecture-agent",
+      dispatch: "primary",
+    });
+    expect(route.executionPlan.specialistDispatchPlan.deferredRoles).toContain("reviewer");
+    expect(route.executionPlan.specialistDispatchPlan.tasks[0].dispatchPromptEnvelope.message).toContain("Exact Question");
+    expect(testEditor).toMatchObject({
+      role: "test-editor",
+      overlayApplied: true,
+      contextIncludes: ["tests/README.md", "specs/"],
+    });
+    expect(domainAgent).toMatchObject({
+      role: "ddd-domain-agent",
+      overlayApplied: false,
+      contextIncludes: ["design/", "specs/"],
+    });
+  });
+
   it("initializes a spec-only project from the template registry", async () => {
     const cwd = await tempProject();
 
     const init = await runCli(["init", "--template", "spec-only"], { cwd });
 
     expect(init.exitCode).toBe(0);
+    expect(init.stdout).toContain("mode litespec");
     await expect(readFile(join(cwd, ".specos/manifest.yaml"), "utf8")).resolves.toContain("type: spec-only");
-    await expect(readFile(join(cwd, "specs/README.md"), "utf8")).resolves.toContain("current/change/archive");
-    await expect(readFile(join(cwd, "specs/current/README.md"), "utf8")).resolves.toContain("Accepted");
-    await expect(readFile(join(cwd, "specs/changes/README.md"), "utf8")).resolves.toContain("Proposed");
-    await expect(readFile(join(cwd, "specs/archive/README.md"), "utf8")).resolves.toContain("Completed");
+    await expect(readFile(join(cwd, ".specos/manifest.yaml"), "utf8")).resolves.toContain("projectMode: litespec");
+    await expect(readFile(join(cwd, "docs", "spec-modes", "README.md"), "utf8")).resolves.toContain("Spec Modes");
+    await expect(readFile(join(cwd, "current", "README.md"), "utf8")).resolves.toContain("active delivery workspace");
+    await expect(readFile(join(cwd, "design", "README.md"), "utf8")).resolves.toContain("Stable platform");
+    await expect(readFile(join(cwd, "specs/README.md"), "utf8")).resolves.toContain("feature-spec layer");
+    await expect(readFile(join(cwd, "specs/roadmap.md"), "utf8")).resolves.toContain("Spec Roadmap");
+    await expect(readFile(join(cwd, "specs", "_draft", "README.md"), "utf8")).resolves.toContain("Draft Specs");
+    await expect(readFile(join(cwd, "specs", "_template", "feature", "task-plan.example.md"), "utf8")).resolves.toContain("Task Plan Example");
+    await expect(readFile(join(cwd, "tests", "_template", "feature", "scenarios.example.md"), "utf8")).resolves.toContain("Test Scenarios Example");
+    await expect(readFile(join(cwd, "tests", "plans", "test-plan.schema.md"), "utf8")).resolves.toContain("Test Plan Schema");
   });
 
-  it("initializes the built-in lens fitting project template", async () => {
+  it("rejects unknown init modes with a stable error code", async () => {
     const cwd = await tempProject();
 
-    const init = await runCli(["init", "--template", "lens-fitting"], { cwd });
+    const init = await runCli(["init", "--mode", "legacy"], { cwd });
 
-    expect(init.exitCode).toBe(0);
-    expect(init.stdout).toContain("template lens-fitting");
-    await expect(readFile(join(cwd, ".specos/manifest.yaml"), "utf8")).resolves.toContain("name: lens-fitting-specos");
-    await expect(readFile(join(cwd, "README.md"), "utf8")).resolves.toContain("Idea");
-    await expect(readFile(join(cwd, "spec-draft/idea/lens-fitting-idea.md"), "utf8")).resolves.toContain("眼镜验配小程序");
-    const currentSpec = await readFile(join(cwd, "specs/current/lens-fitting.spec.yaml"), "utf8");
-    expect(currentSpec).toContain("product:");
-    expect(currentSpec).toContain("architecture:");
-    expect(currentSpec).toContain("database:");
-    expect(currentSpec).toContain("api:");
-    expect(currentSpec).toContain("ui:");
-    await expect(readFile(join(cwd, "specs/changes/lens-fitting-mvp/spec-blueprint.yaml"), "utf8")).resolves.toContain("Spec");
-    await expect(readFile(join(cwd, "tasks/lens-fitting-mvp.tasks.md"), "utf8")).resolves.toContain("Prescription Intake");
-    const taskGraph = await readFile(join(cwd, "tasks/task-graph.yaml"), "utf8");
-    expect(taskGraph).toContain("taskGraph:");
-    expect(taskGraph).toContain("sourceSpecRefs:");
-    expect(taskGraph).toContain("context: frontend");
-    expect(taskGraph).toContain("context: backend");
-    await expect(readFile(join(cwd, "code/README.md"), "utf8")).resolves.toContain("Code Handoff");
-    await expect(readFile(join(cwd, "tests/plans/lens-fitting-mvp.test-plan.json"), "utf8")).resolves.toContain("create_order");
-    await expect(readFile(join(cwd, "deploy/environments.md"), "utf8")).resolves.toContain("Rollback");
+    expect(init.exitCode).toBe(1);
+    expect(init.stderr).toContain("SPECOS_ARGUMENT_INVALID");
+    expect(init.stderr).toContain("--mode must be litespec, goalspec, or enterprisespec");
+  });
 
-    const check = await runCli(["check"], { cwd });
-    expect(check).toMatchObject({ exitCode: 0, stderr: "" });
+  it("rejects unknown route-request formats with a stable error code", async () => {
+    const cwd = await tempProject();
+
+    const routed = await runCli(
+      ["route-request", "--request", "test request", "--format", "legacy"],
+      { cwd },
+    );
+
+    expect(routed.exitCode).toBe(1);
+    expect(routed.stderr).toContain("SPECOS_ARGUMENT_INVALID");
+    expect(routed.stderr).toContain("--format must be full, dispatch-json, primary-json, or execution-plan-json");
+  });
+
+  it("rejects unknown validate-route-output formats with a stable error code", async () => {
+    const cwd = await tempProject();
+
+    const validated = await runCli(
+      ["validate-route-output", "--file", "route.json", "--format", "legacy"],
+      { cwd },
+    );
+
+    expect(validated.exitCode).toBe(1);
+    expect(validated.stderr).toContain("SPECOS_ARGUMENT_INVALID");
+    expect(validated.stderr).toContain("--format must be full, dispatch-json, primary-json, or execution-plan-json");
+  });
+
+  it("rejects missing validate-execution-plan file args with a stable error code", async () => {
+    const cwd = await tempProject();
+
+    const validated = await runCli(["validate-execution-plan"], { cwd });
+
+    expect(validated.exitCode).toBe(1);
+    expect(validated.stderr).toContain("SPECOS_ARGUMENT_INVALID");
+    expect(validated.stderr).toContain("validate-execution-plan requires --file <path>");
   });
 
   it("rejects unknown templates with a stable error code", async () => {
@@ -210,7 +761,7 @@ describe("specos cli", () => {
 
     expect(init.exitCode).toBe(1);
     expect(init.stderr).toContain("SPECOS_TEMPLATE_UNKNOWN");
-    expect(init.stderr).toContain("Available templates: fullstack, lens-fitting, spec-only");
+    expect(init.stderr).toContain("Available templates: fullstack, spec-only");
   });
 
   it("reports a stable error code when manifest is missing", async () => {
@@ -228,7 +779,7 @@ describe("specos cli", () => {
     const manifest = await readFile(join(cwd, ".specos/manifest.yaml"), "utf8");
     await writeFile(
       join(cwd, ".specos/manifest.yaml"),
-      manifest.replace("specsDir: specs/current", "specsDir: ../outside"),
+      manifest.replace("specsDir: specs", "specsDir: ../outside"),
     );
 
     const check = await runCli(["check"], { cwd });
@@ -238,6 +789,18 @@ describe("specos cli", () => {
     expect(check.stderr).toContain("artifacts.specsDir");
   });
 
+  it("rejects a project whose declared workflow file is missing", async () => {
+    const cwd = await tempProject();
+    await runCli(["init"], { cwd });
+    await rm(join(cwd, ".specos", "workflows", "default-fullstack.yaml"));
+
+    const check = await runCli(["check"], { cwd });
+
+    expect(check.exitCode).toBe(1);
+    expect(check.stderr).toContain("SPECOS_WORKFLOW_MISSING");
+    expect(check.stderr).toContain(".specos/workflows/default-fullstack.yaml");
+  });
+
   it("prints supported commands for unknown commands", async () => {
     const cwd = await tempProject();
 
@@ -245,7 +808,7 @@ describe("specos cli", () => {
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain("Supported commands: init, check");
-    expect(result.stderr).toContain("Templates: fullstack, lens-fitting, spec-only");
+    expect(result.stderr).toContain("Templates: fullstack, spec-only");
   });
 
   it("validates, installs, lists, and runs bundle workflows", async () => {
@@ -268,6 +831,9 @@ describe("specos cli", () => {
     );
     await expect(readFile(join(projectRoot, ".specos", "workflows", "spec-driven-default.yaml"), "utf8")).resolves.toContain(
       "bundle-step-ok",
+    );
+    await expect(readFile(join(projectRoot, ".specos", "bundles", "installed", "reward-center-bundle.yaml"), "utf8")).resolves.toContain(
+      "defaultWorkflow: spec-driven-default",
     );
 
     const workflows = await runCli(["list-workflows"], { cwd: projectRoot });
@@ -316,8 +882,12 @@ describe("specos cli", () => {
     await expect(readFile(join(projectRoot, ".codex", "skills", "specos-ui-design", "SKILL.md"), "utf8")).resolves.toContain(
       "SpecOS",
     );
+    await expect(readFile(join(projectRoot, "current", "README.md"), "utf8")).resolves.toContain("Current");
+    await expect(readFile(join(projectRoot, "docs", "spec-modes", "README.md"), "utf8")).resolves.toContain("Spec Modes");
     await expect(readFile(join(projectRoot, "rules", "README.md"), "utf8")).resolves.toContain("Rules");
-    await expect(readFile(join(projectRoot, "specs", "current", "README.md"), "utf8")).resolves.toContain("Accepted");
+    await expect(readFile(join(projectRoot, "design", "README.md"), "utf8")).resolves.toContain("Stable platform");
+    await expect(readFile(join(projectRoot, "specs", "roadmap.md"), "utf8")).resolves.toContain("Spec Roadmap");
+    await expect(readFile(join(projectRoot, ".specos", "manifest.yaml"), "utf8")).resolves.toContain("projectMode: litespec");
     await expect(readFile(join(projectRoot, ".specos", "manifest.yaml"), "utf8")).resolves.toContain("artifacts:");
 
     const check = await runCli(["check"], { cwd: projectRoot });
@@ -325,201 +895,72 @@ describe("specos cli", () => {
     expect(check.stdout).toContain("SPECOS_CHECK_OK");
   });
 
-  it("runs a document-only request orchestration lifecycle", async () => {
+  it("generates a test plan and isolated test schedule from spec.md frontmatter", async () => {
     const cwd = await tempProject();
     await runCli(["init"], { cwd });
-
-    const intake = await runCli(["intake", "--id", "reward-flow", "--request", "Build reward claim flow"], { cwd });
-    expect(intake.exitCode).toBe(0);
-    expect(intake.stdout).toContain("SPECOS_INTAKE_OK reward-flow");
-    await expect(readFile(join(cwd, "spec-draft", "reward-flow.md"), "utf8")).resolves.toContain(
-      "Build reward claim flow",
-    );
-
-    const created = await runCli(["create-change", "reward-flow", "--change", "reward-flow"], { cwd });
-    expect(created.exitCode).toBe(0);
-    expect(created.stdout).toContain("SPECOS_CHANGE_OK reward-flow");
-    await expect(readFile(join(cwd, "specs", "changes", "reward-flow", "spec.md"), "utf8")).resolves.toContain(
-      "Source Draft: spec-draft/reward-flow.md",
-    );
-    await expect(
-      readFile(join(cwd, "specs", "changes", "reward-flow", "test-strategy.md"), "utf8"),
-    ).resolves.toContain("independent");
-
-    const designGate = await runCli(["review-change", "reward-flow", "--stage", "design-gate", "--decision", "approved"], {
-      cwd,
-    });
-    expect(designGate.exitCode).toBe(0);
-    expect(designGate.stdout).toContain("SPECOS_REVIEW_OK reward-flow design-gate approved");
-
-    const execution = await runCli(["run-change", "reward-flow", "--result", "implemented"], { cwd });
-    expect(execution.exitCode).toBe(0);
-    expect(execution.stdout).toContain("SPECOS_CHANGE_RUN_OK reward-flow implemented");
-
-    const testing = await runCli(["test-change", "reward-flow", "--decision", "passed"], { cwd });
-    expect(testing.exitCode).toBe(0);
-    expect(testing.stdout).toContain("SPECOS_CHANGE_TEST_OK reward-flow passed");
-
-    const implementationReview = await runCli(
-      ["review-change", "reward-flow", "--stage", "implementation", "--decision", "approved"],
-      { cwd },
-    );
-    expect(implementationReview.exitCode).toBe(0);
-    expect(implementationReview.stdout).toContain("SPECOS_REVIEW_OK reward-flow implementation approved");
-
-    const promoted = await runCli(["promote-change", "reward-flow", "--accept"], { cwd });
-    expect(promoted.exitCode).toBe(0);
-    expect(promoted.stdout).toContain("SPECOS_PROMOTE_OK reward-flow");
-    await expect(readFile(join(cwd, "specs", "current", "accepted-changes", "reward-flow.md"), "utf8")).resolves.toContain(
-      "reward-flow",
-    );
-    await expect(readFile(join(cwd, "specs", "archive", "reward-flow", "workflow-state.json"), "utf8")).resolves.toContain(
-      '"archived": true',
-    );
-  });
-
-  it("blocks promotion when an attached test plan has no ready gate report", async () => {
-    const cwd = await tempProject();
-    await runCli(["init"], { cwd });
-    await runCli(["intake", "--id", "reward-flow", "--request", "Build reward claim flow"], { cwd });
-    await runCli(["create-change", "reward-flow", "--change", "reward-flow"], { cwd });
-    await runCli(["review-change", "reward-flow", "--stage", "design-gate", "--decision", "approved"], { cwd });
-    await runCli(["run-change", "reward-flow", "--result", "implemented"], { cwd });
-    await runCli(["test-change", "reward-flow", "--decision", "passed"], { cwd });
-    await runCli(["review-change", "reward-flow", "--stage", "implementation", "--decision", "approved"], { cwd });
-    await mkdir(join(cwd, "tests", "plans"), { recursive: true });
-    await mkdir(join(cwd, "tests", "results"), { recursive: true });
+    await mkdir(join(cwd, "specs", "RP-002-reward-order-create"), { recursive: true });
     await writeFile(
-      join(cwd, "tests", "plans", "reward-flow.test-plan.json"),
-      JSON.stringify(
-        {
-          specId: "reward-flow",
-          specVersion: "1.0.0",
-          changeId: "reward-flow",
-          featureName: "Reward Flow",
-          source: "accepted-spec",
-          flows: [{ name: "Claim reward", stages: [{ name: "Open", scenarioNames: ["Happy"], stepNames: ["Open"] }] }],
-          endpoints: [
-            {
-              name: "Create reward order",
-              method: "POST",
-              path: "/api/reward-orders",
-              priority: "P0",
-              branches: ["happy", "limit", "error", "flow"],
-              preconditions: ["user logged in"],
-              expectedResults: ["order created"],
-              relatedRule: "reward.order.create",
-            },
-          ],
-          scenarios: [
-            {
-              name: "Happy",
-              priority: "P0",
-              branches: ["happy"],
-              preconditions: ["user logged in"],
-              expectedResults: ["order created"],
-              steps: ["Open"],
-            },
-          ],
-          releaseGates: [
-            {
-              id: "release",
-              type: "release",
-              requiredTestTypes: ["api"],
-              blocking: true,
-              evidenceRequired: ["trace"],
-            },
-          ],
-        },
-        null,
-        2,
-      ),
-    );
-    await writeFile(
-      join(cwd, "tests", "results", "reward-flow.reward-flow.gate-report.json"),
-      JSON.stringify(
-        {
-          specId: "reward-flow",
-          specVersion: "1.0.0",
-          changeId: "reward-flow",
-          decision: "blocked",
-          requiredGates: [],
-          passedGates: [],
-          failedGates: ["release"],
-          missingEvidence: ["release missing api result"],
-          blockers: [],
-          runIds: [],
-        },
-        null,
-        2,
-      ),
-    );
-
-    const blocked = await runCli(["promote-change", "reward-flow", "--accept"], { cwd });
-    expect(blocked.exitCode).toBe(1);
-    expect(blocked.stderr).toContain("SPECOS_GATE_BLOCKED");
-    expect(blocked.stderr).toContain("ready gate report");
-
-    await writeFile(
-      join(cwd, "tests", "results", "reward-flow.reward-flow.gate-report.json"),
-      JSON.stringify(
-        {
-          specId: "reward-flow",
-          specVersion: "1.0.0",
-          changeId: "reward-flow",
-          decision: "ready",
-          requiredGates: [],
-          passedGates: ["release"],
-          failedGates: [],
-          missingEvidence: [],
-          blockers: [],
-          runIds: ["run-api"],
-        },
-        null,
-        2,
-      ),
-    );
-
-    const promoted = await runCli(["promote-change", "reward-flow", "--accept"], { cwd });
-    expect(promoted.exitCode).toBe(0);
-    expect(promoted.stdout).toContain("SPECOS_PROMOTE_OK reward-flow");
-  });
-
-  it("generates a test plan and isolated test schedule from a normalized spec", async () => {
-    const cwd = await tempProject();
-    await runCli(["init"], { cwd });
-    await mkdir(join(cwd, "specs", "changes", "reward-order-create"), { recursive: true });
-    await writeFile(
-      join(cwd, "specs", "changes", "reward-order-create", "spec.json"),
-      JSON.stringify(
-        {
-          id: "reward-order",
-          version: "1.0.0",
-          title: "Reward Order",
-          goals: ["Create reward orders"],
-          nonGoals: ["Payment"],
-          actors: ["member"],
-          userFlows: [{ name: "Claim reward", steps: ["Open page", "Click claim", "View result"] }],
-          systemFlows: [{ name: "Create order", steps: ["Validate", "Persist", "Respond"] }],
-          rules: [{ id: "reward.order.create", description: "Create one order per claim" }],
-          edgeCases: ["stock is zero"],
-          api: [{ name: "Create reward order", method: "POST", path: "/api/reward-orders" }],
-          ui: [{ name: "Reward page", route: "/rewards" }],
-          observability: ["trace_id"],
-          tests: { requiredBranches: ["happy", "limit", "error", "flow"] },
-          traceability: { draft: "spec-draft/reward-order.md" },
-        },
-        null,
-        2,
-      ),
+      join(cwd, "specs", "RP-002-reward-order-create", "spec.md"),
+      [
+        "---",
+        "id: reward-order",
+        "version: 1.0.0",
+        "title: Reward Order",
+        "goals:",
+        "  - Create reward orders",
+        "nonGoals:",
+        "  - Payment",
+        "actors:",
+        "  - member",
+        "userFlows:",
+        "  - name: Claim reward",
+        "    steps:",
+        "      - Open page",
+        "      - Click claim",
+        "      - View result",
+        "systemFlows:",
+        "  - name: Create order",
+        "    steps:",
+        "      - Validate",
+        "      - Persist",
+        "      - Respond",
+        "rules:",
+        "  - id: reward.order.create",
+        "    description: Create one order per claim",
+        "edgeCases:",
+        "  - stock is zero",
+        "api:",
+        "  - name: Create reward order",
+        "    method: POST",
+        "    path: /api/reward-orders",
+        "ui:",
+        "  - name: Reward page",
+        "    route: /rewards",
+        "observability:",
+        "  - trace_id",
+        "tests:",
+        "  requiredBranches:",
+        "    - happy",
+        "    - limit",
+        "    - error",
+        "    - flow",
+        "traceability:",
+        "  draft: spec-draft/reward-order.md",
+        "---",
+        "",
+        "# Reward Order Change Spec",
+        "",
+        "Human-readable contract body.",
+        "",
+      ].join("\n"),
     );
 
     const plan = await runCli(
       [
         "generate-test-plan",
-        "specs/changes/reward-order-create/spec.json",
+        "specs/RP-002-reward-order-create/spec.md",
         "--change",
-        "reward-order-create",
+        "RP-002",
       ],
       { cwd },
     );
@@ -538,11 +979,48 @@ describe("specos cli", () => {
       "error",
       "flow",
     ]);
-    expect(schedule.changeId).toBe("reward-order-create");
+    expect(schedule.changeId).toBe("RP-002");
     expect(schedule.tracks.map((track: { id: string }) => track.id)).toEqual(["execution", "testing"]);
     expect(schedule.tasks.map((task: { agentRole: string }) => task.agentRole)).toEqual(
-      expect.arrayContaining(["execution-editor", "bruno-test-agent", "playwright-test-agent"]),
+      expect.arrayContaining(["execution-editor", "test-editor", "playwright-test-agent"]),
     );
+  });
+
+  it("keeps supporting JSON spec inputs for generate-test-plan", async () => {
+    const cwd = await tempProject();
+    await runCli(["init"], { cwd });
+    await mkdir(join(cwd, "specs", "RP-002-reward-order-create"), { recursive: true });
+    await writeFile(
+      join(cwd, "specs", "RP-002-reward-order-create", "spec.json"),
+      JSON.stringify(
+        {
+          id: "reward-order",
+          version: "1.0.0",
+          title: "Reward Order",
+          goals: ["Create reward orders"],
+          nonGoals: ["Payment"],
+          actors: ["member"],
+          userFlows: [{ name: "Claim reward", steps: ["Open page", "Click claim", "View result"] }],
+          systemFlows: [{ name: "Create order", steps: ["Validate", "Persist", "Respond"] }],
+          rules: [{ id: "reward.order.create", description: "Create one order per claim" }],
+          edgeCases: ["stock is zero"],
+          api: [{ name: "Create reward order", method: "POST", path: "/api/reward-orders" }],
+          observability: ["trace_id"],
+          tests: { requiredBranches: ["happy", "limit", "error", "flow"] },
+          traceability: { draft: "spec-draft/reward-order.md" },
+        },
+        null,
+        2,
+      ),
+    );
+
+    const plan = await runCli(
+      ["generate-test-plan", "specs/RP-002-reward-order-create/spec.json", "--change", "RP-002"],
+      { cwd },
+    );
+
+    expect(plan.exitCode).toBe(0);
+    expect(plan.stdout).toContain("SPECOS_TEST_PLAN_OK");
   });
 
   it("writes a blocked normalized API result when Bruno assets are missing", async () => {
@@ -605,7 +1083,7 @@ describe("specos cli", () => {
               id: "execution",
               agentRole: "execution-editor",
               isolation: "implementation-only",
-              allowedInputs: ["specs/changes/reward-order-create/spec.md"],
+              allowedInputs: ["specs/RP-002-reward-order-create/spec.md"],
               forbiddenInputs: ["tests/results/"],
             },
             {
@@ -620,7 +1098,7 @@ describe("specos cli", () => {
             {
               id: "api-tests-reward-order",
               trackId: "testing",
-              agentRole: "bruno-test-agent",
+              agentRole: "test-editor",
               type: "api-test",
               status: "ready",
               inputs: ["tests/plans/reward-order.test-plan.json"],
@@ -768,7 +1246,7 @@ describe("specos cli", () => {
               id: "execution",
               agentRole: "execution-editor",
               isolation: "implementation-only",
-              allowedInputs: ["specs/changes/reward-order-create/spec.md"],
+              allowedInputs: ["specs/RP-002-reward-order-create/spec.md"],
               forbiddenInputs: ["tests/results/"],
             },
             {
@@ -783,7 +1261,7 @@ describe("specos cli", () => {
             {
               id: "api-tests-reward-order",
               trackId: "testing",
-              agentRole: "bruno-test-agent",
+              agentRole: "test-editor",
               type: "api-test",
               status: "ready",
               inputs: ["tests/plans/reward-order.test-plan.json"],
@@ -817,7 +1295,7 @@ describe("specos cli", () => {
     await runCli(["init"], { cwd });
     await mkdir(join(cwd, "tests", "plans"), { recursive: true });
     await mkdir(join(cwd, "tests", "results"), { recursive: true });
-    await mkdir(join(cwd, "specs", "changes", "reward-order-create"), { recursive: true });
+    await mkdir(join(cwd, "reviews", "reward-order-create"), { recursive: true });
     await writeFile(
       join(cwd, "tests", "plans", "reward-order.test-plan.json"),
       JSON.stringify(
@@ -945,7 +1423,7 @@ describe("specos cli", () => {
         expect.stringContaining("Invalid normalized result reward-order.invalid-history.json"),
       ]),
     );
-    await expect(readFile(join(cwd, "specs", "changes", "reward-order-create", "gate-report.md"), "utf8")).resolves.toContain(
+    await expect(readFile(join(cwd, "reviews", "reward-order-create", "gate-report.md"), "utf8")).resolves.toContain(
       "Decision: blocked",
     );
   });
@@ -955,7 +1433,7 @@ describe("specos cli", () => {
     await runCli(["init"], { cwd });
     await mkdir(join(cwd, "tests", "plans"), { recursive: true });
     await mkdir(join(cwd, "tests", "results"), { recursive: true });
-    await mkdir(join(cwd, "specs", "changes", "reward-order-ready"), { recursive: true });
+    await mkdir(join(cwd, "reviews", "reward-order-ready"), { recursive: true });
     await writeFile(
       join(cwd, "tests", "plans", "reward-order.test-plan.json"),
       JSON.stringify(

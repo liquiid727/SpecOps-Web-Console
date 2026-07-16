@@ -2,11 +2,11 @@
 
 ## Purpose
 
-Standardize backend feature delivery for Go services that will be driven by accepted specs.
+Standardize backend feature delivery for Go services that will be driven by feature specs.
 
 ## Required Practices
 
-- API changes must map back to an accepted spec bundle.
+- API changes must map back to a feature spec.
 - Error responses should use domain-specific prefixes and machine-readable codes.
 - Database changes should ship with forward and rollback migration guidance.
 - Redis keys must use domain-scoped prefixes and lifecycle notes.

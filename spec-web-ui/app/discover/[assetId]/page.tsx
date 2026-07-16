@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import React from "react";
 
 import { setProjectAssetSelectionAction } from "@/app/actions";
+import { CatalogAssetSummary } from "@/components/catalog/asset-summary";
 import { Badge } from "@/components/ui/badge";
 import { loadAssetSourcePreview, loadCatalogAsset, loadCatalogAssets } from "@/lib/catalog";
 import { buildExportDiffPreview } from "@/lib/export";
@@ -51,7 +52,13 @@ export default async function AssetDetailPage({
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
                 <h1 className="text-2xl font-semibold text-ink">{asset.title}</h1>
-                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">{asset.summary}</p>
+                <div className="mt-2 max-w-3xl">
+                  <CatalogAssetSummary
+                    asset={asset}
+                    englishClassName="text-sm leading-6 text-slate-400"
+                    chineseClassName="text-sm leading-6 text-slate-300"
+                  />
+                </div>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Badge>{asset.type.replace("_", " ")}</Badge>
@@ -249,7 +256,11 @@ export default async function AssetDetailPage({
                 <div key={candidate.id} className="surface-base surface-row space-y-2 rounded-xl px-3 py-3">
                   <Badge>{candidate.type.replace("_", " ")}</Badge>
                   <h3 className="text-sm font-semibold text-ink">{candidate.title}</h3>
-                  <p className="text-sm leading-6 text-slate-400">{candidate.summary}</p>
+                  <CatalogAssetSummary
+                    asset={candidate}
+                    englishClassName="text-sm leading-6 text-slate-400"
+                    chineseClassName="text-sm leading-6 text-slate-300"
+                  />
                 </div>
               ))}
           </div>

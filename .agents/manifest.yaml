@@ -14,12 +14,14 @@ context_order:
   - README.md
   - .rules/project.md
   - rules/
+  - docs/spec-modes/
+  - current/
   - spec-draft/
-  - specs/current/project-context.md
-  - specs/current/architecture-context.md
-  - specs/current/domain-context.md
-  - specs/current/
-  - specs/changes/
+  - design/
+  - specs/roadmap.md
+  - specs/
+  - implementation/
+  - reviews/
   - tests/
   - ai/agents/
 
@@ -27,12 +29,19 @@ calling_convention:
   selection_source: .agents/manifest.yaml
   role_path_base: .agents/
   canonical_path_base: repository root
+  mode_overlay_roots:
+    role_overlays: .agents/modes/
+    canonical_overlays: ai/agents/modes/
   prompt_assembly_order:
     - AGENTS.md
     - .codex/instructions.md
+    - .specos/manifest.yaml projectMode
     - selected role metadata from .agents/manifest.yaml
-    - selected role_prompt
-    - selected canonical
+    - selected mode overlay manifest from .agents/modes/<projectMode>/manifest.overlay.yaml
+    - selected shared role_prompt
+    - selected shared canonical
+    - selected mode overlay role_prompt when present
+    - selected mode overlay canonical when present
     - selected skills
     - selected context_includes
   routing_rules:
@@ -40,42 +49,164 @@ calling_convention:
     - Do not preload repository or external skills unless they are declared on the selected role.
     - Prefer switching agents or splitting tasks over broadening one agent's skill set.
     - Roles with empty skills run as role-and-rules-only agents.
+    - Do not invent ad-hoc roles; main primary and specialist agents must be registered in this manifest.
+    - Treat route-request and classify-request as routing previews, not agent execution.
+    - route-request and classify-request should resolve projectMode first, then expose the resulting overlay manifest and role prompt load order.
+    - For nested host-side dispatch, use pola as coordinator and follow ai/workflows/nested-agent-orchestration.md.
+    - Shared prompts are the default backbone; mode overlay prompts add only the selected mode's differences.
+
+mode_overlays:
+  litespec:
+    manifest_overlay: .agents/modes/litespec/manifest.overlay.yaml
+    purpose: Feature-driven, low-token, daily delivery mode.
+  goalspec:
+    manifest_overlay: .agents/modes/goalspec/manifest.overlay.yaml
+    purpose: Workflow-driven mode built around the six-step goal loop (prd, prd-to-spec, to-issues, goal, review-it, ship-it).
+  enterprisespec:
+    manifest_overlay: .agents/modes/enterprisespec/manifest.overlay.yaml
+    purpose: Governed delivery mode with stronger QA, release, and audit evidence requirements.
 
 roles:
-  product-architect-agent:
-    role_prompt: roles/product-architect-agent.md
-    canonical: ai/agents/product-architect-agent.md
+  architecture-agent:
+    role_prompt: roles/architecture-agent.md
+    canonical: ai/agents/architecture-agent.md
     skill_mode: scoped_only
-    skills:
-      - name: product-architect
-        path: spec-web-ui/catalog/skills/product-architect/SKILL.md
-        required: true
-        purpose: Convert raw product ideas into a Spec Draft / Spec Blueprint with Product, Architecture, Database, API, and UI branches for Spec Compiler normalization.
+    skills: []
+    delegates_to:
+      - spec-editor
+      - ddd-domain-agent
+      - openapi-agent
+      - db-migration-agent
+      - ui-design-agent
+      - test-editor
+      - performance-test-agent
+      - concurrency-test-agent
+      - reviewer
     context_includes:
       - .rules/project.md
-      - specs/current/project-context.md
-      - specs/current/architecture-context.md
-      - specs/current/domain-context.md
+      - docs/spec-modes/
+      - current/
+      - design/
+      - specs/roadmap.md
+      - ai/workflows/nested-agent-orchestration.md
       - spec-draft/
-      - spec-web-ui/catalog/spec-templates/template-prd-draft/
-      - spec-web-ui/catalog/spec-templates/template-spec-blueprint-yaml/
-      - spec-web-ui/catalog/spec-templates/template-task-graph-yaml/
-      - spec-web-ui/catalog/spec-templates/template-product-spec-yaml/
-      - spec-web-ui/catalog/spec-templates/template-feature-draft/
+      - specs/
+      - implementation/
+      - reviews/
     owns:
-      - spec-draft/
-      - product draft notes
-      - agent handoff notes
+      - architecture decision synthesis
+      - cross-surface impact boundaries
+      - main-agent delegation plan
     outputs:
-      - Spec Draft
-      - Spec Blueprint
-      - Product branch notes
-      - Architecture branch notes
-      - Database branch notes
-      - API branch notes
-      - UI branch notes
-      - downstream compiler assumptions
+      - architecture recommendation
+      - delegated specialist task list
       - assumptions and unresolved questions
+
+  implementation-agent:
+    role_prompt: roles/implementation-agent.md
+    canonical: ai/agents/implementation-agent.md
+    skill_mode: scoped_only
+    skills: []
+    delegates_to:
+      - ui-design-agent
+      - openapi-agent
+      - db-migration-agent
+      - unit-test-agent
+      - specialized-check-agent
+    context_includes:
+      - .rules/project.md
+      - docs/spec-modes/
+      - current/
+      - rules/frontend/react-workbench-delivery.md
+      - rules/backend/go-backend-governance.md
+      - rules/shared/error-code-governance.md
+      - design/
+      - specs/roadmap.md
+      - specs/
+      - implementation/
+    owns:
+      - implementation execution plan
+      - frontend and backend implementation handoff
+      - implementation-coupled unit coverage
+    outputs:
+      - focused implementation plan
+      - changed surface summary
+      - validation notes
+
+  deployment-agent:
+    role_prompt: roles/deployment-agent.md
+    canonical: ai/agents/deployment-agent.md
+    skill_mode: scoped_only
+    skills:
+      - name: team-ci-agent
+        path: .skills/team-ci-agent/SKILL.md
+        required: false
+        purpose: Git action readiness, staged scope validation, commit/PR/merge gates, and CI Record output.
+    delegates_to:
+      - ci-editor
+      - execution-editor
+      - qa-agent
+      - reviewer
+    context_includes:
+      - .rules/project.md
+      - docs/spec-modes/
+      - current/
+      - rules/ci/spec-release-gates.md
+      - rules/testing/production-test-standards.md
+      - scripts/checks/README.md
+      - scripts/orchestration/README.md
+      - specs/roadmap.md
+      - specs/
+      - implementation/
+      - reviews/
+    owns:
+      - release and deployment readiness
+      - CI and gate execution plan
+      - delivery evidence handoff
+    outputs:
+      - release gate checklist
+      - validation command notes
+      - deployment readiness risks
+
+  testing-agent:
+    role_prompt: roles/testing-agent.md
+    canonical: ai/agents/testing-agent.md
+    skill_mode: scoped_only
+    skills: []
+    delegates_to:
+      - test-editor
+      - unit-test-agent
+      - playwright-test-agent
+      - e2e-test-agent
+      - performance-test-agent
+      - concurrency-test-agent
+      - specialized-check-agent
+      - qa-agent
+    context_includes:
+      - .rules/project.md
+      - docs/spec-modes/
+      - current/
+      - rules/testing/production-test-standards.md
+      - rules/ci/spec-release-gates.md
+      - tests/README.md
+      - tests/plans/
+      - tests/scenarios/
+      - tests/bruno/
+      - tests/performance/
+      - tests/concurrency/
+      - tests/results/
+      - design/
+      - specs/roadmap.md
+      - specs/
+      - reviews/
+    owns:
+      - independent verification strategy
+      - test evidence orchestration
+      - QA acceptance handoff
+    outputs:
+      - test strategy and owner map
+      - evidence gap summary
+      - acceptance readiness recommendation
 
   spec-editor:
     role_prompt: roles/spec-editor.md
@@ -84,88 +215,27 @@ roles:
     skills: []
     context_includes:
       - .rules/project.md
+      - docs/spec-modes/
+      - current/
       - specs/_rules/README.md
       - spec-draft/
-      - specs/current/
-      - specs/changes/
+      - design/
+      - specs/roadmap.md
+      - specs/
+      - implementation/
+      - reviews/
       - tests/
-      - spec-web-ui/catalog/spec-templates/template-task-graph-yaml/
     owns:
       - spec-draft/
-      - specs/current/
-      - specs/changes/
-      - tasks/task-graph.yaml
+      - design/
+      - specs/
+      - implementation/
+      - reviews/
     outputs:
-      - canonical spec bundle
-      - task graph IR
-      - normalized spec bundle
+      - design update recommendation
+      - roadmap update recommendation
+      - feature spec
       - assumptions and unresolved questions
-
-  frontend-agent:
-    role_prompt: roles/frontend-agent.md
-    canonical: ai/agents/frontend-agent.md
-    skill_mode: scoped_only
-    skills: []
-    context_includes:
-      - .rules/project.md
-      - rules/frontend/react-workbench-delivery.md
-      - rules/ui/pencil-prototype-ui.md
-      - specs/current/
-      - specs/changes/
-      - spec-web-ui/
-    owns:
-      - frontend implementation plan
-      - UI state coverage
-      - frontend specialist handoff
-    outputs:
-      - frontend plan
-      - UI state coverage notes
-      - specialist routing notes
-      - frontend risks and open questions
-
-  backend-agent:
-    role_prompt: roles/backend-agent.md
-    canonical: ai/agents/backend-agent.md
-    skill_mode: scoped_only
-    skills: []
-    context_includes:
-      - .rules/project.md
-      - rules/backend/go-backend-governance.md
-      - rules/shared/error-code-governance.md
-      - specs/current/
-      - specs/changes/
-      - tests/
-    owns:
-      - backend implementation plan
-      - backend specialist handoff
-      - error and compatibility risk notes
-    outputs:
-      - backend plan
-      - domain/API/database routing notes
-      - migration and rollback risks
-      - backend risks and open questions
-
-  qa-agent:
-    role_prompt: roles/qa-agent.md
-    canonical: ai/agents/qa-agent.md
-    skill_mode: scoped_only
-    skills: []
-    context_includes:
-      - .rules/project.md
-      - rules/testing/production-test-standards.md
-      - rules/ci/spec-release-gates.md
-      - specs/current/
-      - specs/changes/
-      - tests/
-    owns:
-      - QA strategy
-      - test specialist handoff
-      - evidence and release risk summary
-    outputs:
-      - QA coverage matrix
-      - specialist test routing
-      - missing evidence list
-      - release-quality risk summary
 
   ui-design-agent:
     role_prompt: roles/ui-design-agent.md
@@ -182,8 +252,12 @@ roles:
         purpose: SpecOS-specific UI design flow for spec-web-ui layouts, states, and handoff notes.
     context_includes:
       - .rules/project.md
+      - docs/spec-modes/
       - rules/frontend/react-workbench-delivery.md
+      - rules/ui/design-governance.md
       - rules/ui/pencil-prototype-ui.md
+      - design/
+      - specs/
       - spec-web-ui/
     owns:
       - spec-web-ui/
@@ -201,14 +275,17 @@ roles:
     skills: []
     context_includes:
       - .rules/project.md
+      - docs/spec-modes/
+      - current/
       - rules/backend/go-backend-governance.md
       - rules/shared/error-code-governance.md
-      - specs/current/project-context.md
-      - specs/current/architecture-context.md
-      - specs/current/domain-context.md
+      - design/
+      - specs/roadmap.md
+      - ai/workflows/nested-agent-orchestration.md
       - spec-draft/
-      - specs/current/
-      - specs/changes/
+      - specs/
+      - implementation/
+      - reviews/
     owns:
       - domain boundary notes
       - aggregate and invariant proposals
@@ -223,9 +300,12 @@ roles:
     skills: []
     context_includes:
       - .rules/project.md
+      - docs/spec-modes/
+      - current/
       - rules/backend/go-backend-governance.md
       - rules/shared/error-code-governance.md
-      - specs/current/
+      - design/
+      - specs/
       - tests/bruno/
     owns:
       - API contracts
@@ -241,33 +321,18 @@ roles:
     skills: []
     context_includes:
       - .rules/project.md
+      - docs/spec-modes/
+      - current/
       - rules/backend/go-backend-governance.md
       - rules/backend/goose-migration-standards.md
-      - specs/current/
+      - design/
+      - specs/
     owns:
       - migration planning
       - rollout and rollback notes
     outputs:
       - migration checklist
       - compatibility risks
-
-  bruno-test-agent:
-    role_prompt: roles/bruno-test-agent.md
-    canonical: ai/agents/bruno-test-agent.md
-    skill_mode: scoped_only
-    skills: []
-    context_includes:
-      - .rules/project.md
-      - rules/shared/error-code-governance.md
-      - tests/README.md
-      - tests/bruno/
-      - specs/current/
-    owns:
-      - tests/bruno/
-      - API scenario assertions
-    outputs:
-      - Bruno collections
-      - environment notes
 
   e2e-test-agent:
     role_prompt: roles/e2e-test-agent.md
@@ -276,13 +341,16 @@ roles:
     skills: []
     context_includes:
       - .rules/project.md
+      - docs/spec-modes/
+      - current/
       - rules/frontend/react-workbench-delivery.md
       - rules/shared/error-code-governance.md
       - tests/README.md
       - tests/plans/
       - tests/scenarios/
       - tests/results/
-      - specs/current/
+      - design/
+      - specs/
     owns:
       - end-to-end business journey coverage
       - scenario fixtures and preconditions
@@ -299,10 +367,13 @@ roles:
     skills: []
     context_includes:
       - .rules/project.md
+      - docs/spec-modes/
+      - current/
       - rules/frontend/react-workbench-delivery.md
       - tests/README.md
       - spec-web-ui/
-      - specs/current/
+      - design/
+      - specs/
     owns:
       - browser scenario plans
       - UI state coverage
@@ -317,8 +388,10 @@ roles:
     skills: []
     context_includes:
       - .rules/project.md
+      - docs/spec-modes/
+      - current/
       - tests/README.md
-      - specs/current/
+      - specs/
     owns:
       - unit test coverage notes
       - module risk summaries
@@ -333,8 +406,10 @@ roles:
     skills: []
     context_includes:
       - .rules/project.md
+      - docs/spec-modes/
+      - current/
       - tests/README.md
-      - specs/current/
+      - specs/
     owns:
       - specialized verification notes
       - smoke and contract results
@@ -349,13 +424,16 @@ roles:
     skills: []
     context_includes:
       - .rules/project.md
+      - docs/spec-modes/
+      - current/
       - rules/ci/spec-release-gates.md
       - tests/README.md
       - tests/plans/
       - tests/performance/
       - tests/results/
-      - specs/current/
-      - specs/changes/
+      - design/
+      - specs/
+      - implementation/
     owns:
       - tests/performance/
       - performance and latency result normalization notes
@@ -372,13 +450,16 @@ roles:
     skills: []
     context_includes:
       - .rules/project.md
+      - docs/spec-modes/
+      - current/
       - rules/ci/spec-release-gates.md
       - tests/README.md
       - tests/plans/
       - tests/concurrency/
       - tests/results/
-      - specs/current/
-      - specs/changes/
+      - design/
+      - specs/
+      - implementation/
     owns:
       - tests/concurrency/
       - concurrency invariant result normalization notes
@@ -399,6 +480,8 @@ roles:
         purpose: Git action readiness, staged scope validation, commit/PR/merge gates, and CI Record output.
     context_includes:
       - .rules/project.md
+      - docs/spec-modes/
+      - current/
       - rules/ci/spec-release-gates.md
       - scripts/checks/README.md
     owns:
@@ -415,7 +498,10 @@ roles:
     skills: []
     context_includes:
       - .rules/project.md
+      - docs/spec-modes/
+      - current/
       - ai/workflows/README.md
+      - ai/workflows/nested-agent-orchestration.md
       - scripts/README.md
       - scripts/orchestration/README.md
     owns:
@@ -432,13 +518,42 @@ roles:
     skills: []
     context_includes:
       - .rules/project.md
+      - docs/spec-modes/
+      - current/
       - tests/README.md
-      - specs/current/
+      - specs/
     owns:
       - tests/
     outputs:
       - scenario coverage
       - test gaps
+
+  qa-agent:
+    role_prompt: roles/qa-agent.md
+    canonical: ai/agents/qa-agent.md
+    skill_mode: scoped_only
+    skills: []
+    context_includes:
+      - .rules/project.md
+      - docs/spec-modes/
+      - current/
+      - rules/testing/production-test-standards.md
+      - rules/ci/spec-release-gates.md
+      - design/
+      - specs/roadmap.md
+      - specs/
+      - implementation/
+      - tests/plans/
+      - tests/results/
+      - reviews/
+    owns:
+      - QA acceptance report
+      - final quality decision
+      - residual risk and waiver summary
+    outputs:
+      - QA acceptance report
+      - promotion recommendation
+      - release blockers
 
   reviewer:
     role_prompt: roles/reviewer.md
@@ -447,9 +562,10 @@ roles:
     skills: []
     context_includes:
       - .rules/project.md
-      - specs/current/project-context.md
-      - specs/current/architecture-context.md
-      - specs/current/domain-context.md
+      - docs/spec-modes/
+      - current/
+      - design/
+      - specs/roadmap.md
       - rules/
       - tests/
       - specs/

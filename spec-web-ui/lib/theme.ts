@@ -3,18 +3,19 @@ export type GlassSurfaceTint = "neutral" | "blue" | "emerald" | "lime" | "violet
 export type GlassInteractiveVariant = "accent" | "neutral";
 export type TrafficLightTone = "red" | "yellow" | "green";
 
-export type ThemeMode = "light" | "dark" | "system" | "auto";
-export type ResolvedThemeMode = "light" | "dark";
+export type ThemeMode = "light" | "dark" | "system" | "auto" | "summer-surf";
+export type ResolvedThemeMode = "light" | "dark" | "summer-surf";
+export type BrowserColorScheme = "light" | "dark";
 
 export const THEME_MODE_STORAGE_KEY = "specos-theme-mode";
 export const THEME_CHANGE_EVENT = "specos-theme-change";
-export const DEFAULT_THEME_MODE: ThemeMode = "system";
+export const DEFAULT_THEME_MODE: ThemeMode = "summer-surf";
 export const WINDOW_TRAFFIC_LIGHTS: TrafficLightTone[] = ["red", "yellow", "green"];
 
-const VALID_THEME_MODES = ["light", "dark", "system", "auto"] as const;
+const VALID_THEME_MODES = ["light", "dark", "system", "auto", "summer-surf"] as const;
 
 export type ThemeState = {
-  colorScheme: ResolvedThemeMode;
+  colorScheme: BrowserColorScheme;
   isDark: boolean;
   mode: ThemeMode;
   resolvedMode: ResolvedThemeMode;
@@ -78,6 +79,8 @@ export function resolveThemeMode(
       return "light";
     case "dark":
       return "dark";
+    case "summer-surf":
+      return "summer-surf";
     case "auto":
       return hour >= 18 || hour < 6 ? "dark" : "light";
     case "system":
@@ -96,7 +99,7 @@ export function buildThemeState(
   });
 
   return {
-    colorScheme: resolvedMode,
+    colorScheme: resolvedMode === "dark" ? "dark" : "light",
     isDark: resolvedMode === "dark",
     mode,
     resolvedMode,
@@ -117,6 +120,7 @@ export function buildThemeBootScript(storageKey = THEME_MODE_STORAGE_KEY) {
   const resolve = (mode, systemPrefersDark, hour) => {
     if (mode === "light") return "light";
     if (mode === "dark") return "dark";
+    if (mode === "summer-surf") return "summer-surf";
     if (mode === "auto") return hour >= 18 || hour < 6 ? "dark" : "light";
     return systemPrefersDark ? "dark" : "light";
   };
@@ -130,9 +134,10 @@ export function buildThemeBootScript(storageKey = THEME_MODE_STORAGE_KEY) {
   const resolvedMode = resolve(mode, systemPrefersDark, new Date().getHours());
   root.dataset.themeMode = mode;
   root.dataset.theme = resolvedMode;
-  root.style.colorScheme = resolvedMode;
+  root.style.colorScheme = resolvedMode === "dark" ? "dark" : "light";
   root.classList.toggle("dark", resolvedMode === "dark");
   root.classList.toggle("light", resolvedMode === "light");
+  root.classList.toggle("summer-surf", resolvedMode === "summer-surf");
   window.dispatchEvent(new CustomEvent(${JSON.stringify(THEME_CHANGE_EVENT)}, {
     detail: { mode, resolvedMode }
   }));

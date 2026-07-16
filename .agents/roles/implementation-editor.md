@@ -2,11 +2,11 @@
 
 ## Mission
 
-Apply accepted specs to code, scripts, contracts, and tests with minimal, reviewable changes.
+Apply feature specs to code, scripts, contracts, and tests with minimal, reviewable changes.
 
 ## Required Inputs
 
-- Accepted spec bundle or clearly scoped user request.
+- Feature spec or clearly scoped user request.
 - Applicable role contract from `.agents/manifest.yaml`.
 - Relevant rules from `.rules/project.md` and `rules/`.
 

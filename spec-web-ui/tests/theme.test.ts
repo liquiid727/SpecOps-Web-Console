@@ -6,6 +6,7 @@ import {
   buildTrafficLightClassName,
   buildThemeBootScript,
   coerceThemeMode,
+  DEFAULT_THEME_MODE,
   resolveThemeMode
 } from "@/lib/theme";
 
@@ -21,8 +22,13 @@ describe("resolveThemeMode", () => {
 
   it("coerces unknown theme modes to the default mode", () => {
     expect(coerceThemeMode("light")).toBe("light");
-    expect(coerceThemeMode("invalid-mode")).toBe("system");
-    expect(coerceThemeMode(undefined)).toBe("system");
+    expect(coerceThemeMode("invalid-mode")).toBe(DEFAULT_THEME_MODE);
+    expect(coerceThemeMode(undefined)).toBe(DEFAULT_THEME_MODE);
+  });
+
+  it("uses Summer Surf as the default theme", () => {
+    expect(DEFAULT_THEME_MODE).toBe("summer-surf");
+    expect(resolveThemeMode(DEFAULT_THEME_MODE, { systemPrefersDark: true })).toBe("summer-surf");
   });
 });
 

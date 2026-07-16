@@ -2,7 +2,7 @@
   "id": "agent-openapi",
   "type": "agent_role",
   "title": "OpenAPI Agent",
-  "summary": "Transforms accepted spec decisions into stable API contracts and examples.",
+  "summary": "Transforms feature spec decisions into stable API contracts and examples.",
   "direction": "fullstack",
   "stacks": [
     "go",

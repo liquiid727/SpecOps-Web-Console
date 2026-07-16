@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/catalog", () => ({
   filterCatalogAssets: (
-    assets: Array<{ title: string; summary: string; tags: string[]; categories?: string[] }>,
+    assets: Array<{ title: string; summary: string; summaryZh?: string; tags: string[]; categories?: string[] }>,
     filters: { query?: string; categories?: string[] }
   ) => {
     const query = filters.query?.toLowerCase().trim();
@@ -12,7 +12,9 @@ vi.mock("@/lib/catalog", () => ({
 
     return assets.filter((asset) => {
       if (query) {
-        const matchesQuery = [asset.title, asset.summary, ...asset.tags].some((value) => value.toLowerCase().includes(query));
+        const matchesQuery = [asset.title, asset.summary, asset.summaryZh ?? "", ...asset.tags].some((value) =>
+          value.toLowerCase().includes(query)
+        );
 
         if (!matchesQuery) {
           return false;
@@ -51,7 +53,7 @@ vi.mock("@/lib/catalog", () => ({
       id: "agent-spec-editor",
       type: "agent_role",
       title: "Spec Editor Agent",
-      summary: "Refines drafts into reviewable SpecOS change packages.",
+      summary: "Refines drafts into reviewable feature specs and roadmap updates.",
       direction: "fullstack",
       categories: ["product", "backend"],
       stacks: ["specos"],
@@ -68,6 +70,7 @@ vi.mock("@/lib/catalog", () => ({
       type: "skill",
       title: "Tool Config UI Skill",
       summary: "Patterns for building safe configuration surfaces.",
+      summaryZh: "用于构建安全配置界面的交互模式。",
       direction: "frontend",
       categories: ["frontend", "operations"],
       stacks: ["react"],
@@ -128,6 +131,7 @@ describe("template library routes", () => {
     expect(screen.getByRole("heading", { name: "Skill 技能" })).toBeInTheDocument();
     expect(screen.getByRole("searchbox", { name: "搜索 Skill 技能" })).toBeInTheDocument();
     expect(screen.getByText("Tool Config UI Skill")).toBeInTheDocument();
+    expect(screen.getByText("用于构建安全配置界面的交互模式。")).toBeInTheDocument();
     expect(screen.queryByText("Spec Editor Agent")).not.toBeInTheDocument();
   });
 

@@ -1,16 +1,18 @@
 # QA Agent
 
-Owns QA orchestration for SpecOS changes.
+Owns final quality acceptance by reconciling specs, implementation evidence, independent tests, review findings, and gate reports.
 
 ## Responsibilities
 
-- Build quality strategy from Product, Architecture, Database, API, UI, and acceptance branches.
-- Coordinate `test-editor`, `unit-test-agent`, `bruno-test-agent`, `e2e-test-agent`, `playwright-test-agent`, `performance-test-agent`, `concurrency-test-agent`, and `specialized-check-agent`.
-- Summarize evidence quality, residual risk, and release blockers.
-- Keep test ownership separate from implementation ownership.
+- Verify that P0/P1 requirements have complete normalized evidence before promotion.
+- Summarize release blockers in business-flow language with owner agents and required evidence.
+- Decide whether a change is accepted, blocked, or accepted with an explicit waiver.
+- Record residual risk, waiver owner, and follow-up deadline when release proceeds with known risk.
 
-## Guardrails
+## Fixed Output
 
-- Do not derive acceptance solely from passing implementation-coupled tests.
-- Do not hide missing evidence behind generic pass/fail summaries.
-- Do not own code changes or deployment execution.
+- QA acceptance report
+- Final acceptance decision
+- Blocking evidence gaps and owner agents
+- Residual risk and waiver summary
+- Promotion recommendation

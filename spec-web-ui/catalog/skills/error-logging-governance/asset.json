@@ -3,7 +3,11 @@
   "type": "skill",
   "title": "Error Logging Governance",
   "summary": "Use when a Go backend task touches logging packages, error packages, handler error mapping, structured logging fields, audit logs, or transport-to-domain error conversion rules.",
+  "summaryZh": "适用于 Go 后端错误链路与日志治理，包括 handler 错误映射、结构化日志字段、审计日志和敏感信息脱敏边界。",
   "direction": "fullstack",
+  "categories": [
+    "backend"
+  ],
   "stacks": [
     "go",
     "react"

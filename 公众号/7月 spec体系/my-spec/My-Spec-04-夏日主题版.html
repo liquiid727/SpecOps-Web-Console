@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preview</title>
+    <style>
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: linear-gradient(180deg, #EAF8FF 0%, #FFFDF7 45%, #FFF2D8 100%);
+  color: #2E3A46;
+  font-size: 16px;
+  line-height: 1.85;
+  letter-spacing: 0.4px;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 20px 16px;
+  word-wrap: break-word;
+}
+
+h1 {
+  font-size: 26px;
+  font-weight: 800;
+  text-align: center;
+  margin: 20px 0 10px 0;
+  line-height: 1.3;
+  background: linear-gradient(90deg, #2E8FD1, #6EC6FF 45%, #FF8FA3);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+h2 {
+  font-size: 19px;
+  font-weight: 800;
+  color: #1B5C8A;
+  margin: 34px 0 14px 0;
+  line-height: 1.4;
+}
+
+h3 {
+  font-size: 17px;
+  font-weight: 600;
+  color: #FF8A3D;
+  margin: 24px 0 12px 0;
+  padding-left: 10px;
+  border-left: 4px solid #FF8FA3;
+  line-height: 1.4;
+}
+
+p {
+  font-size: 16px;
+  line-height: 1.85;
+  color: #2E3A46;
+  margin: 14px 0;
+}
+
+strong {
+  color: #FF8A3D;
+  font-weight: 700;
+}
+
+blockquote {
+  margin: 20px 0;
+  padding: 16px 18px;
+  background: #FFF2D8;
+  border-left: 5px solid #FFB347;
+  border-radius: 14px;
+  color: #5A4A35;
+}
+
+a {
+  color: #227C9D;
+  text-decoration: none;
+  border-bottom: 1px solid #FFB347;
+}
+
+code {
+  background: #EAF8FF;
+  color: #1B5C8A;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+pre {
+  background: #EAF8FF;
+  color: #1B5C8A;
+  padding: 16px;
+  border-radius: 14px;
+  overflow-x: auto;
+}
+
+ul, ol {
+  padding-left: 20px;
+  margin: 14px 0;
+}
+
+li {
+  margin: 8px 0;
+  line-height: 1.8;
+  color: #2E3A46;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 20px 0;
+}
+
+th {
+  background: #EAF8FF;
+  color: #1B5C8A;
+  padding: 10px 12px;
+  border: 1px solid #d9ecf5;
+  font-size: 14px;
+}
+
+td {
+  padding: 10px 12px;
+  border: 1px solid #f0e6d2;
+  font-size: 14px;
+  color: #2E3A46;
+}
+
+img {
+  border-radius: 18px;
+}
+
+hr {
+  border: none;
+  height: 4px;
+  margin: 28px 0;
+  background: #FFB347;
+  border-radius: 2px;
+}
+
+    </style>
+</head>
+<body>
+    <p style="font-size: 16px; line-height: 1.85; color: #2E3A46; margin: 14px 0"><img alt="My Spec 04/05" src="hero-04.png" style="max-width: 100%; height: auto; display: block; margin: 24px auto; border-radius: 18px"/></p>
+<p style="font-size: 16px; line-height: 1.85; color: #2E3A46; margin: 14px 0">前面三篇讲了三档 spec 是怎么分的、 agent 是怎么用共享骨架加协调者组织起来的。这篇讲一个更根本的问题：光有 spec 和 agent ，怎么保证它们不会随着时间慢慢跟代码脱节？</p>
+<p style="font-size: 16px; line-height: 1.85; color: #2E3A46; margin: 14px 0">有次上线之后，产品在群里问我一个功能的边界条件，我打开对应的 spec ，上面写的规则和代码里实际跑的逻辑对不上——中间有次改动只改了代码，没人回头改 spec 。我照着 spec 回答了产品的问题，答错了，现场又当着人回炉重来一次，那滋味真是一言难尽。</p>
+<div style="display:flex;align-items:flex-start;gap:14px;margin:22px 0;">
+<div style="font-size:44px;line-height:1;color:#6EC6FF;font-family:Georgia,serif;font-weight:900;flex:0 0 auto;">"</div>
+<div style="font-size:15px;line-height:1.9;color:#1B5C8A;font-style:italic;">spec 最怕的根本不是没人写，是写完了没人管，而且它烂掉了不会喊一声。</div>
+</div>
+<p style="font-size: 16px; line-height: 1.85; color: #2E3A46; margin: 14px 0">那次之后我才想明白，代码写错了，跑起来会报错，会有人发现； spec 写错了，它就安安静静地躺在那儿，等着某个人在某个时刻信任它，然后被它坑一次。</p>
+<p style="font-size: 16px; line-height: 1.85; color: #2E3A46; margin: 14px 0">靠自觉去维护 spec ，说白了是在赌自己每次改代码都会想起来回头看看 spec 是不是也该改。这个赌我已经输过一次，不想再赌第二次。而且这个赌局对个人还好，一旦有第二个人一起改代码，赌注就变成了"赌两个人都会记得"，输的概率只会更高不会更低。</p>
+<p style="font-size: 16px; line-height: 1.85; color: #2E3A46; margin: 14px 0">真正能解决问题的不是提醒自己要维护，是不维护就过不去——把 spec 和代码是否一致这件事做成一道拦得住人的关卡，而不是一条靠良心的建议。这跟上一篇讲的升级逻辑其实是同一套：靠自觉解决不了的问题，就该靠机制去解决。</p>
+<p style="font-size: 16px; line-height: 1.85; color: #2E3A46; margin: 14px 0">我把关卡按流程推进的顺序分成了四级，越往后越严：</p>
+<section><section style="display: flex; align-items: flex-start; margin-bottom: 8px; color: #2E3A46"><span style="color: #227C9D; margin-right: 8px; flex-shrink: 0; font-weight: 700; line-height: 1.8">1.</span><span style="flex: 1"><strong style="color: #FF8A3D; font-weight: 700">PR Fast Gate</strong>：先做最快的检查——spec 、测试计划这些东西格式对不对，有没有缺必填字段，改动涉及的模块单测过没过、类型检查过没过，追求的就是"快"，几秒到几十秒内出结果，不合格的直接拦在门口，不浪费后面几级的时间。</span></section><section style="display: flex; align-items: flex-start; margin-bottom: 8px; color: #2E3A46"><span style="color: #227C9D; margin-right: 8px; flex-shrink: 0; font-weight: 700; line-height: 1.8">2.</span><span style="flex: 1"><strong style="color: #FF8A3D; font-weight: 700">Change Verification Gate</strong>：跑一遍这次改动对应的证据，确认关键场景确实测过、结果和 spec 版本对得上，缺证据、缺关键路径测试结果的都会被拦下来，这一级开始要真正跑测试比对结果，成本比第一级高不少。</span></section><section style="display: flex; align-items: flex-start; margin-bottom: 8px; color: #2E3A46"><span style="color: #227C9D; margin-right: 8px; flex-shrink: 0; font-weight: 700; line-height: 1.8">3.</span><span style="flex: 1"><strong style="color: #FF8A3D; font-weight: 700">Release Gate</strong>：跑全量业务场景测试，涉及性能和并发的关键路径也要过一遍，确保这次改动不会让某个原本正常的场景突然变慢或者出现并发问题。</span></section><section style="display: flex; align-items: flex-start; margin-bottom: 8px; color: #2E3A46"><span style="color: #227C9D; margin-right: 8px; flex-shrink: 0; font-weight: 700; line-height: 1.8">4.</span><span style="flex: 1"><strong style="color: #FF8A3D; font-weight: 700">Promote Gate</strong>：要求前面所有关卡的结论都指向同一个 spec 版本，没有遗留高风险问题才准发布——本质上是个总账，检查前三关是不是真的都过了，而不是被绕开的。</span></section></section>
+<p style="font-size: 16px; line-height: 1.85; color: #2E3A46; margin: 14px 0">越到后面，检查的东西越接近"真的要对用户负责"那一层，也越贵，但越贵的关卡，出问题的代价也越大，这笔账算下来是划算的。而且四级递进意味着大部分不合格的改动会在第一级就被拦下来，真正走到第四级、消耗最多资源的，往往是已经在前面几关证明过自己靠谱的改动，整体成本比每次都全跑一遍要低不少。</p>
+<p style="font-size: 16px; line-height: 1.85; color: #2E3A46; margin: 14px 0">四级门禁真正接进自动化 CI 流水线之前，我先写了个本地能跑的校验命令，把逻辑先落地验证一遍，确认这套判断规则真的靠谱，不是我关起门来想当然设计出来的一套自嗨规则。命令跑起来之后，会去读这次改动对应的测试计划，把提交的测试结果一条条比对，只要有证据缺失或对不上，直接判定为拦截，不会放行。跑通了打印一行明确的通过标记，跑不通打印拦截外加缺了什么证据——不是"看起来大概没问题"，是有就是有，没有就是没有。</p>
+<p style="font-size: 16px; line-height: 1.85; color: #2E3A46; margin: 14px 0">说来惭愧，我自己第一次跑这个命令的时候，是抱着"应该能过"的心态跑的，结果被拦了一次——缺了一份关键场景的测试结果，我自己都没意识到那份证据没补上。被自己写的工具拦下来，说实话有点哭笑不得，但也正是这次经历让我确信这套规则是真的在起作用，不是摆设。</p>
+<div style="background:#fff;border-radius:16px;padding:16px 18px;box-shadow:0 6px 16px rgba(46,58,70,0.08);margin-top:14px;">
+<span style="display:inline-block;font-size:12px;font-weight:700;color:#fff;background:#6EC6FF;padding:3px 12px;border-radius:8px;margin-bottom:10px;">老实交代</span>
+<div style="font-size:13.5px;line-height:1.9;color:#2E3A46;">规则和本地命令我都已经写完并且能跑通，但眼下这套门禁还没有真正挂到自动化的 CI 流水线上去，现在提交代码它不会自动帮我拦截，得靠我自己想起来手动跑一下。这不是我想藏起来的短板，是设计先跑通、自动化接入放在下一步的正常节奏，没必要装作已经全部搞定了。</div>
+</div>
+<p style="font-size: 16px; line-height: 1.85; color: #2E3A46; margin: 14px 0">之所以敢把这个"没做完"摆出来讲，是因为我越来越觉得，规则和工具先在本地跑顺、验证过判断逻辑没问题，再往自动化里接，比反过来"先囫囵接进 CI 、跑起来再慢慢调规则"要靠谱——后者很容易因为规则本身还有问题，被大家吐槽几次之后就被绕过甚至关掉，那就白折腾了。</p>
+<p style="font-size: 16px; line-height: 1.85; color: #2E3A46; margin: 14px 0">规则写得再全，只要它还没成为一道"不过就走不下去"的硬关卡，就还是在赌自觉——我自己就是那个被赌输过一次的人。这些年攒下来的坑，除了这一个，其实还有一份更长的清单，下一篇打算认真列一列。</p>
+<p style="font-size: 16px; line-height: 1.85; color: #2E3A46; margin: 14px 0"><img alt="靠自觉解决不了的问题，就该靠机制解决" src="closing-polaroid-04.png" style="max-width: 100%; height: auto; display: block; margin: 24px auto; border-radius: 18px"/></p>
+</body>
+</html>

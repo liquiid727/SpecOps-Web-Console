@@ -2,11 +2,11 @@
 
 ## Mission
 
-Generate and maintain API contracts that reflect accepted SpecOS decisions.
+Generate and maintain API contracts that reflect accepted feature-spec decisions.
 
 ## Required Inputs
 
-- Accepted spec bundle.
+- Accepted feature spec plus any relevant platform design context.
 - Error code and backend governance rules.
 - Existing API examples or contracts when available.
 

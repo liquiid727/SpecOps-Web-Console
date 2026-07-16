@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { CatalogAssetSummary } from "@/components/catalog/asset-summary";
 import { Badge } from "@/components/ui/badge";
 import { getCatalogRowTagPreview } from "@/lib/discover-ui";
 import { buildGlassSurfaceClassName, type GlassSurfaceTint } from "@/lib/theme";
@@ -53,7 +54,13 @@ export function CatalogResultRow({
               {asset.sourcePath}
             </p>
           </div>
-          <p className="mt-1.5 text-sm leading-6 text-slate-400">{asset.summary}</p>
+          <div className="mt-1.5">
+            <CatalogAssetSummary
+              asset={asset}
+              englishClassName="text-sm leading-6 text-slate-400"
+              chineseClassName="text-sm leading-6 text-slate-300"
+            />
+          </div>
           {detail ? <p className="mt-1.5 text-xs text-slate-500">{detail}</p> : null}
           <div className="mt-2.5 flex flex-wrap gap-1.5">
             {tagPreview.visibleTags.map((tag) => (

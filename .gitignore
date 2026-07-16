@@ -1,24 +1,73 @@
 # OS / editor
 .DS_Store
+Thumbs.db
 .vscode/
 .idea/
+*.swp
+*.swo
 
-# env / local config
+# env / secrets
 .env
 .env.*
 !.env.example
 *.local
-.contextdb-enable
-.codex/config.toml
-.codex/skills/
 
-# dependencies / build
+# dependencies
 node_modules/
+.pnpm-store/
+.yarn/cache/
+
+# build output
 dist/
+build/
+out/
 .next/
+.turbo/
+.vercel/
+*.tsbuildinfo
+
+# test / coverage artifacts
 coverage/
 playwright-report/
 test-results/
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python (fastapi-builder skills, scaffolded backend projects)
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# --- Editor / CLI tool local state ---
+# Keep AGENTS.md, CLAUDE.md, .claude/, .codex/, specs/, and docs/ under version
+# control (they carry real project and agent-role content). Only ignore the
+# cache/session subpaths those tools generate locally.
+.claude/settings.local.json
+.claude/todos/
+.claude/shell-snapshots/
+.claude/projects/
+.claude/statsig/
+.claude/logs/
+.codex/config.toml
+.codex/skills/
+.codex/sessions/
+.codex/cache/
+.codex/logs/
+.contextdb-enable
+
+# --- Agent development caches ---
+# Local run/handoff/inference caches produced by agent tooling. These are
+# reproducible scratch state, not source of truth, so they never get committed.
+.agent/runs/
+.agent/cache/
+runs/
+*.handoff.md.tmp
+.llm-cache/
 
 # local generated state
 memory/context-db/
@@ -27,3 +76,4 @@ tests/results/*.json
 # private planning scratch
 todo/*
 docs/superpowers/plans/
+temp/

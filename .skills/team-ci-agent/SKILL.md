@@ -22,14 +22,15 @@ This skill does **not** replace implementation, testing, review, or documentatio
 ## Read Order
 
 1. `references/ci-record-template.md`
-2. `references/repo-adaptation.md`
-3. repo-local contribution rules if present, in this order:
+2. `references/sync-handoff-template.md`
+3. `references/repo-adaptation.md`
+4. repo-local contribution rules if present, in this order:
    - `AGENTS.md`
    - `CONTRIBUTING.md`
    - `README.md`
-4. `.github/pull_request_template.md` when PR work is requested
-5. current `git status --short`
-6. recent delivery artifacts if present:
+5. `.github/pull_request_template.md` when PR work is requested
+6. current `git status --short`
+7. recent delivery artifacts if present:
    - `Task Plan`
    - `Test Plan`
    - `Test Report`
@@ -40,6 +41,7 @@ When searching the repository, prefer focused searches such as:
 
 - `rg -n "^## (Task Plan|Test Plan|Test Report|Findings|Sync Handoff|CI Record)" -g '*.md'`
 - `rg -n "change validation|review readiness|CI Record" -g '*.md'`
+- `rg -n "sync_handoff_status|Sync Handoff|neighbor_assets_checked" -g '*.md'`
 
 Use the most recent artifact that belongs to the current task. Do not rely on stale records from unrelated work.
 
@@ -119,6 +121,10 @@ When in doubt, prefer `partial` over `pass`.
 
 - if repository policy requires documentation or knowledge sync for semantic changes, treat missing sync evidence as a gate
 - if the repository has no explicit sync discipline, record the missing sync check under `skipped_checks` instead of inventing compliance
+- for SpecOS-style repositories, use `Sync Handoff` evidence to decide `sync_handoff_status`
+- semantic changes without a task-relevant `Sync Handoff` must not report `sync_handoff_status: pass`
+- a sync handoff can pass by updating neighbor assets or by explicitly waiving each unaffected neighbor surface with a reason
+- `pola` or the registered owner agent owns final judgment for false positives and unresolved sync risks
 
 ### 7. Commit Messages
 
@@ -186,6 +192,7 @@ The minimum portable bundle is:
 - `SKILL.md`
 - `agents/openai.yaml`
 - `references/ci-record-template.md`
+- `references/sync-handoff-template.md`
 - `references/repo-adaptation.md`
 
 If the destination team already uses routing, planning, review, and sync skills, this CI skill can be installed by itself. If not, it still works as a standalone Git readiness gate.

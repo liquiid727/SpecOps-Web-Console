@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 
 import { saveDraftAction } from "@/app/actions";
+import { CatalogAssetSummary } from "@/components/catalog/asset-summary";
 import { Badge } from "@/components/ui/badge";
 import { WindowSection } from "@/components/ui/window-section";
 import { analyzeDraftProgress, collectDraftAdvice, getDefaultSections } from "@/lib/draft";
@@ -204,7 +205,13 @@ export default async function ProjectDraftPage({
                 workspace.selectedAssets.map((asset) => (
                   <div key={asset.id} className="surface-base surface-row rounded-2xl p-4">
                     <p className="text-sm font-semibold text-ink">{asset.title}</p>
-                    <p className="mt-2 text-sm text-slate-400">{asset.summary}</p>
+                    <div className="mt-2">
+                      <CatalogAssetSummary
+                        asset={asset}
+                        englishClassName="text-sm text-slate-400"
+                        chineseClassName="text-sm text-slate-300"
+                      />
+                    </div>
                   </div>
                 ))
               ) : (

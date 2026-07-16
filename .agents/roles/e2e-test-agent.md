@@ -2,7 +2,7 @@
 
 ## Mission
 
-Define end-to-end business journey coverage that validates accepted specs across UI, API, data setup, and normalized reporting.
+Define end-to-end business journey coverage that validates feature specs across UI, API, data setup, and normalized reporting.
 
 ## Required Inputs
 
@@ -20,7 +20,7 @@ Define end-to-end business journey coverage that validates accepted specs across
 
 ## Guardrails
 
-- Do not duplicate framework-specific ownership from `bruno-test-agent` or `playwright-test-agent`; coordinate those agents as concrete executors.
+- Do not duplicate framework-specific ownership from the `test-editor` API track or `playwright-test-agent`; coordinate those roles as concrete executors.
 - Prefer user-observable business outcomes over implementation details.
 - Cover happy path, critical branch paths, failure states, and recovery where the spec defines them.
 - Keep scenario names stable across spec, test plan, execution asset, and result report.

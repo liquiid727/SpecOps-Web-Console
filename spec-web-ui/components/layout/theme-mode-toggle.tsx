@@ -6,6 +6,7 @@ import { getLocaleCopy, type Locale } from "@/lib/locale";
 import {
   THEME_CHANGE_EVENT,
   buildThemeState,
+  DEFAULT_THEME_MODE,
   normalizeThemeMode,
   THEME_MODE_STORAGE_KEY,
   type ResolvedThemeMode,
@@ -27,8 +28,9 @@ function applyThemeMode(mode: ThemeMode) {
   root.dataset.themeMode = state.mode;
   root.dataset.theme = state.resolvedMode;
   root.style.colorScheme = state.colorScheme;
-  root.classList.toggle("dark", state.isDark);
-  root.classList.toggle("light", !state.isDark);
+  root.classList.toggle("dark", state.resolvedMode === "dark");
+  root.classList.toggle("light", state.resolvedMode === "light");
+  root.classList.toggle("summer-surf", state.resolvedMode === "summer-surf");
   window.dispatchEvent(
     new CustomEvent(THEME_CHANGE_EVENT, {
       detail: { mode: state.mode, resolvedMode: state.resolvedMode }
@@ -39,13 +41,13 @@ function applyThemeMode(mode: ThemeMode) {
 }
 
 export function ThemeModeToggle({ compact = false, locale = "zh" }: { compact?: boolean; locale?: Locale }) {
-  const [mode, setMode] = useState<ThemeMode>("system");
-  const [resolvedMode, setResolvedMode] = useState<ResolvedThemeMode>("dark");
+  const [mode, setMode] = useState<ThemeMode>(DEFAULT_THEME_MODE);
+  const [resolvedMode, setResolvedMode] = useState<ResolvedThemeMode>("summer-surf");
   const [open, setOpen] = useState(false);
   const copy = getLocaleCopy(locale);
 
   useEffect(() => {
-    let storedMode: ThemeMode = "system";
+    let storedMode: ThemeMode = DEFAULT_THEME_MODE;
 
     try {
       storedMode = normalizeThemeMode(window.localStorage.getItem(THEME_MODE_STORAGE_KEY));
@@ -100,10 +102,14 @@ export function ThemeModeToggle({ compact = false, locale = "zh" }: { compact?: 
   }, [mode]);
 
   const isDark = resolvedMode === "dark";
+  const isSummerSurf = resolvedMode === "summer-surf";
+  const currentIcon = isSummerSurf ? "S" : isDark ? "D" : "L";
+  const currentLabel = isSummerSurf ? copy.shell.summerSurf : isDark ? copy.shell.night : copy.shell.day;
   const modeOptions: Array<{ mode: ThemeMode; label: string }> = [
     { mode: "light", label: copy.shell.day },
     { mode: "dark", label: copy.shell.night },
-    { mode: "auto", label: "Auto" }
+    { mode: "auto", label: "Auto" },
+    { mode: "summer-surf", label: copy.shell.summerSurf }
   ];
 
   return (
@@ -120,8 +126,8 @@ export function ThemeModeToggle({ compact = false, locale = "zh" }: { compact?: 
           onClick={() => setOpen((current) => !current)}
           type="button"
         >
-          <span aria-hidden="true" className="utility-menu-icon">{isDark ? "D" : "L"}</span>
-          <span className="utility-menu-current">{isDark ? copy.shell.night : copy.shell.day}</span>
+          <span aria-hidden="true" className="utility-menu-icon">{currentIcon}</span>
+          <span className="utility-menu-current">{currentLabel}</span>
         </button>
         <div className={cn("utility-menu-popover", !open && "hidden")} role="menu" aria-label={copy.shell.theme}>
           {modeOptions.map((option) => (
@@ -143,7 +149,7 @@ export function ThemeModeToggle({ compact = false, locale = "zh" }: { compact?: 
       </div>
       {compact ? null : (
         <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-slate-500">
-          {copy.shell.theme}: {mode}/{isDark ? "dark" : "light"}
+          {copy.shell.theme}: {mode}/{resolvedMode}
         </p>
       )}
     </div>

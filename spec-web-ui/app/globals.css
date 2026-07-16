@@ -103,6 +103,80 @@
   --window-header-bg: rgba(249, 250, 251, 0.96);
 }
 
+/*
+ * Summer Surf ("砂金戏浪") — a real, selectable third theme (see lib/theme.ts
+ * ThemeMode "summer-surf"). Flat colors only, no gradients — bright summer-sky
+ * feel instead of the night-sky gradients used by dark/light.
+ */
+:root[data-theme="summer-surf"],
+.summer-surf {
+  color-scheme: light;
+  --color-ink: 23 58 77;
+  --color-canvas: 234 247 251;
+  --color-panel: 255 250 240;
+  --color-accent: 15 160 196;
+  --color-accent-strong: 10 110 140;
+  --color-accent-soft: 207 240 247;
+  --color-coral: 255 138 91;
+  --color-sand: 255 246 229;
+  --color-line: 197 227 234;
+  --color-slate-50: 250 253 254;
+  --color-slate-100: 240 249 251;
+  --color-slate-200: 222 240 245;
+  --color-slate-300: 190 224 232;
+  --color-slate-400: 140 190 202;
+  --color-slate-500: 90 150 165;
+  --color-slate-600: 60 110 130;
+  --color-slate-700: 40 80 100;
+  --color-slate-800: 28 60 78;
+  --color-slate-900: 23 58 77;
+  --app-background: #eaf7fb;
+  --window-shadow:
+    0 18px 40px rgba(23, 58, 77, 0.1),
+    0 0 0 1px rgba(23, 58, 77, 0.05);
+  --panel-shadow:
+    0 10px 24px rgba(23, 58, 77, 0.06),
+    0 0 0 1px rgba(23, 58, 77, 0.04);
+  --panel-hover-shadow:
+    0 16px 30px rgba(23, 58, 77, 0.1),
+    0 0 0 1px rgba(23, 58, 77, 0.07);
+  --field-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 1px 2px rgba(23, 58, 77, 0.06);
+  --field-focus-shadow:
+    0 0 0 3px rgba(15, 160, 196, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.94);
+  --control-shadow:
+    0 1px 2px rgba(23, 58, 77, 0.07);
+  --control-secondary-bg: rgba(255, 250, 240, 0.98);
+  --control-secondary-hover-bg: rgba(234, 247, 251, 0.98);
+  --control-primary-bg: rgb(23 58 77);
+  --control-primary-text: rgb(255 250 240);
+  --window-header-bg: rgba(255, 250, 240, 0.96);
+
+  /* Decorative palette for components/icons/summer-surf/*. */
+  --summer-sky: 79 195 232; /* 晴空蓝 #4FC3E8 */
+  --summer-sea: 15 160 196; /* 海面蓝 #0FA0C4 */
+  --summer-palm: 26 201 176; /* 椰林绿松 #1AC9B0 */
+  --summer-sun: 255 212 71; /* 烈日黄 #FFD447 */
+  --summer-sunset: 255 138 91; /* 日落橙 #FF8A5B */
+  --summer-sand: 255 246 229; /* 沙滩白 #FFF6E5 */
+  --summer-ink: 23 58 77; /* 深海墨 #173A4D */
+  --summer-wood: 122 82 48; /* 藤木棕 #7A5230 */
+}
+
+.summer-surface {
+  background: rgb(var(--summer-sand));
+  border: 1px solid rgb(var(--summer-sea) / 0.18);
+  color: rgb(var(--summer-ink));
+}
+
+.summer-chip {
+  background: rgb(var(--summer-sky) / 0.14);
+  border: 1px solid rgb(var(--summer-sea) / 0.3);
+  color: rgb(var(--summer-ink));
+}
+
 * {
   box-sizing: border-box;
 }
@@ -375,6 +449,81 @@ textarea::placeholder {
   color: rgb(var(--color-ink));
   font-size: clamp(1.1rem, 1.4vw, 1.35rem);
   font-weight: 650;
+}
+
+/*
+ * Summer Surf card motifs: hero sections read as "islands" (rounder, a leaf
+ * cluster tucked in the corner, a wave line separating header from body);
+ * plain panels read as "surfboards" (a waxed stripe + a shell sticker).
+ * Flat colors and CSS patterns only — no gradients.
+ */
+:root[data-theme="summer-surf"] .window-section {
+  position: relative;
+  overflow: hidden;
+  border-radius: 36px;
+}
+
+:root[data-theme="summer-surf"] .window-section::before {
+  content: "";
+  position: absolute;
+  top: -18px;
+  right: -18px;
+  width: 130px;
+  height: 130px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cg fill='%231AC9B0' fill-opacity='0.32'%3E%3Cellipse cx='70' cy='70' rx='16' ry='55'/%3E%3Cellipse cx='70' cy='70' rx='16' ry='55' transform='rotate(45 70 70)'/%3E%3Cellipse cx='70' cy='70' rx='16' ry='55' transform='rotate(90 70 70)'/%3E%3Cellipse cx='70' cy='70' rx='16' ry='55' transform='rotate(135 70 70)'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  pointer-events: none;
+  z-index: 0;
+}
+
+:root[data-theme="summer-surf"] .window-titlebar,
+:root[data-theme="summer-surf"] .window-body {
+  position: relative;
+  z-index: 1;
+}
+
+:root[data-theme="summer-surf"] .window-titlebar {
+  border-bottom: none;
+  background-color: var(--window-header-bg);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='12' viewBox='0 0 40 12'%3E%3Cpath d='M0 6 Q10 12 20 6 T40 6' fill='none' stroke='%230FA0C4' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: repeat-x;
+  background-position: left bottom;
+  background-size: 40px 12px;
+  padding-bottom: 1.35rem;
+}
+
+:root[data-theme="summer-surf"] .plain-section {
+  position: relative;
+  overflow: hidden;
+  border-radius: 22px;
+}
+
+:root[data-theme="summer-surf"] .plain-section.surface-tone-neutral::before {
+  content: "";
+  position: absolute;
+  inset: 12px auto 12px 12px;
+  width: 6px;
+  border-radius: 999px;
+  background: rgb(var(--summer-sunset));
+}
+
+:root[data-theme="summer-surf"] .plain-section.surface-tone-neutral .plain-section-header,
+:root[data-theme="summer-surf"] .plain-section.surface-tone-neutral .plain-section-body {
+  padding-left: 1.85rem;
+}
+
+:root[data-theme="summer-surf"] .plain-section::after {
+  content: "";
+  position: absolute;
+  bottom: 10px;
+  right: 12px;
+  width: 30px;
+  height: 30px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 6 L60 38 L94 38 L66 58 L76 92 L50 70 L24 92 L34 58 L6 38 L40 38 Z' fill='%23FFD447'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  opacity: 0.55;
+  pointer-events: none;
 }
 
 .traffic-lights {

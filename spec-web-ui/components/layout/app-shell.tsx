@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { LanguageToggle } from "@/components/layout/language-toggle";
 import { MobileUtilityBar } from "@/components/layout/mobile-utility-bar";
 import { SiteNav } from "@/components/layout/site-nav";
+import { SummerSurfDecor } from "@/components/layout/summer-surf-decor";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import type { Locale } from "@/lib/locale";
 
@@ -30,6 +31,7 @@ export function AppShell({ children, locale }: { children: ReactNode; locale: Lo
           </div>
         </div>
       </header>
+      <SummerSurfDecor locale={locale} />
       <main className="mx-auto max-w-[1560px] px-4 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] pt-4 sm:px-5 sm:pt-5 md:px-6 md:py-6 md:pb-6">
         {children}
       </main>

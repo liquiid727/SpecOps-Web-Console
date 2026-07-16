@@ -104,7 +104,7 @@ Provider secrets must not be written to the manifest.
 
 ### `spec.yaml`
 
-The machine-readable accepted spec. It must include:
+The machine-readable SpecOS Contract. It must include:
 
 - stable spec id and version
 - goals and non-goals
@@ -156,7 +156,7 @@ Initializes a target project with the SpecOS baseline:
 - writes `.specos/manifest.yaml`
 - installs template rules and skills
 - installs agent role templates
-- creates spec draft and accepted spec directories
+- creates spec draft and SpecOS Contract directories
 - creates test plan and result directories
 - creates workflow examples
 - creates a CI example
@@ -170,7 +170,7 @@ Validates the project chain:
 
 - manifest is valid
 - required directories exist
-- accepted specs follow schema
+- SpecOS Contracts follow schema
 - specs contain rules, flows, edge cases, and test coverage expectations
 - generated test plans reference valid specs
 - scenario results reference valid test plans

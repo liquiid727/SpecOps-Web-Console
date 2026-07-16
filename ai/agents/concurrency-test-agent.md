@@ -1,6 +1,6 @@
 # Concurrency Test Agent
 
-Owns concurrent scenario design, invariant verification, idempotency checks, and consistency evidence derived from accepted specs and test plans.
+Owns concurrent scenario design, invariant verification, idempotency checks, and consistency evidence derived from feature specs and test plans.
 
 ## Responsibilities
 

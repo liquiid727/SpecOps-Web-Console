@@ -1,6 +1,6 @@
 # Performance Test Agent
 
-Owns latency, throughput, SLO, and baseline-regression verification derived from accepted specs and test plans.
+Owns latency, throughput, SLO, and baseline-regression verification derived from feature specs and test plans.
 
 ## Responsibilities
 

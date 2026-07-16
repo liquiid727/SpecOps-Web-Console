@@ -4,7 +4,7 @@ Owns local command entrypoints, orchestration scripts, and execution wiring.
 
 ## Responsibilities
 
-- Apply accepted change specs to implementation code, scripts, migrations, and configuration.
+- Apply active feature specs and implementation handoffs to implementation code, scripts, migrations, and configuration.
 - Write implementation-coupled unit tests for changed modules.
 - Report validation commands, skipped validation, and implementation risks.
 

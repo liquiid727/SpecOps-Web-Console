@@ -1,79 +1,102 @@
 # SpecOS
 
-SpecOS is a spec-driven AI workspace for software teams. It treats product intent, engineering rules, agent roles, tests, and delivery artifacts as one traceable system instead of scattered documents and prompts.
+SpecOS is a spec-driven AI workspace for software teams. It keeps product design, feature specs, agent execution, reviews, and tests in one traceable delivery chain instead of scattered prompts and documents.
 
-The project is building toward an AI IDE experience where teams can define work once, keep it structured, and reuse that context across implementation, review, testing, and delivery.
+## Delivery Model
 
-## Why SpecOS
-
-Most AI-assisted development breaks down when context becomes inconsistent. Requirements live in one place, prompts in another, tests somewhere else, and delivery rules often stay tribal.
-
-SpecOS is designed to make that chain explicit:
+The canonical lifecycle is:
 
 ```text
-draft -> change spec -> implementation assets -> tests -> review -> accepted current state
+Draft -> Design -> Roadmap/Epic -> Feature Spec -> Agent Implementation -> Review -> Merge
 ```
 
-That model helps teams:
+The canonical repository model is:
 
-- keep requirements and generated artifacts aligned
-- reuse engineering rules, templates, skills, and agent packs
-- export project-ready bundles instead of copying ad-hoc files
-- make testing and review traceable to the original spec
+```text
+docs/spec-modes/  project operating modes: LiteSpec, GoalSpec, and EnterpriseSpec
+current/          active delivery workspace for the selected mode
+spec-draft/        intake-only requirement drafts
+design/            one canonical design doc per platform or system
+specs/roadmap.md   epic, release, order, and dependency planning
+specs/RP-001-.../  flat feature-spec directories
+implementation/    implementation handoff and status by spec id
+reviews/           review findings and approval evidence by spec id
+tests/             shared verification assets keyed by spec_id
+```
+
+SpecOS favors one durable design document per system and many small feature specs. Feature specs stay narrow, explicit, and reviewable so agents can implement them end to end without inventing scope.
 
 ## What Is In This Repository
 
 This repository currently contains three main product surfaces:
 
-- `packages/cli`: a SpecOS CLI for scaffolding projects, validating bundles, installing exported assets, and running workflow-oriented commands
-- `spec-web-ui`: a Next.js workspace for browsing catalog assets, assembling project configurations, and exporting installable bundles
-- `test-console`: an early console for working with normalized test plans and execution results
+- `packages/cli`: CLI scaffolding, validation, bundle install, and workflow entrypoints
+- `spec-web-ui`: catalog, export preview, and bundle composition workbench
+- `test-console`: normalized test-plan and result console
 
-It also includes reusable project assets such as:
+It also includes reusable project assets:
 
 - `rules/`: engineering and delivery governance
 - `skills/` and `.skills/`: reusable skill packs and local skill assets
-- `ai/agents/`: agent role definitions
+- `ai/agents/`: canonical agent role definitions
 - `agent-teams/`: reusable agent team packs
-- `specs/`, `spec-draft/`, and `tests/`: the spec and verification backbone
+- `docs/spec-modes/` and `current/`: project operating mode guidance and active delivery context
+- `design/`, `spec-draft/`, `specs/`, `implementation/`, `reviews/`, `tests/`: the spec delivery backbone
+
+## Project Modes
+
+SpecOS now documents three official project authoring modes:
+
+- [LiteSpec](docs/spec-modes/LiteSpec/README.md): feature-driven, low-token, default for daily agent development
+- [GoalSpec](docs/spec-modes/GoalSpec/README.md): workflow-driven, built around the six-step goal loop (prd -> prd-to-spec -> to-issues -> goal -> review-it -> ship-it)
+- [EnterpriseSpec](docs/spec-modes/EnterpriseSpec/README.md): delivery-driven, high-governance, for QA-heavy and audited environments
+
+Mode selection guidance lives in [docs/spec-modes/README.md](docs/spec-modes/README.md).
 
 ## Current Status
 
-SpecOS is in an active prototype stage. The repository already supports a working end-to-end foundation, but it is not yet a polished general-availability product.
+SpecOS is still in active prototype development. The repo already supports scaffolding, catalog browsing, export, and validation, but the lifecycle and templates are still evolving.
 
-Today you can:
+Today the intended usage is:
 
-- initialize a SpecOS project skeleton with the CLI
-- browse catalog assets in `spec-web-ui`
-- select rules, templates, skills, agent roles, and agent team packs
-- export review snapshots and installable `.specos-bundle` payloads
-- validate and install bundles into a target project
-- generate normalized test-plan artifacts from prepared spec inputs
+- initialize a project baseline with the CLI
+- choose the project mode from `docs/spec-modes/`
+- keep active delivery state in `current/`
+- write intake notes in `spec-draft/`
+- keep stable platform decisions in `design/`
+- plan feature order and dependencies in `specs/roadmap.md`
+- author small feature specs under `specs/<SPEC-ID>-<slug>/`
+- implement and review against those specs
+- keep tests traceable to `spec_id`
 
 ## Quick Start
 
-### 1. Install and build the workspace
+### 1. Install and build
 
 ```bash
 npm install
 npm run build
 ```
 
-### 2. Try the CLI
+### 2. Initialize a project
+
+```bash
+npx @specos/cli init --template fullstack
+npx @specos/cli check
+```
+
+To start with the governed enterprise skeleton:
+
+```bash
+npx @specos/cli init --template fullstack --mode enterprisespec
+```
+
+For local workspace development:
 
 ```bash
 node packages/cli/dist/main.js init --template fullstack
 node packages/cli/dist/main.js check
 ```
-
-Other available commands include:
-
-- `init --template spec-only`
-- `validate-bundle <path>`
-- `install-bundle <path>`
-- `list-workflows`
-- `run-workflow <workflowId>`
-- `generate-test-plan <spec-file> --change <change-id>`
 
 ### 3. Run the web workspace
 
@@ -88,24 +111,30 @@ Then open [http://localhost:3000](http://localhost:3000).
 ## Repository Shape
 
 ```text
-packages/cli/        CLI entry points and templates
-spec-web-ui/         asset catalog, workspace, export UI
-test-console/        test-plan and result console
+packages/cli/        CLI entry points
+packages/templates/  bootstrap template source of truth
+spec-web-ui/         asset workbench, export preview, bundle composer
+test-console/        normalized test-plan and result console
 rules/               reusable engineering governance
 agent-teams/         reusable agent team packs
 ai/agents/           agent role definitions
-spec-draft/          draft requirement inputs
-specs/               accepted specs, changes, and archive
-tests/               plans, schedules, and result assets
+docs/spec-modes/     mode playbooks for LiteSpec, GoalSpec, and EnterpriseSpec
+current/             active project status and handoff context
+spec-draft/          intake drafts
+design/              canonical platform design documents
+specs/               roadmap, feature specs, rules, templates
+implementation/      implementation handoff by spec id
+reviews/             review outputs by spec id
+tests/               plans, schedules, and results
 ```
 
 ## For Contributors
 
-The repository is organized around a spec-first delivery model. If you are contributing implementation or workflow changes, the best starting points are:
+Start with:
 
 - [AGENTS.md](AGENTS.md)
 - [rules/README.md](rules/README.md)
 - [specs/README.md](specs/README.md)
 - [spec-web-ui/README.md](spec-web-ui/README.md)
 
-In general, changes should stay traceable to a draft, a spec change, a rule, or a test artifact.
+Keep changes traceable to a draft, design doc, feature spec, rule, review, or test artifact.

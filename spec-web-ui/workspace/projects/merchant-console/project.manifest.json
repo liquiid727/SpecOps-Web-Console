@@ -28,6 +28,8 @@
   "draftTemplateId": "template-ui-handoff",
   "draftPath": "spec-web-ui/workspace/projects/merchant-console/draft.md",
   "exportTargets": [
+    "docs/",
+    "current/",
     "rules/",
     "specs/_template/",
     "ai/agents/",

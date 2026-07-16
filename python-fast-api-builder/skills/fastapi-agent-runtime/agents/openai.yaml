@@ -1,0 +1,4 @@
+interface:
+  display_name: "FastAPI Agent Runtime"
+  short_description: "Design FastAPI agent runtime boundaries"
+  default_prompt: "Use $fastapi-agent-runtime to design agent runtime flow, streaming, retries, and background execution for FastAPI."

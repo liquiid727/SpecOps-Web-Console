@@ -1,10 +1,10 @@
 # Test Editor
 
-Owns independent test generation and maintenance from accepted specs.
+Owns independent test generation and maintenance from feature specs.
 
 ## Responsibilities
 
-- Derive a normalized `test-plan` from accepted specs before selecting execution tools.
+- Derive a normalized `test-plan` from feature specs before selecting execution tools.
 - Keep API contract, scenario, E2E, UI, and specialized checks traceable to the same spec version.
 - Orchestrate the developer test loop by turning spec APIs, flows, rules, edge cases, observability, performance targets, and concurrency invariants into a runnable scope matrix.
 - Normalize test outputs into one scenario-result model for report consumption.

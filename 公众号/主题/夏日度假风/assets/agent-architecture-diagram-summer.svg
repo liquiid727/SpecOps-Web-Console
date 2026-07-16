@@ -1,0 +1,160 @@
+<svg viewBox="0 0 1240 980" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,'PingFang SC','Microsoft YaHei',sans-serif">
+  <defs>
+    <linearGradient id="sky2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#BDE8FF"/>
+      <stop offset="60%" stop-color="#E8F7FF"/>
+      <stop offset="100%" stop-color="#FFF6E3"/>
+    </linearGradient>
+    <linearGradient id="sand2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFE9B8"/>
+      <stop offset="100%" stop-color="#FFD98F"/>
+    </linearGradient>
+    <filter id="ss" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="8" stdDeviation="9" flood-color="#2E3A46" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+
+  <rect width="1240" height="980" fill="url(#sky2)"/>
+
+  <!-- sun -->
+  <circle cx="1150" cy="66" r="34" fill="#FFC66B"/>
+  <circle cx="1150" cy="66" r="34" fill="#FFB347" opacity="0.5"/>
+
+  <!-- clouds -->
+  <g fill="#FFFFFF" opacity="0.9">
+    <ellipse cx="150" cy="56" rx="40" ry="17"/>
+    <ellipse cx="185" cy="50" rx="28" ry="13"/>
+  </g>
+
+  <!-- sand foreground band, wavy top -->
+  <path d="M0 880 Q60 860 120 880 T240 880 T360 880 T480 880 T600 880 T720 880 T840 880 T960 880 T1080 880 T1200 880 L1240 980 L0 980 Z" fill="url(#sand2)"/>
+
+  <!-- palm trees framing -->
+  <g transform="translate(50,900) scale(0.8)">
+    <path d="M0 60 Q6 -20 -4 -90" stroke="#8A5A2E" stroke-width="9" fill="none" stroke-linecap="round"/>
+    <g fill="#3BA896">
+      <path d="M-4 -90 Q-70 -120 -110 -75 Q-55 -90 -4 -90 Z"/>
+      <path d="M-4 -90 Q40 -130 90 -100 Q30 -100 -4 -90 Z"/>
+      <path d="M-4 -90 Q-30 -160 -10 -200 Q-6 -140 -4 -90 Z"/>
+    </g>
+  </g>
+  <g transform="translate(1190,900) scale(-0.8,0.8)">
+    <path d="M0 60 Q6 -20 -4 -90" stroke="#8A5A2E" stroke-width="9" fill="none" stroke-linecap="round"/>
+    <g fill="#3BA896">
+      <path d="M-4 -90 Q-70 -120 -110 -75 Q-55 -90 -4 -90 Z"/>
+      <path d="M-4 -90 Q40 -130 90 -100 Q30 -100 -4 -90 Z"/>
+    </g>
+  </g>
+
+  <text x="60" y="46" fill="#227C9D" font-size="23" font-weight="800">Agent 编排 &amp; CI 门禁链路 🏖️</text>
+  <text x="60" y="72" fill="#4A6570" font-size="14">manifest 解析模式 → 共享角色+技能折叠 → pola 协调派单 → 分级 CI 门禁</text>
+
+  <!-- bunting string across the top of the flow -->
+  <path d="M120 108 Q680 70 1120 108" stroke="#D9506B" stroke-width="3" fill="none" stroke-dasharray="2 8" stroke-linecap="round" opacity="0.7"/>
+  <g>
+    <polygon points="200,104 216,104 208,124" fill="#6EC6FF"/>
+    <polygon points="400,92 416,92 408,112" fill="#FFB347"/>
+    <polygon points="620,86 636,86 628,106" fill="#FF8FA3"/>
+    <polygon points="840,92 856,92 848,112" fill="#6EC6FF"/>
+    <polygon points="1020,104 1036,104 1028,124" fill="#FFB347"/>
+  </g>
+
+  <!-- Row 1 -->
+  <g filter="url(#ss)"><rect x="440" y="140" width="360" height="62" rx="18" fill="#FFFFFF" stroke="#6EC6FF" stroke-width="2"/></g>
+  <text x="620" y="165" fill="#227C9D" font-size="14.5" text-anchor="middle" font-weight="700">🗺 .specos/manifest.yaml</text>
+  <text x="620" y="185" fill="#6B7A86" font-size="12" text-anchor="middle">projectMode: lite / goal / enterprise</text>
+
+  <path d="M620 202 q-16 16 0 32" stroke="#3BAFDA" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <path d="M620 202 q16 16 0 32" stroke="#3BAFDA" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+  <!-- Row 2 -->
+  <g filter="url(#ss)"><rect x="120" y="240" width="330" height="88" rx="18" fill="#EAF8FF" stroke="#6EC6FF" stroke-width="2"/></g>
+  <text x="285" y="267" fill="#227C9D" font-size="13.5" text-anchor="middle" font-weight="700">🌊 mode overlay</text>
+  <text x="285" y="286" fill="#3E5560" font-size="11.5" text-anchor="middle">.agents/modes/&lt;mode&gt;/</text>
+  <text x="285" y="303" fill="#3E5560" font-size="11.5" text-anchor="middle">manifest.overlay.yaml（只放差异）</text>
+
+  <g filter="url(#ss)"><rect x="470" y="240" width="300" height="88" rx="18" fill="#FFFFFF" stroke="#6EC6FF" stroke-width="2"/></g>
+  <text x="620" y="267" fill="#227C9D" font-size="13.5" text-anchor="middle" font-weight="700">🐚 共享角色</text>
+  <text x="620" y="286" fill="#3E5560" font-size="11.5" text-anchor="middle">.agents/roles/ + ai/agents/</text>
+  <text x="620" y="303" fill="#3E5560" font-size="11.5" text-anchor="middle">～15 个基础 role prompt</text>
+
+  <g filter="url(#ss)"><rect x="790" y="240" width="330" height="88" rx="18" fill="#FFF2D8" stroke="#FFB347" stroke-width="2"/></g>
+  <text x="955" y="267" fill="#C97A17" font-size="13.5" text-anchor="middle" font-weight="700">🍍 技能目录</text>
+  <text x="955" y="286" fill="#7A5A2E" font-size="11.5" text-anchor="middle">.skills/*/SKILL.md</text>
+  <text x="955" y="303" fill="#7A5A2E" font-size="11.5" text-anchor="middle">～19 个技能折叠进对应 agent</text>
+
+  <path d="M285 328 q-20 20 0 40" stroke="#3BAFDA" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <path d="M620 328 q0 20 0 40" stroke="#3BAFDA" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <path d="M955 328 q20 20 0 40" stroke="#3BAFDA" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <path d="M285 388 Q620 410 955 388" stroke="#3BAFDA" stroke-width="2.5" fill="none" stroke-dasharray="1 9" stroke-linecap="round"/>
+  <path d="M620 388 q-16 16 0 32" stroke="#3BAFDA" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+  <!-- Row 3: pola as a lifebuoy -->
+  <g filter="url(#ss)">
+    <circle cx="620" cy="452" r="42" fill="#FFFFFF" stroke="#D9506B" stroke-width="8" stroke-dasharray="14 14"/>
+    <circle cx="620" cy="452" r="18" fill="#FFF6E3" stroke="#D9506B" stroke-width="3"/>
+  </g>
+  <text x="620" y="514" fill="#227C9D" font-size="14.5" text-anchor="middle" font-weight="700">pola（协调者）</text>
+  <text x="620" y="532" fill="#6B7A86" font-size="11.5" text-anchor="middle">路由 · 派单 · 去重 · 汇总建议</text>
+
+  <path d="M620 496 q-16 16 0 32" stroke="#3BAFDA" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <path d="M620 496 q16 16 0 32" stroke="#3BAFDA" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+  <!-- Row 4: beach chairs -->
+  <g filter="url(#ss)"><rect x="120" y="546" width="480" height="100" rx="18" fill="#EAF8FF" stroke="#6EC6FF" stroke-width="2"/></g>
+  <text x="360" y="574" fill="#227C9D" font-size="13.5" text-anchor="middle" font-weight="700">🏄 主 Agent（4 选 1）</text>
+  <text x="360" y="596" fill="#3E5560" font-size="11.5" text-anchor="middle">architecture / implementation</text>
+  <text x="360" y="614" fill="#3E5560" font-size="11.5" text-anchor="middle">deployment / testing</text>
+  <text x="360" y="632" fill="#6B7A86" font-size="10.5" text-anchor="middle">决定"这是谁的活"</text>
+
+  <g filter="url(#ss)"><rect x="640" y="546" width="480" height="100" rx="18" fill="#FFE7EC" stroke="#FF8FA3" stroke-width="2"/></g>
+  <text x="880" y="574" fill="#D9506B" font-size="13.5" text-anchor="middle" font-weight="700">🍹 Specialist Agent（2~4 个）</text>
+  <text x="880" y="596" fill="#8A4A56" font-size="11.5" text-anchor="middle">spec-editor / ddd-domain / openapi</text>
+  <text x="880" y="614" fill="#8A4A56" font-size="11.5" text-anchor="middle">db-migration / qa-agent / reviewer …</text>
+  <text x="880" y="632" fill="#6B7A86" font-size="10.5" text-anchor="middle">带边界的具体问题，不整段丢报告</text>
+
+  <path d="M620 646 q-16 16 0 32" stroke="#3BAFDA" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <path d="M620 646 q16 16 0 32" stroke="#3BAFDA" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+  <text x="620" y="708" fill="#227C9D" font-size="14.5" text-anchor="middle" font-weight="700">🚩 CI 门禁（rules/ci/spec-release-gates.md）</text>
+
+  <!-- flags planted in the sand -->
+  <g filter="url(#ss)"><rect x="80" y="728" width="260" height="70" rx="14" fill="#FFFFFF" stroke="#6EC6FF" stroke-width="2"/></g>
+  <line x1="90" y1="798" x2="90" y2="826" stroke="#8A5A2E" stroke-width="4" stroke-linecap="round"/>
+  <text x="210" y="754" fill="#227C9D" font-size="12" text-anchor="middle" font-weight="700">PR Fast Gate</text>
+  <text x="210" y="772" fill="#6B7A86" font-size="10.5" text-anchor="middle">manifest / spec / 单测校验</text>
+
+  <g filter="url(#ss)"><rect x="360" y="728" width="260" height="70" rx="14" fill="#FFFFFF" stroke="#FFB347" stroke-width="2"/></g>
+  <line x1="370" y1="798" x2="370" y2="826" stroke="#8A5A2E" stroke-width="4" stroke-linecap="round"/>
+  <text x="490" y="754" fill="#C97A17" font-size="12" text-anchor="middle" font-weight="700">Change Verification Gate</text>
+  <text x="490" y="772" fill="#6B7A86" font-size="10.5" text-anchor="middle">validate-test-gates 校验</text>
+
+  <g filter="url(#ss)"><rect x="640" y="728" width="260" height="70" rx="14" fill="#FFFFFF" stroke="#FF8FA3" stroke-width="2"/></g>
+  <line x1="650" y1="798" x2="650" y2="826" stroke="#8A5A2E" stroke-width="4" stroke-linecap="round"/>
+  <text x="770" y="754" fill="#D9506B" font-size="12" text-anchor="middle" font-weight="700">Release Gate</text>
+  <text x="770" y="772" fill="#6B7A86" font-size="10.5" text-anchor="middle">全量 E2E / 性能 / 并发</text>
+
+  <g filter="url(#ss)"><rect x="920" y="728" width="240" height="70" rx="14" fill="#FFFFFF" stroke="#FF8FA3" stroke-width="2"/></g>
+  <line x1="930" y1="798" x2="930" y2="826" stroke="#8A5A2E" stroke-width="4" stroke-linecap="round"/>
+  <text x="1040" y="754" fill="#D9506B" font-size="12" text-anchor="middle" font-weight="700">Promote Gate</text>
+  <text x="1040" y="772" fill="#6B7A86" font-size="10.5" text-anchor="middle">qa-agent 验收 + sync handoff</text>
+
+  <path d="M340 763 Q350 780 360 763" stroke="#3BAFDA" stroke-width="2" fill="none" stroke-dasharray="1 6" stroke-linecap="round"/>
+  <path d="M620 763 Q630 780 640 763" stroke="#3BAFDA" stroke-width="2" fill="none" stroke-dasharray="1 6" stroke-linecap="round"/>
+  <path d="M900 763 Q910 780 920 763" stroke="#3BAFDA" stroke-width="2" fill="none" stroke-dasharray="1 6" stroke-linecap="round"/>
+
+  <!-- sticky note in the sand -->
+  <g filter="url(#ss)" transform="rotate(-2 620 880)">
+    <rect x="120" y="838" width="1000" height="84" rx="14" fill="#FFF2D8" stroke="#FFB347" stroke-dasharray="7 5" stroke-width="1.5"/>
+  </g>
+  <text x="620" y="868" fill="#C97A17" font-size="13.5" text-anchor="middle" font-weight="700" transform="rotate(-2 620 868)">🍹 现状缺口便签</text>
+  <text x="620" y="888" fill="#7A5A2E" font-size="12" text-anchor="middle" transform="rotate(-2 620 888)">四级门禁 + validate-test-gates 已经设计并可本地执行，但尚未接入 .github/workflows</text>
+  <text x="620" y="906" fill="#7A5A2E" font-size="12" text-anchor="middle" transform="rotate(-2 620 906)">目前仓库里唯一的 Actions 是发包用的 publish-packages.yml，PR 上还不会自动触发 spec 门禁</text>
+
+  <!-- footprints trail across sand -->
+  <g fill="#8A5A2E" opacity="0.35">
+    <ellipse cx="960" cy="950" rx="6" ry="10" transform="rotate(15 960 950)"/>
+    <ellipse cx="978" cy="962" rx="6" ry="10" transform="rotate(-10 978 962)"/>
+    <ellipse cx="996" cy="950" rx="6" ry="10" transform="rotate(15 996 950)"/>
+  </g>
+</svg>

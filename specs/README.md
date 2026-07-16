@@ -1,23 +1,46 @@
-# Specs
+# SpecOS Specs
 
-SpecOS keeps formal spec work under `specs/`.
+`specs/` is the feature-spec layer of SpecOS.
 
-The structure follows an OpenSpec-inspired current/change/archive model, but it remains SpecOS-owned:
+The canonical structure is:
 
-- `current/`: accepted and active system facts. Agents should treat this as the baseline source of truth, not as the first write target for new requirements.
-- `changes/`: proposed or in-progress business changes. Each change should live in its own folder until accepted, and active development should use it together with `current/`.
-- `archive/`: completed changes after their accepted content has been merged into `current/`.
-- `_rules/`: spec governance and normalization rules.
-- `_template/`: reusable spec bundle templates.
+```text
+specs/
+  roadmap.md
+  _rules/
+  _template/
+  RP-001-event-ingestion/
+    spec.md
+  RP-002-decision-api/
+    spec.md
+  ...
+```
 
-Recommended lifecycle:
+## Directory Meaning
+
+- `roadmap.md`: the only canonical epic, release, order, and dependency index
+- `_rules/`: spec naming, slicing, and field conventions
+- `_template/`: canonical spec templates
+- `RP-xxx-<slug>/spec.md`: one small feature spec per directory
+
+Epic grouping does not become a nested directory structure. Keep feature specs flat by spec id and use `roadmap.md` plus spec metadata to express epic membership and ordering.
+
+## Lifecycle
 
 ```text
 spec-draft/
-  -> specs/changes/<change-id>/
-  -> develop / test / review against specs/current/ + specs/changes/<change-id>/
-  -> promote accepted content into specs/current/
-  -> archive completed change in specs/archive/<change-id>/
+  -> design/<platform>-design.md
+  -> specs/roadmap.md
+  -> specs/<SPEC-ID>-<slug>/spec.md
+  -> implementation/<SPEC-ID>-<slug>/
+  -> reviews/<SPEC-ID>-<slug>/
+  -> tests/
 ```
 
-Spec bundles should keep both human-readable Markdown and machine-readable YAML when applicable. Agents working on active changes must read YAML and Markdown from both `specs/current/` and the relevant `specs/changes/<change-id>/`. Agents should write to `specs/current/` only as a final promotion step after the change has implementation, test, review, and acceptance evidence.
+## Feature Spec Rules
+
+- One feature spec = one reviewable feature slice
+- Prefer narrow slices like `Decision API`, not broad buckets like `Decision Engine`
+- Dependencies must be listed by spec id
+- Prerequisites must list upstream identities or contracts already provided
+- Deliverables and definition of done must be explicit

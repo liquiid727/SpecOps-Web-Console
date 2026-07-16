@@ -168,7 +168,7 @@ export default async function SpecPage({
                   <div className="font-medium text-amber-100">{item.requirementId}</div>
                   <div className="mt-1 text-amber-100">{item.ownerAgent} · {item.riskTier} · {item.gateImpact}</div>
                   <div className="mt-2 text-slate-200">{item.summary}</div>
-                  <div className="mt-2 text-xs text-indigo-200">rerun: {item.ownerAgent.includes("performance") ? "performance" : item.ownerAgent.includes("concurrency") ? "concurrency" : item.ownerAgent.includes("bruno") ? "api" : "scenario"}</div>
+                  <div className="mt-2 text-xs text-indigo-200">rerun: {item.ownerAgent.includes("performance") ? "performance" : item.ownerAgent.includes("concurrency") ? "concurrency" : item.testType === "api" ? "api" : "scenario"}</div>
                 </div>
               ))}
               {failedCompliance.length === 0 ? <div className="text-sm text-muted">No failed or missing standard evidence.</div> : null}

@@ -18,7 +18,7 @@
     "frontend"
   ],
   "dependsOn": [
-    "template-normalized-spec"
+    "template-feature-spec"
   ],
   "conflictsWith": [],
   "sourcePath": "spec-web-ui/catalog/agent-templates/agent-test-editor/test-editor.md",

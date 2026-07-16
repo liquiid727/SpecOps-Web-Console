@@ -1,0 +1,97 @@
+<svg viewBox="0 0 1240 900" xmlns="http://www.w3.org/2000/svg" font-family="'SF Mono','JetBrains Mono',Consolas,monospace">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0f1720"/>
+      <stop offset="100%" stop-color="#131c26"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7c8a97"/>
+    </marker>
+  </defs>
+  <rect width="1240" height="900" fill="url(#bg2)"/>
+
+  <text x="60" y="56" fill="#eef1e9" font-size="24" font-weight="700">Agent 编排 &amp; CI 门禁链路</text>
+  <text x="60" y="82" fill="#7c8a97" font-size="14">manifest 解析模式 → 共享角色+技能折叠 → pola 协调派单 → 分级 CI 门禁</text>
+
+  <!-- Row 1: manifest -->
+  <rect x="440" y="120" width="360" height="64" rx="8" fill="#1c2733" stroke="#3a4652"/>
+  <text x="620" y="145" fill="#eef1e9" font-size="15" text-anchor="middle" font-weight="700">.specos/manifest.yaml</text>
+  <text x="620" y="166" fill="#9db0bd" font-size="12.5" text-anchor="middle">projectMode: lite / goal / enterprise</text>
+
+  <line x1="620" y1="184" x2="620" y2="222" stroke="#7c8a97" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Row 2: overlay + shared -->
+  <rect x="120" y="224" width="330" height="90" rx="8" fill="#17222e" stroke="#5fd0c0" stroke-width="1.3"/>
+  <text x="285" y="252" fill="#5fd0c0" font-size="14" text-anchor="middle" font-weight="700">mode overlay</text>
+  <text x="285" y="272" fill="#cfd8de" font-size="12" text-anchor="middle">.agents/modes/&lt;mode&gt;/</text>
+  <text x="285" y="290" fill="#cfd8de" font-size="12" text-anchor="middle">manifest.overlay.yaml（只放差异）</text>
+
+  <rect x="470" y="224" width="300" height="90" rx="8" fill="#17222e" stroke="#7c8a97" stroke-width="1.3"/>
+  <text x="620" y="252" fill="#eef1e9" font-size="14" text-anchor="middle" font-weight="700">共享角色</text>
+  <text x="620" y="272" fill="#cfd8de" font-size="12" text-anchor="middle">.agents/roles/ + ai/agents/</text>
+  <text x="620" y="290" fill="#cfd8de" font-size="12" text-anchor="middle">～15 个基础 role prompt</text>
+
+  <rect x="790" y="224" width="330" height="90" rx="8" fill="#17222e" stroke="#e8a94c" stroke-width="1.3"/>
+  <text x="955" y="252" fill="#e8a94c" font-size="14" text-anchor="middle" font-weight="700">技能目录</text>
+  <text x="955" y="272" fill="#cfd8de" font-size="12" text-anchor="middle">.skills/*/SKILL.md</text>
+  <text x="955" y="290" fill="#cfd8de" font-size="12" text-anchor="middle">～19 个技能折叠进对应 agent</text>
+
+  <line x1="285" y1="314" x2="285" y2="350" stroke="#7c8a97" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="620" y1="314" x2="620" y2="350" stroke="#7c8a97" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="955" y1="314" x2="955" y2="350" stroke="#7c8a97" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="285" y1="350" x2="955" y2="350" stroke="#7c8a97" stroke-width="1.5"/>
+  <line x1="620" y1="350" x2="620" y2="378" stroke="#7c8a97" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Row 3: pola -->
+  <rect x="500" y="380" width="240" height="64" rx="8" fill="#1c2733" stroke="#eef1e9" stroke-width="1.3"/>
+  <text x="620" y="406" fill="#eef1e9" font-size="15" text-anchor="middle" font-weight="700">pola（协调者）</text>
+  <text x="620" y="426" fill="#9db0bd" font-size="12" text-anchor="middle">路由 · 派单 · 去重 · 汇总建议</text>
+
+  <line x1="620" y1="444" x2="620" y2="480" stroke="#7c8a97" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Row 4: main + specialist -->
+  <rect x="120" y="482" width="480" height="100" rx="8" fill="#17222e" stroke="#5fd0c0" stroke-width="1.3"/>
+  <text x="360" y="510" fill="#5fd0c0" font-size="14" text-anchor="middle" font-weight="700">主 Agent（4 选 1）</text>
+  <text x="360" y="532" fill="#cfd8de" font-size="12" text-anchor="middle">architecture / implementation</text>
+  <text x="360" y="550" fill="#cfd8de" font-size="12" text-anchor="middle">deployment / testing</text>
+  <text x="360" y="568" fill="#7c8a97" font-size="11" text-anchor="middle">决定"这是谁的活"</text>
+
+  <rect x="640" y="482" width="480" height="100" rx="8" fill="#17222e" stroke="#e8a94c" stroke-width="1.3"/>
+  <text x="880" y="510" fill="#e8a94c" font-size="14" text-anchor="middle" font-weight="700">Specialist Agent（2~4 个）</text>
+  <text x="880" y="532" fill="#cfd8de" font-size="12" text-anchor="middle">spec-editor / ddd-domain / openapi</text>
+  <text x="880" y="550" fill="#cfd8de" font-size="12" text-anchor="middle">db-migration / qa-agent / reviewer …</text>
+  <text x="880" y="568" fill="#7c8a97" font-size="11" text-anchor="middle">带边界的具体问题，不整段丢报告</text>
+
+  <line x1="620" y1="582" x2="620" y2="618" stroke="#7c8a97" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Row 5: CI gates -->
+  <text x="620" y="646" fill="#eef1e9" font-size="15" text-anchor="middle" font-weight="700">CI 门禁（rules/ci/spec-release-gates.md）</text>
+
+  <g>
+    <rect x="80" y="666" width="260" height="70" rx="6" fill="#1c2733" stroke="#5fd0c0"/>
+    <text x="210" y="692" fill="#eef1e9" font-size="12.5" text-anchor="middle" font-weight="700">PR Fast Gate</text>
+    <text x="210" y="710" fill="#9db0bd" font-size="11" text-anchor="middle">manifest / spec / 单测校验</text>
+
+    <rect x="360" y="666" width="260" height="70" rx="6" fill="#1c2733" stroke="#e8a94c"/>
+    <text x="490" y="692" fill="#eef1e9" font-size="12.5" text-anchor="middle" font-weight="700">Change Verification Gate</text>
+    <text x="490" y="710" fill="#9db0bd" font-size="11" text-anchor="middle">validate-test-gates 校验</text>
+
+    <rect x="640" y="666" width="260" height="70" rx="6" fill="#1c2733" stroke="#d97a7a"/>
+    <text x="770" y="692" fill="#eef1e9" font-size="12.5" text-anchor="middle" font-weight="700">Release Gate</text>
+    <text x="770" y="710" fill="#9db0bd" font-size="11" text-anchor="middle">全量 E2E / 性能 / 并发</text>
+
+    <rect x="920" y="666" width="240" height="70" rx="6" fill="#1c2733" stroke="#d97a7a"/>
+    <text x="1040" y="692" fill="#eef1e9" font-size="12.5" text-anchor="middle" font-weight="700">Promote Gate</text>
+    <text x="1040" y="710" fill="#9db0bd" font-size="11" text-anchor="middle">qa-agent 验收 + sync handoff</text>
+  </g>
+
+  <line x1="340" y1="701" x2="360" y2="701" stroke="#7c8a97" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="620" y1="701" x2="640" y2="701" stroke="#7c8a97" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="900" y1="701" x2="920" y2="701" stroke="#7c8a97" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- gap warning -->
+  <rect x="80" y="770" width="1080" height="86" rx="8" fill="#241a1a" stroke="#d97a7a" stroke-dasharray="6 4"/>
+  <text x="620" y="800" fill="#f0a5a5" font-size="13.5" text-anchor="middle" font-weight="700">⚠ 现状缺口</text>
+  <text x="620" y="822" fill="#e0b8b8" font-size="12.5" text-anchor="middle">四级门禁 + validate-test-gates 已经设计并可本地执行，但尚未接入 .github/workflows</text>
+  <text x="620" y="842" fill="#e0b8b8" font-size="12.5" text-anchor="middle">目前仓库里唯一的 Actions 是发包用的 publish-packages.yml，PR 上还不会自动触发 spec 门禁</text>
+</svg>

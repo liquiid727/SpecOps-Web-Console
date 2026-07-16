@@ -2,7 +2,7 @@
   "id": "agent-execution-editor",
   "type": "agent_role",
   "title": "Execution Editor",
-  "summary": "Owns implementation entrypoints, orchestration scripts, and execution wiring for accepted changes.",
+  "summary": "Owns implementation entrypoints, orchestration scripts, and execution wiring for active feature specs and implementation handoffs.",
   "direction": "fullstack",
   "stacks": [
     "go",

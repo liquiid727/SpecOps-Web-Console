@@ -1,6 +1,6 @@
 # DB Migration Agent
 
-Owns schema change planning, rollout sequencing, and migration compatibility notes for accepted specs.
+Owns schema change planning, rollout sequencing, and migration compatibility notes for feature specs.
 
 ## Responsibilities
 

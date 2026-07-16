@@ -3,7 +3,11 @@
   "type": "skill",
   "title": "Ddd Layering Governance",
   "summary": "Use when a backend task needs DDD layering guidance, thin application orchestration, domain-owned validation, VO or entity or domain service modeling, or enum and value-object refactors that remove magic values from business flows.",
+  "summaryZh": "适用于后端 DDD 分层与领域建模治理，包括 application 瘦编排、domain 校验归属、VO/entity/domain service 建模和去魔法值重构。",
   "direction": "backend",
+  "categories": [
+    "backend"
+  ],
   "stacks": [
     "go",
     "specos"

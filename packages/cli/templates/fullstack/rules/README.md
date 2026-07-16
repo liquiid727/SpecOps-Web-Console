@@ -1,5 +1,5 @@
 # Rules
 
-Reusable engineering and product rules for this SpecOS project.
+Repository-wide engineering and orchestration rules belong here.
 
-Add stable rule documents here and reference them from accepted specs.
+Read `docs/spec-modes/` first when the project needs to choose between `LiteSpec` and `EnterpriseSpec` behavior.

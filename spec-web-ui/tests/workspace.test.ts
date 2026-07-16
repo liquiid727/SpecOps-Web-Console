@@ -38,7 +38,7 @@ const catalog: CatalogAsset[] = [
     id: "agent-spec-editor",
     type: "agent_role",
     title: "Spec Editor",
-    summary: "Compiles drafts into normalized spec artifacts.",
+    summary: "Compiles drafts into feature-spec artifacts.",
     direction: "fullstack",
     stacks: ["go", "react"],
     tags: ["spec", "openapi"],
@@ -95,7 +95,7 @@ const project: ProjectManifest = {
   ],
   draftTemplateId: "template-feature-draft",
   draftPath: "spec-web-ui/workspace/projects/rewards-platform/draft.md",
-  exportTargets: ["rules/", "specs/_template/", "ai/agents/", "agent-teams/", "project-manifest.yaml"]
+  exportTargets: ["docs/", "current/", "rules/", "specs/_template/", "ai/agents/", "agent-teams/", "project-manifest.yaml"]
 };
 
 describe("resolveProjectWorkspace", () => {

@@ -12,13 +12,15 @@ const project: ProjectManifest = {
   selectedAssets: [
     { assetId: "rule-backend-governance", enabled: true },
     { assetId: "template-feature-draft", enabled: true },
+    { assetId: "template-project-modes", enabled: true },
+    { assetId: "template-current-workspace", enabled: true },
     { assetId: "agent-spec-editor", enabled: true },
     { assetId: "skill-tool-config-ui", enabled: true },
     { assetId: "team-governance-pack", enabled: true }
   ],
   draftTemplateId: "template-feature-draft",
   draftPath: "spec-web-ui/workspace/projects/reward-center/draft.md",
-  exportTargets: ["rules/", "specs/_template/", "ai/agents/", "agent-teams/", "project-manifest.yaml"]
+  exportTargets: ["docs/", "current/", "rules/", "specs/_template/", "ai/agents/", "agent-teams/", "project-manifest.yaml"]
 };
 
 const selectedAssets: CatalogAsset[] = [
@@ -57,8 +59,53 @@ const selectedAssets: CatalogAsset[] = [
       "spec-draft/_template/feature/product-ui.template.md":
         "spec-web-ui/catalog/spec-templates/template-feature-draft/product-ui.template.md",
       "specs/_template/feature/spec.example.md":
-        "spec-web-ui/catalog/spec-templates/template-normalized-spec/spec.example.md"
+        "spec-web-ui/catalog/spec-templates/template-feature-spec/spec.example.md"
     },
+    version: "1.0.0"
+  },
+  {
+    id: "template-project-modes",
+    type: "spec_template",
+    title: "Project Modes Guide",
+    summary: "Mode guidance for LiteSpec, GoalSpec, and EnterpriseSpec.",
+    direction: "fullstack",
+    stacks: ["go", "react"],
+    tags: ["docs", "mode"],
+    appliesTo: ["backend", "frontend"],
+    dependsOn: [],
+    conflictsWith: [],
+    sourcePath: "spec-web-ui/catalog/spec-templates/template-project-modes/README.md",
+    files: [
+      "docs/spec-modes/README.md",
+      "docs/spec-modes/LiteSpec/README.md",
+      "docs/spec-modes/GoalSpec/README.md",
+      "docs/spec-modes/EnterpriseSpec/README.md"
+    ],
+    contentFiles: {
+      "docs/spec-modes/README.md":
+        "spec-web-ui/catalog/spec-templates/template-project-modes/README.md",
+      "docs/spec-modes/LiteSpec/README.md":
+        "spec-web-ui/catalog/spec-templates/template-project-modes/LiteSpec.md",
+      "docs/spec-modes/GoalSpec/README.md":
+        "spec-web-ui/catalog/spec-templates/template-project-modes/GoalSpec.md",
+      "docs/spec-modes/EnterpriseSpec/README.md":
+        "spec-web-ui/catalog/spec-templates/template-project-modes/EnterpriseSpec.md"
+    },
+    version: "1.0.0"
+  },
+  {
+    id: "template-current-workspace",
+    type: "spec_template",
+    title: "Current Workspace",
+    summary: "Active delivery workspace seed files.",
+    direction: "fullstack",
+    stacks: ["go", "react"],
+    tags: ["current", "workspace"],
+    appliesTo: ["backend", "frontend"],
+    dependsOn: [],
+    conflictsWith: [],
+    sourcePath: "current/README.md",
+    files: ["current/README.md"],
     version: "1.0.0"
   },
   {
@@ -121,11 +168,16 @@ describe("buildExportBundle", () => {
       "rules/backend/go-backend-governance.md",
       "spec-draft/_template/feature/product-ui.template.md",
       "specs/_template/feature/spec.example.md",
+      "docs/spec-modes/README.md",
+      "docs/spec-modes/LiteSpec/README.md",
+      "docs/spec-modes/GoalSpec/README.md",
+      "docs/spec-modes/EnterpriseSpec/README.md",
+      "current/README.md",
       "agent-teams/governance-pack/README.md",
       ".skills/tool-config-ui/SKILL.md",
       "ai/agents/spec-editor.md"
     ]);
-    expect(bundle.summary).toContain("5 selected assets");
+    expect(bundle.summary).toContain("7 selected assets");
   });
 
   it("emits an installable SpecOS bundle payload alongside the review snapshot", () => {
@@ -140,6 +192,8 @@ describe("buildExportBundle", () => {
       { target: ".skills/", from: "files/.skills/" },
       { target: "agent-teams/", from: "files/agent-teams/" },
       { target: "ai/agents/", from: "files/ai/agents/" },
+      { target: "current/", from: "files/current/" },
+      { target: "docs/", from: "files/docs/" },
       { target: "rules/", from: "files/rules/" },
       { target: "spec-draft/_template/", from: "files/spec-draft/_template/" },
       { target: "specs/_template/", from: "files/specs/_template/" },
