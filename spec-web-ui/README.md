@@ -85,5 +85,8 @@
 - Framework Preset：`Next.js`
 - Install Command：`npm ci`
 - Build Command：`npm run build`
+- Runtime Mode：Vercel 通过 `SPECOS_RUNTIME_MODE=readonly` 部署只读 catalog 站点。
 
 不要把 Root Directory 设置为仓库根目录，否则 Vercel 会读取根目录的 workspace 配置，而不是部署这个 Next.js 应用。
+
+线上只读部署保留 catalog、template、skill、Agent 和资产详情浏览；projects、drafts、exports 等需要写入 workspace 文件的页面会重定向到 `spec-templates`。本地运行不设置 `SPECOS_RUNTIME_MODE` 时，仍保留 workspace 开发模式。

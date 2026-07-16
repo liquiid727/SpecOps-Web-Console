@@ -8,7 +8,15 @@ import { SummerSurfDecor } from "@/components/layout/summer-surf-decor";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import type { Locale } from "@/lib/locale";
 
-export function AppShell({ children, locale }: { children: ReactNode; locale: Locale }) {
+export function AppShell({
+  children,
+  locale,
+  readOnly = false
+}: {
+  children: ReactNode;
+  locale: Locale;
+  readOnly?: boolean;
+}) {
   return (
     <div className="min-h-screen bg-canvas">
       <header className="sticky top-0 z-20 hidden border-b border-line bg-canvas/98 md:block">
@@ -22,7 +30,7 @@ export function AppShell({ children, locale }: { children: ReactNode; locale: Lo
               <span>specos-ai/spec-web-ui</span>
             </Link>
             <div className="min-w-0 flex-1">
-              <SiteNav locale={locale} />
+              <SiteNav locale={locale} readOnly={readOnly} />
             </div>
             <div className="flex items-center gap-2">
               <LanguageToggle compact locale={locale} />
