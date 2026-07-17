@@ -192,6 +192,7 @@ export type RequestRouteAgentRole =
   | "testing-agent"
   | "spec-editor"
   | "ui-design-agent"
+  | "cli-gui-agent"
   | "ddd-domain-agent"
   | "openapi-agent"
   | "db-migration-agent"
@@ -919,6 +920,7 @@ const specialistRoleKeywords: Partial<Record<RequestRouteAgentRole, string[]>> =
   "openapi-agent": ["api", "contract", "schema", "swagger", "openapi", "接口"],
   "db-migration-agent": ["db", "database", "sql", "migration", "schema", "table", "迁移", "表"],
   "ui-design-agent": ["ui", "frontend", "react", "next", "console", "page", "页面", "前端", "交互", "prototype", "原型"],
+  "cli-gui-agent": ["cli gui", "cli-gui", "terminal", "session", "workspace", "终端", "会话", "工作区"],
   "test-editor": ["test", "qa", "coverage", "scenario", "contract", "测试", "验收"],
   "performance-test-agent": ["performance", "latency", "throughput", "slo", "benchmark", "性能", "延迟"],
   "concurrency-test-agent": ["concurrency", "race", "lock", "idempot", "duplicate", "并发", "一致性", "重试"],
@@ -1023,6 +1025,7 @@ const primaryRoleDispatchPriority: Record<RequestRouteAgentRole, RequestRouteAge
   ],
   "spec-editor": allRouteAgentRoles,
   "ui-design-agent": allRouteAgentRoles,
+  "cli-gui-agent": allRouteAgentRoles,
   "ddd-domain-agent": allRouteAgentRoles,
   "openapi-agent": allRouteAgentRoles,
   "db-migration-agent": allRouteAgentRoles,
