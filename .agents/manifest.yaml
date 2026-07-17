@@ -78,6 +78,7 @@ roles:
       - openapi-agent
       - db-migration-agent
       - ui-design-agent
+      - cli-gui-agent
       - test-editor
       - performance-test-agent
       - concurrency-test-agent
@@ -109,6 +110,7 @@ roles:
     skills: []
     delegates_to:
       - ui-design-agent
+      - cli-gui-agent
       - openapi-agent
       - db-migration-agent
       - unit-test-agent
@@ -267,6 +269,34 @@ roles:
       - UI design plan
       - state coverage notes
       - component and responsive behavior notes
+
+  cli-gui-agent:
+    role_prompt: roles/cli-gui-agent.md
+    canonical: ai/agents/cli-gui-agent.md
+    skill_mode: scoped_only
+    skills: []
+    context_includes:
+      - .rules/project.md
+      - docs/spec-modes/
+      - rules/frontend/react-workbench-delivery.md
+      - rules/ui/design-governance.md
+      - doc/todo/gui/AGENTS.md
+      - doc/todo/gui/cli-gui-agent.md
+      - doc/todo/gui/cli-gui.md
+      - doc/todo/gui/todo.md
+      - cli-gui/README.md
+      - cli-gui/client/
+      - cli-gui/shared/types.ts
+    owns:
+      - cli-gui/
+      - doc/todo/gui/
+      - CLI GUI frontend copy and i18n requirements
+      - CLI GUI layout, terminal workspace, and session/profile/workspace UX
+    outputs:
+      - CLI GUI implementation plan
+      - i18n coverage notes
+      - browser verification checklist
+      - assumptions and unresolved questions
 
   ddd-domain-agent:
     role_prompt: roles/ddd-domain-agent.md
