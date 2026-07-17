@@ -5,6 +5,6 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./client/test/setup.ts"],
-    include: ["server/**/*.test.ts", "client/**/*.test.tsx"]
+    include: ["server/**/*.test.ts", "shared/**/*.test.ts", "client/**/*.test.ts", "client/**/*.test.tsx"]
   }
 });

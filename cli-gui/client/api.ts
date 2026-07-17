@@ -1,13 +1,43 @@
+import type { ApiErrorCode, ApiErrorResponse } from "../shared/types";
 import type { AppState, CliProfile, Session, StateResponse, Workspace } from "../shared/types";
+
+export class ApiClientError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code: ApiErrorCode,
+    readonly requestId: string,
+    readonly details?: Record<string, unknown>
+  ) {
+    super(message);
+    this.name = "ApiClientError";
+  }
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
     ...init,
     headers: { "content-type": "application/json", ...(init?.headers ?? {}) }
   });
-  const payload = (await response.json().catch(() => undefined)) as T & { error?: string };
-  if (!response.ok) throw new Error(payload?.error ?? `request failed: ${response.status}`);
-  return payload;
+  if (response.status === 204) return undefined as T;
+  const payload = await response.json().catch(() => undefined) as T | ApiErrorResponse | undefined;
+  if (!response.ok) {
+    const requestId = response.headers.get("x-request-id") ?? "unknown";
+    if (isApiErrorResponse(payload)) {
+      throw new ApiClientError(payload.error.message, response.status, payload.error.code, payload.error.requestId, payload.error.details);
+    }
+    throw new ApiClientError(`Request failed with status ${response.status}.`, response.status, "INTERNAL_ERROR", requestId);
+  }
+  if (payload === undefined || payload === null || typeof payload !== "object" || Array.isArray(payload)) {
+    throw new ApiClientError("Server returned an invalid success response.", response.status, "INTERNAL_ERROR", response.headers.get("x-request-id") ?? "unknown");
+  }
+  return payload as T;
+}
+
+function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
+  if (!value || typeof value !== "object" || !("error" in value)) return false;
+  const error = (value as { error?: unknown }).error;
+  return Boolean(error && typeof error === "object" && typeof (error as { code?: unknown }).code === "string" && typeof (error as { message?: unknown }).message === "string" && typeof (error as { requestId?: unknown }).requestId === "string");
 }
 
 export const api = {

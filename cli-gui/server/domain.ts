@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { validationError } from "./api-errors.js";
 
 export function createId(prefix: string) {
   return `${prefix}-${randomUUID()}`;
@@ -12,7 +13,7 @@ export function now() {
 
 export function requireText(value: unknown, field: string) {
   if (typeof value !== "string" || !value.trim()) {
-    throw new Error(`${field} is required`);
+    throw validationError(`${field} is required`, { field });
   }
   return value.trim();
 }
@@ -20,7 +21,7 @@ export function requireText(value: unknown, field: string) {
 export function requireArgs(value: unknown) {
   if (value === undefined) return [] as string[];
   if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
-    throw new Error("args must be an array of strings");
+    throw validationError("args must be an array of strings", { field: "args" });
   }
   return value;
 }

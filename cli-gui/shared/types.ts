@@ -1,20 +1,42 @@
-export type SessionStatus = "starting" | "running" | "stopped" | "error";
+import type {
+  AppStateV2,
+  CliProfile as CliProfileV2,
+  Session as SessionV2,
+  SessionRuntimeStatus,
+  Workspace as WorkspaceV2
+} from "./state.js";
 
-export interface Workspace {
-  id: string;
-  name: string;
-  path: string;
-  createdAt: string;
-}
+export { CURRENT_SCHEMA_VERSION } from "./state.js";
+export type {
+  AppStateEnvelopeV2,
+  AppStateV2,
+  CliAdapterId,
+  CliProfile as CliProfileV2,
+  Session as SessionV2,
+  SessionLaunchConfig,
+  SessionOrganizationStatus,
+  SessionRuntimeError,
+  SessionRuntimeStatus,
+  Workspace as WorkspaceV2
+} from "./state.js";
+export type * from "./api.js";
+export type * from "./capabilities.js";
+export type * from "./transcript.js";
+export type * from "./websocket.js";
 
-export interface CliProfile {
-  id: string;
-  name: string;
-  command: string;
-  args: string[];
-  createdAt: string;
-}
+/** @deprecated Use SessionRuntimeStatus. */
+export type SessionStatus = SessionRuntimeStatus;
 
+/** @deprecated Use WorkspaceV2 for schema-v2 state. */
+export type Workspace = Omit<WorkspaceV2, "lastOpenedAt"> & { lastOpenedAt?: string };
+
+/** @deprecated Use CliProfileV2 for schema-v2 state. */
+export type CliProfile = Omit<CliProfileV2, "adapterId" | "adapterVersionRange"> & {
+  adapterId?: CliProfileV2["adapterId"];
+  adapterVersionRange?: string;
+};
+
+/** @deprecated Use SessionV2.runtimeStatus for schema-v2 state. */
 export interface Session {
   id: string;
   workspaceId: string;
@@ -27,6 +49,7 @@ export interface Session {
   error?: string;
 }
 
+/** @deprecated Use AppStateV2 for schema-v2 persistence. */
 export interface AppState {
   workspaces: Workspace[];
   profiles: CliProfile[];
@@ -35,4 +58,16 @@ export interface AppState {
 
 export interface StateResponse extends AppState {
   readonly: boolean;
+}
+
+export type SessionWithCompatibilityStatus = SessionV2 & {
+  readonly status: SessionRuntimeStatus;
+};
+
+export function withCompatibilityStatus(session: SessionV2): SessionWithCompatibilityStatus {
+  return { ...session, status: session.runtimeStatus };
+}
+
+export function withCompatibilityState(state: AppStateV2): Omit<AppStateV2, "sessions"> & { sessions: SessionWithCompatibilityStatus[] } {
+  return { ...state, sessions: state.sessions.map(withCompatibilityStatus) };
 }
