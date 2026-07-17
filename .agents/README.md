@@ -31,6 +31,7 @@ Specialist agents remain registered roles, but they should normally be delegated
 - API contract generation: `openapi-agent`
 - Database and migration planning: `db-migration-agent`
 - Product UI design: `ui-design-agent`
+- Standalone Product AI OS CLI GUI: `cli-gui-agent`
 - Test structure and coverage: `test-editor`
 - Unit coverage analysis: `unit-test-agent`
 - API scenario tests and Bruno assets: `test-editor`

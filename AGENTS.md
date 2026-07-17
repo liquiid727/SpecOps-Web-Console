@@ -53,6 +53,7 @@ Read context in this order before changing behavior:
 - `tests/`: spec-driven verification assets and scenario test templates.
 - `docs/spec-modes/`: documented project operating modes: `LiteSpec`, `GoalSpec`, and `EnterpriseSpec`.
 - `spec-web-ui/`: Next.js UI for SpecOS.
+- `cli-gui/`: standalone Product AI OS CLI workspace launcher; route CLI GUI UI work through `cli-gui-agent` and preserve its i18n requirements.
 
 ## Coding Standards
 
