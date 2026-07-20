@@ -19,6 +19,7 @@ interface WorkspaceProfileManagerProps {
 
 export function WorkspaceProfileManager(props: WorkspaceProfileManagerProps) {
   const { t } = useI18n();
+  const [category, setCategory] = useState<"environment" | "appearance" | "runtime" | "about">("environment");
   const [workspaceForm, setWorkspaceForm] = useState({ name: "", path: "" });
   const [profileForm, setProfileForm] = useState({ name: "", command: "", args: "" });
   const [openingFolder, setOpeningFolder] = useState(false);
@@ -35,7 +36,20 @@ export function WorkspaceProfileManager(props: WorkspaceProfileManagerProps) {
     setProfileForm({ name: "", command: "", args: "" });
   }
 
+  const categories = [
+    ["environment", t("settingsEnvironment")],
+    ["appearance", t("settingsAppearance")],
+    ["runtime", t("settingsRuntime")],
+    ["about", t("settingsAbout")]
+  ] as const;
+
   return <Overlay kind="drawer" title={t("workspaceSettings")} description={t("workspaceSettingsDescription")} onClose={props.onClose}>
+    <div className="settings-layout">
+      <nav className="settings-nav" aria-label={t("settingsCategory")} role="tablist">
+        {categories.map(([id, label]) => <button key={id} role="tab" aria-selected={category === id} className={category === id ? "active" : ""} onClick={() => setCategory(id)}>{label}</button>)}
+      </nav>
+      <div className="settings-content">
+      {category === "environment" ? <>
     <div className="settings-section">
       <div className="settings-heading"><div><span className="eyebrow">{t("projects").toUpperCase()}</span><h3>{t("workspaces")}</h3></div><span className="count-badge">{props.workspaces.length}</span></div>
       <button className="secondary-button open-folder-button" disabled={props.readonly || openingFolder} onClick={async () => { setOpeningFolder(true); try { await props.onOpenFolder(); } finally { setOpeningFolder(false); } }}><Icon name="folder" />{openingFolder ? t("working") : t("openFolder")}</button>
@@ -60,6 +74,9 @@ export function WorkspaceProfileManager(props: WorkspaceProfileManagerProps) {
         <div className="field-grid"><label><span>{t("command")}</span><input required placeholder="claude" value={profileForm.command} onChange={(event) => setProfileForm({ ...profileForm, command: event.target.value })} /></label><label><span>{t("arguments")}</span><input placeholder="--model opus" value={profileForm.args} onChange={(event) => setProfileForm({ ...profileForm, args: event.target.value })} /></label></div>
         <button className="primary-button" disabled={props.readonly}><Icon name="add" />{t("saveProfile")}</button>
       </form>
+    </div>
+      </> : <div className="settings-placeholder"><Icon name="info" /><strong>{categories.find(([id]) => id === category)?.[1]}</strong><p>{t("settingsPlaceholder")}</p></div>}
+      </div>
     </div>
   </Overlay>;
 }

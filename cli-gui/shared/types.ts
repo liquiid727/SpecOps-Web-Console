@@ -42,11 +42,23 @@ export interface Session {
   workspaceId: string;
   profileId: string;
   name: string;
-  status: SessionStatus;
+  status?: SessionStatus;
+  runtimeStatus?: SessionRuntimeStatus;
+  organizationStatus?: import("./state.js").SessionOrganizationStatus;
+  pinned?: boolean;
+  manualOrder?: number;
+  launchConfig?: import("./state.js").SessionLaunchConfig;
+  parentSessionId?: string;
+  forkEventId?: string;
+  forkSequence?: number;
+  forkedAt?: string;
   createdAt: string;
   lastActiveAt: string;
   exitCode?: number;
-  error?: string;
+  completedAt?: string;
+  archivedAt?: string;
+  revision?: number;
+  error?: string | import("./state.js").SessionRuntimeError;
 }
 
 /** @deprecated Use AppStateV2 for schema-v2 persistence. */
@@ -59,6 +71,8 @@ export interface AppState {
 export interface StateResponse extends Omit<AppStateV2, "sessions"> {
   sessions: SessionWithCompatibilityStatus[];
   readonly: boolean;
+  csrfCapability?: string;
+  pickerIntentToken?: string;
 }
 
 export type SessionWithCompatibilityStatus = SessionV2 & {

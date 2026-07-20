@@ -208,8 +208,36 @@ describe("application composition", () => {
     expect(process.write).toHaveBeenCalledTimes(1);
 
     const replay = await get(address.port, "/api/sessions/session-1/transcript");
-    expect(replay.json.events).toHaveLength(1);
-    expect(replay.json.events[0]).toMatchObject({ sequence: 1, kind: "user_input", raw: "hello" });
+    const inputEvents = replay.json.events.filter((event: { kind: string }) => event.kind === "user_input");
+    expect(inputEvents).toHaveLength(1);
+    expect(inputEvents[0]).toMatchObject({ kind: "user_input", raw: "hello" });
+    await server.close();
+  });
+
+  it("separates stopped creation from confirmed start and serializes duplicate starts", async () => {
+    const { dependencies, state } = createDependencies();
+    state.workspaces.push({ id: "workspace-1", name: "Workspace", path: "/tmp/workspace", createdAt: "2026-01-01T00:00:00Z" });
+    state.profiles.push({ id: "profile-1", name: "CLI", command: "cli", args: [], adapterId: "generic", createdAt: "2026-01-01T00:00:00Z" });
+    const application = await createApplication(dependencies);
+    const server = createServer(application, { host: "127.0.0.1", port: 0, logger: dependencies.logger, requestIdFactory: () => "request-test" });
+    const address = await server.listen();
+
+    const stopped = await post(address.port, "/api/sessions", { name: "Stopped", workspaceId: "workspace-1", profileId: "profile-1", start: false, confirmed: false });
+    expect(stopped.status).toBe(201);
+    expect(stopped.json.session.runtimeStatus).toBe("stopped");
+    expect(dependencies.ptyRuntime.spawn).not.toHaveBeenCalled();
+
+    const rejected = await post(address.port, "/api/sessions", { name: "Unconfirmed", workspaceId: "workspace-1", profileId: "profile-1", start: true, confirmed: false });
+    expect(rejected.status).toBe(400);
+    expect(state.sessions).toHaveLength(1);
+
+    const sessionId = stopped.json.session.id as string;
+    const starts = await Promise.all([
+      post(address.port, `/api/sessions/${sessionId}/start`, { confirmed: true }),
+      post(address.port, `/api/sessions/${sessionId}/start`, { confirmed: true })
+    ]);
+    expect(starts.every((result) => result.status === 200)).toBe(true);
+    expect(dependencies.ptyRuntime.spawn).toHaveBeenCalledOnce();
     await server.close();
   });
 

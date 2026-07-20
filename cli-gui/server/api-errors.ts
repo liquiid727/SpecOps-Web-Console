@@ -1,5 +1,7 @@
 import type http from "node:http";
 import type { ApiErrorCode, ApiErrorResponse } from "../shared/api.js";
+import { TranscriptRepositoryError } from "./transcript-store.js";
+import { GitInspectorError } from "./ports.js";
 
 export class ApiHttpError extends Error {
   constructor(
@@ -34,6 +36,21 @@ export function toApiError(error: unknown, requestId: string): { status: number;
     return {
       status: error.status,
       response: { error: { code: error.code, message: error.publicMessage, details: error.details, requestId } },
+      cause: error.cause ?? error
+    };
+  }
+  if (error instanceof TranscriptRepositoryError) {
+    const code = error.code === "TRANSCRIPT_CORRUPT" ? "TRANSCRIPT_CORRUPT" : error.code === "READONLY_MODE" ? "READONLY_MODE" : "TRANSCRIPT_WRITE_FAILED";
+    return {
+      status: error.code === "READONLY_MODE" ? 403 : 500,
+      response: { error: { code, message: error.message, requestId } },
+      cause: error.cause ?? error
+    };
+  }
+  if (error instanceof GitInspectorError) {
+    return {
+      status: error.code === "NOT_A_GIT_REPOSITORY" ? 409 : error.code === "GIT_TIMEOUT" ? 504 : 503,
+      response: { error: { code: error.code, message: error.message, requestId } },
       cause: error.cause ?? error
     };
   }

@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
+import { openTerminalSubscription } from "./api";
 
 interface TerminalViewProps {
   sessionId: string;
@@ -46,33 +47,46 @@ export function TerminalView({ sessionId, onStatus }: TerminalViewProps) {
     const fit = new FitAddon();
     terminal.loadAddon(fit);
     terminal.open(elementRef.current);
+
+    let disposed = false;
+    let transport: ReturnType<typeof openTerminalSubscription> | undefined;
+    let retryTimer: number | undefined;
+    let retryAttempt = 0;
+
+    function resize() {
+      fit.fit();
+      transport?.resize(terminal.cols, terminal.rows);
+    }
+
+    function connect() {
+      if (disposed) return;
+      transport = openTerminalSubscription(sessionId, {
+        onOpen: () => { retryAttempt = 0; resize(); },
+        onOutput: (data) => terminal.write(data),
+        onStatus: (status) => onStatus(status),
+        onError: (message) => terminal.writeln(`\r\n[error] ${message}`),
+        onClose: () => {
+          if (disposed) return;
+          const delay = Math.min(5_000, 250 * 2 ** retryAttempt++);
+          retryTimer = window.setTimeout(connect, delay);
+        }
+      });
+    }
+
     fit.fit();
-    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const socket = new WebSocket(`${protocol}://${window.location.host}/ws?sessionId=${encodeURIComponent(sessionId)}`);
-    socket.addEventListener("open", () => {
-      fit.fit();
-      socket.send(JSON.stringify({ type: "resize", cols: terminal.cols, rows: terminal.rows }));
-    });
-    socket.addEventListener("message", (event) => {
-      const message = JSON.parse(event.data) as { type: string; data?: string; status?: string; message?: string };
-      if (message.type === "output" && message.data) terminal.write(message.data);
-      if (message.type === "status" && message.status) onStatus(message.status);
-      if (message.type === "error" && message.message) terminal.writeln(`\r\n[error] ${message.message}`);
-    });
-    terminal.onData((data) => {
-      if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "input", data }));
-    });
-    const resizeObserver = new ResizeObserver(() => {
-      fit.fit();
-      if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "resize", cols: terminal.cols, rows: terminal.rows }));
-    });
+    connect();
+    const dataDisposable = terminal.onData((data) => transport?.sendInput(data));
+    const resizeObserver = new ResizeObserver(resize);
     resizeObserver.observe(elementRef.current);
     return () => {
+      disposed = true;
+      if (retryTimer !== undefined) window.clearTimeout(retryTimer);
       resizeObserver.disconnect();
-      socket.close();
+      dataDisposable.dispose();
+      transport?.close();
       terminal.dispose();
     };
-  }, [sessionId, onStatus]);
+  }, [onStatus, sessionId]);
 
   return <div className="terminal-host" ref={elementRef} aria-label="Interactive terminal" />;
 }

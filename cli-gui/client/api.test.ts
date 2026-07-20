@@ -11,7 +11,7 @@ afterEach(() => {
 describe("API compatibility client", () => {
   it("handles 204 without parsing JSON", async () => {
     const json = vi.fn();
-    globalThis.fetch = vi.fn(async () => ({ ok: true, status: 204, headers: new Headers(), json })) as typeof fetch;
+    globalThis.fetch = vi.fn(async () => ({ ok: true, status: 204, headers: new Headers(), json })) as unknown as typeof fetch;
 
     await expect(api.deleteSession("session-1")).resolves.toBeUndefined();
     expect(json).not.toHaveBeenCalled();
@@ -23,7 +23,7 @@ describe("API compatibility client", () => {
       status: 409,
       headers: new Headers({ "x-request-id": "request-header" }),
       json: async () => ({ error: { code: "WORKSPACE_IN_USE", message: "Workspace has sessions.", details: { count: 1 }, requestId: "request-body" } })
-    })) as typeof fetch;
+    })) as unknown as typeof fetch;
 
     const error = await api.deleteWorkspace("workspace-1").catch((cause) => cause);
     expect(error).toBeInstanceOf(ApiClientError);
@@ -36,7 +36,7 @@ describe("API compatibility client", () => {
       status: 500,
       headers: new Headers({ "x-request-id": "request-header" }),
       json: async () => { throw new Error("<html>sensitive path</html>"); }
-    })) as typeof fetch;
+    })) as unknown as typeof fetch;
 
     const error = await api.state().catch((cause) => cause);
     expect(error).toMatchObject({ code: "INTERNAL_ERROR", requestId: "request-header", message: "Request failed with status 500." });

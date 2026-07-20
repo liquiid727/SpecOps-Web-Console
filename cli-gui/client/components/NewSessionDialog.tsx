@@ -3,6 +3,7 @@ import type { CliProfile, Workspace } from "../../shared/types";
 import { useI18n } from "../i18n";
 import { Icon } from "./ui/Icon";
 import { Overlay } from "./ui/Overlay";
+import { Select } from "./ui/Select";
 
 interface NewSessionDialogProps {
   profiles: CliProfile[];
@@ -30,8 +31,8 @@ export function NewSessionDialog({ profiles, readonly, workspaces, onClose, onCr
     {!ready ? <div className="setup-required"><div className="empty-icon"><Icon name="settings" /></div><strong>{t("setupFirst")}</strong><p>{t("setupFirstDescription")}</p><button className="primary-button" onClick={onOpenSettings}><Icon name="settings" />{t("openSettings")}</button></div> : <form className="dialog-form" onSubmit={submit}>
       <label><span>{t("sessionName")}</span><input autoFocus required placeholder="Backend refactor" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>
       <div className="field-grid">
-        <label><span>{t("workspace")}</span><select required value={form.workspaceId} onChange={(event) => setForm({ ...form, workspaceId: event.target.value })}>{workspaces.map((workspace) => <option key={workspace.id} value={workspace.id}>{workspace.name}</option>)}</select></label>
-        <label><span>{t("cliProfile")}</span><select required value={form.profileId} onChange={(event) => setForm({ ...form, profileId: event.target.value })}>{profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}</select></label>
+        <label><span>{t("workspace")}</span><Select ariaLabel={t("workspace")} value={form.workspaceId} options={workspaces.map((workspace) => ({ value: workspace.id, label: workspace.name }))} onChange={(workspaceId) => setForm({ ...form, workspaceId })} /></label>
+        <label><span>{t("cliProfile")}</span><Select ariaLabel={t("cliProfile")} value={form.profileId} options={profiles.map((profile) => ({ value: profile.id, label: profile.name }))} onChange={(profileId) => setForm({ ...form, profileId })} /></label>
       </div>
       <LaunchPreview workspace={workspaces.find((item) => item.id === form.workspaceId)} profile={profiles.find((item) => item.id === form.profileId)} />
       <footer className="dialog-actions"><button type="button" className="secondary-button" onClick={onClose}>{t("cancel")}</button><button className="primary-button" disabled={readonly || submitting}>{submitting ? t("starting") : t("confirmAndStart")}</button></footer>

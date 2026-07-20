@@ -116,4 +116,4 @@ export interface PickWorkspaceRequest {
   intentToken: string;
 }
 
-export type PickWorkspaceResponse = { cancelled: true } | { cancelled: false; workspace: Workspace };
+export type PickWorkspaceResponse = { cancelled: true; pickerIntentToken?: string } | { cancelled: false; workspace: Workspace; duplicate?: boolean; pickerIntentToken?: string };

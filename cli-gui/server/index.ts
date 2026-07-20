@@ -8,7 +8,7 @@ export async function main() {
   const host = "127.0.0.1";
   const port = Number(process.env.PORT ?? 3001);
   const dependencies = createProductionDependencies({
-    dataDirectory: path.resolve(process.cwd(), "data"),
+    dataDirectory: path.resolve(process.env.SPECOS_DATA_DIRECTORY ?? path.resolve(process.cwd(), "data")),
     readonly: process.env.SPECOS_RUNTIME_MODE === "readonly",
     processEnvironment: process.env
   });
@@ -17,7 +17,15 @@ export async function main() {
     host,
     port,
     logger: dependencies.logger,
-    requestIdFactory: () => dependencies.idGenerator.create("request")
+    requestIdFactory: () => dependencies.idGenerator.create("request"),
+    allowedHosts: [host, "localhost"],
+    csrfCapability: dependencies.policy.csrfCapability,
+    allowedOrigins: [
+      `http://${host}:${port}`,
+      `http://localhost:${port}`,
+      "http://127.0.0.1:3000",
+      "http://localhost:3000"
+    ]
   });
   const address = await server.listen();
   dependencies.logger.info(`Product AI OS listening on http://${address.host}:${address.port}`);
