@@ -39,10 +39,12 @@ const menuActions = ["rename", "pin", "complete", "archive", "fork", "delete"] a
 export function SessionNavigator({ activeSessionId, groups, grouping = "project", filter = "active", readonly = false, openFolderBusy = false, onGroupingChange, onFilterChange, onOpenFolder, onArchive, onComplete, onFork, onPin, onRename, onDelete, onReorder, onNewSession, onSelect }: SessionNavigatorProps) {
   const { statusLabel, t } = useI18n();
   const [menuSession, setMenuSession] = useState<Session>();
+  const [menuClosing, setMenuClosing] = useState(false);
   const [draggedSessionId, setDraggedSessionId] = useState<string>();
   const [announcement, setAnnouncement] = useState("");
   const menuRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuCloseTimer = useRef<number | undefined>(undefined);
   const sessionCount = groups.reduce((count, group) => count + group.sessions.length, 0);
 
   useEffect(() => {
@@ -53,13 +55,24 @@ export function SessionNavigator({ activeSessionId, groups, grouping = "project"
     return () => document.removeEventListener("mousedown", onPointerDown);
   }, [menuSession]);
 
+  useEffect(() => () => {
+    if (menuCloseTimer.current !== undefined) window.clearTimeout(menuCloseTimer.current);
+  }, []);
+
   function closeMenu() {
-    setMenuSession(undefined);
-    window.setTimeout(() => triggerRef.current?.focus(), 0);
+    if (!menuSession || menuClosing) return;
+    setMenuClosing(true);
+    menuCloseTimer.current = window.setTimeout(() => {
+      setMenuSession(undefined);
+      setMenuClosing(false);
+      triggerRef.current?.focus();
+    }, 160);
   }
 
   function openMenu(session: Session, trigger: HTMLButtonElement) {
+    if (menuCloseTimer.current !== undefined) window.clearTimeout(menuCloseTimer.current);
     triggerRef.current = trigger;
+    setMenuClosing(false);
     setMenuSession(session);
   }
 
@@ -132,7 +145,7 @@ export function SessionNavigator({ activeSessionId, groups, grouping = "project"
       </section>)}
     </div>
     <div className="navigator-live-region" aria-live="polite">{announcement}</div>
-    {menuSession && <div ref={menuRef} className="session-menu" role="menu" aria-label={t("sessionActions")} onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
+    {menuSession && <div ref={menuRef} className={`session-menu ${menuClosing ? "closing" : ""}`} role="menu" aria-label={t("sessionActions")} onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
       const items = [...(menuRef.current?.querySelectorAll<HTMLElement>("[role='menuitem']") ?? [])];
       const index = items.indexOf(document.activeElement as HTMLElement);
       if (event.key === "ArrowDown" || event.key === "ArrowUp") { event.preventDefault(); items[(index + (event.key === "ArrowDown" ? 1 : -1) + items.length) % items.length]?.focus(); }

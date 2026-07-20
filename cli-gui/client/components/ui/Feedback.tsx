@@ -26,6 +26,7 @@ export interface FeedbackNotice extends Required<Pick<FeedbackOptions, "title" |
   description?: string;
   action?: FeedbackAction;
   key?: string;
+  closing?: boolean;
 }
 
 interface FeedbackContextValue {
@@ -62,7 +63,8 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
   const sequence = useRef(0);
 
   const dismiss = useCallback((id: string) => {
-    setNotices((current) => current.filter((notice) => notice.id !== id));
+    setNotices((current) => current.map((notice) => notice.id === id ? { ...notice, closing: true } : notice));
+    window.setTimeout(() => setNotices((current) => current.filter((notice) => notice.id !== id)), 160);
   }, []);
 
   const show = useCallback((kind: FeedbackKind, presentation: FeedbackPresentation, input: FeedbackOptions | string) => {
@@ -167,7 +169,7 @@ function FeedbackNoticeView({ notice, onClose }: { notice: FeedbackNotice; onClo
   }
 
   const role = notice.kind === "error" || notice.kind === "warning" ? "alert" : "status";
-  return <article className={`feedback-notice ${notice.presentation} ${notice.kind}`} role={role} aria-live={role === "alert" ? "assertive" : "polite"}>
+  return <article className={`feedback-notice ${notice.presentation} ${notice.kind} ${notice.closing ? "closing" : ""}`} role={role} aria-live={role === "alert" ? "assertive" : "polite"}>
     <span className="feedback-icon"><Icon name={defaultIcon[notice.kind]} /></span>
     <div className="feedback-copy"><strong>{notice.title}</strong>{notice.description && <p>{notice.description}</p>}</div>
     {notice.action && <button className="feedback-action" onClick={() => void runAction()} disabled={actionBusy}>{actionBusy ? t("working") : notice.action.label}</button>}

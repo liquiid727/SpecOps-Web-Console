@@ -26,10 +26,12 @@ describe("FeedbackProvider", () => {
   });
 
   it("renders a success toast and dismisses it", () => {
+    vi.useFakeTimers();
     act(() => root.render(<I18nProvider><FeedbackProvider><Trigger /></FeedbackProvider></I18nProvider>));
     act(() => container.querySelector("button")?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     expect(document.body.querySelector(".feedback-notice.success")?.textContent).toContain("Saved");
     act(() => (document.body.querySelector(".feedback-close") as HTMLButtonElement).click());
+    act(() => vi.advanceTimersByTime(200));
     expect(document.body.querySelector(".feedback-notice")).toBeNull();
   });
 

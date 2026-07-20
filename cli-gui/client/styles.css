@@ -103,6 +103,7 @@ svg { width: 18px; height: 18px; flex: 0 0 auto; }
 .session-inline-actions button:hover { border-color: var(--border); color: var(--text-secondary); background: var(--surface-hover); }
 .session-inline-actions button:disabled, .session-menu button:disabled { opacity: .4; }
 .session-menu { position: sticky; bottom: 10px; z-index: var(--z-menu); display: grid; gap: 3px; margin: 8px 10px; padding: 6px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--overlay); box-shadow: 0 12px 36px rgba(0,0,0,.35); animation: menu-in .16s ease-out; }
+.session-menu.closing { animation: menu-out .16s ease-in forwards; pointer-events: none; }
 .session-menu button { min-height: 30px; border: 0; border-radius: 6px; background: transparent; color: var(--text-secondary); text-align: left; padding: 0 9px; font-size: 11px; }
 .session-menu button:hover, .session-menu button:focus-visible { background: var(--surface-hover); color: var(--text); }
 .session-copy { min-width: 0; }
@@ -208,6 +209,7 @@ h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 
 
 .feedback-viewport { position: fixed; z-index: var(--z-feedback); top: max(16px, env(safe-area-inset-top)); right: max(16px, env(safe-area-inset-right)); width: min(420px, calc(100vw - 32px)); display: grid; gap: 8px; pointer-events: none; }
 .feedback-notice { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 10px; align-items: start; padding: 11px 12px; border: 1px solid var(--border-strong); border-radius: 9px; background: var(--overlay); box-shadow: 0 16px 48px rgba(0,0,0,.42); pointer-events: auto; animation: feedback-in .18s ease-out; }
+.feedback-notice.closing { animation: feedback-out .16s ease-in forwards; pointer-events: none; }
 .feedback-notice.success { border-color: #315343; }
 .feedback-notice.info { border-color: #3b4d5d; }
 .feedback-notice.warning { border-color: #604f31; }
@@ -327,7 +329,9 @@ input::placeholder { color: var(--faint); }
 @keyframes panel-in { from { opacity: 0; transform: translateY(8px) scale(.99); } }
 @keyframes panel-out { to { opacity: 0; transform: translateY(8px) scale(.99); } }
 @keyframes menu-in { from { opacity: 0; transform: translateY(-4px) scale(.98); } }
+@keyframes menu-out { to { opacity: 0; transform: translateY(-4px) scale(.98); } }
 @keyframes feedback-in { from { opacity: 0; transform: translateY(-8px); } }
+@keyframes feedback-out { to { opacity: 0; transform: translateY(-6px); } }
 @keyframes drawer-in-left { from { opacity: 0; transform: translateX(-12px); } }
 @keyframes drawer-in-right { from { opacity: 0; transform: translateX(12px); } }
 @keyframes pulse { to { opacity: .4; transform: scale(.9); } }
