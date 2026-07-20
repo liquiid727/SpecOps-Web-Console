@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import type { CliProfile, CliProfileCapabilities, Session, SessionLaunchConfig, Workspace } from "../../shared/types";
 import { api } from "../api";
+import { toFeedbackWarning } from "../feedback-errors";
 import { useI18n } from "../i18n";
 import { PromptComposer } from "./PromptComposer";
 import { TranscriptPanel } from "./TranscriptPanel";
 import { TerminalView } from "../terminal";
 import { Icon } from "./ui/Icon";
 import { StatusBadge } from "./StatusBadge";
+import { useFeedback } from "./ui/Feedback";
 import type { CenterView } from "../app/preferences";
 
 interface SessionWorkspaceProps {
@@ -27,6 +29,7 @@ interface SessionWorkspaceProps {
 
 export function SessionWorkspace({ profile, readonly, session, workspace, onNewSession, onOpenInspector, onResume, onStatus, onStop, centerView: controlledCenterView, onCenterViewChange, onLaunchConfigChange, inspectorOpen = false }: SessionWorkspaceProps) {
   const { statusLabel, t } = useI18n();
+  const feedback = useFeedback();
   const [localCenterView, setLocalCenterView] = useState<CenterView>("transcript");
   const [capabilities, setCapabilities] = useState<CliProfileCapabilities>();
   const centerView = controlledCenterView ?? localCenterView;
@@ -41,9 +44,9 @@ export function SessionWorkspace({ profile, readonly, session, workspace, onNewS
     if (!profile) { setCapabilities(undefined); return; }
     const controller = new AbortController();
     setCapabilities(undefined);
-    void api.profileCapabilities(profile.id, controller.signal).then(setCapabilities).catch(() => undefined);
+    void api.profileCapabilities(profile.id, controller.signal).then(setCapabilities).catch((cause) => { if (cause?.name !== "AbortError") feedback.warning(toFeedbackWarning(cause, t, "capabilitiesUnavailable", `capabilities:${profile.id}`)); });
     return () => controller.abort();
-  }, [profile]);
+  }, [feedback, profile, t]);
   return <section className="session-workspace">
     <header className="workspace-toolbar">
       <div className="workspace-title-block">

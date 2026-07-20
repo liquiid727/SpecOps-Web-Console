@@ -44,11 +44,11 @@
 * { box-sizing: border-box; }
 html, body, #root { min-width: 0; min-height: 100%; }
 body { margin: 0; min-height: 100vh; min-height: 100dvh; overflow: hidden; background: var(--canvas); color: var(--text); }
-button, input, select { font: inherit; }
+button, input { font: inherit; }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; opacity: .42; }
-button, input, select { outline: none; }
-button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible { box-shadow: 0 0 0 2px var(--canvas), 0 0 0 4px var(--focus); }
+button, input { outline: none; }
+button:focus-visible, input:focus-visible, [tabindex]:focus-visible { box-shadow: 0 0 0 2px var(--canvas), 0 0 0 4px var(--focus); }
 svg { width: 18px; height: 18px; flex: 0 0 auto; }
 
 .app-shell { display: grid; grid-template-columns: var(--rail-width) minmax(0, 1fr); height: 100vh; height: 100dvh; background: var(--canvas); }
@@ -120,8 +120,6 @@ svg { width: 18px; height: 18px; flex: 0 0 auto; }
 .navigator-empty p { font-size: 11px; line-height: 1.55; }
 
 .main-column { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
-.alert { z-index: 5; display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 10px 14px; border-bottom: 1px solid #63343a; background: var(--danger-muted); color: #f2b9bd; font-size: 12px; }
-.alert button { border: 0; background: transparent; color: inherit; }
 .session-workspace { min-width: 0; min-height: 0; flex: 1; display: flex; flex-direction: column; }
 .workspace-toolbar { min-height: 76px; display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 13px 18px 13px 22px; border-bottom: 1px solid var(--border); background: var(--canvas); }
 .workspace-title-block { min-width: 0; }
@@ -195,8 +193,7 @@ h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 
 .composer-box { display: grid; grid-template-columns: minmax(0, 1fr) 38px; gap: 8px; align-items: end; }
 .composer-box textarea { min-height: 52px; max-height: 140px; resize: vertical; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--canvas); color: var(--text); padding: 10px 11px; font: 12px/1.45 Inter, sans-serif; }
 .primary-button.icon-only { width: 38px; padding: 0; }
-.prompt-composer small, .composer-error { color: var(--muted); font-size: 10px; }
-.composer-error { color: var(--error); }
+.prompt-composer small { color: var(--muted); font-size: 10px; }
 
 .custom-select { position: relative; min-width: 0; }
 .custom-select-trigger { width: 100%; min-height: 30px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 9px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--canvas); color: var(--text-secondary); text-align: left; font-size: 10px; transition: background .16s ease, border-color .16s ease, color .16s ease; }
@@ -283,7 +280,6 @@ h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 
 .file-entry-button { width: 100%; border: 1px solid var(--border); text-align: left; cursor: pointer; }
 .file-entry-button:disabled { cursor: default; opacity: .75; }
 .transcript-status { display: flex; align-items: center; gap: 9px; min-height: 28px; color: var(--muted); font-size: 10px; }
-.transcript-status .warning { color: var(--warning); }
 
 .overlay-backdrop { position: fixed; z-index: var(--z-modal); inset: 0; display: grid; place-items: center; padding: 24px; background: rgba(0,0,0,.62); backdrop-filter: blur(3px); animation: overlay-in .14s ease-out; }
 .overlay-panel { width: min(560px, 100%); max-height: min(760px, calc(100dvh - 48px)); display: flex; flex-direction: column; border: 1px solid var(--border-strong); border-radius: 13px; background: var(--overlay); box-shadow: 0 28px 100px rgba(0,0,0,.55); overflow: hidden; animation: panel-in .16s ease-out; }
@@ -327,12 +323,16 @@ input::placeholder { color: var(--faint); }
 .brand-orbit { color: var(--accent); font-size: 28px; animation: pulse 1.2s ease-in-out infinite alternate; }
 
 @keyframes overlay-in { from { opacity: 0; } }
+@keyframes overlay-out { to { opacity: 0; } }
 @keyframes panel-in { from { opacity: 0; transform: translateY(8px) scale(.99); } }
+@keyframes panel-out { to { opacity: 0; transform: translateY(8px) scale(.99); } }
 @keyframes menu-in { from { opacity: 0; transform: translateY(-4px) scale(.98); } }
 @keyframes feedback-in { from { opacity: 0; transform: translateY(-8px); } }
 @keyframes drawer-in-left { from { opacity: 0; transform: translateX(-12px); } }
 @keyframes drawer-in-right { from { opacity: 0; transform: translateX(12px); } }
 @keyframes pulse { to { opacity: .4; transform: scale(.9); } }
+.overlay-backdrop.closing { animation: overlay-out .16s ease-in forwards; }
+.overlay-panel.closing { animation: panel-out .16s ease-in forwards; }
 
 @media (max-width: 1279px) {
   .app-shell.inspector-visible, .app-shell.navigator-visible.inspector-visible { grid-template-columns: var(--rail-width) var(--navigator-width) minmax(0, 1fr); }

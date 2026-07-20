@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Icon } from "./Icon";
 import { useI18n } from "../../i18n";
 
@@ -13,6 +13,18 @@ interface OverlayProps {
 export function Overlay({ children, description, kind = "dialog", onClose, title }: OverlayProps) {
   const { t } = useI18n();
   const panelRef = useRef<HTMLDivElement>(null);
+  const closeTimer = useRef<number | undefined>(undefined);
+  const onCloseRef = useRef(onClose);
+  const closingRef = useRef(false);
+  const [closing, setClosing] = useState(false);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+
+  const requestClose = useCallback(() => {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    setClosing(true);
+    closeTimer.current = window.setTimeout(() => onCloseRef.current(), 160);
+  }, []);
 
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
@@ -22,7 +34,7 @@ export function Overlay({ children, description, kind = "dialog", onClose, title
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         event.preventDefault();
-        onClose();
+        requestClose();
         return;
       }
       if (event.key !== "Tab" || !panel) return;
@@ -42,15 +54,16 @@ export function Overlay({ children, description, kind = "dialog", onClose, title
     document.addEventListener("keydown", onKeyDown);
     return () => {
       document.removeEventListener("keydown", onKeyDown);
+      if (closeTimer.current !== undefined) window.clearTimeout(closeTimer.current);
       previous?.focus();
     };
-  }, [onClose]);
+  }, [requestClose]);
 
-  return <div className="overlay-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-    <div className={`overlay-panel ${kind}`} ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="overlay-title" aria-describedby={description ? "overlay-description" : undefined} tabIndex={-1}>
+  return <div className={`overlay-backdrop ${closing ? "closing" : ""}`} onMouseDown={(event) => { if (event.target === event.currentTarget) requestClose(); }}>
+    <div className={`overlay-panel ${kind} ${closing ? "closing" : ""}`} ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="overlay-title" aria-describedby={description ? "overlay-description" : undefined} tabIndex={-1}>
       <header className="overlay-header">
         <div><span className="eyebrow">PRODUCT AI OS</span><h2 id="overlay-title">{title}</h2>{description && <p id="overlay-description">{description}</p>}</div>
-        <button className="icon-button" onClick={onClose} aria-label={t("close")}><Icon name="close" /></button>
+        <button className="icon-button" onClick={requestClose} aria-label={t("close")}><Icon name="close" /></button>
       </header>
       <div className="overlay-body">{children}</div>
     </div>

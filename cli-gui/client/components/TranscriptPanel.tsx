@@ -3,8 +3,10 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { TranscriptEvent } from "../../shared/types";
 import { api, openTranscriptSubscription } from "../api";
+import { toFeedbackError, toFeedbackWarning } from "../feedback-errors";
 import { useI18n, type TranslationKey } from "../i18n";
 import { Icon } from "./ui/Icon";
+import { useFeedback } from "./ui/Feedback";
 
 const MAX_MARKDOWN_BYTES = 256 * 1024;
 
@@ -15,14 +17,15 @@ interface TranscriptPanelProps {
 
 export function TranscriptPanel({ sessionId, refreshKey }: TranscriptPanelProps) {
   const { t } = useI18n();
+  const feedback = useFeedback();
   const [events, setEvents] = useState<TranscriptEvent[]>([]);
   const [nextAfterSequence, setNextAfterSequence] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState<string>();
+  const [error, setError] = useState(false);
   const [connectionState, setConnectionState] = useState<"connecting" | "connected" | "reconnecting" | "offline">("connecting");
-  const [warning, setWarning] = useState<string>();
+  const [retryKey, setRetryKey] = useState(0);
   const reconnectTimer = useRef<number | undefined>(undefined);
   const latestSequenceRef = useRef(0);
 
@@ -42,8 +45,7 @@ export function TranscriptPanel({ sessionId, refreshKey }: TranscriptPanelProps)
     let closeSubscription: () => void = () => undefined;
     const controller = new AbortController();
     setLoading(true);
-    setError(undefined);
-    setWarning(undefined);
+    setError(false);
     setEvents([]);
     setNextAfterSequence(0);
     latestSequenceRef.current = 0;
@@ -61,8 +63,8 @@ export function TranscriptPanel({ sessionId, refreshKey }: TranscriptPanelProps)
       closeSubscription = openTranscriptSubscription(sessionId, page.nextAfterSequence, {
         onReady: () => setConnectionState("connected"),
         onEvent: mergeEvent,
-        onWarning: (code) => setWarning(code === "TRANSCRIPT_WRITE_FAILED" ? t("recordingWarning") : code),
-        onError: (message) => { setWarning(message); setConnectionState("reconnecting"); },
+        onWarning: () => { feedback.warning(toFeedbackWarning(undefined, t, "recordingWarning", `transcript-warning:${sessionId}`)); },
+        onError: () => { setConnectionState("reconnecting"); feedback.error(toFeedbackError(undefined, t, "transcriptConnectionFailed", `transcript-connection:${sessionId}`)); },
         onClose: () => {
           if (cancelled) return;
           setConnectionState("reconnecting");
@@ -77,7 +79,8 @@ export function TranscriptPanel({ sessionId, refreshKey }: TranscriptPanelProps)
       if (typeof WebSocket === "undefined") setConnectionState("offline");
     }).catch((cause) => {
       if (!cancelled && cause?.name !== "AbortError") {
-        setError(cause instanceof Error ? cause.message : t("transcriptFailed"));
+        setError(true);
+        feedback.error(toFeedbackError(cause, t, "transcriptFailed", `transcript-load:${sessionId}`));
         setLoading(false);
         setConnectionState("offline");
       }
@@ -88,7 +91,7 @@ export function TranscriptPanel({ sessionId, refreshKey }: TranscriptPanelProps)
       if (reconnectTimer.current !== undefined) window.clearTimeout(reconnectTimer.current);
       closeSubscription();
     };
-  }, [mergeEvent, refreshKey, sessionId, t]);
+  }, [feedback, mergeEvent, refreshKey, retryKey, sessionId, t]);
 
   async function loadMore() {
     if (loadingMore || !hasMore) return;
@@ -99,14 +102,14 @@ export function TranscriptPanel({ sessionId, refreshKey }: TranscriptPanelProps)
       setNextAfterSequence((current) => Math.max(current, page.nextAfterSequence));
       setHasMore(page.hasMore);
     } catch (cause) {
-      setWarning(cause instanceof Error ? cause.message : t("transcriptFailed"));
+      feedback.error(toFeedbackError(cause, t, "transcriptFailed", `transcript-page:${sessionId}`));
     } finally {
       setLoadingMore(false);
     }
   }
 
   if (loading) return <div className="transcript-state">{t("loadingTranscript")}</div>;
-  if (error) return <div className="transcript-state error" role="alert">{error}</div>;
+  if (error) return <div className="transcript-state error" role="status"><strong>{t("transcriptFailed")}</strong><button className="secondary-button" onClick={() => setRetryKey((value) => value + 1)}>{t("retry")}</button></div>;
   if (!events.length) return <div className="transcript-state"><Icon name="terminal" /><strong>{t("emptyTranscript")}</strong><p>{t("emptyTranscriptDescription")}</p></div>;
 
   return <div className="transcript-list" aria-label={t("transcript")}>
@@ -114,7 +117,6 @@ export function TranscriptPanel({ sessionId, refreshKey }: TranscriptPanelProps)
       {hasMore && <button className="secondary-button" onClick={() => void loadMore()} disabled={loadingMore}>{loadingMore ? t("loading") : t("loadMore")}</button>}
       {connectionState === "reconnecting" && <span>{t("reconnecting")}</span>}
       {connectionState === "offline" && <span>{t("offlineMode")}</span>}
-      {warning && <span className="warning">{warning}</span>}
     </div>
     {events.map((event) => <article className={`transcript-event ${event.kind}`} key={event.id}>
       <header><span>{eventLabel(event.kind, t)}</span><time>{formatTime(event.occurredAt)}</time></header>

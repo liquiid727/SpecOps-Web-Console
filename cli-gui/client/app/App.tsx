@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CliProfile, WorkspaceV2 } from "../../shared/types";
 import { api, type ClientAppState, mergeState } from "../api";
-import { useI18n } from "../i18n";
+import { useI18n, type TranslationKey } from "../i18n";
+import { toFeedbackError } from "../feedback-errors";
 import { ActionDialog } from "../components/ActionDialog";
 import { LanguageToggle } from "../components/LanguageToggle";
 import { NewSessionDialog } from "../components/NewSessionDialog";
@@ -10,6 +11,7 @@ import { SessionNavigator } from "../components/SessionNavigator";
 import { SessionWorkspace } from "../components/SessionWorkspace";
 import { WorkspaceProfileManager } from "../components/WorkspaceProfileManager";
 import { Icon } from "../components/ui/Icon";
+import { useFeedback } from "../components/ui/Feedback";
 import { defaultPreferences, readPreferences, writePreferences, type UiPreferencesV1 } from "./preferences";
 import { groupSessions } from "./session-selectors";
 
@@ -19,11 +21,11 @@ type PendingDelete = { type: "workspace"; item: WorkspaceV2 } | { type: "profile
 
 export function App() {
   const { t } = useI18n();
+  const feedback = useFeedback();
   const [state, setState] = useState<ClientAppState>(emptyState);
   const [readonly, setReadonly] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState<string>();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string>();
   const [preferences, setPreferences] = useState<UiPreferencesV1>(() => readPreferences());
   const [overlay, setOverlay] = useState<OverlayState>();
   const [pendingDelete, setPendingDelete] = useState<PendingDelete>();
@@ -34,21 +36,20 @@ export function App() {
     setPreferences((current) => ({ ...current, ...update, centerViewBySession: update.centerViewBySession ?? current.centerViewBySession }));
   }, []);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (notify = false) => {
     try {
       const next = await api.state();
       setState((previous) => mergeState(previous, next));
       setReadonly(next.readonly);
       setActiveSessionId((current) => current && next.sessions.some((session) => session.id === current) ? current : next.sessions[0]?.id);
-      setError(undefined);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t("failedToLoadWorkspace"));
+      if (notify) feedback.error(toFeedbackError(cause, t, "failedToLoadWorkspace", "state-load"));
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [feedback, t]);
 
-  useEffect(() => { void refresh(); const timer = window.setInterval(() => void refresh(), 2000); return () => window.clearInterval(timer); }, [refresh]);
+  useEffect(() => { void refresh(true); const timer = window.setInterval(() => void refresh(), 2000); return () => window.clearInterval(timer); }, [refresh]);
   useEffect(() => { writePreferences(preferences); }, [preferences]);
   useEffect(() => {
     function onShortcut(event: KeyboardEvent) {
@@ -66,16 +67,23 @@ export function App() {
   const activeProfile = state.profiles.find((profile) => profile.id === activeSession?.profileId);
   const groupedSessions = useMemo(() => groupSessions(state.sessions, state.workspaces, preferences.sessionGrouping, preferences.sessionFilter), [preferences.sessionFilter, preferences.sessionGrouping, state.sessions, state.workspaces]);
 
-  async function runAction(action: () => Promise<unknown>, closeOverlay = true) {
-    try { await action(); if (closeOverlay) setOverlay(undefined); await refresh(); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : t("operationFailed")); }
+  async function runAction(action: () => Promise<unknown>, closeOverlay = true, success: TranslationKey | false = "operationCompleted") {
+    try {
+      await action();
+      if (closeOverlay) window.setTimeout(() => setOverlay(undefined), 160);
+      if (success) feedback.success({ title: t(success) });
+      await refresh();
+    } catch (cause) {
+      feedback.error(toFeedbackError(cause, t));
+      await refresh();
+    }
   }
 
   async function createSession(input: { name: string; workspaceId: string; profileId: string }) {
     await runAction(async () => {
       const result = await api.createSession({ ...input, start: true, confirmed: true });
       setActiveSessionId(result.session?.id ?? result.id);
-    });
+    }, true, "sessionCreated");
   }
 
   function selectSession(id: string) {
@@ -105,7 +113,7 @@ export function App() {
           const existingSession = state.sessions.find((session) => session.workspaceId === result.workspace.id);
           if (existingSession) setActiveSessionId(existingSession.id);
         }
-      }, false);
+      }, false, false);
     } finally {
       pickerBusyRef.current = false;
       setPickerBusy(false);
@@ -131,7 +139,6 @@ export function App() {
     {preferences.navigatorOpen && <button className="drawer-backdrop navigator-backdrop" aria-label={t("closeSessionList")} onClick={closeNavigator} />}
 
     <div className="main-column">
-      {error && <div className="alert" role="alert"><span>{error}</span><button onClick={() => setError(undefined)}>{t("dismiss")}</button></div>}
       <SessionWorkspace session={activeSession} workspace={activeWorkspace} profile={activeProfile} readonly={readonly} centerView={activeSession ? preferences.centerViewBySession[activeSession.id] ?? "transcript" : "transcript"} onCenterViewChange={(centerView) => activeSession && updatePreferences({ centerViewBySession: { ...preferences.centerViewBySession, [activeSession.id]: centerView } })} onLaunchConfigChange={(change) => activeSession && void runAction(() => api.updateLaunchConfig(activeSession.id, change, activeSession.revision ?? 1), false)} onNewSession={() => setOverlay("new-session")} inspectorOpen={preferences.inspectorOpen} onOpenInspector={() => updatePreferences({ inspectorOpen: true })} onStop={() => activeSession && void runAction(() => api.stopSession(activeSession.id), false)} onResume={() => setOverlay("resume")} onStatus={() => void refresh()} />
     </div>
 

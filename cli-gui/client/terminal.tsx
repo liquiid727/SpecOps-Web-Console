@@ -3,6 +3,9 @@ import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 import { openTerminalSubscription } from "./api";
+import { toFeedbackError } from "./feedback-errors";
+import { useI18n } from "./i18n";
+import { useFeedback } from "./components/ui/Feedback";
 
 interface TerminalViewProps {
   sessionId: string;
@@ -10,6 +13,8 @@ interface TerminalViewProps {
 }
 
 export function TerminalView({ sessionId, onStatus }: TerminalViewProps) {
+  const { t } = useI18n();
+  const feedback = useFeedback();
   const elementRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -64,7 +69,7 @@ export function TerminalView({ sessionId, onStatus }: TerminalViewProps) {
         onOpen: () => { retryAttempt = 0; resize(); },
         onOutput: (data) => terminal.write(data),
         onStatus: (status) => onStatus(status),
-        onError: (message) => terminal.writeln(`\r\n[error] ${message}`),
+        onError: () => feedback.error(toFeedbackError(undefined, t, "terminalConnectionFailed", `terminal-connection:${sessionId}`)),
         onClose: () => {
           if (disposed) return;
           const delay = Math.min(5_000, 250 * 2 ** retryAttempt++);
@@ -86,7 +91,7 @@ export function TerminalView({ sessionId, onStatus }: TerminalViewProps) {
       transport?.close();
       terminal.dispose();
     };
-  }, [onStatus, sessionId]);
+  }, [feedback, onStatus, sessionId, t]);
 
-  return <div className="terminal-host" ref={elementRef} aria-label="Interactive terminal" />;
+  return <div className="terminal-host" ref={elementRef} aria-label={t("interactiveTerminal")} />;
 }

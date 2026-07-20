@@ -3,6 +3,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { App } from "./app/App";
 import { I18nProvider } from "./i18n";
+import { FeedbackProvider } from "./components/ui/Feedback";
 
 vi.mock("./terminal", () => ({
   TerminalView: () => <div data-testid="terminal-view" />
@@ -50,7 +51,7 @@ describe("CLI GUI workbench", () => {
     root = createRoot(element);
 
     await act(async () => {
-      root?.render(<I18nProvider><App /></I18nProvider>);
+      root?.render(<I18nProvider><FeedbackProvider><App /></FeedbackProvider></I18nProvider>);
     });
 
     expect(await screenText(element, "Sessions")).toBeTruthy();

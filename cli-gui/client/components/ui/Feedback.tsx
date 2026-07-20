@@ -126,10 +126,10 @@ function FeedbackViewport({ notices, onClose }: { notices: FeedbackNotice[]; onC
   if (!notices.length) return null;
   return <div className="feedback-viewport" aria-label={t("feedbackRegion")}>
     {notices.map((notice) => {
-      const props = { key: notice.id, notice, onClose: () => onClose(notice.id) };
-      if (notice.presentation === "toast") return <Toast {...props} />;
-      if (notice.presentation === "message") return <Message {...props} />;
-      return <Notification {...props} />;
+      const props = { notice, onClose: () => onClose(notice.id) };
+      if (notice.presentation === "toast") return <Toast key={notice.id} {...props} />;
+      if (notice.presentation === "message") return <Message key={notice.id} {...props} />;
+      return <Notification key={notice.id} {...props} />;
     })}
   </div>;
 }
