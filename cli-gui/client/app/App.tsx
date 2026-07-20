@@ -26,28 +26,38 @@ export function App() {
   const [readonly, setReadonly] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState<string>();
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [preferences, setPreferences] = useState<UiPreferencesV1>(() => readPreferences());
   const [overlay, setOverlay] = useState<OverlayState>();
   const [pendingDelete, setPendingDelete] = useState<PendingDelete>();
   const [pickerBusy, setPickerBusy] = useState(false);
   const pickerBusyRef = useRef(false);
+  const refreshRequestRef = useRef(0);
+  const hasLoadedRef = useRef(false);
 
   const updatePreferences = useCallback((update: Partial<UiPreferencesV1>) => {
     setPreferences((current) => ({ ...current, ...update, centerViewBySession: update.centerViewBySession ?? current.centerViewBySession }));
   }, []);
 
   const refresh = useCallback(async (notify = false) => {
+    const requestId = ++refreshRequestRef.current;
     try {
       const next = await api.state();
+      if (requestId !== refreshRequestRef.current) return;
       setState((previous) => mergeState(previous, next));
       setReadonly(next.readonly);
       setActiveSessionId((current) => current && next.sessions.some((session) => session.id === current) ? current : next.sessions[0]?.id);
+      setLoadError(false);
+      hasLoadedRef.current = true;
     } catch (cause) {
+      if (requestId !== refreshRequestRef.current) return;
+      if (!hasLoadedRef.current) setLoadError(true);
       if (notify) feedback.error(toFeedbackError(cause, t, "failedToLoadWorkspace", "state-load"));
     } finally {
-      setLoading(false);
+      if (requestId === refreshRequestRef.current) setLoading(false);
     }
   }, [feedback, t]);
+  const refreshStatus = useCallback(() => { void refresh(); }, [refresh]);
 
   useEffect(() => { void refresh(true); const timer = window.setInterval(() => void refresh(), 2000); return () => window.clearInterval(timer); }, [refresh]);
   useEffect(() => { writePreferences(preferences); }, [preferences]);
@@ -67,13 +77,14 @@ export function App() {
   const activeProfile = state.profiles.find((profile) => profile.id === activeSession?.profileId);
   const groupedSessions = useMemo(() => groupSessions(state.sessions, state.workspaces, preferences.sessionGrouping, preferences.sessionFilter), [preferences.sessionFilter, preferences.sessionGrouping, state.sessions, state.workspaces]);
 
-  async function runAction(action: () => Promise<unknown>, closeOverlay = true, success: TranslationKey | false = "operationCompleted") {
+  async function runAction(action: () => Promise<unknown>, closeOverlay = true, success: TranslationKey | false = "operationCompleted", closeOverlayOnError = closeOverlay) {
     try {
       await action();
       if (closeOverlay) window.setTimeout(() => setOverlay(undefined), 160);
       if (success) feedback.success({ title: t(success) });
       await refresh();
     } catch (cause) {
+      if (closeOverlayOnError) window.setTimeout(() => setOverlay(undefined), 160);
       feedback.error(toFeedbackError(cause, t));
       await refresh();
     }
@@ -88,8 +99,16 @@ export function App() {
 
   function selectSession(id: string) {
     setActiveSessionId(id);
-    updatePreferences({ inspectorOpen: false });
-    if (window.innerWidth < 900) updatePreferences({ navigatorOpen: false });
+    updatePreferences({ inspectorOpen: false, ...(isNarrowViewport() ? { navigatorOpen: false } : {}) });
+  }
+
+  function toggleNavigator() {
+    const navigatorOpen = !preferences.navigatorOpen;
+    updatePreferences({ navigatorOpen, ...(navigatorOpen && isNarrowViewport() ? { inspectorOpen: false } : {}) });
+  }
+
+  function openInspector() {
+    updatePreferences({ inspectorOpen: true, ...(isNarrowViewport() ? { navigatorOpen: false } : {}) });
   }
 
   function closeNavigator() {
@@ -113,7 +132,7 @@ export function App() {
           const existingSession = state.sessions.find((session) => session.workspaceId === result.workspace.id);
           if (existingSession) setActiveSessionId(existingSession.id);
         }
-      }, false, false);
+      }, false, false, overlay === "settings");
     } finally {
       pickerBusyRef.current = false;
       setPickerBusy(false);
@@ -121,13 +140,14 @@ export function App() {
   }
 
   if (loading) return <main className="center-state"><span className="brand-orbit" aria-hidden="true">✦</span>{t("loadingWorkspace")}</main>;
+  if (loadError) return <main className="center-state"><Icon name="warning" /><strong>{t("failedToLoadWorkspace")}</strong><button className="secondary-button" onClick={() => { setLoading(true); void refresh(true); }}><Icon name="refresh" />{t("retry")}</button></main>;
 
   return <main className={`app-shell ${preferences.navigatorOpen ? "navigator-visible" : ""} ${preferences.inspectorOpen && activeSession ? "inspector-visible" : ""}`}>
     <aside className="utility-rail" aria-label={t("appControls")}>
       <div className="brand-mark" title={t("brandTitle")}>✦</div>
       <div className="rail-actions">
         <button className="rail-button primary" onClick={() => setOverlay("new-session")} aria-label={t("newSession")} title={t("newSession")}><Icon name="add" /></button>
-        <button className={`rail-button ${preferences.navigatorOpen ? "active" : ""}`} onClick={() => updatePreferences({ navigatorOpen: !preferences.navigatorOpen })} aria-label={t("toggleSessions")} title={`${t("toggleSessions")} (⌘B)`} aria-expanded={preferences.navigatorOpen} aria-controls="session-navigator"><Icon name="menu" /></button>
+        <button className={`rail-button ${preferences.navigatorOpen ? "active" : ""}`} onClick={toggleNavigator} aria-label={t("toggleSessions")} title={`${t("toggleSessions")} (⌘B)`} aria-expanded={preferences.navigatorOpen} aria-controls="session-navigator"><Icon name="menu" /></button>
       </div>
       <div className="rail-spacer" />
       <LanguageToggle />
@@ -135,14 +155,14 @@ export function App() {
       <span className={`connection-dot ${readonly ? "readonly" : ""}`} title={readonly ? t("readonlyMode") : t("localMode")} />
     </aside>
 
-    {preferences.navigatorOpen && <SessionNavigator groups={groupedSessions} activeSessionId={activeSessionId} grouping={preferences.sessionGrouping} filter={preferences.sessionFilter} readonly={readonly} openFolderBusy={pickerBusy} onGroupingChange={(sessionGrouping) => updatePreferences({ sessionGrouping })} onFilterChange={(sessionFilter) => updatePreferences({ sessionFilter })} onOpenFolder={() => void openFolder()} onArchive={(session) => { setActiveSessionId(session.id); if (session.organizationStatus === "archived") void runAction(() => api.restoreSession(session.id, session.revision ?? 1), false); else setOverlay("archive-session"); }} onComplete={(session) => { setActiveSessionId(session.id); if (session.organizationStatus === "completed") void runAction(() => api.restoreSession(session.id, session.revision ?? 1), false); else setOverlay("complete-session"); }} onFork={(session) => { setActiveSessionId(session.id); setOverlay("fork-session"); }} onPin={(session) => void runAction(() => api.pinSession(session.id, !session.pinned, session.revision ?? 1), false)} onReorder={(orderedSessionIds, section) => void runAction(() => api.reorderSessions(orderedSessionIds, section.expectedRevisions, section.organizationStatus, section.pinned), false)} onRename={(session) => { setActiveSessionId(session.id); setOverlay("rename"); }} onDelete={(session) => { setActiveSessionId(session.id); setOverlay("delete-session"); }} onSelect={selectSession} onNewSession={() => setOverlay("new-session")} />}
+    {preferences.navigatorOpen && <SessionNavigator groups={groupedSessions} activeSessionId={activeSessionId} grouping={preferences.sessionGrouping} filter={preferences.sessionFilter} readonly={readonly} openFolderBusy={pickerBusy} onClose={closeNavigator} onGroupingChange={(sessionGrouping) => updatePreferences({ sessionGrouping })} onFilterChange={(sessionFilter) => updatePreferences({ sessionFilter })} onOpenFolder={() => void openFolder()} onArchive={(session) => { setActiveSessionId(session.id); if (session.organizationStatus === "archived") void runAction(() => api.restoreSession(session.id, session.revision ?? 1), false); else setOverlay("archive-session"); }} onComplete={(session) => { setActiveSessionId(session.id); if (session.organizationStatus === "completed") void runAction(() => api.restoreSession(session.id, session.revision ?? 1), false); else setOverlay("complete-session"); }} onFork={(session) => { setActiveSessionId(session.id); setOverlay("fork-session"); }} onPin={(session) => void runAction(() => api.pinSession(session.id, !session.pinned, session.revision ?? 1), false)} onReorder={(orderedSessionIds, section) => void runAction(() => api.reorderSessions(orderedSessionIds, section.expectedRevisions, section.organizationStatus, section.pinned), false)} onRename={(session) => { setActiveSessionId(session.id); setOverlay("rename"); }} onDelete={(session) => { setActiveSessionId(session.id); setOverlay("delete-session"); }} onSelect={selectSession} onNewSession={() => setOverlay("new-session")} />}
     {preferences.navigatorOpen && <button className="drawer-backdrop navigator-backdrop" aria-label={t("closeSessionList")} onClick={closeNavigator} />}
 
     <div className="main-column">
-      <SessionWorkspace session={activeSession} workspace={activeWorkspace} profile={activeProfile} readonly={readonly} centerView={activeSession ? preferences.centerViewBySession[activeSession.id] ?? "transcript" : "transcript"} onCenterViewChange={(centerView) => activeSession && updatePreferences({ centerViewBySession: { ...preferences.centerViewBySession, [activeSession.id]: centerView } })} onLaunchConfigChange={(change) => activeSession && void runAction(() => api.updateLaunchConfig(activeSession.id, change, activeSession.revision ?? 1), false)} onNewSession={() => setOverlay("new-session")} inspectorOpen={preferences.inspectorOpen} onOpenInspector={() => updatePreferences({ inspectorOpen: true })} onStop={() => activeSession && void runAction(() => api.stopSession(activeSession.id), false)} onResume={() => setOverlay("resume")} onStatus={() => void refresh()} />
+      <SessionWorkspace session={activeSession} workspace={activeWorkspace} profile={activeProfile} readonly={readonly} centerView={activeSession ? preferences.centerViewBySession[activeSession.id] ?? "transcript" : "transcript"} onCenterViewChange={(centerView) => activeSession && updatePreferences({ centerViewBySession: { ...preferences.centerViewBySession, [activeSession.id]: centerView } })} onLaunchConfigChange={(change) => activeSession && void runAction(() => api.updateLaunchConfig(activeSession.id, change, activeSession.revision ?? 1), false)} onNewSession={() => setOverlay("new-session")} inspectorOpen={preferences.inspectorOpen} onOpenInspector={openInspector} onStop={() => activeSession && void runAction(() => api.stopSession(activeSession.id), false)} onResume={() => setOverlay("resume")} onStatus={refreshStatus} />
     </div>
 
-    {preferences.inspectorOpen && activeSession && <SessionInspector session={activeSession} workspace={activeWorkspace} profile={activeProfile} readonly={readonly} initialTab={preferences.inspectorTab} onTabChange={(inspectorTab) => updatePreferences({ inspectorTab })} onClose={() => updatePreferences({ inspectorOpen: false })} onRename={() => setOverlay("rename")} onDelete={() => setOverlay("delete-session")} />}
+    {preferences.inspectorOpen && activeSession && <SessionInspector session={activeSession} workspace={activeWorkspace} profile={activeProfile} readonly={readonly} initialTab={preferences.inspectorTab} onTabChange={(inspectorTab) => updatePreferences({ inspectorTab })} onClose={closeInspector} onRename={() => setOverlay("rename")} onDelete={() => setOverlay("delete-session")} />}
     {preferences.inspectorOpen && activeSession && <button className="drawer-backdrop inspector-backdrop" aria-label={t("closeSessionDetails")} onClick={closeInspector} />}
     {overlay === "new-session" && <NewSessionDialog workspaces={state.workspaces} profiles={state.profiles} readonly={readonly} onClose={() => setOverlay(undefined)} onCreate={createSession} onOpenSettings={() => setOverlay("settings")} />}
     {overlay === "settings" && <WorkspaceProfileManager workspaces={state.workspaces} profiles={state.profiles} sessions={state.sessions} readonly={readonly} onClose={() => setOverlay(undefined)} onOpenFolder={openFolder} onCreateWorkspace={async (input) => runAction(() => api.createWorkspace(input), false)} onCreateProfile={async (input) => runAction(() => api.createProfile(input), false)} onDeleteWorkspace={(item) => setPendingDelete({ type: "workspace", item })} onDeleteProfile={(item) => setPendingDelete({ type: "profile", item })} />}
@@ -154,4 +174,8 @@ export function App() {
     {overlay === "delete-session" && activeSession && <ActionDialog danger title={t("deleteSessionTitle")} description={t("deleteSessionDescription", { name: activeSession.name })} confirmLabel={t("deleteSession")} onClose={() => setOverlay(undefined)} onConfirm={() => runAction(() => api.deleteSession(activeSession.id))} />}
     {pendingDelete && <ActionDialog danger title={`${t("delete")} ${pendingDelete.item.name}?`} description={pendingDelete.type === "workspace" ? t("deleteWorkspaceDescription") : t("deleteProfileDescription")} confirmLabel={t("delete")} onClose={() => setPendingDelete(undefined)} onConfirm={async () => { const target = pendingDelete; setPendingDelete(undefined); await runAction(() => target.type === "workspace" ? api.deleteWorkspace(target.item.id) : api.deleteProfile(target.item.id), false); }} />}
   </main>;
+}
+
+function isNarrowViewport() {
+  return typeof window !== "undefined" && window.innerWidth < 900;
 }

@@ -27,9 +27,21 @@ const MAX_PREVIEW_BYTES = 1 * 1024 * 1024;
 const MAX_TRANSCRIPT_RESPONSE_BYTES = 1 * 1024 * 1024;
 const MAX_TERMINAL_COLS = 500;
 const MAX_TERMINAL_ROWS = 200;
+const PTY_TRANSCRIPT_FLUSH_MS = 75;
+const MAX_PTY_TRANSCRIPT_BYTES = 64 * 1024;
+const MAX_EVENT_PENDING = 512;
+const MAX_EVENT_PENDING_BYTES = 1 * 1024 * 1024;
+const MAX_EVENT_BUFFERED_BYTES = 1 * 1024 * 1024;
 
-type Runtime = { process: PtyProcess; clients: Set<WebSocket>; generation: number };
-type EventSubscriber = { client: WebSocket; ready: boolean; pending: TranscriptEvent[] };
+type Runtime = {
+  process: PtyProcess;
+  clients: Set<WebSocket>;
+  generation: number;
+  pendingTranscript: string;
+  transcriptTimer?: ReturnType<typeof setTimeout>;
+  transcriptFlush: Promise<void>;
+};
+type EventSubscriber = { client: WebSocket; ready: boolean; pending: TranscriptEvent[]; pendingBytes: number };
 
 export async function createApplication(dependencies: ApplicationDependencies): Promise<Application> {
   const state = await dependencies.stateRepository.load();
@@ -39,8 +51,9 @@ export async function createApplication(dependencies: ApplicationDependencies): 
   const sessionMutationLocks = new Map<string, Promise<void>>();
   const eventSubscribers = new Map<string, Set<EventSubscriber>>();
   const pendingTouches = new Set<string>();
+  const pickerIntentTtlMs = dependencies.policy.pickerIntentTtlMs ?? 60_000;
   let pickerIntent = dependencies.idGenerator.create("picker-intent");
-  let pickerIntentExpiresAt = Date.now() + (dependencies.policy.pickerIntentTtlMs ?? 60_000);
+  let pickerIntentExpiresAt = Date.now() + pickerIntentTtlMs;
   let pickerInFlight = false;
   let closing = false;
   let closePromise: Promise<void> | undefined;
@@ -60,15 +73,23 @@ export async function createApplication(dependencies: ApplicationDependencies): 
   };
   const waitForIdle = () => activeOperations === 0 ? Promise.resolve() : new Promise<void>((resolve) => idleWaiters.add(resolve));
 
+  function renewPickerIntent() {
+    pickerIntent = dependencies.idGenerator.create("picker-intent");
+    pickerIntentExpiresAt = Date.now() + pickerIntentTtlMs;
+  }
+
   const getSession = (id: string) => state.sessions.find((session) => session.id === id);
   const serializeSession = (session: SessionV2) => ({ ...session, status: session.runtimeStatus });
-  const serializeState = () => ({
-    ...state,
-    sessions: state.sessions.map(serializeSession),
-    readonly: dependencies.policy.readonly,
-    csrfCapability: dependencies.policy.csrfCapability,
-    pickerIntentToken: pickerIntent
-  });
+  const serializeState = () => {
+    if (Date.now() >= pickerIntentExpiresAt) renewPickerIntent();
+    return {
+      ...state,
+      sessions: state.sessions.map(serializeSession),
+      readonly: dependencies.policy.readonly,
+      csrfCapability: dependencies.policy.csrfCapability,
+      pickerIntentToken: pickerIntent
+    };
+  };
   const requireSession = (id: string) => {
     const session = getSession(id);
     if (!session) throw new ApiHttpError(404, "SESSION_NOT_FOUND", "Session not found.");
@@ -78,17 +99,38 @@ export async function createApplication(dependencies: ApplicationDependencies): 
 
   function publishToSubscriber(sessionId: string, frame: unknown) {
     const encoded = JSON.stringify(frame);
-    for (const subscriber of eventSubscribers.get(sessionId) ?? []) {
-      if (subscriber.client.readyState === WebSocket.OPEN) subscriber.client.send(encoded);
+    const subscribers = eventSubscribers.get(sessionId);
+    for (const subscriber of subscribers ?? []) {
+      if (subscriber.client.readyState !== WebSocket.OPEN) continue;
+      if (subscriber.client.bufferedAmount > MAX_EVENT_BUFFERED_BYTES) {
+        subscribers?.delete(subscriber);
+        subscriber.client.close(1013, "event subscriber is behind");
+        continue;
+      }
+      subscriber.client.send(encoded);
     }
   }
 
   function publishTranscript(event: TranscriptEvent) {
-    for (const subscriber of eventSubscribers.get(event.sessionId) ?? []) {
+    const subscribers = eventSubscribers.get(event.sessionId);
+    const encoded = JSON.stringify({ type: "transcript-event", event });
+    const encodedBytes = Buffer.byteLength(encoded, "utf8");
+    for (const subscriber of subscribers ?? []) {
       if (!subscriber.ready) {
+        if (subscriber.pending.length >= MAX_EVENT_PENDING || subscriber.pendingBytes + encodedBytes > MAX_EVENT_PENDING_BYTES) {
+          subscribers?.delete(subscriber);
+          subscriber.client.close(1013, "transcript replay is behind");
+          continue;
+        }
         subscriber.pending.push(event);
+        subscriber.pendingBytes += encodedBytes;
       } else if (subscriber.client.readyState === WebSocket.OPEN) {
-        subscriber.client.send(JSON.stringify({ type: "transcript-event", event }));
+        if (subscriber.client.bufferedAmount > MAX_EVENT_BUFFERED_BYTES) {
+          subscribers?.delete(subscriber);
+          subscriber.client.close(1013, "transcript subscriber is behind");
+          continue;
+        }
+        subscriber.client.send(encoded);
       }
     }
   }
@@ -117,6 +159,38 @@ export async function createApplication(dependencies: ApplicationDependencies): 
       publishToSubscriber(session.id, { type: "recording-warning", code: "TRANSCRIPT_WRITE_FAILED" });
       return undefined;
     }
+  }
+
+  function queuePtyTranscript(session: SessionV2, runtime: Runtime, data: string) {
+    runtime.pendingTranscript += data;
+    if (Buffer.byteLength(runtime.pendingTranscript, "utf8") >= MAX_PTY_TRANSCRIPT_BYTES) {
+      if (runtime.transcriptTimer !== undefined) clearTimeout(runtime.transcriptTimer);
+      runtime.transcriptTimer = undefined;
+      enqueuePtyTranscriptFlush(session, runtime);
+      return;
+    }
+    if (runtime.transcriptTimer === undefined) {
+      runtime.transcriptTimer = setTimeout(() => {
+        runtime.transcriptTimer = undefined;
+        enqueuePtyTranscriptFlush(session, runtime);
+      }, PTY_TRANSCRIPT_FLUSH_MS);
+    }
+  }
+
+  function enqueuePtyTranscriptFlush(session: SessionV2, runtime: Runtime) {
+    runtime.transcriptFlush = runtime.transcriptFlush.catch(() => undefined).then(async () => {
+      const raw = runtime.pendingTranscript;
+      runtime.pendingTranscript = "";
+      if (raw) await appendEvent(session, { occurredAt: dependencies.clock.now(), kind: "pty_output", source: "pty", raw });
+    });
+    void runtime.transcriptFlush.catch((error) => dependencies.logger.warn("PTY transcript flush failed", { sessionId: session.id, error: String(error) }));
+  }
+
+  async function flushPtyTranscript(session: SessionV2, runtime: Runtime) {
+    if (runtime.transcriptTimer !== undefined) clearTimeout(runtime.transcriptTimer);
+    runtime.transcriptTimer = undefined;
+    if (runtime.pendingTranscript) enqueuePtyTranscriptFlush(session, runtime);
+    await runtime.transcriptFlush;
   }
 
   function touchSession(id: string) {
@@ -198,12 +272,12 @@ export async function createApplication(dependencies: ApplicationDependencies): 
         });
         const generation = (runtimeGenerations.get(sessionId) ?? 0) + 1;
         runtimeGenerations.set(sessionId, generation);
-        const runtime: Runtime = { process, clients: new Set<WebSocket>(), generation };
+        const runtime: Runtime = { process, clients: new Set<WebSocket>(), generation, pendingTranscript: "", transcriptFlush: Promise.resolve() };
         runtimes.set(sessionId, runtime);
         process.onData((data) => {
           if (closing || runtimes.get(sessionId)?.generation !== generation) return;
           broadcastTerminal(sessionId, { type: "terminal-output", data });
-          void appendEvent(session, { occurredAt: dependencies.clock.now(), kind: "pty_output", source: "pty", raw: data });
+          queuePtyTranscript(session, runtime, data);
           touchSession(sessionId);
         });
         process.onExit(({ exitCode }) => {
@@ -221,6 +295,7 @@ export async function createApplication(dependencies: ApplicationDependencies): 
       } catch (error) {
         const runtime = runtimes.get(sessionId);
         if (runtime) {
+          await flushPtyTranscript(session, runtime);
           runtimes.delete(sessionId);
           try { runtime.process.kill(); } catch { /* process already exited */ }
         }
@@ -249,6 +324,7 @@ export async function createApplication(dependencies: ApplicationDependencies): 
       runtimes.delete(sessionId);
       return;
     }
+    await flushPtyTranscript(session, runtime);
     broadcastTerminal(sessionId, { type: "runtime-status", status: "stopped", exitCode });
     runtimes.delete(sessionId);
     session.runtimeStatus = "stopped";
@@ -267,6 +343,7 @@ export async function createApplication(dependencies: ApplicationDependencies): 
     const session = getSession(sessionId);
     if (!runtime && (!session || session.runtimeStatus === "stopped")) return session;
     if (runtime) {
+      if (session) await flushPtyTranscript(session, runtime);
       runtimes.delete(sessionId);
       broadcastTerminal(sessionId, { type: "runtime-status", status: "stopped" });
       try { runtime.process.kill(); } catch (error) { dependencies.logger.warn("PTY stop failed", { sessionId, error: String(error) }); }
@@ -573,10 +650,9 @@ export async function createApplication(dependencies: ApplicationDependencies): 
         if (!dependencies.directoryPicker.available) throw new ApiHttpError(503, "PICKER_UNAVAILABLE", "Directory picker is unavailable.");
         const intent = requireText(body.intentToken, "intentToken");
         if (pickerInFlight) throw new ApiHttpError(409, "PICKER_BUSY", "A folder picker is already active.");
-        if (intent !== pickerIntent || Date.now() > pickerIntentExpiresAt) throw new ApiHttpError(403, "ORIGIN_NOT_ALLOWED", "Folder picker intent is invalid or expired.");
+        if (intent !== pickerIntent || Date.now() >= pickerIntentExpiresAt) throw new ApiHttpError(403, "PICKER_INTENT_INVALID", "Folder picker intent is invalid or expired.");
         pickerInFlight = true;
-        pickerIntent = dependencies.idGenerator.create("picker-intent");
-        pickerIntentExpiresAt = Date.now() + (dependencies.policy.pickerIntentTtlMs ?? 60_000);
+        renewPickerIntent();
         try {
           const picked = await withTimeout(dependencies.directoryPicker.pick(), 60_000);
           if (picked.cancelled) {
@@ -832,8 +908,13 @@ export async function createApplication(dependencies: ApplicationDependencies): 
           }
           const event = await appendEvent(session, { occurredAt: dependencies.clock.now(), kind: "user_input", source: "composer", raw: content, clientMessageId });
           if (!event) throw new ApiHttpError(500, "TRANSCRIPT_WRITE_FAILED", "Message could not be recorded.");
+          const runtime = runtimes.get(id);
+          if (!runtime || session.runtimeStatus !== "running") {
+            await appendEvent(session, { occurredAt: dependencies.clock.now(), kind: "error", source: "session-manager", raw: "Message was recorded but could not be delivered.", metadata: { code: "MESSAGE_DELIVERY_FAILED", clientMessageId } });
+            throw new ApiHttpError(502, "MESSAGE_DELIVERY_FAILED", "Message was recorded but could not be delivered.");
+          }
           try {
-            runtimes.get(id)?.process.write(`${content}\r`);
+            runtime.process.write(`${content}\r`);
           } catch (error) {
             await appendEvent(session, { occurredAt: dependencies.clock.now(), kind: "error", source: "session-manager", raw: "Message was recorded but could not be delivered.", metadata: { code: "MESSAGE_DELIVERY_FAILED", clientMessageId } });
             throw new ApiHttpError(502, "MESSAGE_DELIVERY_FAILED", "Message was recorded but could not be delivered.", undefined, { cause: error });
@@ -867,7 +948,15 @@ export async function createApplication(dependencies: ApplicationDependencies): 
     const runtime = runtimes.get(sessionId);
     if (!runtime) return;
     const encoded = JSON.stringify(message);
-    for (const client of runtime.clients) if (client.readyState === WebSocket.OPEN) client.send(encoded);
+    for (const client of runtime.clients) {
+      if (client.readyState !== WebSocket.OPEN) continue;
+      if (client.bufferedAmount > MAX_EVENT_BUFFERED_BYTES) {
+        client.close(1013, "terminal client is behind");
+        runtime.clients.delete(client);
+        continue;
+      }
+      client.send(encoded);
+    }
   }
 
   return {
@@ -887,22 +976,25 @@ export async function createApplication(dependencies: ApplicationDependencies): 
         return;
       }
       if (url.searchParams.get("channel") === "events") {
-        const subscriber: EventSubscriber = { client, ready: false, pending: [] };
-        const subscribers = eventSubscribers.get(sessionId) ?? new Set<EventSubscriber>();
-        subscribers.add(subscriber);
-        eventSubscribers.set(sessionId, subscribers);
         const rawAfterSequence = url.searchParams.get("afterSequence") ?? "0";
         if (!/^\d+$/.test(rawAfterSequence)) { client.close(1008, "invalid transcript cursor"); return; }
         const afterSequence = Number(rawAfterSequence);
         if (!Number.isSafeInteger(afterSequence)) { client.close(1008, "invalid transcript cursor"); return; }
+        const subscriber: EventSubscriber = { client, ready: false, pending: [], pendingBytes: 0 };
+        const subscribers = eventSubscribers.get(sessionId) ?? new Set<EventSubscriber>();
+        subscribers.add(subscriber);
+        eventSubscribers.set(sessionId, subscribers);
         void Promise.all([visibleTranscriptPage(sessionId, afterSequence, 200), visibleTranscript(sessionId)]).then(([page, visible]) => {
           if (client.readyState !== WebSocket.OPEN) return;
           for (const event of page.events) client.send(JSON.stringify({ type: "transcript-event", event }));
-          for (const event of subscriber.pending.splice(0)) if (client.readyState === WebSocket.OPEN) client.send(JSON.stringify({ type: "transcript-event", event }));
+          const pending = subscriber.pending.splice(0);
+          subscriber.pendingBytes = 0;
+          for (const event of pending) if (client.readyState === WebSocket.OPEN) client.send(JSON.stringify({ type: "transcript-event", event }));
           subscriber.ready = true;
           client.send(JSON.stringify({ type: "subscription-ready", afterSequence, latestSequence: visible.events.at(-1)?.sequence ?? afterSequence }));
-        }).catch(() => client.close(1011, "transcript replay failed"));
+        }).catch(() => { subscribers.delete(subscriber); client.close(1011, "transcript replay failed"); });
         client.on("close", () => subscribers.delete(subscriber));
+        client.on("error", () => subscribers.delete(subscriber));
         return;
       }
       const runtime = runtimes.get(sessionId);
@@ -938,9 +1030,10 @@ export async function createApplication(dependencies: ApplicationDependencies): 
         await waitForIdle();
         let changed = false;
         for (const [sessionId, runtime] of runtimes) {
+          const session = getSession(sessionId);
+          if (session) await flushPtyTranscript(session, runtime);
           for (const client of runtime.clients) client.close(1001, "server shutting down");
           try { runtime.process.kill(); } catch { /* process already exited */ }
-          const session = getSession(sessionId);
           if (session && session.runtimeStatus !== "stopped") {
             session.runtimeStatus = "stopped";
             session.lastActiveAt = dependencies.clock.now();

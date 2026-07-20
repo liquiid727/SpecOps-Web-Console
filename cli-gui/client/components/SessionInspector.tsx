@@ -7,6 +7,7 @@ import { Icon } from "./ui/Icon";
 import { useFeedback } from "./ui/Feedback";
 import { Select } from "./ui/Select";
 import { StatusBadge } from "./StatusBadge";
+import { useMobileDrawerFocus } from "./ui/useMobileDrawerFocus";
 
 type InspectorTab = "details" | "files" | "preview" | "languages" | "diff" | "git";
 
@@ -24,11 +25,13 @@ interface SessionInspectorProps {
 
 export function SessionInspector({ profile, readonly, session, workspace, onClose, onDelete, onRename, initialTab = "details", onTabChange }: SessionInspectorProps) {
   const { t } = useI18n();
+  const panelRef = useRef<HTMLElement>(null);
   const [tab, setTab] = useState<InspectorTab>(initialTab);
   const [selectedPath, setSelectedPath] = useState("");
+  useMobileDrawerFocus(panelRef, onClose);
   useEffect(() => setTab(initialTab), [initialTab]);
   function selectTab(next: InspectorTab) { setTab(next); onTabChange?.(next); }
-  return <aside id="session-inspector" className="session-inspector" aria-label={t("sessionInspector")}>
+  return <aside ref={panelRef} id="session-inspector" className="session-inspector" aria-label={t("sessionInspector")}>
     <header className="inspector-header"><div><span className="eyebrow">{t("session").toUpperCase()}</span><h2>{t("inspector")}</h2></div><button className="icon-button" onClick={onClose} aria-label={t("closeSessionDetails")}><Icon name="close" /></button></header>
     <div className="inspector-tabs" role="tablist" aria-label={t("inspectorTabs")}>
       {(["details", "files", "preview", "languages", "diff", "git"] as InspectorTab[]).map((item) => <button key={item} role="tab" aria-selected={tab === item} className={tab === item ? "active" : ""} onClick={() => selectTab(item)}>{t(`tab_${item}`)}</button>)}

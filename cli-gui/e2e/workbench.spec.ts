@@ -20,6 +20,37 @@ test("keeps the navigator usable on a mobile viewport", async ({ page }) => {
   await expect(toggle).toHaveAttribute("aria-expanded", "false");
 });
 
+test("keeps mobile session controls inside the viewport and drawers focusable", async ({ page }) => {
+  for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/");
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+
+    const toggle = page.getByRole("button", { name: "Toggle sessions" });
+    await toggle.click();
+    await expect(page.locator("#session-navigator")).toHaveCount(0);
+    await expect(page.locator(".prompt-composer .custom-select")).toHaveCount(3);
+
+    const pageWidth = await page.evaluate(() => ({ clientWidth: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth }));
+    expect(pageWidth.scrollWidth).toBeLessThanOrEqual(pageWidth.clientWidth);
+
+    const inspectorTrigger = page.getByRole("button", { name: "Open session details" });
+    await inspectorTrigger.click();
+    await expect(page.locator("#session-inspector")).toBeVisible();
+    await expect(page.locator("#session-navigator")).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await expect(page.locator("#session-inspector")).toHaveCount(0);
+    await expect(inspectorTrigger).toBeFocused();
+
+    await toggle.click();
+    await expect(page.locator("#session-navigator")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.locator("#session-navigator")).toHaveCount(0);
+    await expect(toggle).toBeFocused();
+  }
+});
+
 test("runs the disposable session through transcript, terminal, inspector, and picker flows", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Resume", exact: true }).click();

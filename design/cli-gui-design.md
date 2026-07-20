@@ -21,6 +21,10 @@ Workspaces and profiles support session creation, but they must not dominate the
 - Terminal-native: the transcript improves readability, but the raw terminal remains the fidelity source and compatibility fallback.
 - Calm and dense: use restrained contrast, compact spacing, and clear state indicators for repeated operational use.
 - Reuse before invention: extend the local component vocabulary and semantic CSS tokens before adding page-specific markup or styles.
+- Responsive-first: preserve the active session as the primary task surface while rails collapse into reachable drawers on narrow viewports.
+- Touch-capable: mobile actions must not depend on hover, context menus, or drag-and-drop; provide explicit controls with a comfortable touch target and a keyboard-accessible equivalent.
+- Native UI prohibition: do not use browser-owned dropdowns, alerts, confirms, prompts, or equivalent native popups. Use the local accessible primitives so the interaction, theme, motion, and layer order stay consistent.
+- Motion is part of the interaction contract: opening, closing, expanding, collapsing, drawer transitions, menus, and feedback entry must use a short, natural transition. `prefers-reduced-motion` remains the explicit accessibility exception.
 
 ## Visual Language
 
@@ -71,11 +75,15 @@ The desktop baseline uses these dimensions from `cli-gui/client/styles.css`:
 - Session inspector: `324px`.
 - Center stage: remaining flexible width.
 
-Responsive behavior is part of the design contract:
+Responsive behavior is part of the design contract. The center stage remains the task-preserving fallback at every width:
 
+- At `1280px` and above, the workbench may render the utility rail, session navigator, center stage, and session inspector as four grid columns.
 - At `1279px` and below, the inspector becomes a right-side drawer with a backdrop.
 - At `899px` and below, the session navigator becomes a left-side drawer with a backdrop.
-- At `639px` and below, the utility rail reduces to `50px`, dialog/drawer surfaces become full-screen, and secondary status labels collapse to preserve the active task surface.
+- At `639px` and below, the utility rail reduces to `50px`, modal `Overlay` surfaces become full-screen, secondary status labels collapse, and dense controls reflow without horizontal page overflow. Session navigator and inspector drawers remain side-anchored so the active task is still visible behind the backdrop.
+- On narrow viewports, navigator and inspector drawers are mutually exclusive. Opening one closes the other; selecting a session closes the navigator after the selection is applied.
+- Fixed rails, drawers, overlays, feedback, and the composer respect `env(safe-area-inset-*)`; full-height surfaces use `100dvh` with a viewport fallback. The composer remains reachable when the virtual keyboard reduces the visual viewport.
+- Drawer and overlay content scrolls inside its surface. Long paths, transcript code, diff lines, and translated labels truncate or scroll within their owner instead of widening the page.
 - `prefers-reduced-motion` disables non-essential transitions and animations.
 
 ## Component Vocabulary
@@ -85,7 +93,9 @@ Reusable primitives are kept local to `cli-gui/client/components/` until a stabl
 | Component | Responsibility |
 | --- | --- |
 | `ui/Icon` | Central SVG icon names and consistent icon sizing/stroke treatment |
+| `ui/Select` | Accessible themed listbox with keyboard navigation and animated open/close behavior; replaces native `<select>` |
 | `ui/Overlay` | Dialog/drawer shell, backdrop dismissal, Escape handling, and focus containment |
+| `ui/Feedback` | `FeedbackProvider`, `useFeedback`, Toast, Message, and Notification presentation with queue, deduplication, i18n, and portal mounting |
 | `ActionDialog` | Confirmable rename, resume, delete, and other explicit actions |
 | `StatusBadge` | Consistent runtime and organization status presentation |
 | `LanguageToggle` | Persistent English/Chinese language switch |
@@ -100,10 +110,17 @@ New components should reuse these primitives, use semantic class names, and add 
 
 - Every icon-only control must have an accessible name and a tooltip/title when its meaning is not obvious.
 - Focus-visible controls use the `--focus` ring and must remain visible on dark surfaces.
-- Dialogs and drawers trap focus, close on Escape, restore focus to the triggering control, and support backdrop dismissal where safe.
+- Dialogs and responsive drawers trap focus, close on Escape, restore focus to the triggering control, and support backdrop dismissal where safe. Navigator and inspector drawers must prevent interaction with the obscured stage while open.
 - Destructive actions require explicit confirmation; readonly mode disables local write and CLI-launch actions rather than hiding the reason.
 - UI copy is English-first but must have matching `en` and `zh` entries in `cli-gui/client/i18n.tsx`.
 - Keyboard shortcuts currently include `Cmd/Ctrl+B` for the navigator and `Cmd/Ctrl+Shift+I` for the inspector. Shortcuts must not interfere with text inputs, dialogs, or the terminal.
+- On touch widths, primary, close, menu, tab, and select controls expose a roughly `44px` hit area; the compact utility rail is the intentional exception. Hover-only and right-click-only actions require a visible button alternative.
+- Viewport rotation must preserve the active session, selected center/inspector tab, and drawer state. Text entry must remain IME-safe and must not be obscured by feedback or the virtual keyboard.
+- Action results use `useFeedback()` rather than page-level error bars or ad hoc inline messages. Success and failure feedback is transient or dismissible; runtime state, field validation, transcript output, and retry affordances remain contextual.
+- `ui/Select` must expose `role="listbox"`, `role="option"`, `aria-expanded`, keyboard navigation, focus restoration, and animated open/close states. Native `<select>` is prohibited.
+- Confirmation and blocking decisions use `Overlay`/`ActionDialog`; `window.alert`, `window.confirm`, and `window.prompt` are prohibited.
+- Feedback layers use the documented z-index tokens. A feedback notice must not cover the composer, modal content, or the active terminal interaction area.
+- Expand/collapse behavior must animate both visibility and spatial state with opacity/transform or equivalent. Components must not rely on abrupt `display: none` changes for an interactive transition.
 
 ## Source of Truth and Drift Prevention
 
@@ -122,8 +139,8 @@ Every session has a user-visible name and is selectable from the left rail. The 
 - Empty: the center stage prompts the user to create a named session from the launchpad.
 - Loading: the app shows a minimal loading surface while `/api/state` resolves.
 - Success: the three-column workbench renders sessions, terminal, and context details.
-- Failure: API or runtime failures are shown in the stage-level alert with a dismiss action.
+- Failure: API and action failures are shown through the global feedback layer with a dismiss action; persistent runtime failures remain visible as contextual session state with a retry or resume action.
 
 ## Validation
 
-UI changes should run `npm run test` and `npm run build` from `cli-gui/`. Layout changes should include a client test that confirms the session rail, conversation stage, context rail, and session naming controls are present.
+UI changes should run `npm run test` and `npm run build` from `cli-gui/`. Layout changes should include a client test that confirms the session rail, conversation stage, context rail, and session naming controls are present, plus a browser check at desktop and narrow widths (including a `390px` or smaller viewport) for drawer behavior, focus return, control reflow, and absence of horizontal page overflow.

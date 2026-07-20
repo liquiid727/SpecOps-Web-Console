@@ -27,6 +27,7 @@ const errorMessageKeys: Partial<Record<ApiErrorCode, TranslationKey>> = {
   PICKER_UNAVAILABLE: "pickerUnavailable",
   PICKER_BUSY: "pickerBusy",
   PICKER_TIMEOUT: "pickerTimeout",
+  PICKER_INTENT_INVALID: "pickerIntentInvalid",
   FILE_NOT_FOUND: "fileNotFound",
   FILE_BINARY: "binaryFile",
   GIT_UNAVAILABLE: "gitUnavailable",

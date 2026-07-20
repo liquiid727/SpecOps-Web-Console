@@ -33,11 +33,9 @@ export function SessionWorkspace({ profile, readonly, session, workspace, onNewS
   const [localCenterView, setLocalCenterView] = useState<CenterView>("transcript");
   const [capabilities, setCapabilities] = useState<CliProfileCapabilities>();
   const centerView = controlledCenterView ?? localCenterView;
-  const [transcriptRefresh, setTranscriptRefresh] = useState(0);
   const sendPrompt = useCallback(async (content: string, clientMessageId: string) => {
     if (!session) return;
     await api.sendMessage(session.id, { clientMessageId, content, startIfStopped: runtimeStatus(session) !== "running", confirmedStart: true });
-    setTranscriptRefresh((value) => value + 1);
     onStatus();
   }, [onStatus, session]);
   useEffect(() => {
@@ -70,9 +68,9 @@ export function SessionWorkspace({ profile, readonly, session, workspace, onNewS
         <span>{workspace?.path ?? "127.0.0.1"}</span>
       </div>
       {session && runtimeStatus(session) === "error" && <div className="workspace-error" role="alert"><strong>{t("sessionStoppedWithError")}</strong><span>{typeof session.error === "string" ? session.error : session.error?.message}</span></div>}
-      {!session ? <EmptyWorkspace session={session} onNewSession={onNewSession} readonly={readonly} /> : centerView === "transcript" ? <TranscriptPanel sessionId={session.id} refreshKey={transcriptRefresh} /> : runtimeStatus(session) === "running" ? <TerminalView sessionId={session.id} onStatus={onStatus} /> : <EmptyWorkspace session={session} onNewSession={onNewSession} readonly={readonly} statusText={statusLabel(runtimeStatus(session))} />}
+      {!session ? <EmptyWorkspace session={session} onNewSession={onNewSession} readonly={readonly} /> : centerView === "transcript" ? <TranscriptPanel sessionId={session.id} /> : runtimeStatus(session) === "running" ? <TerminalView sessionId={session.id} onStatus={onStatus} /> : <EmptyWorkspace session={session} onNewSession={onNewSession} readonly={readonly} statusText={statusLabel(runtimeStatus(session))} />}
     </div>
-    {session && <PromptComposer disabled={readonly || session.organizationStatus !== "active"} onSend={sendPrompt} capabilities={capabilities} launchConfig={session.launchConfig} onLaunchConfigChange={onLaunchConfigChange} />}
+    {session && <PromptComposer key={session.id} disabled={readonly || session.organizationStatus !== "active"} onSend={sendPrompt} capabilities={capabilities} launchConfig={session.launchConfig} onLaunchConfigChange={onLaunchConfigChange} />}
   </section>;
 }
 

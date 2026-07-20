@@ -64,6 +64,40 @@ describe("CLI GUI workbench", () => {
     expect(element.textContent).toContain("New session");
     expect(element.textContent).not.toContain("3001");
   });
+
+  it("keeps picker failures in the global feedback layer when settings is open", async () => {
+    const fetch = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) === "/api/state") return new Response(JSON.stringify(state), { status: 200 });
+      return new Response(JSON.stringify({ error: { code: "PICKER_INTENT_INVALID", message: "Folder picker intent is invalid or expired.", requestId: "request-test" } }), { status: 403, headers: { "content-type": "application/json" } });
+    });
+    vi.stubGlobal("fetch", fetch as typeof globalThis.fetch);
+    const element = document.createElement("div");
+    document.body.appendChild(element);
+    root = createRoot(element);
+
+    await act(async () => {
+      root?.render(<I18nProvider><FeedbackProvider><App /></FeedbackProvider></I18nProvider>);
+    });
+    await screenText(element, "Sessions");
+
+    await act(async () => {
+      element.querySelector<HTMLButtonElement>("[aria-label='Open settings']")?.click();
+    });
+    await act(async () => {
+      document.body.querySelector<HTMLButtonElement>(".open-folder-button")?.click();
+      await Promise.resolve();
+    });
+
+    await vi.waitFor(() => {
+      const notice = document.body.querySelector(".feedback-notice.notification.error")?.textContent ?? "";
+      expect(notice).toContain("folder picker session expired");
+      expect(notice).toContain("request-test");
+    });
+    await act(async () => {
+      await new Promise((resolve) => window.setTimeout(resolve, 220));
+    });
+    expect(document.body.querySelector(".overlay-panel")).toBeNull();
+  });
 });
 
 async function screenText(element: HTMLElement, text: string) {

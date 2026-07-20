@@ -72,7 +72,19 @@ describe("API compatibility client", () => {
     expect(fetch).toHaveBeenNthCalledWith(9, "/api/workspaces/workspace-1/languages", expect.any(Object));
     expect(fetch).toHaveBeenNthCalledWith(10, "/api/workspaces/workspace-1/git/status", expect.any(Object));
     expect(fetch).toHaveBeenNthCalledWith(11, "/api/workspaces/workspace-1/git/diff?scope=staged", expect.any(Object));
-    expect(fetch).toHaveBeenNthCalledWith(12, "/api/workspaces/pick", expect.objectContaining({ method: "POST" }));
-    expect(fetch).toHaveBeenNthCalledWith(13, "/api/sessions/reorder", expect.objectContaining({ method: "POST" }));
+    expect(fetch).toHaveBeenNthCalledWith(12, "/api/state", expect.objectContaining({ headers: expect.any(Headers) }));
+    expect(fetch).toHaveBeenNthCalledWith(13, "/api/workspaces/pick", expect.objectContaining({ method: "POST" }));
+    expect(fetch).toHaveBeenNthCalledWith(14, "/api/sessions/reorder", expect.objectContaining({ method: "POST" }));
+  });
+
+  it("refreshes the picker intent immediately before opening a folder", async () => {
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ pickerIntentToken: "fresh-intent" }), { status: 200, headers: { "content-type": "application/json" } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ cancelled: true }), { status: 200, headers: { "content-type": "application/json" } }));
+    globalThis.fetch = fetch as typeof globalThis.fetch;
+
+    await expect(api.pickWorkspace()).resolves.toMatchObject({ cancelled: true });
+    expect(fetch).toHaveBeenNthCalledWith(1, "/api/state", expect.objectContaining({ headers: expect.any(Headers) }));
+    expect(fetch).toHaveBeenNthCalledWith(2, "/api/workspaces/pick", expect.objectContaining({ method: "POST", body: JSON.stringify({ intentToken: "fresh-intent" }) }));
   });
 });

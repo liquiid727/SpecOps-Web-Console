@@ -133,6 +133,40 @@ describe("application composition", () => {
     await application.close();
   });
 
+  it("renews expired picker intents through state and rejects stale intents clearly", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
+    let sequence = 0;
+    const picker = { available: true, pick: vi.fn(async () => ({ cancelled: true as const })) };
+    const { dependencies } = createDependencies({
+      directoryPicker: picker,
+      idGenerator: { create: vi.fn((prefix) => `${prefix}-${++sequence}`) },
+      policy: { readonly: false, processEnvironment: {}, pickerIntentTtlMs: 60_000 }
+    });
+    const application = await createApplication(dependencies);
+    const server = createServer(application, { host: "127.0.0.1", port: 0, logger: dependencies.logger, requestIdFactory: () => "request-test" });
+    const address = await server.listen();
+
+    try {
+      const initial = await get(address.port, "/api/state");
+      vi.advanceTimersByTime(60_001);
+      const refreshed = await get(address.port, "/api/state");
+
+      expect(refreshed.json.pickerIntentToken).not.toBe(initial.json.pickerIntentToken);
+      const stale = await post(address.port, "/api/workspaces/pick", { intentToken: initial.json.pickerIntentToken });
+      expect(stale.status).toBe(403);
+      expect(stale.json.error.code).toBe("PICKER_INTENT_INVALID");
+
+      const cancelled = await post(address.port, "/api/workspaces/pick", { intentToken: refreshed.json.pickerIntentToken });
+      expect(cancelled.status).toBe(200);
+      expect(cancelled.json.cancelled).toBe(true);
+      expect(picker.pick).toHaveBeenCalledOnce();
+    } finally {
+      await server.close();
+      vi.useRealTimers();
+    }
+  });
+
   it("stops active PTYs and drains persistence during idempotent shutdown", async () => {
     const { calls, dependencies, state } = createDependencies();
     state.workspaces.push({ id: "workspace-1", name: "Workspace", path: "/tmp/workspace", createdAt: "2026-01-01T00:00:00Z" });
@@ -212,6 +246,31 @@ describe("application composition", () => {
     expect(inputEvents).toHaveLength(1);
     expect(inputEvents[0]).toMatchObject({ kind: "user_input", raw: "hello" });
     await server.close();
+  });
+
+  it("coalesces high-frequency PTY output into one transcript event", async () => {
+    const { dependencies, process, state, transcripts } = createDependencies();
+    state.workspaces.push({ id: "workspace-1", name: "Workspace", path: "/tmp/workspace", createdAt: "2026-01-01T00:00:00Z" });
+    state.profiles.push({ id: "profile-1", name: "CLI", command: "cli", args: [], adapterId: "generic", createdAt: "2026-01-01T00:00:00Z" });
+    state.sessions.push({ id: "session-1", workspaceId: "workspace-1", profileId: "profile-1", name: "Session", runtimeStatus: "stopped", organizationStatus: "active", pinned: false, manualOrder: 1000, launchConfig: { permission: null, mode: null, model: null }, revision: 1, createdAt: "2026-01-01T00:00:00Z", lastActiveAt: "2026-01-01T00:00:00Z" });
+    const application = await createApplication(dependencies);
+    const server = createServer(application, { host: "127.0.0.1", port: 0, logger: dependencies.logger, requestIdFactory: () => "request-test" });
+    const address = await server.listen();
+
+    try {
+      await post(address.port, "/api/sessions/session-1/start", { confirmed: true });
+      const onData = vi.mocked(process.onData).mock.calls[0]?.[0];
+      expect(onData).toBeDefined();
+      onData?.("\u001b[2Jfirst");
+      onData?.(" second\r\n");
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      const outputEvents = (transcripts.get("session-1") ?? []).filter((event) => event.kind === "pty_output");
+      expect(outputEvents).toHaveLength(1);
+      expect(outputEvents[0].raw).toBe("\u001b[2Jfirst second\r\n");
+    } finally {
+      await server.close();
+    }
   });
 
   it("separates stopped creation from confirmed start and serializes duplicate starts", async () => {

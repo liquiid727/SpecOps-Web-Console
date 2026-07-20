@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Icon } from "./Icon";
 import { useI18n } from "../../i18n";
 
@@ -16,6 +16,8 @@ export function Overlay({ children, description, kind = "dialog", onClose, title
   const closeTimer = useRef<number | undefined>(undefined);
   const onCloseRef = useRef(onClose);
   const closingRef = useRef(false);
+  const titleId = useId();
+  const descriptionId = useId();
   const [closing, setClosing] = useState(false);
   useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
 
@@ -60,9 +62,9 @@ export function Overlay({ children, description, kind = "dialog", onClose, title
   }, [requestClose]);
 
   return <div className={`overlay-backdrop ${closing ? "closing" : ""}`} onMouseDown={(event) => { if (event.target === event.currentTarget) requestClose(); }}>
-    <div className={`overlay-panel ${kind} ${closing ? "closing" : ""}`} ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="overlay-title" aria-describedby={description ? "overlay-description" : undefined} tabIndex={-1}>
+    <div className={`overlay-panel ${kind} ${closing ? "closing" : ""}`} ref={panelRef} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={description ? descriptionId : undefined} tabIndex={-1}>
       <header className="overlay-header">
-        <div><span className="eyebrow">PRODUCT AI OS</span><h2 id="overlay-title">{title}</h2>{description && <p id="overlay-description">{description}</p>}</div>
+        <div><span className="eyebrow">{t("brandTitle").toUpperCase()}</span><h2 id={titleId}>{title}</h2>{description && <p id={descriptionId}>{description}</p>}</div>
         <button className="icon-button" onClick={requestClose} aria-label={t("close")}><Icon name="close" /></button>
       </header>
       <div className="overlay-body">{children}</div>

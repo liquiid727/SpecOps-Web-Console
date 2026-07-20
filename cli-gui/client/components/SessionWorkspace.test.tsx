@@ -7,6 +7,7 @@ import { FeedbackProvider } from "./ui/Feedback";
 import { SessionWorkspace } from "./SessionWorkspace";
 
 vi.mock("../terminal", () => ({ TerminalView: ({ sessionId }: { sessionId: string }) => <div data-terminal={sessionId}>terminal</div> }));
+vi.mock("./TranscriptPanel", () => ({ TranscriptPanel: () => <div data-transcript="mocked">transcript</div> }));
 
 const baseSession: Session = { id: "session-1", workspaceId: "workspace-1", profileId: "profile-1", name: "Backend refactor", status: "stopped", createdAt: "2026-01-01T00:00:00Z", lastActiveAt: "2026-01-01T01:00:00Z" };
 

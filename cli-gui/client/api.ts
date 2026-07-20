@@ -73,7 +73,7 @@ export function openTranscriptSubscription(sessionId: string, afterSequence: num
 export function openTerminalSubscription(sessionId: string, handlers: TerminalSubscriptionHandlers) {
   if (typeof WebSocket === "undefined") return { sendInput: () => undefined, resize: () => undefined, close: () => undefined };
   const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-  const query = new URLSearchParams({ sessionId });
+  const query = new URLSearchParams({ sessionId, channel: "terminal" });
   if (csrfCapability) query.set("capability", csrfCapability);
   const socket = new WebSocket(`${protocol}://${window.location.host}/ws?${query.toString()}`);
   socket.addEventListener("open", () => handlers.onOpen?.());
@@ -137,6 +137,7 @@ export const api = {
   gitStatus: (workspaceId: string, signal?: AbortSignal) => request<GitStatusResponse>(`/api/workspaces/${workspaceId}/git/status`, { signal }),
   gitDiff: (workspaceId: string, scope: "unstaged" | "staged" = "unstaged", signal?: AbortSignal) => request<GitDiffResponse>(`/api/workspaces/${workspaceId}/git/diff?scope=${scope}`, { signal }),
   pickWorkspace: async () => {
+    await loadState();
     const result = await request<PickWorkspaceResponse>("/api/workspaces/pick", { method: "POST", body: JSON.stringify({ intentToken: pickerIntentToken ?? "" }) });
     if (result.pickerIntentToken) pickerIntentToken = result.pickerIntentToken;
     return result;

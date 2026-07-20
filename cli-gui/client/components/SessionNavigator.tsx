@@ -5,6 +5,7 @@ import type { SessionFilter, SessionGrouping } from "../app/preferences";
 import { useI18n, type TranslationKey } from "../i18n";
 import { Icon } from "./ui/Icon";
 import { Select } from "./ui/Select";
+import { useMobileDrawerFocus } from "./ui/useMobileDrawerFocus";
 
 interface NavigatorGroup {
   id?: string;
@@ -29,6 +30,7 @@ interface SessionNavigatorProps {
   onPin?: (session: Session) => void;
   onRename?: (session: Session) => void;
   onDelete?: (session: Session) => void;
+  onClose?: () => void;
   onReorder?: (sessionIds: string[], section: { organizationStatus: "active" | "completed" | "archived"; pinned: boolean; expectedRevisions: Record<string, number> }) => void;
   onNewSession: () => void;
   onSelect: (id: string) => void;
@@ -36,7 +38,7 @@ interface SessionNavigatorProps {
 
 const menuActions = ["rename", "pin", "complete", "archive", "fork", "delete"] as const;
 
-export function SessionNavigator({ activeSessionId, groups, grouping = "project", filter = "active", readonly = false, openFolderBusy = false, onGroupingChange, onFilterChange, onOpenFolder, onArchive, onComplete, onFork, onPin, onRename, onDelete, onReorder, onNewSession, onSelect }: SessionNavigatorProps) {
+export function SessionNavigator({ activeSessionId, groups, grouping = "project", filter = "active", readonly = false, openFolderBusy = false, onGroupingChange, onFilterChange, onOpenFolder, onArchive, onComplete, onFork, onPin, onRename, onDelete, onReorder, onNewSession, onSelect, onClose }: SessionNavigatorProps) {
   const { statusLabel, t } = useI18n();
   const [menuSession, setMenuSession] = useState<Session>();
   const [menuClosing, setMenuClosing] = useState(false);
@@ -45,6 +47,8 @@ export function SessionNavigator({ activeSessionId, groups, grouping = "project"
   const menuRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuCloseTimer = useRef<number | undefined>(undefined);
+  const panelRef = useRef<HTMLElement>(null);
+  useMobileDrawerFocus(panelRef, onClose);
   const sessionCount = groups.reduce((count, group) => count + group.sessions.length, 0);
 
   useEffect(() => {
@@ -106,7 +110,7 @@ export function SessionNavigator({ activeSessionId, groups, grouping = "project"
     setAnnouncement(t(direction < 0 ? "movedSessionUp" : "movedSessionDown", { name: session.name }));
   }
 
-  return <nav id="session-navigator" className="session-navigator" aria-label={t("sessions")} onKeyDown={(event) => { if (event.key === "Escape") closeMenu(); }}>
+  return <nav ref={panelRef} id="session-navigator" className="session-navigator" aria-label={t("sessions")} onKeyDown={(event) => { if (event.key === "Escape" && menuSession) { event.preventDefault(); closeMenu(); } }}>
     <header className="navigator-header">
       <div><span className="eyebrow">{t("workspaces").toUpperCase()}</span><strong>{t("sessions")}</strong></div>
       <span className="count-badge" aria-label={t("sessionCount", { count: sessionCount })}>{sessionCount}</span>
