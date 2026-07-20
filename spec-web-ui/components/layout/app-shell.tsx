@@ -4,8 +4,6 @@ import type { ReactNode } from "react";
 import { LanguageToggle } from "@/components/layout/language-toggle";
 import { MobileUtilityBar } from "@/components/layout/mobile-utility-bar";
 import { SiteNav } from "@/components/layout/site-nav";
-import { SummerSurfDecor } from "@/components/layout/summer-surf-decor";
-import { ThemeToggle } from "@/components/layout/theme-toggle";
 import type { Locale } from "@/lib/locale";
 
 export function AppShell({
@@ -18,29 +16,27 @@ export function AppShell({
   readOnly?: boolean;
 }) {
   return (
-    <div className="min-h-screen bg-canvas">
-      <header className="sticky top-0 z-20 hidden border-b border-line bg-canvas/98 md:block">
-        <div className="mx-auto max-w-[1560px] px-6 py-3">
+    <div className="neo-app min-h-screen">
+      <header className="sticky top-0 z-20 hidden border-b-2 border-ink bg-panel md:block">
+        <div className="mx-auto max-w-[1440px] px-6 py-3">
           <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
             <Link
               href="/"
-              className="inline-flex items-center gap-2 font-mono text-[12px] font-semibold uppercase tracking-[0.16em] text-ink"
+              className="inline-flex items-center gap-3 font-mono text-[12px] font-bold uppercase tracking-[0.08em] text-ink"
             >
-              <span className="text-slate-500">$</span>
-              <span>specos-ai/spec-web-ui</span>
+              <span className="neo-mark" aria-hidden="true">N</span>
+              <span>specos / asset workbench</span>
             </Link>
             <div className="min-w-0 flex-1">
               <SiteNav locale={locale} readOnly={readOnly} />
             </div>
             <div className="flex items-center gap-2">
               <LanguageToggle compact locale={locale} />
-              <ThemeToggle compact locale={locale} />
             </div>
           </div>
         </div>
       </header>
-      <SummerSurfDecor locale={locale} />
-      <main className="mx-auto max-w-[1560px] px-4 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] pt-4 sm:px-5 sm:pt-5 md:px-6 md:py-6 md:pb-6">
+      <main className="mx-auto max-w-[1440px] px-4 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] pt-5 sm:px-5 sm:pt-6 md:px-6 md:py-8 md:pb-8">
         {children}
       </main>
       <MobileUtilityBar locale={locale} />

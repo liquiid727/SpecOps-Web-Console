@@ -5,7 +5,7 @@ import { CatalogAssetSummary } from "@/components/catalog/asset-summary";
 import { WindowSection } from "@/components/ui/window-section";
 import { filterCatalogAssets, loadCatalogAssets } from "@/lib/catalog";
 import { buildShellCommandTitle } from "@/lib/shell";
-import { buildGlassSurfaceClassName } from "@/lib/theme";
+import { buildNeoSurfaceClassName } from "@/lib/theme";
 import type { CatalogAsset, CatalogCategory, CatalogAssetType } from "@/lib/types";
 
 const categoryOptions: Array<{ label: string; value: CatalogCategory }> = [
@@ -47,7 +47,7 @@ function TemplateCard({ asset }: { asset: CatalogAsset }) {
   return (
     <Link
       href={`/discover/${asset.id}`}
-      className={`${buildGlassSurfaceClassName("row")} block rounded-lg px-4 py-4 transition hover:border-slate-400/40`}
+      className={`${buildNeoSurfaceClassName("row")} block min-w-0 overflow-hidden px-4 py-4 transition hover:border-slate-400/40`}
     >
       <div className="flex flex-wrap items-center gap-2">
         <span className="rounded-md border border-line px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-slate-500">
@@ -122,7 +122,7 @@ export async function TemplateLibraryPage({
             <span className="sr-only">{searchLabel}</span>
             <input
               aria-label={searchLabel}
-              className={`${buildGlassSurfaceClassName("input")} w-full rounded-[16px] px-3.5 py-2.5 text-sm text-ink outline-none`}
+              className={`${buildNeoSurfaceClassName("input")} w-full px-3.5 py-2.5 text-sm text-ink outline-none`}
               defaultValue={query}
               name="q"
               placeholder={`${searchLabel}...`}
@@ -179,7 +179,7 @@ export async function TemplateLibraryPage({
       <section aria-label={title} className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2 className="text-xl font-semibold text-ink">全部模版</h2>
+            <h2 className="text-xl font-extrabold text-ink">当前资产</h2>
             <p className="mt-1 text-sm text-slate-500">{description}</p>
           </div>
           <span className="rounded-full border border-line px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.12em] text-slate-500">

@@ -37,7 +37,7 @@ export function LanguageToggle({ locale, compact = false }: { locale: Locale; co
         aria-haspopup="menu"
         aria-label={copy.shell.languageLabel}
         className={cn(
-          "utility-menu-button control control-secondary inline-flex cursor-pointer list-none items-center rounded-full",
+          "utility-menu-button control control-secondary inline-flex cursor-pointer list-none items-center",
           compact ? "utility-menu-button-compact" : "utility-menu-button-regular"
         )}
         onClick={() => setOpen((current) => !current)}

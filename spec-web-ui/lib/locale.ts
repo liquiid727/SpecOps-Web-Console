@@ -35,34 +35,31 @@ export const localeCopy = {
         exports: "导出"
       },
       home: "首页",
-      theme: "主题",
-      day: "日间",
-      night: "夜间",
-      summerSurf: "夏日冲浪"
+      theme: "视觉系统"
     },
     home: {
-      heroTitle: "先搜索目录，找到要组合的项目资产。",
-      heroDescription: "SpecOS Web UI 是一个轻量入口。真正的浏览、组装和导出都放在对应工作区里，首页只负责帮你开始。",
-      searchLabel: "搜索目录",
-      searchPlaceholder: "$ 搜索规则、模板、Agent 角色...",
-      openDiscover: "进入发现",
-      openProjects: "进入项目",
-      firstUseTitle: "初次使用建议",
-      firstUsePrefix: "不知道从哪里开始时，先去 ",
+      heroTitle: "把 AI 工程资产装进项目骨架。",
+      heroDescription: "从规则、Skill、Agent 到模板，搜索目录，挑选可复用资产，组合出一套能直接落地的项目基线。",
+      searchLabel: "搜索可复用资产",
+      searchPlaceholder: "搜索规则、模板、Agent 角色...",
+      openDiscover: "浏览资产",
+      openProjects: "创建工作区",
+      firstUseTitle: "三步开始",
+      firstUsePrefix: "先 ",
       firstUseLinks: [
         {
-          label: "发现页",
-          description: " 看目录资产",
+          label: "浏览目录",
+          description: " 找到适合的资产",
           href: "/discover"
         },
         {
-          label: "项目页",
-          description: " 组合项目上下文",
+          label: "组合工作区",
+          description: " 形成项目基线",
           href: "/projects"
         },
         {
-          label: "导出页",
-          description: " 做交付评审",
+          label: "预览导出",
+          description: " 确认交付内容",
           href: "/exports"
         }
       ],
@@ -97,8 +94,8 @@ export const localeCopy = {
       },
       projectShortcutsTitle: "最近项目",
       projectShortcutsDescription: "保留工作区入口，不在首页展开项目细节。",
-      workflowTitle: "工作区循环",
-      workflowDescription: "产品流程保持聚焦：发现、组装、草稿、导出。",
+      workflowTitle: "资产工作流",
+      workflowDescription: "从目录选择开始，到项目基线交付结束。",
       workflowBodyA:
         "`spec-web-ui` 是目录优先的工作台。目录保持仓库驱动，项目把规则、模板和 Agent 角色作为可组合资产使用。",
       workflowBodyB: "产品循环刻意收窄：发现资产、组装项目、细化草稿，然后在交付前评审导出差异。",
@@ -345,35 +342,32 @@ export const localeCopy = {
         exports: "Exports"
       },
       home: "Home",
-      theme: "Theme",
-      day: "Day",
-      night: "Night",
-      summerSurf: "Summer Surf"
+      theme: "Visual system"
     },
     home: {
-      heroTitle: "Search the catalog first, then compose the assets you need.",
+      heroTitle: "Pack your AI engineering assets into a project baseline.",
       heroDescription:
-        "SpecOS Web UI is a lightweight entry point. Browsing, composing, and exporting live in their own workspaces. The homepage only helps you get started.",
-      searchLabel: "search catalog",
-      searchPlaceholder: "$ search rules, templates, agent roles...",
-      openDiscover: "Go to discover",
-      openProjects: "Go to projects",
-      firstUseTitle: "First-use guide",
-      firstUsePrefix: "If you are not sure where to start, open ",
+        "Search rules, skills, agents, and templates, then assemble a reusable project baseline you can install and review.",
+      searchLabel: "search reusable assets",
+      searchPlaceholder: "search rules, templates, agent roles...",
+      openDiscover: "Browse assets",
+      openProjects: "Create workspace",
+      firstUseTitle: "Three steps to start",
+      firstUsePrefix: "Start by ",
       firstUseLinks: [
         {
-          label: "discover",
-          description: " for catalog assets",
+          label: "browsing the catalog",
+          description: " to find the right assets",
           href: "/discover"
         },
         {
-          label: "projects",
-          description: " to compose context",
+          label: "composing a workspace",
+          description: " to form your baseline",
           href: "/projects"
         },
         {
-          label: "exports",
-          description: " for handoff review",
+          label: "previewing the export",
+          description: " before handoff",
           href: "/exports"
         }
       ],
@@ -408,8 +402,8 @@ export const localeCopy = {
       },
       projectShortcutsTitle: "Recent projects",
       projectShortcutsDescription: "Keep workspace entry points visible without expanding project detail.",
-      workflowTitle: "Workspace loop",
-      workflowDescription: "The product flow stays intentionally narrow: discover, assemble, draft, export.",
+      workflowTitle: "Asset workflow",
+      workflowDescription: "Start with catalog selection and finish with a reviewable project baseline.",
       workflowBodyA:
         "`spec-web-ui` is a catalog-first workspace. The catalog stays repo-backed. Projects consume rules, templates, and agent roles as composable assets.",
       workflowBodyB:

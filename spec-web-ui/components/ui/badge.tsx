@@ -1,14 +1,15 @@
 import React, { type HTMLAttributes } from "react";
 
-import { buildGlassInteractiveClassName } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
-export function Badge({ className, ...props }: HTMLAttributes<HTMLSpanElement>) {
+export type BadgeTone = "neutral" | "blue" | "green" | "yellow" | "red";
+
+export function Badge({ className, tone = "neutral", ...props }: HTMLAttributes<HTMLSpanElement> & { tone?: BadgeTone }) {
   return (
     <span
       className={cn(
-        buildGlassInteractiveClassName("neutral"),
-        "inline-flex items-center rounded-full px-2.5 py-1 font-mono text-[11px] font-medium uppercase tracking-[0.12em]",
+        "neo-badge",
+        `neo-badge-${tone}`,
         className
       )}
       {...props}

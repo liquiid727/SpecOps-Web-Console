@@ -1,30 +1,18 @@
-export type GlassSurfaceVariant = "panel" | "hero" | "input" | "result" | "rail" | "row";
-export type GlassSurfaceTint = "neutral" | "blue" | "emerald" | "lime" | "violet" | "amber" | "mint";
-export type GlassInteractiveVariant = "accent" | "neutral";
-export type TrafficLightTone = "red" | "yellow" | "green";
+export type NeoSurfaceVariant = "panel" | "hero" | "input" | "result" | "rail" | "row";
+export type NeoSurfaceTint = "neutral" | "blue" | "emerald" | "lime" | "violet" | "amber" | "mint";
+export type NeoInteractiveVariant = "accent" | "neutral";
 
-export type ThemeMode = "light" | "dark" | "system" | "auto" | "summer-surf";
-export type ResolvedThemeMode = "light" | "dark" | "summer-surf";
-export type BrowserColorScheme = "light" | "dark";
+export type ThemeMode = "neo";
+export type ResolvedThemeMode = "neo";
+export type BrowserColorScheme = "light";
 
 export const THEME_MODE_STORAGE_KEY = "specos-theme-mode";
 export const THEME_CHANGE_EVENT = "specos-theme-change";
-export const DEFAULT_THEME_MODE: ThemeMode = "summer-surf";
-export const WINDOW_TRAFFIC_LIGHTS: TrafficLightTone[] = ["red", "yellow", "green"];
+export const DEFAULT_THEME_MODE: ThemeMode = "neo";
 
-const VALID_THEME_MODES = ["light", "dark", "system", "auto", "summer-surf"] as const;
-
-export type ThemeState = {
-  colorScheme: BrowserColorScheme;
-  isDark: boolean;
-  mode: ThemeMode;
-  resolvedMode: ResolvedThemeMode;
-  rootClassName: ResolvedThemeMode;
-};
-
-export function buildGlassSurfaceClassName(
-  variant: GlassSurfaceVariant,
-  tint: GlassSurfaceTint = "neutral"
+export function buildNeoSurfaceClassName(
+  variant: NeoSurfaceVariant,
+  tint: NeoSurfaceTint = "neutral"
 ) {
   const tintClassName = `surface-tone-${tint}`;
 
@@ -45,99 +33,58 @@ export function buildGlassSurfaceClassName(
   }
 }
 
-export function buildGlassInteractiveClassName(variant: GlassInteractiveVariant) {
-  switch (variant) {
-    case "accent":
-      return "control control-primary";
-    case "neutral":
-    default:
-      return "control control-secondary";
-  }
+export function buildNeoInteractiveClassName(variant: NeoInteractiveVariant) {
+  return variant === "accent" ? "control control-primary" : "control control-secondary";
 }
 
-export function buildTrafficLightClassName(tone: TrafficLightTone) {
-  return `traffic-light traffic-light-${tone}`;
-}
-
-export function normalizeThemeMode(value: unknown): ThemeMode {
-  return typeof value === "string" && VALID_THEME_MODES.includes(value.trim() as ThemeMode)
-    ? (value.trim() as ThemeMode)
-    : DEFAULT_THEME_MODE;
+export function normalizeThemeMode(_value: unknown): ThemeMode {
+  return DEFAULT_THEME_MODE;
 }
 
 export const coerceThemeMode = normalizeThemeMode;
 
 export function resolveThemeMode(
-  mode: ThemeMode,
-  options: { now?: Date; systemPrefersDark?: boolean }
+  _mode: ThemeMode | string,
+  _options: { now?: Date; systemPrefersDark?: boolean } = {}
 ): ResolvedThemeMode {
-  const hour = options.now?.getHours() ?? new Date().getHours();
-  const systemPrefersDark = options.systemPrefersDark ?? false;
-
-  switch (mode) {
-    case "light":
-      return "light";
-    case "dark":
-      return "dark";
-    case "summer-surf":
-      return "summer-surf";
-    case "auto":
-      return hour >= 18 || hour < 6 ? "dark" : "light";
-    case "system":
-    default:
-      return systemPrefersDark ? "dark" : "light";
-  }
+  return DEFAULT_THEME_MODE;
 }
 
-export function buildThemeState(
-  mode: ThemeMode,
-  options: { hour: number; systemPrefersDark: boolean }
-): ThemeState {
-  const resolvedMode = resolveThemeMode(mode, {
-    now: new Date(new Date().setHours(options.hour, 0, 0, 0)),
-    systemPrefersDark: options.systemPrefersDark
-  });
+export type ThemeState = {
+  colorScheme: BrowserColorScheme;
+  isDark: false;
+  mode: ThemeMode;
+  resolvedMode: ResolvedThemeMode;
+  rootClassName: ResolvedThemeMode;
+};
 
+export function buildThemeState(
+  _mode: ThemeMode | string,
+  _options: { hour?: number; systemPrefersDark?: boolean } = {}
+): ThemeState {
   return {
-    colorScheme: resolvedMode === "dark" ? "dark" : "light",
-    isDark: resolvedMode === "dark",
-    mode,
-    resolvedMode,
-    rootClassName: resolvedMode
+    colorScheme: "light",
+    isDark: false,
+    mode: DEFAULT_THEME_MODE,
+    resolvedMode: DEFAULT_THEME_MODE,
+    rootClassName: DEFAULT_THEME_MODE
   };
 }
 
 export function buildThemeBootScript(storageKey = THEME_MODE_STORAGE_KEY) {
   return `(() => {
   const storageKey = ${JSON.stringify(storageKey)};
-  const defaultMode = ${JSON.stringify(DEFAULT_THEME_MODE)};
-  const validModes = ${JSON.stringify(VALID_THEME_MODES)};
-  const normalize = (value) => {
-    if (typeof value !== "string") return defaultMode;
-    const normalized = value.trim();
-    return validModes.includes(normalized) ? normalized : defaultMode;
-  };
-  const resolve = (mode, systemPrefersDark, hour) => {
-    if (mode === "light") return "light";
-    if (mode === "dark") return "dark";
-    if (mode === "summer-surf") return "summer-surf";
-    if (mode === "auto") return hour >= 18 || hour < 6 ? "dark" : "light";
-    return systemPrefersDark ? "dark" : "light";
-  };
   const root = document.documentElement;
-  let rawMode = defaultMode;
   try {
-    rawMode = window.localStorage.getItem(storageKey);
+    window.localStorage.getItem(storageKey);
   } catch {}
-  const mode = normalize(rawMode);
-  const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  const resolvedMode = resolve(mode, systemPrefersDark, new Date().getHours());
+  const mode = "neo";
+  const resolvedMode = "neo";
   root.dataset.themeMode = mode;
   root.dataset.theme = resolvedMode;
-  root.style.colorScheme = resolvedMode === "dark" ? "dark" : "light";
-  root.classList.toggle("dark", resolvedMode === "dark");
-  root.classList.toggle("light", resolvedMode === "light");
-  root.classList.toggle("summer-surf", resolvedMode === "summer-surf");
+  root.style.colorScheme = "light";
+  root.classList.remove("dark", "light", "summer-surf");
+  root.classList.add("neo");
   window.dispatchEvent(new CustomEvent(${JSON.stringify(THEME_CHANGE_EVENT)}, {
     detail: { mode, resolvedMode }
   }));

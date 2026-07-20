@@ -1,18 +1,18 @@
 import React, { type HTMLAttributes } from "react";
 
-import { buildGlassSurfaceClassName, type GlassSurfaceTint } from "@/lib/theme";
+import { buildNeoSurfaceClassName, type NeoSurfaceTint } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
 export function Card({
   className,
   tint = "neutral",
   ...props
-}: HTMLAttributes<HTMLDivElement> & { tint?: GlassSurfaceTint }) {
+}: HTMLAttributes<HTMLDivElement> & { tint?: NeoSurfaceTint }) {
   return (
     <div
       className={cn(
-        buildGlassSurfaceClassName("panel", tint),
-        "rounded-lg p-5",
+        buildNeoSurfaceClassName("panel", tint),
+        "p-5",
         className
       )}
       {...props}

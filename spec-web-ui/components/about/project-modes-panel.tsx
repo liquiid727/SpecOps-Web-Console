@@ -1,12 +1,12 @@
 import React from "react";
 
 import { WindowSection } from "@/components/ui/window-section";
-import { buildGlassSurfaceClassName, type GlassSurfaceTint } from "@/lib/theme";
+import { buildNeoSurfaceClassName, type NeoSurfaceTint } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
-const modeTints: readonly GlassSurfaceTint[] = ["blue", "emerald", "amber"];
+const modeTints: readonly NeoSurfaceTint[] = ["blue", "emerald", "amber"];
 
-function tintForModeIndex(index: number): GlassSurfaceTint {
+function tintForModeIndex(index: number): NeoSurfaceTint {
   return modeTints[index] ?? "neutral";
 }
 
@@ -59,7 +59,7 @@ export function ProjectModesPanel({
           <article
             key={mode.name}
             className={cn(
-              buildGlassSurfaceClassName("panel", tintForModeIndex(index)),
+              buildNeoSurfaceClassName("panel", tintForModeIndex(index)),
               "rounded-lg p-4"
             )}
           >
@@ -79,7 +79,7 @@ export function ProjectModesPanel({
               <div>
                 <dt className="font-mono text-[11px] uppercase tracking-[0.14em] text-slate-500">{mode.treeLabel}</dt>
                 <dd className="mt-2">
-                  <div className={cn(buildGlassSurfaceClassName("row", "neutral"), "overflow-x-auto rounded-lg px-3 py-3")}>
+                  <div className={cn(buildNeoSurfaceClassName("row", "neutral"), "overflow-x-auto px-3 py-3")}>
                     <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">{mode.treeCommand}</p>
                     <div className="mt-2 min-w-max space-y-1 font-mono text-[11px] leading-5 text-ink">
                       {mode.tree.map((entry) => (
@@ -96,7 +96,7 @@ export function ProjectModesPanel({
               <div>
                 <dt className="font-mono text-[11px] uppercase tracking-[0.14em] text-slate-500">{mode.loadLabel}</dt>
                 <dd className="mt-2">
-                  <div className={cn(buildGlassSurfaceClassName("row", tintForModeIndex(index)), "rounded-lg px-3 py-3")}>
+                  <div className={cn(buildNeoSurfaceClassName("row", tintForModeIndex(index)), "px-3 py-3")}>
                     <div className="flex flex-wrap items-center gap-2 font-mono text-[11px] leading-5 text-ink">
                       {mode.loadPath.map((step, stepIndex) => (
                         <React.Fragment key={`${mode.name}-${step}`}>
@@ -148,7 +148,7 @@ export function ProjectModesPanel({
       </div>
 
       <div className="grid gap-3 xl:grid-cols-[1.35fr_1fr]">
-        <div className={cn(buildGlassSurfaceClassName("row", "neutral"), "rounded-lg px-4 py-3")}>
+        <div className={cn(buildNeoSurfaceClassName("row", "neutral"), "px-4 py-3")}>
           <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-slate-500">{copy.sharedLabel}</p>
           <ul className="mt-3 space-y-2 text-sm text-ink">
             {copy.sharedPoints.map((point) => (
@@ -160,7 +160,7 @@ export function ProjectModesPanel({
           </ul>
         </div>
 
-        <div className={cn(buildGlassSurfaceClassName("row", "mint"), "rounded-lg px-4 py-3")}>
+        <div className={cn(buildNeoSurfaceClassName("row", "mint"), "px-4 py-3")}>
           <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-slate-500">{copy.decisionLabel}</p>
           <p className="mt-2 text-sm leading-6 text-ink">{copy.decision}</p>
         </div>

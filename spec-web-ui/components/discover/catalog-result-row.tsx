@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { CatalogAssetSummary } from "@/components/catalog/asset-summary";
 import { Badge } from "@/components/ui/badge";
 import { getCatalogRowTagPreview } from "@/lib/discover-ui";
-import { buildGlassSurfaceClassName, type GlassSurfaceTint } from "@/lib/theme";
+import { buildNeoSurfaceClassName, type NeoSurfaceTint } from "@/lib/theme";
 import type { CatalogAsset } from "@/lib/types";
 
 export function CatalogResultRow({
@@ -28,12 +28,12 @@ export function CatalogResultRow({
   rightContent?: ReactNode;
   actions?: ReactNode;
   tagLimit?: number;
-  tint?: GlassSurfaceTint;
+  tint?: NeoSurfaceTint;
 }) {
   const tagPreview = getCatalogRowTagPreview(asset.tags, tagLimit);
 
   return (
-    <div className={`${buildGlassSurfaceClassName("row", tint)} rounded-[18px] px-4 py-3`}>
+    <div className={`${buildNeoSurfaceClassName("row", tint)} px-4 py-3`}>
       <div className="flex flex-wrap items-center gap-2">
         {badges}
         {meta}
