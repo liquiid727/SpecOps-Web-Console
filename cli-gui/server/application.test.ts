@@ -1,16 +1,17 @@
 // @vitest-environment node
 import http from "node:http";
 import { describe, expect, it, vi } from "vitest";
-import type { AppState } from "../shared/types.js";
+import type { AppStateV2, GitDiffResponse, GitStatusResponse, TranscriptEvent, TranscriptPage } from "../shared/types.js";
 import { createApplication } from "./application.js";
 import { createServer } from "./http-server.js";
 import type { Application, ApplicationDependencies, PtyProcess } from "./ports.js";
 
-const emptyState: AppState = { workspaces: [], profiles: [], sessions: [] };
+const emptyState: AppStateV2 = { workspaces: [], profiles: [], sessions: [] };
 
 function createDependencies(overrides: Partial<ApplicationDependencies> = {}) {
   const calls: string[] = [];
   const state = structuredClone(emptyState);
+  const transcripts = new Map<string, TranscriptEvent[]>();
   const process: PtyProcess = {
     write: vi.fn(),
     resize: vi.fn(),
@@ -24,15 +25,49 @@ function createDependencies(overrides: Partial<ApplicationDependencies> = {}) {
       save: vi.fn(async () => { calls.push("save"); }),
       drain: vi.fn(async () => { calls.push("state-drain"); })
     },
-    transcriptRepository: { drain: vi.fn(async () => { calls.push("transcript-drain"); }) },
+    transcriptRepository: {
+      append: vi.fn(async (input) => {
+        const events = transcripts.get(input.sessionId) ?? [];
+        const event: TranscriptEvent = {
+          id: `event-${input.sessionId}-${events.length + 1}`,
+          sessionId: input.sessionId,
+          sequence: events.length + 1,
+          occurredAt: input.occurredAt,
+          kind: input.kind,
+          source: input.source,
+          raw: input.raw,
+          rawBytes: Buffer.byteLength(input.raw),
+          truncated: false,
+          metadata: input.metadata,
+          clientMessageId: input.clientMessageId
+        };
+        events.push(event);
+        transcripts.set(input.sessionId, events);
+        return event;
+      }),
+      list: vi.fn(async (sessionId, options = {}): Promise<TranscriptPage> => {
+        const after = options.afterSequence ?? 0;
+        const events = (transcripts.get(sessionId) ?? []).filter((event) => event.sequence > after);
+        return { events, hasMore: false, nextAfterSequence: events.at(-1)?.sequence ?? after, visibleStartSequence: 1, retentionTruncated: false };
+      }),
+      latest: vi.fn(async (sessionId) => transcripts.get(sessionId)?.at(-1)),
+      delete: vi.fn(async (sessionId) => { transcripts.delete(sessionId); }),
+      drain: vi.fn(async () => { calls.push("transcript-drain"); })
+    },
     ptyRuntime: { spawn: vi.fn(() => process), shutdown: vi.fn(async () => { calls.push("pty-shutdown"); }) },
     filesystem: {
       stat: vi.fn(async () => ({ isDirectory: () => true })),
       access: vi.fn(async () => undefined),
-      readFile: vi.fn(async () => Buffer.from(""))
+      readFile: vi.fn(async () => Buffer.from("")),
+      realpath: vi.fn(async (target: string) => target),
+      readdir: vi.fn(async () => [])
     },
-    gitInspector: { available: false },
-    directoryPicker: { available: false },
+    gitInspector: {
+      available: false,
+      status: vi.fn(async (): Promise<GitStatusResponse> => ({ repository: false, clean: true, entries: [], truncated: false })),
+      diff: vi.fn(async (_workspacePath, scope): Promise<GitDiffResponse> => ({ scope, files: [], truncated: false, originalBytes: 0, shownLines: 0 }))
+    },
+    directoryPicker: { available: false, pick: vi.fn(async () => ({ cancelled: true })) },
     profileAdapters: { availableAdapterIds: ["generic"] },
     clock: { now: vi.fn(() => "2026-01-01T00:00:00Z") },
     idGenerator: { create: vi.fn((prefix) => `${prefix}-fixed`) },
@@ -40,7 +75,41 @@ function createDependencies(overrides: Partial<ApplicationDependencies> = {}) {
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
     ...overrides
   };
-  return { calls, dependencies, process, state };
+  return { calls, dependencies, process, state, transcripts };
+}
+
+function post(port: number, pathname: string, body: unknown) {
+  return send(port, pathname, "POST", body);
+}
+
+function patch(port: number, pathname: string, body: unknown) {
+  return send(port, pathname, "PATCH", body);
+}
+
+function get(port: number, pathname: string) {
+  return send(port, pathname, "GET");
+}
+
+function send(port: number, pathname: string, method: string, body?: unknown) {
+  return new Promise<{ status: number; json: any }>((resolve, reject) => {
+    const payload = body === undefined ? undefined : Buffer.from(JSON.stringify(body));
+    const req = http.request({
+      host: "127.0.0.1",
+      port,
+      path: pathname,
+      method,
+      headers: payload ? { "content-type": "application/json", "content-length": payload.length } : undefined
+    }, (response) => {
+      const chunks: Buffer[] = [];
+      response.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+      response.on("end", () => {
+        const text = Buffer.concat(chunks).toString("utf8");
+        resolve({ status: response.statusCode ?? 0, json: text ? JSON.parse(text) : undefined });
+      });
+    });
+    req.on("error", reject);
+    req.end(payload);
+  });
 }
 
 function request(port: number, pathname: string) {
@@ -67,8 +136,8 @@ describe("application composition", () => {
   it("stops active PTYs and drains persistence during idempotent shutdown", async () => {
     const { calls, dependencies, state } = createDependencies();
     state.workspaces.push({ id: "workspace-1", name: "Workspace", path: "/tmp/workspace", createdAt: "2026-01-01T00:00:00Z" });
-    state.profiles.push({ id: "profile-1", name: "CLI", command: "cli", args: [], createdAt: "2026-01-01T00:00:00Z" });
-    state.sessions.push({ id: "session-1", workspaceId: "workspace-1", profileId: "profile-1", name: "Session", status: "stopped", createdAt: "2026-01-01T00:00:00Z", lastActiveAt: "2026-01-01T00:00:00Z" });
+    state.profiles.push({ id: "profile-1", name: "CLI", command: "cli", args: [], adapterId: "generic", createdAt: "2026-01-01T00:00:00Z" });
+    state.sessions.push({ id: "session-1", workspaceId: "workspace-1", profileId: "profile-1", name: "Session", runtimeStatus: "stopped", organizationStatus: "active", pinned: false, manualOrder: 1000, launchConfig: { permission: null, mode: null, model: null }, revision: 1, createdAt: "2026-01-01T00:00:00Z", lastActiveAt: "2026-01-01T00:00:00Z" });
     const application = await createApplication(dependencies);
     const server = createServer(application, { host: "127.0.0.1", port: 0, logger: dependencies.logger, requestIdFactory: () => "request-test" });
     const address = await server.listen();
@@ -83,15 +152,117 @@ describe("application composition", () => {
       req.end(payload);
     });
     expect(dependencies.ptyRuntime.spawn).toHaveBeenCalledOnce();
-    expect(state.sessions[0].status).toBe("running");
+    expect(state.sessions[0].runtimeStatus).toBe("running");
     await Promise.all([server.close(), server.close()]);
 
     expect(dependencies.ptyRuntime.shutdown).toHaveBeenCalledOnce();
     expect(dependencies.stateRepository.drain).toHaveBeenCalledOnce();
     expect(dependencies.transcriptRepository.drain).toHaveBeenCalledOnce();
-    expect(state.sessions[0].status).toBe("stopped");
+    expect(state.sessions[0].runtimeStatus).toBe("stopped");
     expect(calls).toContain("save");
     expect(calls.indexOf("save")).toBeLessThan(calls.indexOf("state-drain"));
+  });
+
+  it("applies session lifecycle metadata with optimistic revisions", async () => {
+    const { dependencies, state } = createDependencies();
+    state.workspaces.push({ id: "workspace-1", name: "Workspace", path: "/tmp/workspace", createdAt: "2026-01-01T00:00:00Z" });
+    state.profiles.push({ id: "profile-1", name: "CLI", command: "cli", args: [], adapterId: "generic", createdAt: "2026-01-01T00:00:00Z" });
+    state.sessions.push({ id: "session-1", workspaceId: "workspace-1", profileId: "profile-1", name: "Session", runtimeStatus: "stopped", organizationStatus: "active", pinned: false, manualOrder: 1000, launchConfig: { permission: null, mode: null, model: null }, revision: 1, createdAt: "2026-01-01T00:00:00Z", lastActiveAt: "2026-01-01T00:00:00Z" });
+    const application = await createApplication(dependencies);
+    const server = createServer(application, { host: "127.0.0.1", port: 0, logger: dependencies.logger, requestIdFactory: () => "request-test" });
+    const address = await server.listen();
+
+    const renamed = await patch(address.port, "/api/sessions/session-1", { expectedRevision: 1, name: "Renamed" });
+    expect(renamed.status).toBe(200);
+    expect(renamed.json).toMatchObject({ name: "Renamed", revision: 2, runtimeStatus: "stopped", organizationStatus: "active" });
+
+    const conflict = await post(address.port, "/api/sessions/session-1/pin", { expectedRevision: 1, pinned: true });
+    expect(conflict.status).toBe(409);
+    expect(conflict.json.error.code).toBe("SESSION_REVISION_CONFLICT");
+
+    const pinned = await post(address.port, "/api/sessions/session-1/pin", { expectedRevision: 2, pinned: true });
+    expect(pinned.json).toMatchObject({ pinned: true, revision: 3 });
+    const completed = await post(address.port, "/api/sessions/session-1/complete", { expectedRevision: 3 });
+    expect(completed.json).toMatchObject({ organizationStatus: "completed", revision: 4 });
+    const restored = await post(address.port, "/api/sessions/session-1/restore", { expectedRevision: 4 });
+    expect(restored.json).toMatchObject({ organizationStatus: "active", revision: 5 });
+    await server.close();
+  });
+
+  it("persists composer submissions and replays transcripts", async () => {
+    const { dependencies, process, state } = createDependencies();
+    state.workspaces.push({ id: "workspace-1", name: "Workspace", path: "/tmp/workspace", createdAt: "2026-01-01T00:00:00Z" });
+    state.profiles.push({ id: "profile-1", name: "CLI", command: "cli", args: [], adapterId: "generic", createdAt: "2026-01-01T00:00:00Z" });
+    state.sessions.push({ id: "session-1", workspaceId: "workspace-1", profileId: "profile-1", name: "Session", runtimeStatus: "stopped", organizationStatus: "active", pinned: false, manualOrder: 1000, launchConfig: { permission: null, mode: null, model: null }, revision: 1, createdAt: "2026-01-01T00:00:00Z", lastActiveAt: "2026-01-01T00:00:00Z" });
+    const application = await createApplication(dependencies);
+    const server = createServer(application, { host: "127.0.0.1", port: 0, logger: dependencies.logger, requestIdFactory: () => "request-test" });
+    const address = await server.listen();
+
+    const sent = await post(address.port, "/api/sessions/session-1/messages", { clientMessageId: "client-1", content: "hello", startIfStopped: true, confirmedStart: true });
+    expect(sent.status).toBe(202);
+    expect(sent.json).toMatchObject({ duplicate: false, event: { kind: "user_input", raw: "hello", clientMessageId: "client-1" }, runtimeStatus: "running" });
+    expect(process.write).toHaveBeenCalledWith("hello\r");
+
+    const duplicate = await post(address.port, "/api/sessions/session-1/messages", { clientMessageId: "client-1", content: "hello", startIfStopped: true, confirmedStart: true });
+    expect(duplicate.json).toMatchObject({ duplicate: true, event: { clientMessageId: "client-1" } });
+    expect(process.write).toHaveBeenCalledTimes(1);
+
+    const replay = await get(address.port, "/api/sessions/session-1/transcript");
+    expect(replay.json.events).toHaveLength(1);
+    expect(replay.json.events[0]).toMatchObject({ sequence: 1, kind: "user_input", raw: "hello" });
+    await server.close();
+  });
+
+  it("lists and previews workspace files with canonical containment", async () => {
+    const { dependencies, state } = createDependencies({
+      filesystem: {
+        stat: vi.fn(async (target: string) => ({ isDirectory: () => !target.endsWith("README.md") })),
+        access: vi.fn(async () => undefined),
+        readFile: vi.fn(async () => Buffer.from("# Hello")),
+        realpath: vi.fn(async (target: string) => target),
+        readdir: vi.fn(async () => [{ name: "README.md", type: "file" }])
+      }
+    });
+    state.workspaces.push({ id: "workspace-1", name: "Workspace", path: "/tmp/workspace", createdAt: "2026-01-01T00:00:00Z" });
+    const application = await createApplication(dependencies);
+    const server = createServer(application, { host: "127.0.0.1", port: 0, logger: dependencies.logger, requestIdFactory: () => "request-test" });
+    const address = await server.listen();
+
+    const files = await get(address.port, "/api/workspaces/workspace-1/files");
+    expect(files.status).toBe(200);
+    expect(files.json.entries).toEqual([{ name: "README.md", path: "README.md", type: "file" }]);
+
+    const preview = await get(address.port, "/api/workspaces/workspace-1/preview?path=README.md");
+    expect(preview.json).toMatchObject({ path: "README.md", kind: "text", content: "# Hello", truncated: false });
+
+    const escape = await get(address.port, "/api/workspaces/workspace-1/preview?path=../secret.txt");
+    expect(escape.status).toBe(400);
+    expect(escape.json.error.code).toBe("WORKSPACE_PATH_ESCAPE");
+    await server.close();
+  });
+
+  it("exposes read-only language and git inspection APIs", async () => {
+    const status: GitStatusResponse = { repository: true, branch: "feature", clean: false, entries: [{ path: "a.ts", staged: "unmodified", unstaged: "modified", conflicted: false }], truncated: false };
+    const diff: GitDiffResponse = { scope: "unstaged", files: [{ oldPath: "a.ts", newPath: "a.ts", status: "modified", hunks: [{ header: "@@ -1 +1 @@", lines: [{ kind: "addition", text: "+new", newLine: 1 }] }] }], truncated: false, originalBytes: 32, shownLines: 1 };
+    const { dependencies, state } = createDependencies({
+      filesystem: {
+        stat: vi.fn(async (target: string) => ({ isDirectory: () => !target.endsWith("a.ts") && !target.endsWith("b.md") })),
+        access: vi.fn(async () => undefined),
+        readFile: vi.fn(async (target: string) => Buffer.from(target.endsWith(".ts") ? "const a = 1;" : "# doc")),
+        realpath: vi.fn(async (target: string) => target),
+        readdir: vi.fn(async () => [{ name: "a.ts", type: "file" }, { name: "b.md", type: "file" }])
+      },
+      gitInspector: { available: true, status: vi.fn(async () => status), diff: vi.fn(async () => diff) }
+    });
+    state.workspaces.push({ id: "workspace-1", name: "Workspace", path: "/tmp/workspace", createdAt: "2026-01-01T00:00:00Z" });
+    const application = await createApplication(dependencies);
+    const server = createServer(application, { host: "127.0.0.1", port: 0, logger: dependencies.logger, requestIdFactory: () => "request-test" });
+    const address = await server.listen();
+
+    expect((await get(address.port, "/api/workspaces/workspace-1/languages")).json.entries).toMatchObject([{ language: "TypeScript", files: 1 }, { language: "Markdown", files: 1 }]);
+    expect((await get(address.port, "/api/workspaces/workspace-1/git/status")).json).toMatchObject({ repository: true, branch: "feature", clean: false });
+    expect((await get(address.port, "/api/workspaces/workspace-1/git/diff?scope=unstaged")).json).toMatchObject({ scope: "unstaged", shownLines: 1 });
+    await server.close();
   });
 });
 

@@ -47,4 +47,17 @@ describe("SessionNavigator", () => {
     expect(onSelect).toHaveBeenCalledWith("session-2");
     expect(onNewSession).toHaveBeenCalledOnce();
   });
+
+  it("opens session actions from context menu", () => {
+    const onPin = vi.fn();
+    act(() => root.render(<I18nProvider><SessionNavigator groups={[{ workspace, sessions }]} onSelect={() => undefined} onNewSession={() => undefined} onPin={onPin} onArchive={() => undefined} onComplete={() => undefined} onFork={() => undefined} /></I18nProvider>));
+
+    const review = Array.from(container.querySelectorAll(".session-row")).find((button) => button.textContent?.includes("Review API"))!;
+    act(() => review.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true })));
+    expect(container.querySelector("[role='menu']")?.textContent).toContain("Pin");
+
+    const pin = Array.from(container.querySelectorAll("[role='menuitem']")).find((button) => button.textContent?.includes("Pin")) as HTMLButtonElement;
+    act(() => pin.click());
+    expect(onPin).toHaveBeenCalledWith(expect.objectContaining({ id: "session-2" }));
+  });
 });

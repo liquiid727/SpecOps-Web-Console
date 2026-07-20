@@ -1,5 +1,5 @@
-import type { ApiErrorCode, ApiErrorResponse } from "../shared/types";
-import type { AppState, CliProfile, Session, StateResponse, Workspace } from "../shared/types";
+import type { ApiErrorCode, ApiErrorResponse, FilePreview, FileTreePage, GitDiffResponse, GitStatusResponse, LanguageSummaryResponse, PickWorkspaceResponse, SendMessageRequest, SendMessageResponse, SessionWithCompatibilityStatus, TranscriptPage } from "../shared/types";
+import type { AppStateV2, CliProfileV2, StateResponse, WorkspaceV2 } from "../shared/types";
 
 export class ApiClientError extends Error {
   constructor(
@@ -42,17 +42,34 @@ function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
 
 export const api = {
   state: () => request<StateResponse>("/api/state"),
-  createWorkspace: (input: { name: string; path: string }) => request<Workspace>("/api/workspaces", { method: "POST", body: JSON.stringify(input) }),
-  createProfile: (input: { name: string; command: string; args: string[] }) => request<CliProfile>("/api/profiles", { method: "POST", body: JSON.stringify(input) }),
-  createSession: (input: { name: string; workspaceId: string; profileId: string; confirmed: boolean }) => request<Session>("/api/sessions", { method: "POST", body: JSON.stringify(input) }),
-  startSession: (id: string) => request<Session>(`/api/sessions/${id}/start`, { method: "POST", body: JSON.stringify({ confirmed: true }) }),
-  stopSession: (id: string) => request<Session>(`/api/sessions/${id}/stop`, { method: "POST", body: "{}" }),
-  renameSession: (id: string, name: string) => request<Session>(`/api/sessions/${id}`, { method: "PATCH", body: JSON.stringify({ name }) }),
+  createWorkspace: (input: { name: string; path: string }) => request<WorkspaceV2>("/api/workspaces", { method: "POST", body: JSON.stringify(input) }),
+  createProfile: (input: { name: string; command: string; args: string[] }) => request<CliProfileV2>("/api/profiles", { method: "POST", body: JSON.stringify(input) }),
+  createSession: (input: { name: string; workspaceId: string; profileId: string; confirmed: boolean }) => request<SessionWithCompatibilityStatus>("/api/sessions", { method: "POST", body: JSON.stringify(input) }),
+  startSession: (id: string) => request<SessionWithCompatibilityStatus>(`/api/sessions/${id}/start`, { method: "POST", body: JSON.stringify({ confirmed: true }) }),
+  stopSession: (id: string) => request<SessionWithCompatibilityStatus>(`/api/sessions/${id}/stop`, { method: "POST", body: "{}" }),
+  renameSession: (id: string, name: string, expectedRevision: number) => request<SessionWithCompatibilityStatus>(`/api/sessions/${id}`, { method: "PATCH", body: JSON.stringify({ name, expectedRevision }) }),
+  updateLaunchConfig: (id: string, launchConfig: { permission?: string | null; mode?: string | null; model?: string | null }, expectedRevision: number) => request<SessionWithCompatibilityStatus>(`/api/sessions/${id}`, { method: "PATCH", body: JSON.stringify({ launchConfig, expectedRevision }) }),
+  pinSession: (id: string, pinned: boolean, expectedRevision: number) => request<SessionWithCompatibilityStatus>(`/api/sessions/${id}/pin`, { method: "POST", body: JSON.stringify({ pinned, expectedRevision }) }),
+  archiveSession: (id: string, expectedRevision: number) => request<SessionWithCompatibilityStatus>(`/api/sessions/${id}/archive`, { method: "POST", body: JSON.stringify({ expectedRevision }) }),
+  completeSession: (id: string, expectedRevision: number) => request<SessionWithCompatibilityStatus>(`/api/sessions/${id}/complete`, { method: "POST", body: JSON.stringify({ expectedRevision }) }),
+  restoreSession: (id: string, expectedRevision: number) => request<SessionWithCompatibilityStatus>(`/api/sessions/${id}/restore`, { method: "POST", body: JSON.stringify({ expectedRevision }) }),
+  forkSession: (id: string, expectedRevision: number) => request<{ session: SessionWithCompatibilityStatus }>(`/api/sessions/${id}/fork`, { method: "POST", body: JSON.stringify({ expectedRevision }) }),
+  reorderSessions: (orderedSessionIds: string[], expectedRevisions: Record<string, number>) => request<SessionWithCompatibilityStatus[]>("/api/sessions/reorder", { method: "POST", body: JSON.stringify({ orderedSessionIds, expectedRevisions }) }),
+  sendMessage: (id: string, input: SendMessageRequest) => request<SendMessageResponse>(`/api/sessions/${id}/messages`, { method: "POST", body: JSON.stringify(input) }),
+  transcript: (id: string, afterSequence = 0) => request<TranscriptPage>(`/api/sessions/${id}/transcript?afterSequence=${afterSequence}`),
+  workspaceFiles: (workspaceId: string, path = "") => request<FileTreePage>(`/api/workspaces/${workspaceId}/files${path ? `?path=${encodeURIComponent(path)}` : ""}`),
+  filePreview: (workspaceId: string, path: string) => request<FilePreview>(`/api/workspaces/${workspaceId}/preview?path=${encodeURIComponent(path)}`),
+  languageSummary: (workspaceId: string) => request<LanguageSummaryResponse>(`/api/workspaces/${workspaceId}/languages`),
+  gitStatus: (workspaceId: string) => request<GitStatusResponse>(`/api/workspaces/${workspaceId}/git/status`),
+  gitDiff: (workspaceId: string, scope: "unstaged" | "staged" = "unstaged") => request<GitDiffResponse>(`/api/workspaces/${workspaceId}/git/diff?scope=${scope}`),
+  pickWorkspace: () => request<PickWorkspaceResponse>("/api/workspaces/pick", { method: "POST", body: JSON.stringify({ intentToken: "direct-user-action" }) }),
   deleteSession: (id: string) => request<void>(`/api/sessions/${id}`, { method: "DELETE", body: "{}" }),
   deleteWorkspace: (id: string) => request<void>(`/api/workspaces/${id}`, { method: "DELETE", body: "{}" }),
   deleteProfile: (id: string) => request<void>(`/api/profiles/${id}`, { method: "DELETE", body: "{}" })
 };
 
-export function mergeState(previous: AppState, next: StateResponse): AppState {
+export type ClientAppState = AppStateV2 & { sessions: SessionWithCompatibilityStatus[] };
+
+export function mergeState(_previous: ClientAppState, next: StateResponse): ClientAppState {
   return { workspaces: next.workspaces, profiles: next.profiles, sessions: next.sessions };
 }

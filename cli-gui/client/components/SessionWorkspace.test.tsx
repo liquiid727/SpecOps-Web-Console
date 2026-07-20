@@ -28,6 +28,8 @@ describe("SessionWorkspace", () => {
 
   it("renders a running terminal and stop action", () => {
     act(() => root.render(<I18nProvider><SessionWorkspace {...callbacks} session={{ ...baseSession, status: "running" }} readonly={false} /></I18nProvider>));
+    const terminalTab = Array.from(container.querySelectorAll("button")).find((button) => button.textContent?.includes("Terminal"))!;
+    act(() => terminalTab.click());
     expect(container.querySelector("[data-terminal='session-1']")).not.toBeNull();
     const stop = Array.from(container.querySelectorAll("button")).find((button) => button.textContent?.includes("Stop"))!;
     act(() => stop.click());

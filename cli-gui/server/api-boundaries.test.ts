@@ -12,7 +12,7 @@ async function start(overrides: Partial<ApplicationDependencies> = {}) {
   const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
   const dependencies: ApplicationDependencies = {
     stateRepository: { load: async () => ({ workspaces: [], profiles: [], sessions: [] }), save: async () => undefined, drain: async () => undefined },
-    transcriptRepository: { drain: async () => undefined },
+    transcriptRepository: { append: vi.fn() as never, list: vi.fn() as never, latest: vi.fn() as never, delete: vi.fn() as never, drain: async () => undefined },
     ptyRuntime: { spawn: vi.fn() as never, shutdown: async () => undefined },
     filesystem: { stat: async () => ({ isDirectory: () => true }), access: async () => undefined, readFile: async () => Buffer.from("") },
     gitInspector: { available: false },
@@ -75,6 +75,13 @@ describe("API request boundaries", () => {
     const missing = await send(address.port, "/api/unknown");
     expect(missing.status).toBe(404);
     expect(JSON.parse(missing.body).error.code).toBe("ROUTE_NOT_FOUND");
+  });
+
+  it("rejects non-loopback origins", async () => {
+    const { address } = await start();
+    const response = await send(address.port, "/api/state", { headers: { origin: "https://example.com" } });
+    expect(response.status).toBe(403);
+    expect(JSON.parse(response.body).error.code).toBe("ORIGIN_NOT_ALLOWED");
   });
 
   it("does not expose internal persistence details", async () => {

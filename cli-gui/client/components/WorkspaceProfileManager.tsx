@@ -12,6 +12,7 @@ interface WorkspaceProfileManagerProps {
   onClose: () => void;
   onCreateProfile: (input: { name: string; command: string; args: string[] }) => Promise<void>;
   onCreateWorkspace: (input: { name: string; path: string }) => Promise<void>;
+  onOpenFolder: () => Promise<void>;
   onDeleteProfile: (profile: CliProfile) => void;
   onDeleteWorkspace: (workspace: Workspace) => void;
 }
@@ -20,6 +21,7 @@ export function WorkspaceProfileManager(props: WorkspaceProfileManagerProps) {
   const { t } = useI18n();
   const [workspaceForm, setWorkspaceForm] = useState({ name: "", path: "" });
   const [profileForm, setProfileForm] = useState({ name: "", command: "", args: "" });
+  const [openingFolder, setOpeningFolder] = useState(false);
 
   async function submitWorkspace(event: FormEvent) {
     event.preventDefault();
@@ -36,6 +38,7 @@ export function WorkspaceProfileManager(props: WorkspaceProfileManagerProps) {
   return <Overlay kind="drawer" title={t("workspaceSettings")} description={t("workspaceSettingsDescription")} onClose={props.onClose}>
     <div className="settings-section">
       <div className="settings-heading"><div><span className="eyebrow">{t("projects").toUpperCase()}</span><h3>{t("workspaces")}</h3></div><span className="count-badge">{props.workspaces.length}</span></div>
+      <button className="secondary-button open-folder-button" disabled={props.readonly || openingFolder} onClick={async () => { setOpeningFolder(true); try { await props.onOpenFolder(); } finally { setOpeningFolder(false); } }}><Icon name="folder" />{openingFolder ? t("working") : t("openFolder")}</button>
       <div className="resource-list">
         {props.workspaces.map((workspace) => { const inUse = props.sessions.some((session) => session.workspaceId === workspace.id); return <div className="resource-row" key={workspace.id}><div className="resource-icon"><Icon name="folder" /></div><div><strong>{workspace.name}</strong><small title={workspace.path}>{workspace.path}</small></div><button className="icon-button danger" onClick={() => props.onDeleteWorkspace(workspace)} disabled={props.readonly || inUse} aria-label={`${t("deleteWorkspace")} ${workspace.name}`} title={inUse ? t("deleteSessionsFirst") : t("deleteWorkspace")}><Icon name="trash" /></button></div>; })}
         {!props.workspaces.length && <p className="resource-empty">{t("noWorkspacesRegistered")}</p>}

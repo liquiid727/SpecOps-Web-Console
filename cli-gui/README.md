@@ -9,8 +9,8 @@ npm install
 npm run dev
 ```
 
-- Frontend: http://127.0.0.1:3000
-- Local Session Manager: http://127.0.0.1:3001
+- GUI: http://127.0.0.1:3000
+- Internal Session Manager: http://127.0.0.1:3001 (backend only; do not open this as the GUI)
 
 生产构建和启动：
 

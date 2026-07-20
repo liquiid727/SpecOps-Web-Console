@@ -56,7 +56,8 @@ export interface AppState {
   sessions: Session[];
 }
 
-export interface StateResponse extends AppState {
+export interface StateResponse extends Omit<AppStateV2, "sessions"> {
+  sessions: SessionWithCompatibilityStatus[];
   readonly: boolean;
 }
 

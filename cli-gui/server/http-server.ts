@@ -1,7 +1,7 @@
 import http from "node:http";
 import { WebSocketServer } from "ws";
 import type { Application, Logger } from "./ports.js";
-import { sendJson, toApiError } from "./api-errors.js";
+import { ApiHttpError, sendJson, toApiError } from "./api-errors.js";
 
 export interface ServerConfig {
   host: string;
@@ -39,6 +39,7 @@ export function createServer(application: Application, config: ServerConfig): Se
     let url: URL;
     try {
       url = new URL(request.url ?? "/", `http://${request.headers.host ?? config.host}`);
+      assertAllowedRequest(request, config.host);
     } catch (error) {
       handleError(error, request, response, requestId, "/");
       return;
@@ -48,7 +49,15 @@ export function createServer(application: Application, config: ServerConfig): Se
   const webSockets = new WebSocketServer({ noServer: true });
 
   server.on("upgrade", (request, socket, head) => {
-    const url = new URL(request.url ?? "/", `http://${request.headers.host ?? config.host}`);
+    let url: URL;
+    try {
+      assertAllowedRequest(request, config.host);
+      url = new URL(request.url ?? "/", `http://${request.headers.host ?? config.host}`);
+    } catch {
+      socket.write("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
+      socket.destroy();
+      return;
+    }
     if (url.pathname !== "/ws") {
       socket.destroy();
       return;
@@ -99,4 +108,28 @@ export function createServer(application: Application, config: ServerConfig): Se
       return closePromise;
     }
   };
+}
+
+function assertAllowedRequest(request: http.IncomingMessage, configuredHost: string) {
+  const host = headerValue(request.headers.host);
+  if (host && !isLoopbackHost(host, configuredHost)) throw new ApiHttpError(403, "ORIGIN_NOT_ALLOWED", "Request host is not allowed.");
+  const origin = headerValue(request.headers.origin);
+  if (origin) {
+    let parsed: URL;
+    try {
+      parsed = new URL(origin);
+    } catch {
+      throw new ApiHttpError(403, "ORIGIN_NOT_ALLOWED", "Request origin is not allowed.");
+    }
+    if (!isLoopbackHost(parsed.host, configuredHost)) throw new ApiHttpError(403, "ORIGIN_NOT_ALLOWED", "Request origin is not allowed.");
+  }
+}
+
+function headerValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function isLoopbackHost(value: string, configuredHost: string) {
+  const host = value.split(":")[0]?.toLowerCase();
+  return host === "localhost" || host === "127.0.0.1" || host === "::1" || host === configuredHost.toLowerCase();
 }

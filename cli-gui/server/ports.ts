@@ -1,14 +1,26 @@
 import type http from "node:http";
-import type { AppState } from "../shared/types.js";
+import type { AppStateV2, FilePreview, FileTreePage, GitDiffResponse, GitStatusResponse, LanguageSummaryResponse, TranscriptEvent, TranscriptEventKind, TranscriptEventMetadataValue, TranscriptEventSource, TranscriptPage, Workspace } from "../shared/types.js";
 import type { WebSocket } from "ws";
 
 export interface StateRepository {
-  load(): Promise<AppState>;
-  save(state: AppState): Promise<void>;
+  load(): Promise<AppStateV2>;
+  save(state: AppStateV2): Promise<void>;
   drain(): Promise<void>;
 }
 
 export interface TranscriptRepository {
+  append(input: {
+    sessionId: string;
+    occurredAt: string;
+    kind: TranscriptEventKind;
+    source: TranscriptEventSource;
+    raw: string;
+    metadata?: Record<string, TranscriptEventMetadataValue>;
+    clientMessageId?: string;
+  }): Promise<TranscriptEvent>;
+  list(sessionId: string, options?: { afterSequence?: number; limit?: number }): Promise<TranscriptPage>;
+  latest(sessionId: string): Promise<TranscriptEvent | undefined>;
+  delete(sessionId: string): Promise<void>;
   drain(): Promise<void>;
 }
 
@@ -37,20 +49,32 @@ export interface PtyRuntime {
 
 export interface FileStat {
   isDirectory(): boolean;
+  isFile?(): boolean;
+  size?: number;
+}
+
+export interface DirectoryEntry {
+  name: string;
+  type: "file" | "directory";
 }
 
 export interface FileSystem {
   stat(path: string): Promise<FileStat>;
   access(path: string): Promise<void>;
   readFile(path: string): Promise<Buffer>;
+  realpath(path: string): Promise<string>;
+  readdir(path: string): Promise<DirectoryEntry[]>;
 }
 
 export interface GitInspector {
   readonly available: boolean;
+  status(workspacePath: string): Promise<GitStatusResponse>;
+  diff(workspacePath: string, scope: "unstaged" | "staged"): Promise<GitDiffResponse>;
 }
 
 export interface DirectoryPicker {
   readonly available: boolean;
+  pick(): Promise<{ cancelled: true } | { cancelled: false; path: string }>;
 }
 
 export interface ProfileAdapterRegistry {
