@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { randomBytes, randomUUID } from "node:crypto";
-import { execFile } from "node:child_process";
+import { execFile, spawn as spawnChild } from "node:child_process";
 import { promisify } from "node:util";
 import pty from "node-pty";
 import { GitInspectorError, type ApplicationDependencies, type Clock, type GitInspector, type Logger, type PtyProcess, type PtyRuntime } from "./ports.js";
@@ -271,19 +271,27 @@ function createConfiguredDirectoryPicker(environment: Readonly<Record<string, st
 }
 
 function createNodePtyRuntime(): PtyRuntime {
-  const active = new Set<pty.IPty>();
+  const active = new Set<PtyProcess>();
   return {
     spawn(options): PtyProcess {
-      const process = pty.spawn(options.command, options.args, {
-        name: options.name,
-        cols: options.cols,
-        rows: options.rows,
-        cwd: options.cwd,
-        env: options.env
-      });
-      active.add(process);
-      process.onExit(() => active.delete(process));
-      return process;
+      try {
+        const process = pty.spawn(options.command, options.args, {
+          name: options.name,
+          cols: options.cols,
+          rows: options.rows,
+          cwd: options.cwd,
+          env: options.env
+        });
+        active.add(process);
+        process.onExit(() => active.delete(process));
+        return process;
+      } catch (error) {
+        const process = createPipeBackedProcess(options);
+        active.add(process);
+        process.onExit(() => active.delete(process));
+        console.warn("node-pty spawn failed; falling back to pipe-backed process.", error);
+        return process;
+      }
     },
     async shutdown() {
       const processes = [...active];
@@ -297,6 +305,33 @@ function createNodePtyRuntime(): PtyRuntime {
         }
       }
       if (failures.length) throw new AggregateError(failures, "Failed to stop active PTYs");
+    }
+  };
+}
+
+function createPipeBackedProcess(options: Parameters<PtyRuntime["spawn"]>[0]): PtyProcess {
+  const child = spawnChild(options.command, options.args, {
+    cwd: options.cwd,
+    env: options.env,
+    shell: false,
+    stdio: ["pipe", "pipe", "pipe"]
+  });
+  return {
+    write(data) {
+      if (child.stdin.writable) child.stdin.write(data);
+    },
+    resize() {
+      // Pipe-backed fallback has no terminal dimensions.
+    },
+    kill() {
+      child.kill();
+    },
+    onData(listener) {
+      child.stdout.on("data", (data) => listener(data.toString()));
+      child.stderr.on("data", (data) => listener(data.toString()));
+    },
+    onExit(listener) {
+      child.on("exit", (code) => listener({ exitCode: code ?? 1 }));
     }
   };
 }

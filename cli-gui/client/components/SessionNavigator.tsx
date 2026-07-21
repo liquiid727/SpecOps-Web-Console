@@ -24,6 +24,7 @@ interface SessionNavigatorProps {
   onGroupingChange?: (grouping: SessionGrouping) => void;
   onFilterChange?: (filter: SessionFilter) => void;
   onOpenFolder?: () => void;
+  onOpenSettings?: () => void;
   onArchive?: (session: Session) => void;
   onComplete?: (session: Session) => void;
   onFork?: (session: Session) => void;
@@ -38,7 +39,7 @@ interface SessionNavigatorProps {
 
 const menuActions = ["rename", "pin", "complete", "archive", "fork", "delete"] as const;
 
-export function SessionNavigator({ activeSessionId, groups, grouping = "project", filter = "active", readonly = false, openFolderBusy = false, onGroupingChange, onFilterChange, onOpenFolder, onArchive, onComplete, onFork, onPin, onRename, onDelete, onReorder, onNewSession, onSelect, onClose }: SessionNavigatorProps) {
+export function SessionNavigator({ activeSessionId, groups, grouping = "project", filter = "active", readonly = false, openFolderBusy = false, onGroupingChange, onFilterChange, onOpenFolder, onOpenSettings, onArchive, onComplete, onFork, onPin, onRename, onDelete, onReorder, onNewSession, onSelect, onClose }: SessionNavigatorProps) {
   const { statusLabel, t } = useI18n();
   const [menuSession, setMenuSession] = useState<Session>();
   const [menuClosing, setMenuClosing] = useState(false);
@@ -110,18 +111,21 @@ export function SessionNavigator({ activeSessionId, groups, grouping = "project"
     setAnnouncement(t(direction < 0 ? "movedSessionUp" : "movedSessionDown", { name: session.name }));
   }
 
-  return <nav ref={panelRef} id="session-navigator" className="session-navigator" aria-label={t("sessions")} onKeyDown={(event) => { if (event.key === "Escape" && menuSession) { event.preventDefault(); closeMenu(); } }}>
+  return <nav ref={panelRef} id="session-navigator" className="session-navigator app-sidebar" aria-label={t("sessions")} onKeyDown={(event) => { if (event.key === "Escape" && menuSession) { event.preventDefault(); closeMenu(); } }}>
     <header className="navigator-header">
-      <div><span className="eyebrow">{t("workspaces").toUpperCase()}</span><strong>{t("sessions")}</strong></div>
-      <span className="count-badge" aria-label={t("sessionCount", { count: sessionCount })}>{sessionCount}</span>
+      <div><strong>{t("brandTitle")}</strong><span>{t("sessions")}</span></div>
+      <button className="icon-button" onClick={onClose} aria-label={t("toggleSessions")} title={`${t("toggleSessions")} (⌘B)`} aria-expanded="true" aria-controls="session-navigator"><Icon name="menu" /></button>
     </header>
+    <div className="navigator-primary-actions">
+      <button className="new-session-button" onClick={onNewSession}><Icon name="add" />{t("newSession")}</button>
+      {onOpenFolder && <button className="open-folder-nav-button" disabled={readonly || openFolderBusy} onClick={onOpenFolder}><Icon name="folder" />{openFolderBusy ? t("working") : t("openFolder")}</button>}
+    </div>
     <div className="navigator-controls">
       <label><span>{t("groupBy")}</span><Select ariaLabel={t("groupBy")} value={grouping} options={[{ value: "project", label: t("groupProject") }, { value: "time", label: t("groupTime") }, { value: "recent", label: t("groupRecent") }, { value: "manual", label: t("groupManual") }]} onChange={(value) => onGroupingChange?.(value as SessionGrouping)} /></label>
       <label><span>{t("filterBy")}</span><Select ariaLabel={t("filterBy")} value={filter} options={[{ value: "active", label: t("filterActive") }, { value: "completed", label: t("filterCompleted") }, { value: "archived", label: t("filterArchived") }]} onChange={(value) => onFilterChange?.(value as SessionFilter)} /></label>
     </div>
-    <button className="new-session-button" onClick={onNewSession}><Icon name="add" />{t("newSession")}</button>
-    {onOpenFolder && <button className="open-folder-nav-button" disabled={readonly || openFolderBusy} onClick={onOpenFolder}><Icon name="folder" />{openFolderBusy ? t("working") : t("openFolder")}</button>}
     <div className="navigator-scroll">
+      <div className="navigator-section-label">{t("workspaces")}</div>
       {groups.length === 0 && <div className="navigator-empty"><Icon name="folder" /><strong>{t("noSessionsForFilter")}</strong><p>{t("noSessionsForFilterDescription")}</p></div>}
       {groups.map((group) => <section className="workspace-group" key={group.id ?? group.workspace?.id ?? group.labelKey} aria-labelledby={`workspace-${group.id ?? group.workspace?.id ?? group.labelKey}`}>
         <div className="workspace-heading">
@@ -148,6 +152,13 @@ export function SessionNavigator({ activeSessionId, groups, grouping = "project"
         </div>
       </section>)}
     </div>
+    <footer className="navigator-footer">
+      <div className="navigator-footer-row">
+        <span className={`connection-dot ${readonly ? "readonly" : ""}`} title={readonly ? t("readonlyMode") : t("localMode")} />
+        <span>{readonly ? t("readonlyMode") : t("localMode")}</span>
+      </div>
+      <button className="settings-footer-button" onClick={onOpenSettings} aria-label={t("openSettings")} title={t("settings")}><Icon name="settings" />{t("settings")}</button>
+    </footer>
     <div className="navigator-live-region" aria-live="polite">{announcement}</div>
     {menuSession && <div ref={menuRef} className={`session-menu ${menuClosing ? "closing" : ""}`} role="menu" aria-label={t("sessionActions")} onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
       const items = [...(menuRef.current?.querySelectorAll<HTMLElement>("[role='menuitem']") ?? [])];

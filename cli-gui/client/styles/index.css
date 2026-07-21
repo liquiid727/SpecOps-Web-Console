@@ -1,0 +1,9 @@
+@import "./themes/classic.css";
+@import "./themes/neo.css";
+@import "./base.css";
+@import "./components.css";
+@import "./responsive.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

@@ -6,6 +6,8 @@ import { openTerminalSubscription } from "./api";
 import { toFeedbackError } from "./feedback-errors";
 import { useI18n } from "./i18n";
 import { useFeedback } from "./components/ui/Feedback";
+import { useTheme } from "./theme";
+import { getTerminalTheme } from "./terminal-theme";
 
 interface TerminalViewProps {
   sessionId: string;
@@ -14,6 +16,7 @@ interface TerminalViewProps {
 
 export function TerminalView({ sessionId, onStatus }: TerminalViewProps) {
   const { t } = useI18n();
+  const { theme } = useTheme();
   const feedback = useFeedback();
   const elementRef = useRef<HTMLDivElement>(null);
 
@@ -25,29 +28,7 @@ export function TerminalView({ sessionId, onStatus }: TerminalViewProps) {
       fontFamily: "JetBrains Mono, SFMono-Regular, Menlo, monospace",
       fontSize: 13,
       lineHeight: 1.35,
-      theme: {
-        background: "#101011",
-        foreground: "#d7d5d0",
-        cursor: "#e68766",
-        cursorAccent: "#101011",
-        selectionBackground: "#45434a",
-        black: "#151516",
-        brightBlack: "#77746e",
-        red: "#e06972",
-        brightRed: "#ef8d94",
-        green: "#6cc49a",
-        brightGreen: "#8dd4b0",
-        yellow: "#d9b56f",
-        brightYellow: "#e9ca8e",
-        blue: "#79a8d8",
-        brightBlue: "#9bc0e5",
-        magenta: "#b99ad8",
-        brightMagenta: "#cdb2e5",
-        cyan: "#74bfc5",
-        brightCyan: "#98d2d6",
-        white: "#d7d5d0",
-        brightWhite: "#f0efec"
-      }
+      theme: getTerminalTheme(theme)
     });
     const fit = new FitAddon();
     terminal.loadAddon(fit);
@@ -91,7 +72,7 @@ export function TerminalView({ sessionId, onStatus }: TerminalViewProps) {
       transport?.close();
       terminal.dispose();
     };
-  }, [feedback, onStatus, sessionId, t]);
+  }, [feedback, onStatus, sessionId, t, theme]);
 
   return <div className="terminal-host" ref={elementRef} aria-label={t("interactiveTerminal")} />;
 }

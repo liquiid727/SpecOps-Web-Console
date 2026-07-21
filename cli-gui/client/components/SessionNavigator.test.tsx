@@ -27,30 +27,35 @@ describe("SessionNavigator", () => {
   });
 
   it("groups sessions by workspace and marks the active session", () => {
-    act(() => root.render(<I18nProvider><SessionNavigator groups={[{ workspace, sessions }]} activeSessionId="session-1" onSelect={() => undefined} onNewSession={() => undefined} /></I18nProvider>));
+    act(() => root.render(<I18nProvider><SessionNavigator groups={[{ workspace, sessions }]} activeSessionId="session-1" onSelect={() => undefined} onNewSession={() => undefined} onOpenSettings={() => undefined} /></I18nProvider>));
 
     expect(container.textContent).toContain("Payment Platform");
     expect(container.textContent).toContain("Backend refactor");
     expect(container.textContent).toContain("Review API");
+    expect(container.textContent).toContain("Projects");
+    expect(container.textContent).not.toContain("Workspaces");
     expect(container.querySelector("[aria-current='page']")?.textContent).toContain("Backend refactor");
   });
 
-  it("selects a session and exposes the new-session action", () => {
+  it("selects a session and exposes footer settings plus the new-session action", () => {
     const onSelect = vi.fn();
     const onNewSession = vi.fn();
-    act(() => root.render(<I18nProvider><SessionNavigator groups={[{ workspace, sessions }]} onSelect={onSelect} onNewSession={onNewSession} /></I18nProvider>));
+    const onOpenSettings = vi.fn();
+    act(() => root.render(<I18nProvider><SessionNavigator groups={[{ workspace, sessions }]} onSelect={onSelect} onNewSession={onNewSession} onOpenSettings={onOpenSettings} /></I18nProvider>));
 
     const buttons = Array.from(container.querySelectorAll("button"));
     act(() => buttons.find((button) => button.textContent?.includes("Review API"))?.click());
     act(() => buttons.find((button) => button.textContent?.includes("New session"))?.click());
+    act(() => buttons.find((button) => button.textContent?.includes("Settings"))?.click());
 
     expect(onSelect).toHaveBeenCalledWith("session-2");
     expect(onNewSession).toHaveBeenCalledOnce();
+    expect(onOpenSettings).toHaveBeenCalledOnce();
   });
 
   it("opens session actions from context menu", () => {
     const onPin = vi.fn();
-    act(() => root.render(<I18nProvider><SessionNavigator groups={[{ workspace, sessions }]} onSelect={() => undefined} onNewSession={() => undefined} onPin={onPin} onArchive={() => undefined} onComplete={() => undefined} onFork={() => undefined} /></I18nProvider>));
+    act(() => root.render(<I18nProvider><SessionNavigator groups={[{ workspace, sessions }]} onSelect={() => undefined} onNewSession={() => undefined} onOpenSettings={() => undefined} onPin={onPin} onArchive={() => undefined} onComplete={() => undefined} onFork={() => undefined} /></I18nProvider>));
 
     const review = Array.from(container.querySelectorAll(".session-row")).find((button) => button.textContent?.includes("Review API"))!;
     act(() => review.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true })));

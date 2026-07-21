@@ -4,7 +4,6 @@ import { api, type ClientAppState, mergeState } from "../api";
 import { useI18n, type TranslationKey } from "../i18n";
 import { toFeedbackError } from "../feedback-errors";
 import { ActionDialog } from "../components/ActionDialog";
-import { LanguageToggle } from "../components/LanguageToggle";
 import { NewSessionDialog } from "../components/NewSessionDialog";
 import { SessionInspector } from "../components/SessionInspector";
 import { SessionNavigator } from "../components/SessionNavigator";
@@ -12,7 +11,7 @@ import { SessionWorkspace } from "../components/SessionWorkspace";
 import { WorkspaceProfileManager } from "../components/WorkspaceProfileManager";
 import { Icon } from "../components/ui/Icon";
 import { useFeedback } from "../components/ui/Feedback";
-import { defaultPreferences, readPreferences, writePreferences, type UiPreferencesV1 } from "./preferences";
+import { readPreferences, writePreferences, type UiPreferencesV1 } from "./preferences";
 import { groupSessions } from "./session-selectors";
 
 const emptyState: ClientAppState = { workspaces: [], profiles: [], sessions: [] };
@@ -143,19 +142,9 @@ export function App() {
   if (loadError) return <main className="center-state"><Icon name="warning" /><strong>{t("failedToLoadWorkspace")}</strong><button className="secondary-button" onClick={() => { setLoading(true); void refresh(true); }}><Icon name="refresh" />{t("retry")}</button></main>;
 
   return <main className={`app-shell ${preferences.navigatorOpen ? "navigator-visible" : ""} ${preferences.inspectorOpen && activeSession ? "inspector-visible" : ""}`}>
-    <aside className="utility-rail" aria-label={t("appControls")}>
-      <div className="brand-mark" title={t("brandTitle")}>✦</div>
-      <div className="rail-actions">
-        <button className="rail-button primary" onClick={() => setOverlay("new-session")} aria-label={t("newSession")} title={t("newSession")}><Icon name="add" /></button>
-        <button className={`rail-button ${preferences.navigatorOpen ? "active" : ""}`} onClick={toggleNavigator} aria-label={t("toggleSessions")} title={`${t("toggleSessions")} (⌘B)`} aria-expanded={preferences.navigatorOpen} aria-controls="session-navigator"><Icon name="menu" /></button>
-      </div>
-      <div className="rail-spacer" />
-      <LanguageToggle />
-      <button className="rail-button" onClick={() => setOverlay("settings")} aria-label={t("openSettings")} title={t("workspaceSettings")}><Icon name="settings" /></button>
-      <span className={`connection-dot ${readonly ? "readonly" : ""}`} title={readonly ? t("readonlyMode") : t("localMode")} />
-    </aside>
+    {!preferences.navigatorOpen && <button className="sidebar-toggle-button" onClick={toggleNavigator} aria-label={t("toggleSessions")} title={`${t("toggleSessions")} (⌘B)`} aria-expanded={preferences.navigatorOpen} aria-controls="session-navigator"><Icon name="menu" /></button>}
 
-    {preferences.navigatorOpen && <SessionNavigator groups={groupedSessions} activeSessionId={activeSessionId} grouping={preferences.sessionGrouping} filter={preferences.sessionFilter} readonly={readonly} openFolderBusy={pickerBusy} onClose={closeNavigator} onGroupingChange={(sessionGrouping) => updatePreferences({ sessionGrouping })} onFilterChange={(sessionFilter) => updatePreferences({ sessionFilter })} onOpenFolder={() => void openFolder()} onArchive={(session) => { setActiveSessionId(session.id); if (session.organizationStatus === "archived") void runAction(() => api.restoreSession(session.id, session.revision ?? 1), false); else setOverlay("archive-session"); }} onComplete={(session) => { setActiveSessionId(session.id); if (session.organizationStatus === "completed") void runAction(() => api.restoreSession(session.id, session.revision ?? 1), false); else setOverlay("complete-session"); }} onFork={(session) => { setActiveSessionId(session.id); setOverlay("fork-session"); }} onPin={(session) => void runAction(() => api.pinSession(session.id, !session.pinned, session.revision ?? 1), false)} onReorder={(orderedSessionIds, section) => void runAction(() => api.reorderSessions(orderedSessionIds, section.expectedRevisions, section.organizationStatus, section.pinned), false)} onRename={(session) => { setActiveSessionId(session.id); setOverlay("rename"); }} onDelete={(session) => { setActiveSessionId(session.id); setOverlay("delete-session"); }} onSelect={selectSession} onNewSession={() => setOverlay("new-session")} />}
+    {preferences.navigatorOpen && <SessionNavigator groups={groupedSessions} activeSessionId={activeSessionId} grouping={preferences.sessionGrouping} filter={preferences.sessionFilter} readonly={readonly} openFolderBusy={pickerBusy} onClose={closeNavigator} onGroupingChange={(sessionGrouping) => updatePreferences({ sessionGrouping })} onFilterChange={(sessionFilter) => updatePreferences({ sessionFilter })} onOpenSettings={() => setOverlay("settings")} onOpenFolder={() => void openFolder()} onArchive={(session) => { setActiveSessionId(session.id); if (session.organizationStatus === "archived") void runAction(() => api.restoreSession(session.id, session.revision ?? 1), false); else setOverlay("archive-session"); }} onComplete={(session) => { setActiveSessionId(session.id); if (session.organizationStatus === "completed") void runAction(() => api.restoreSession(session.id, session.revision ?? 1), false); else setOverlay("complete-session"); }} onFork={(session) => { setActiveSessionId(session.id); setOverlay("fork-session"); }} onPin={(session) => void runAction(() => api.pinSession(session.id, !session.pinned, session.revision ?? 1), false)} onReorder={(orderedSessionIds, section) => void runAction(() => api.reorderSessions(orderedSessionIds, section.expectedRevisions, section.organizationStatus, section.pinned), false)} onRename={(session) => { setActiveSessionId(session.id); setOverlay("rename"); }} onDelete={(session) => { setActiveSessionId(session.id); setOverlay("delete-session"); }} onSelect={selectSession} onNewSession={() => setOverlay("new-session")} />}
     {preferences.navigatorOpen && <button className="drawer-backdrop navigator-backdrop" aria-label={t("closeSessionList")} onClick={closeNavigator} />}
 
     <div className="main-column">

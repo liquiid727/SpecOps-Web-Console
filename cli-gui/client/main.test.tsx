@@ -4,6 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { App } from "./app/App";
 import { I18nProvider } from "./i18n";
 import { FeedbackProvider } from "./components/ui/Feedback";
+import { ThemeProvider } from "./theme";
 
 vi.mock("./terminal", () => ({
   TerminalView: () => <div data-testid="terminal-view" />
@@ -41,28 +42,57 @@ describe("CLI GUI workbench", () => {
     });
     root = undefined;
     document.body.innerHTML = "";
+    window.localStorage.clear();
     vi.restoreAllMocks();
   });
 
-  it("renders the session workbench with current navigation and workspace controls", async () => {
+  it("renders the session workbench with unified sidebar and project controls", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(state), { status: 200 })));
     const element = document.createElement("div");
     document.body.appendChild(element);
     root = createRoot(element);
 
     await act(async () => {
-      root?.render(<I18nProvider><FeedbackProvider><App /></FeedbackProvider></I18nProvider>);
+      root?.render(<I18nProvider><ThemeProvider><FeedbackProvider><App /></FeedbackProvider></ThemeProvider></I18nProvider>);
     });
 
     expect(await screenText(element, "Sessions")).toBeTruthy();
-    expect(element.querySelector(".utility-rail")).toBeTruthy();
+    expect(element.querySelector(".utility-rail")).toBeNull();
+    expect(element.querySelector(".app-sidebar")).toBeTruthy();
     expect(element.querySelector(".session-navigator")).toBeTruthy();
     expect(element.querySelector(".session-workspace")).toBeTruthy();
     expect(element.querySelector(".terminal-surface")).toBeTruthy();
     expect(element.textContent).toContain("Design review");
+    expect(element.textContent).toContain("Projects");
+    expect(element.textContent).not.toContain("Workspaces");
     expect(element.textContent).toContain("Resume");
     expect(element.textContent).toContain("New session");
     expect(element.textContent).not.toContain("3001");
+  });
+
+  it("applies and persists the selected appearance theme", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(state), { status: 200 })));
+    const element = document.createElement("div");
+    document.body.appendChild(element);
+    root = createRoot(element);
+
+    await act(async () => {
+      root?.render(<I18nProvider><ThemeProvider><FeedbackProvider><App /></FeedbackProvider></ThemeProvider></I18nProvider>);
+    });
+    await screenText(element, "Sessions");
+
+    await act(async () => {
+      element.querySelector<HTMLButtonElement>("[aria-label='Open settings']")?.click();
+    });
+    await act(async () => {
+      Array.from(document.body.querySelectorAll<HTMLButtonElement>("[role='tab']")).find((button) => button.textContent === "Appearance")?.click();
+    });
+    await act(async () => {
+      document.body.querySelector<HTMLButtonElement>("[data-theme-choice='classic']")?.click();
+    });
+
+    expect(document.documentElement.dataset.theme).toBe("classic");
+    expect(localStorage.getItem("product-ai-os-cli-gui-theme")).toBe("classic");
   });
 
   it("keeps picker failures in the global feedback layer when settings is open", async () => {
@@ -76,7 +106,7 @@ describe("CLI GUI workbench", () => {
     root = createRoot(element);
 
     await act(async () => {
-      root?.render(<I18nProvider><FeedbackProvider><App /></FeedbackProvider></I18nProvider>);
+      root?.render(<I18nProvider><ThemeProvider><FeedbackProvider><App /></FeedbackProvider></ThemeProvider></I18nProvider>);
     });
     await screenText(element, "Sessions");
 

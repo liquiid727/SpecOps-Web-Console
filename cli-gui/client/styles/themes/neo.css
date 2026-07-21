@@ -1,0 +1,48 @@
+:root,
+:root[data-theme="neo"],
+:root.theme-neo {
+  color-scheme: light;
+  --canvas: #eef3f8;
+  --rail: #dce8f2;
+  --navigator: #f8fbfd;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-hover: #e5eef6;
+  --surface-selected: #d7e5f1;
+  --terminal: #f7f9fc;
+  --overlay: #ffffff;
+  --border: #111827;
+  --border-strong: #111827;
+  --text: #172033;
+  --text-secondary: #26364a;
+  --muted: #53657a;
+  --faint: #7d8da0;
+  --accent: #ffbf3f;
+  --accent-hover: #f2a900;
+  --accent-contrast: #111827;
+  --danger: #c52233;
+  --danger-muted: #ffe5e8;
+  --focus: #175cd3;
+  --running: #067647;
+  --starting: #a15c00;
+  --stopped: #718096;
+  --error: #b42318;
+  --warning: #a15c00;
+  --neo-shadow: 5px 5px 0 #111827;
+  --radius: 4px;
+  --radius-small: 3px;
+}
+
+:root[data-theme="neo"] .primary-button,
+:root.theme-neo .primary-button,
+:root[data-theme="neo"] .secondary-button,
+:root.theme-neo .secondary-button,
+:root[data-theme="neo"] .resource-row,
+:root.theme-neo .resource-row,
+:root[data-theme="neo"] .compact-form,
+:root.theme-neo .compact-form,
+:root[data-theme="neo"] .terminal-surface,
+:root.theme-neo .terminal-surface {
+  border-width: 2px;
+  box-shadow: var(--neo-shadow);
+}

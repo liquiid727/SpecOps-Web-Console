@@ -10,9 +10,15 @@ describe("versioned UI preferences", () => {
     expect(values.get(preferencesKey)).not.toContain("workspace");
   });
 
+  it("defaults old v1 preferences without a theme to system", () => {
+    const previous = { version: 1, navigatorOpen: true, inspectorOpen: false, sessionGrouping: "project", sessionFilter: "active", inspectorTab: "details", centerViewBySession: {} };
+    expect(parsePreferences(JSON.stringify(previous))).toEqual(defaultPreferences);
+  });
+
   it("resets unknown versions and corrupted fields", () => {
     expect(parsePreferences(JSON.stringify({ version: 2, navigatorOpen: false }))).toEqual(defaultPreferences);
     expect(parsePreferences("{" )).toEqual(defaultPreferences);
     expect(parsePreferences(JSON.stringify({ ...defaultPreferences, centerViewBySession: { session: "preview" } }))).toEqual(defaultPreferences);
+    expect(parsePreferences(JSON.stringify({ ...defaultPreferences, theme: "sepia" }))).toEqual(defaultPreferences);
   });
 });

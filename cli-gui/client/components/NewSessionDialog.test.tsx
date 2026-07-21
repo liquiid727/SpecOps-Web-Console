@@ -37,6 +37,8 @@ describe("NewSessionDialog", () => {
 
     expect(container.textContent).toContain('"claude" "--model" "opus"');
     expect(container.textContent).toContain("/projects/payment");
+    expect(container.textContent).toContain("Project");
+    expect(container.textContent).not.toContain("Workspace");
     expect(onCreate).toHaveBeenCalledWith({ name: "Backend refactor", workspaceId: workspace.id, profileId: profile.id });
   });
 
@@ -47,7 +49,7 @@ describe("NewSessionDialog", () => {
     const button = Array.from(container.querySelectorAll("button")).find((item) => item.textContent?.includes("Open settings"))!;
     act(() => button.click());
 
-    expect(container.textContent).toContain("Set up a workspace and CLI profile first");
+    expect(container.textContent).toContain("Set up a project and CLI profile first");
     expect(onOpenSettings).toHaveBeenCalledOnce();
   });
 });

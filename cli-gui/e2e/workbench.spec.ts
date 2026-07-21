@@ -2,7 +2,8 @@ import { expect, test } from "@playwright/test";
 
 test("loads the disposable workbench shell", async ({ page }) => {
   await page.goto("/");
-  await expect(page.locator(".utility-rail")).toBeVisible();
+  await expect(page.locator(".utility-rail")).toHaveCount(0);
+  await expect(page.locator(".app-sidebar")).toBeVisible();
   await expect(page.locator("#session-navigator")).toBeVisible();
   await expect(page.getByText("Sessions", { exact: true })).toBeVisible();
   await expect(page.locator(".session-navigator .session-row").getByText("Fixture session", { exact: true })).toBeVisible();
@@ -63,7 +64,7 @@ test("runs the disposable session through transcript, terminal, inspector, and p
   const prompt = page.getByRole("textbox", { name: "Prompt" });
   await prompt.fill("hello fixture");
   await prompt.press("Enter");
-  await expect(page.getByText("hello fixture", { exact: true })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByLabel("Transcript").getByText("hello fixture", { exact: true })).toBeVisible({ timeout: 10_000 });
 
   await page.getByRole("button", { name: "Open session details" }).click();
   await page.getByRole("tab", { name: "Files" }).click();
@@ -76,6 +77,17 @@ test("runs the disposable session through transcript, terminal, inspector, and p
 
   await page.getByRole("button", { name: "Open settings" }).click();
   await page.getByRole("tab", { name: "Appearance" }).click();
-  await expect(page.getByText("This settings category is reserved for a later release.", { exact: true })).toBeVisible();
+  await page.getByRole("radio", { name: /Neo/ }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "neo");
   await page.locator(".overlay-panel[role='dialog']").getByRole("button", { name: "Close", exact: true }).click();
+});
+
+test("persists the appearance theme after reload", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Open settings" }).click();
+  await page.getByRole("tab", { name: "Appearance" }).click();
+  await page.getByRole("radio", { name: /Classic/ }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "classic");
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "classic");
 });
