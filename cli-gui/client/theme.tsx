@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { TranslationKey } from "./i18n";
 
-export type ThemeId = "classic" | "neo";
+export type ThemeId = "qoder-light" | "classic" | "neo";
 
 export interface ThemeDefinition {
   id: ThemeId;
@@ -13,6 +13,7 @@ export interface ThemeDefinition {
 export const themeStorageKey = "product-ai-os-cli-gui-theme";
 
 export const themeDefinitions = [
+  { id: "qoder-light", labelKey: "themeQoderLight", colorScheme: "light", rootClassName: "theme-qoder-light" },
   { id: "neo", labelKey: "themeNeo", colorScheme: "light", rootClassName: "theme-neo" },
   { id: "classic", labelKey: "themeClassic", colorScheme: "dark", rootClassName: "theme-classic" }
 ] as const satisfies readonly ThemeDefinition[];
@@ -24,14 +25,14 @@ const ThemeContext = createContext<{
 } | undefined>(undefined);
 
 export function normalizeTheme(value: unknown): ThemeId {
-  return value === "classic" || value === "neo" ? value : "neo";
+  return value === "classic" || value === "neo" || value === "qoder-light" ? value : "qoder-light";
 }
 
 export function readTheme(storage: Pick<Storage, "getItem"> | undefined = typeof window === "undefined" ? undefined : window.localStorage): ThemeId {
   try {
     return normalizeTheme(storage?.getItem(themeStorageKey));
   } catch {
-    return "neo";
+    return "qoder-light";
   }
 }
 

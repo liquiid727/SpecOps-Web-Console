@@ -58,6 +58,9 @@ venv/
 .codex/sessions/
 .codex/cache/
 .codex/logs/
+.ccpanes/
+.playwright-cli/
+.qoder/
 .contextdb-enable
 
 # --- Agent development caches ---
@@ -73,6 +76,9 @@ runs/
 .loop-state.json
 memory/context-db/
 tests/results/*.json
+cli-gui/.ccpanes/
+cli-gui/data/
+output/
 
 # private planning scratch
 todo/*

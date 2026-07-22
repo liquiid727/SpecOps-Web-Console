@@ -21,4 +21,4 @@ This record tracks the implementation evidence for the CLI GUI workbench. Issue 
 
 ## Delivery Boundaries
 
-Issue markdown checkboxes remain unchanged. Completion is based on the implementation, tests, build, browser fixture, and real smoke evidence above. The pre-existing uncommitted `design/cli-gui-design.md` change was preserved. No commit, push, or remote issue mutation was performed.
+Issue markdown checkboxes remain unchanged. Completion is based on the implementation, tests, build, browser fixture, and real smoke evidence above. The pre-existing uncommitted `cli-gui/doc/cli-gui-design.md` change was preserved. No commit, push, or remote issue mutation was performed.

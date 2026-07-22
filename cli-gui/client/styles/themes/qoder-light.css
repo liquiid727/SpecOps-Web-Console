@@ -1,0 +1,56 @@
+:root,
+:root[data-theme="qoder-light"],
+:root.theme-qoder-light {
+  color-scheme: light;
+
+  --bg-page: #f6f6f6;
+  --bg-panel: #ffffff;
+  --bg-sidebar: #ffffff;
+  --bg-hover: #f2f2f2;
+  --bg-active: #ebebeb;
+  --bg-info: #eef2ff;
+  --border: #e6e6e6;
+  --border-subtle: #f0f0f0;
+  --border-strong: #d1d5db;
+  --text: #111111;
+  --text-secondary: #6b6b6b;
+  --text-tertiary: #9ca3af;
+  --text-quaternary: #bfbfbf;
+  --accent: #1a1a1a;
+  --accent-hover: #333333;
+  --accent-contrast: #ffffff;
+  --blue: #2563eb;
+  --green: #22c55e;
+  --green-bg: #eafbf3;
+  --red: #ef4444;
+  --yellow: #f59e0b;
+  --running: #22c55e;
+  --starting: #f59e0b;
+  --stopped: #9ca3af;
+  --error: #ef4444;
+  --warning: #f59e0b;
+  --focus: #2563eb;
+  --danger: #ef4444;
+  --danger-muted: rgba(239, 68, 68, .1);
+  --danger-border: rgba(239, 68, 68, .32);
+  --danger-text: #b91c1c;
+  --success-muted: rgba(34, 197, 94, .1);
+  --success-border: rgba(34, 197, 94, .3);
+  --warning-muted: rgba(245, 158, 11, .1);
+  --warning-border: rgba(245, 158, 11, .3);
+  --info-muted: rgba(37, 99, 235, .1);
+  --info-border: rgba(37, 99, 235, .28);
+
+  --canvas: var(--bg-page);
+  --rail: var(--bg-panel);
+  --navigator: var(--bg-sidebar);
+  --surface: var(--bg-panel);
+  --surface-raised: var(--bg-panel);
+  --surface-hover: var(--bg-hover);
+  --surface-selected: var(--bg-active);
+  --terminal: #fbfbfb;
+  --overlay: var(--bg-panel);
+  --muted: var(--text-secondary);
+  --faint: var(--text-tertiary);
+  --neo-shadow: var(--shadow-md);
+}

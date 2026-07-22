@@ -4,7 +4,7 @@
 
 Product AI OS MVP01 是一个面向个人开发者的本地 AI CLI 工作空间管理工具。它通过统一的可视化界面管理多个项目、CLI 配置和并发会话，减少用户手动打开多个终端、切换项目目录、识别窗口用途和恢复工作上下文的成本。
 
-本 PRD 基于 `doc/todo/cli-gui.md` 编写。MVP01 不重新实现 Codex 或 Claude 的 Agent 能力，而是作为本地 CLI 的启动、组织和会话管理层。
+本 PRD 基于 `cli-gui/doc/cli-gui.md` 编写。MVP01 不重新实现 Codex 或 Claude 的 Agent 能力，而是作为本地 CLI 的启动、组织和会话管理层。
 
 首个交付形态采用本地 Web 应用，后续将复用核心 Session Manager 封装为 Tauri 桌面应用。
 
@@ -214,7 +214,7 @@ MVP01 至少支持以下状态：
 - Session 配置保存在本机，不上传云端。
 - CLI 进程退出后由用户手动恢复，不自动重启。
 - 至少以 4 个并发 Session 作为验收基线。
-- 本 PRD 不覆盖 `doc/todo/cli-gui.md` 原始草案。
+- 本 PRD 不覆盖 `cli-gui/doc/cli-gui.md` 原始草案。
 
 ## 11. Open Questions
 

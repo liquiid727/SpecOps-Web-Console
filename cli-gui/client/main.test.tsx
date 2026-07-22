@@ -56,17 +56,17 @@ describe("CLI GUI workbench", () => {
       root?.render(<I18nProvider><ThemeProvider><FeedbackProvider><App /></FeedbackProvider></ThemeProvider></I18nProvider>);
     });
 
-    expect(await screenText(element, "Sessions")).toBeTruthy();
+    expect(await screenText(element, "Quests")).toBeTruthy();
     expect(element.querySelector(".utility-rail")).toBeNull();
     expect(element.querySelector(".app-sidebar")).toBeTruthy();
-    expect(element.querySelector(".session-navigator")).toBeTruthy();
-    expect(element.querySelector(".session-workspace")).toBeTruthy();
-    expect(element.querySelector(".terminal-surface")).toBeTruthy();
+    expect(element.querySelector("#session-navigator")).toBeTruthy();
+    expect(element.querySelector(".quest-home")).toBeTruthy();
+    expect(element.querySelector(".qoder-right-panel")).toBeTruthy();
     expect(element.textContent).toContain("Design review");
-    expect(element.textContent).toContain("Projects");
+    expect(element.textContent).toContain("Workspace");
     expect(element.textContent).not.toContain("Workspaces");
-    expect(element.textContent).toContain("Resume");
-    expect(element.textContent).toContain("New session");
+    expect(element.textContent).toContain("Better Loop");
+    expect(element.textContent).toContain("New Quest");
     expect(element.textContent).not.toContain("3001");
   });
 
@@ -79,7 +79,7 @@ describe("CLI GUI workbench", () => {
     await act(async () => {
       root?.render(<I18nProvider><ThemeProvider><FeedbackProvider><App /></FeedbackProvider></ThemeProvider></I18nProvider>);
     });
-    await screenText(element, "Sessions");
+    await screenText(element, "Quests");
 
     await act(async () => {
       element.querySelector<HTMLButtonElement>("[aria-label='Open settings']")?.click();
@@ -108,7 +108,7 @@ describe("CLI GUI workbench", () => {
     await act(async () => {
       root?.render(<I18nProvider><ThemeProvider><FeedbackProvider><App /></FeedbackProvider></ThemeProvider></I18nProvider>);
     });
-    await screenText(element, "Sessions");
+    await screenText(element, "Quests");
 
     await act(async () => {
       element.querySelector<HTMLButtonElement>("[aria-label='Open settings']")?.click();

@@ -133,6 +133,23 @@ describe("application composition", () => {
     await application.close();
   });
 
+  it("exposes a JSON health endpoint outside the static fallback", async () => {
+    const { dependencies } = createDependencies({ policy: { readonly: true, processEnvironment: {} } });
+    const application = await createApplication(dependencies);
+    const server = createServer(application, { host: "127.0.0.1", port: 0, logger: dependencies.logger, requestIdFactory: () => "request-test" });
+    const address = await server.listen();
+
+    try {
+      const health = await get(address.port, "/health");
+
+      expect(health.status).toBe(200);
+      expect(health.json).toEqual({ status: "ok", service: "session-manager", readonly: true, timestamp: "2026-01-01T00:00:00Z" });
+      expect(dependencies.filesystem.readFile).not.toHaveBeenCalled();
+    } finally {
+      await server.close();
+    }
+  });
+
   it("renews expired picker intents through state and rejects stale intents clearly", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));

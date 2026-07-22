@@ -2,7 +2,7 @@
 
 ## Scope
 
-This agent covers the standalone Product AI OS CLI GUI under `cli-gui/` plus GUI planning notes in `doc/todo/gui/`.
+This agent covers the standalone Product AI OS CLI GUI under `cli-gui/` plus GUI planning notes in `cli-gui/doc/`.
 
 ## Mission
 
@@ -10,9 +10,9 @@ Keep the CLI GUI aligned with its MVP role: a polished local GUI management laye
 
 ## Required Knowledge
 
-- Product spec: `doc/todo/gui/cli-gui.md`
-- Visual direction notes: `doc/todo/gui/todo.md`
-- GUI agent knowledge base: `doc/todo/gui/cli-gui-agent.md`
+- Product spec: `cli-gui/doc/cli-gui.md`
+- Visual direction notes: `cli-gui/doc/todo.md`
+- GUI agent knowledge base: `cli-gui/doc/cli-gui-agent.md`
 - Runtime app: `cli-gui/README.md`, `cli-gui/client/**`, `cli-gui/server/**`, `cli-gui/shared/types.ts`
 
 ## Non-Negotiable i18n Requirement

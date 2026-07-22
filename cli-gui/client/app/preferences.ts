@@ -4,6 +4,8 @@ export type SessionGrouping = "project" | "time" | "recent" | "manual";
 export type SessionFilter = "active" | "completed" | "archived";
 export type InspectorPreferenceTab = "details" | "preview" | "files" | "languages" | "diff" | "git";
 export type CenterView = "transcript" | "terminal";
+export type AppView = "quest-home" | "chat" | "knowledge" | "marketplace" | "settings";
+export type RightPanelTab = "summary" | "terminal" | "files" | "spec" | "review";
 
 export interface UiPreferencesV1 {
   version: 1;
@@ -13,16 +15,20 @@ export interface UiPreferencesV1 {
   sessionFilter: SessionFilter;
   inspectorTab: InspectorPreferenceTab;
   centerViewBySession: Record<string, CenterView>;
+  currentView: AppView;
+  rightPanelTab: RightPanelTab;
 }
 
 export const defaultPreferences: UiPreferencesV1 = {
   version: 1,
   navigatorOpen: true,
-  inspectorOpen: false,
+  inspectorOpen: true,
   sessionGrouping: "project",
   sessionFilter: "active",
   inspectorTab: "details",
-  centerViewBySession: {}
+  centerViewBySession: {},
+  currentView: "quest-home",
+  rightPanelTab: "summary"
 };
 
 export function parsePreferences(raw: string | null | undefined): UiPreferencesV1 {
@@ -37,7 +43,9 @@ export function parsePreferences(raw: string | null | undefined): UiPreferencesV
       sessionGrouping: value.sessionGrouping,
       sessionFilter: value.sessionFilter,
       inspectorTab: value.inspectorTab,
-      centerViewBySession: { ...value.centerViewBySession }
+      centerViewBySession: { ...value.centerViewBySession },
+      currentView: isAppView(value.currentView) ? value.currentView : "quest-home",
+      rightPanelTab: isRightPanelTab(value.rightPanelTab) ? value.rightPanelTab : "summary"
     };
   } catch {
     return cloneDefaults();
@@ -82,4 +90,12 @@ function isInspectorTab(value: unknown): value is InspectorPreferenceTab {
 
 function isCenterViews(value: unknown): value is Record<string, CenterView> {
   return isRecord(value) && Object.entries(value).every(([key, view]) => Boolean(key) && (view === "transcript" || view === "terminal"));
+}
+
+function isAppView(value: unknown): value is AppView {
+  return value === "quest-home" || value === "chat" || value === "knowledge" || value === "marketplace" || value === "settings";
+}
+
+function isRightPanelTab(value: unknown): value is RightPanelTab {
+  return value === "summary" || value === "terminal" || value === "files" || value === "spec" || value === "review";
 }

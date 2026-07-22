@@ -963,7 +963,10 @@ export async function createApplication(dependencies: ApplicationDependencies): 
     async handleHttp(request, response, url) {
       beginOperation();
       try {
-        if (url.pathname.startsWith("/api/")) await handleApi(request, response, url);
+        if (url.pathname === "/health") {
+          if (!["GET", "HEAD"].includes(request.method ?? "GET")) throw new ApiHttpError(404, "ROUTE_NOT_FOUND", "Route not found.");
+          sendJson(response, 200, { status: "ok", service: "session-manager", readonly: dependencies.policy.readonly, timestamp: dependencies.clock.now() });
+        } else if (url.pathname.startsWith("/api/")) await handleApi(request, response, url);
         else await serveStatic(dependencies, response, url.pathname);
       } finally {
         endOperation();

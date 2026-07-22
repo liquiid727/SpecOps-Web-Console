@@ -1,6 +1,6 @@
 # CLI GUI Agent
 
-Owns the standalone Product AI OS CLI GUI under `cli-gui/` and its planning knowledge under `doc/todo/gui/`.
+Owns the standalone Product AI OS CLI GUI under `cli-gui/` and its planning knowledge under `cli-gui/doc/`.
 
 ## Responsibilities
 

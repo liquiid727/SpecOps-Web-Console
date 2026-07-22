@@ -10,9 +10,9 @@ describe("versioned UI preferences", () => {
     expect(values.get(preferencesKey)).not.toContain("workspace");
   });
 
-  it("defaults old v1 preferences without a theme to system", () => {
+  it("preserves old v1 preferences and defaults new view fields", () => {
     const previous = { version: 1, navigatorOpen: true, inspectorOpen: false, sessionGrouping: "project", sessionFilter: "active", inspectorTab: "details", centerViewBySession: {} };
-    expect(parsePreferences(JSON.stringify(previous))).toEqual(defaultPreferences);
+    expect(parsePreferences(JSON.stringify(previous))).toEqual({ ...previous, currentView: "quest-home", rightPanelTab: "summary" });
   });
 
   it("resets unknown versions and corrupted fields", () => {

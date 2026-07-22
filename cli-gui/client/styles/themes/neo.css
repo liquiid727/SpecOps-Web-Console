@@ -28,9 +28,9 @@
   --stopped: #718096;
   --error: #b42318;
   --warning: #a15c00;
-  --neo-shadow: 5px 5px 0 #111827;
-  --radius: 4px;
-  --radius-small: 3px;
+  --neo-shadow: var(--shadow-md);
+  --radius: var(--radius-sm);
+  --radius-small: var(--radius-xs);
 }
 
 :root[data-theme="neo"] .primary-button,
@@ -43,6 +43,6 @@
 :root.theme-neo .compact-form,
 :root[data-theme="neo"] .terminal-surface,
 :root.theme-neo .terminal-surface {
-  border-width: 2px;
+  border-width: 1px;
   box-shadow: var(--neo-shadow);
 }

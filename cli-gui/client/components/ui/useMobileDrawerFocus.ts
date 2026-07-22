@@ -10,10 +10,11 @@ export function useMobileDrawerFocus(panelRef: RefObject<HTMLElement | null>, on
     if (typeof window === "undefined" || window.innerWidth > mobileBreakpoint) return;
     const panel = panelRef.current;
     if (!panel) return;
+    const drawer = panel;
     const previous = document.activeElement as HTMLElement | null;
 
     function focusable() {
-      return Array.from(panel.querySelectorAll<HTMLElement>("button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), [tabindex]:not([tabindex='-1'])"));
+      return Array.from(drawer.querySelectorAll<HTMLElement>("button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), [tabindex]:not([tabindex='-1'])"));
     }
 
     focusable()[0]?.focus();

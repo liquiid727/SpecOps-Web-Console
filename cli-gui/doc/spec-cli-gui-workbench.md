@@ -18,7 +18,7 @@ This SPEC defines the architecture, persistence formats, APIs, WebSocket protoco
 
 ### 1.2 PRD Reference
 
-- Source: `tasks/prd-cli-gui-workbench.md`
+- Source: `cli-gui/doc/prd-cli-gui-workbench.md`
 - User stories: US-001 through US-026
 - Functional requirements: FR-1 through FR-70
 - Explicit exclusions: Git mutation, file editing, cloud/remote workspaces, desktop packaging, direct provider APIs, multi-agent orchestration, and full deferred Settings implementations.

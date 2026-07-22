@@ -2,7 +2,7 @@
 
 ## Agent
 
-`cli-gui-agent` owns frontend/product UI guidance for the standalone `cli-gui/` app and related Product AI OS GUI notes under `doc/todo/gui/`.
+`cli-gui-agent` owns frontend/product UI guidance for the standalone `cli-gui/` app and related Product AI OS GUI notes under `cli-gui/doc/`.
 
 ## Mandatory i18n Rule
 

@@ -40,7 +40,7 @@ describe("WorkspaceProfileManager appearance settings", () => {
 
     await act(async () => document.body.querySelector<HTMLButtonElement>("[role='tab'][data-settings-category='appearance']")?.click());
     expect(document.body.querySelector("[aria-label='Theme']")).toBeTruthy();
-    expect(document.body.querySelector("[data-theme-choice='neo']")?.getAttribute("aria-checked")).toBe("true");
+    expect(document.body.querySelector("[data-theme-choice='qoder-light']")?.getAttribute("aria-checked")).toBe("true");
     await act(async () => document.body.querySelector<HTMLButtonElement>("[data-theme-choice='classic']")?.click());
     expect(document.documentElement.dataset.theme).toBe("classic");
     expect(document.body.querySelector("[data-language-choice='en']")?.getAttribute("aria-checked")).toBe("true");

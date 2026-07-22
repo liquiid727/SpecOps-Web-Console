@@ -105,7 +105,7 @@ function AppearanceSettings() {
       <div className="theme-choice-list" role="radiogroup" aria-label={t("theme")}>
         {themes.map((option) => <button key={option.id} type="button" data-theme-choice={option.id} role="radio" aria-checked={theme === option.id} className={theme === option.id ? "active" : ""} onClick={() => setTheme(option.id)}>
           <span>{t(option.labelKey)}</span>
-          <small>{t(option.id === "neo" ? "themeNeoDescription" : "themeClassicDescription")}</small>
+          <small>{t(option.id === "qoder-light" ? "themeQoderLightDescription" : option.id === "neo" ? "themeNeoDescription" : "themeClassicDescription")}</small>
         </button>)}
       </div>
     </div>

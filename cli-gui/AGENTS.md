@@ -7,7 +7,7 @@ This file applies to all files under `cli-gui/`.
 ## Agent Binding
 
 - Use `.agents/roles/cli-gui-agent.md` and `ai/agents/cli-gui-agent.md` for CLI GUI frontend/product UI work.
-- Read `doc/todo/gui/AGENTS.md` and `doc/todo/gui/cli-gui-agent.md` before changing GUI layout, copy, settings, terminal workspace, sessions, workspaces, profiles, responsive behavior, or tests.
+- Read `cli-gui/doc/AGENTS.md` and `cli-gui/doc/cli-gui-agent.md` before changing GUI layout, copy, settings, terminal workspace, sessions, workspaces, profiles, responsive behavior, or tests.
 
 ## Mandatory i18n Requirement
 

@@ -1,0 +1,1638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Qoder Quest — 1:1 Replica (Interactive)</title>
+<style>
+  :root{
+    --bg:#f6f6f6; --panel:#ffffff; --hover:#f2f2f2; --active-bg:#ebebeb; --border:#e6e6e6;
+    --text:#111111; --text-secondary:#6b6b6b; --text-tertiary:#9ca3af; --text-quaternary:#bfbfbf;
+    --accent:#1a1a1a; --accent-hover:#333333; --blue:#2563eb; --star:#f59e0b;
+    --green:#4ade80; --green-bg:#eafbf3;
+    --radius-sm:6px; --radius-md:8px; --radius-lg:10px; --radius-xl:12px;
+    --shadow:0 1px 2px rgba(0,0,0,0.04),0 1px 3px rgba(0,0,0,0.03);
+    --shadow-input:0 1px 2px rgba(0,0,0,0.04),0 2px 8px rgba(0,0,0,0.04);
+    --shadow-pop:0 4px 16px rgba(0,0,0,0.10),0 1px 4px rgba(0,0,0,0.06);
+    --ease-out:cubic-bezier(0.4,0,0.2,1);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:var(--bg);color:var(--text);font-size:13px;-webkit-font-smoothing:antialiased;}
+  .app{display:flex;flex-direction:column;height:100vh;}
+  svg{display:block;}
+  .ic{width:14px;height:14px;}
+
+  /* Title bar */
+  .titlebar{height:44px;flex:0 0 44px;background:rgba(255,255,255,.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 14px 0 16px;}
+  .titlebar-left{display:flex;align-items:center;gap:12px;}
+  .traffic{display:flex;gap:8px;}
+  .dot{width:12px;height:12px;border-radius:50%;}
+  .dot.r{background:#ff5f56;} .dot.y{background:#ffbd2e;} .dot.g{background:#27c93f;}
+  .icon-btn{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--text-secondary);cursor:pointer;transition:background .12s ease,color .12s ease;}
+  .icon-btn:hover{background:var(--hover);color:var(--text);}
+  .titlebar-right{display:flex;align-items:center;gap:6px;}
+
+  .body{display:flex;flex:1;min-height:0;}
+
+  /* Sidebar */
+  .sidebar{width:260px;flex:0 0 260px;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;min-height:0;}
+  .sb-top{padding:14px 14px 10px;}
+  .new-quest{height:38px;border-radius:var(--radius-lg);background:var(--hover);display:flex;align-items:center;justify-content:space-between;padding:0 10px;cursor:pointer;user-select:none;transition:background .12s ease,transform .08s ease;}
+  .new-quest:hover{background:#e9e9e9;}
+  .new-quest:active{transform:scale(.985);}
+  .new-quest .l{display:flex;align-items:center;gap:7px;font-weight:600;font-size:13px;color:var(--text);}
+  .new-quest .plus{color:var(--text-secondary);transition:color .15s ease,transform .2s var(--ease-out);}
+  .new-quest:hover .plus{color:var(--text);transform:rotate(45deg);}
+  .new-quest .k{font-size:11px;color:var(--text-tertiary);background:#fff;border:1px solid var(--border);border-radius:5px;padding:1px 5px;}
+  .sb-scroll{flex:1;overflow:auto;padding:0 8px;}
+
+  .section{display:flex;align-items:center;justify-content:space-between;padding:14px 8px 6px;}
+  .section .t{font-size:11px;font-weight:700;letter-spacing:.4px;color:var(--text-secondary);text-transform:uppercase;}
+  .section .icons{display:flex;gap:2px;color:var(--text-tertiary);}
+  .section .icons .icw{width:22px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .12s ease,color .15s ease;position:relative;}
+  .section .icons .icw:hover{background:var(--hover);color:var(--text);}
+  .section .icons .icw.active{background:var(--active-bg);color:var(--text);}
+  .section .icons .icw .ic2{position:absolute;opacity:0;transform:scale(.92);transition:opacity .12s ease,transform .12s ease;}
+  .section .icons .icw.grid .ic1{opacity:0;transform:scale(.92);}
+  .section .icons .icw.grid .ic2{opacity:1;transform:scale(1);}
+  .section .icons .icw .ic1{transition:opacity .12s ease,transform .12s ease;}
+
+  .ws-chips{display:flex;align-items:center;gap:6px;padding:0 8px 8px;overflow-x:auto;scrollbar-width:none;}
+  .ws-chips::-webkit-scrollbar{display:none;}
+  .ws-label{font-size:11px;color:var(--text-tertiary);white-space:nowrap;}
+  .chip{height:24px;padding:0 10px;border-radius:12px;background:var(--hover);color:var(--text-secondary);font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;white-space:nowrap;transition:background .12s ease,color .12s ease;}
+  .chip:hover{background:#e9e9e9;}
+  .chip.active{background:var(--text);color:#fff;font-weight:500;}
+  .chip.active:hover{background:var(--accent-hover);}
+
+  .q-list{position:relative;}
+  .q-group{padding:8px 8px 4px;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px;}
+  .q-item{display:flex;align-items:center;justify-content:space-between;padding:7px 8px;border-radius:6px;cursor:pointer;color:var(--text);font-size:13px;margin-bottom:1px;transition:background .12s ease;position:relative;}
+  .q-item:hover{background:var(--hover);}
+  .q-item.active{background:var(--active-bg);}
+  .q-item.active .txt .q-name{color:var(--blue);font-weight:500;}
+  .q-item.active .txt .folder-icon{color:var(--blue);}
+  .q-item.active .txt .task-dot{background:var(--blue);}
+  .q-item.active .txt .star-icon{color:var(--star);fill:var(--star);fill-opacity:1;}
+  .q-item .txt{display:flex;align-items:center;gap:8px;overflow:hidden;}
+  .q-item .txt .q-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color .12s ease;}
+  .q-item .folder-icon{color:var(--text-quaternary);transition:color .15s ease,transform .15s ease;flex:0 0 14px;}
+  .q-item:hover .folder-icon{color:var(--text-tertiary);transform:translateY(-.5px);}
+  .q-item .task-dot{width:6px;height:6px;border-radius:50%;background:var(--text-tertiary);flex:0 0 6px;transition:background .15s ease,transform .2s ease;}
+  .q-item:hover .task-dot{animation:dotPulse .2s ease-in-out;}
+  @keyframes dotPulse{0%{transform:scale(1);}50%{transform:scale(.85);}100%{transform:scale(1);}}
+  .q-item .star-icon{color:var(--text-tertiary);fill:var(--star);fill-opacity:0;transition:color .15s ease,fill-opacity .15s ease-out;flex:0 0 14px;}
+  .q-item:hover .star-icon{color:var(--star);fill-opacity:.35;}
+  .q-item.pinned .star-icon{color:var(--star);fill-opacity:1;}
+  .q-item .time{font-size:11px;color:var(--text-tertiary);flex:0 0 auto;margin-left:6px;transition:color .15s ease;}
+  .q-item:hover .time{color:var(--text-secondary);}
+  .q-item .more{width:22px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;color:var(--text-tertiary);opacity:0;cursor:pointer;transition:opacity .15s ease,background .12s ease,color .15s ease;flex:0 0 22px;margin-right:-4px;}
+  .q-item:hover .more{opacity:1;}
+  .q-item .more:hover{background:var(--hover);color:var(--text);}
+  .q-item .more:active{background:var(--active-bg);}
+
+  .chats-empty{padding:6px 8px 14px;color:var(--text-tertiary);font-size:13px;}
+  .chat-list{padding:0 8px 14px;display:flex;flex-direction:column;gap:2px;}
+  .chat-item{display:flex;align-items:center;gap:10px;padding:8px;border-radius:8px;cursor:pointer;transition:background .12s;}
+  .chat-item:hover{background:var(--hover);}
+  .chat-item.active{background:var(--active-bg);}
+  .chat-ava{width:28px;height:28px;border-radius:50%;flex:0 0 28px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:600;background:linear-gradient(135deg,#6b7280,#374151);}
+  .chat-meta{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+  .chat-top{display:flex;align-items:center;justify-content:space-between;}
+  .chat-name{font-size:13px;color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .chat-time{font-size:11px;color:var(--text-tertiary);flex:0 0 auto;}
+  .chat-last{font-size:12px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .chat-item.active .chat-name{color:var(--blue);}
+  .sb-bottom{border-top:1px solid var(--border);padding:6px 8px;}
+  .sb-link{display:flex;align-items:center;justify-content:space-between;padding:7px 8px;border-radius:6px;cursor:pointer;color:var(--text-secondary);font-size:13px;transition:background .12s ease,color .15s ease;}
+  .sb-link:hover{background:var(--hover);color:var(--text);}
+  .sb-link:hover .link-icon{color:var(--text);transform:scale(1.05);}
+  .sb-link .l{display:flex;align-items:center;gap:8px;}
+  .sb-link .link-icon{color:var(--text-tertiary);transition:color .15s ease,transform .15s ease;}
+  .sb-link .tag{font-size:10px;color:var(--blue);font-weight:500;}
+  .sb-link.active{background:var(--active-bg);color:var(--text);font-weight:600;}
+  .sb-link.active .link-icon{color:var(--blue);}
+  .sb-link .badge{font-size:10px;color:#fff;background:var(--text-tertiary);border-radius:9px;padding:0 6px;min-width:17px;height:17px;display:inline-flex;align-items:center;justify-content:center;font-weight:600;}
+
+  /* View switching */
+  .main{position:relative;flex:1;min-width:0;overflow:auto;}
+  .view{display:none;min-height:100%;}
+  .view.active{display:block;animation:fadein .18s ease;}
+  #view-quest.active{display:flex;flex-direction:column;height:100%;}
+  .quest-stage{display:none;flex-direction:column;align-items:center;justify-content:flex-start;width:100%;}
+  .quest-stage.active{display:flex;animation:fadein .18s ease;}
+  #home-view{padding-top:72px;flex:1;overflow:auto;}
+  #chat-view{flex:1;min-height:0;background:var(--bg);align-items:stretch;}
+  .composer{width:100%;max-width:720px;padding:0 40px 28px;margin:0 auto;}
+  @keyframes fadein{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+  .right.hidden{display:none;}
+  .kw-panel{display:none;flex:1;min-height:0;}
+  .kw-panel.active{display:flex;}
+  .sidebar.collapsed{width:0;flex:0 0 0;overflow:hidden;border-right:none;}
+  .right.collapsed{width:0;flex:0 0 0;overflow:hidden;border-left:none;}
+
+  /* Marketplace */
+  .mp{display:flex;flex-direction:column;height:100%;background:var(--bg);}
+  .mp-head{display:flex;align-items:flex-end;justify-content:space-between;padding:26px 32px 14px;}
+  .mp-head .h1{font-size:22px;font-weight:700;color:var(--text);margin-bottom:5px;}
+  .mp-head .sub{font-size:13px;color:var(--text-secondary);}
+  .mp-search{position:relative;width:220px;}
+  .mp-search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--text-tertiary);}
+  .mp-search input{width:100%;height:34px;padding:0 12px 0 34px;border:1px solid var(--border);border-radius:var(--radius-md);background:#fff;font-size:13px;outline:none;font-family:inherit;}
+  .mp-search input:focus{border-color:#9ca3af;box-shadow:0 0 0 3px rgba(37,99,235,.08);}
+  .mp-body{display:flex;flex:1;min-height:0;overflow:auto;}
+  .mp-cats{width:200px;flex:0 0 200px;padding:6px 12px 20px;}
+  .mp-cat{padding:8px 12px;border-radius:8px;color:var(--text-secondary);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:background .12s,color .15s;}
+  .mp-cat:hover{background:#fff;color:var(--text);}
+  .mp-cat.active{background:#fff;color:var(--text);font-weight:600;box-shadow:var(--shadow);}
+  .mp-cat .cb{font-size:11px;color:#fff;background:var(--text-tertiary);border-radius:9px;padding:0 6px;min-width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;font-weight:600;}
+  .mp-sep{height:1px;background:var(--border);margin:8px 12px;}
+  .mp-content{flex:1;padding:4px 32px 32px;overflow:auto;}
+  .mp-section{font-size:14px;font-weight:700;color:var(--text);margin:26px 0 14px;}
+  .mp-grid{display:grid;grid-template-columns:repeat(2,minmax(280px,1fr));gap:14px;}
+  .mp-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;display:flex;gap:14px;cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .1s;}
+  .mp-card:hover{border-color:#d1d5db;box-shadow:0 2px 8px rgba(0,0,0,.06);}
+  .mp-card:active{transform:scale(.995);}
+  .mp-ic{width:48px;height:48px;border-radius:10px;flex:0 0 48px;display:flex;align-items:center;justify-content:center;font-size:22px;}
+  .mp-card .body{flex:1;min-width:0;}
+  .mp-card .name{font-size:14px;font-weight:600;color:var(--text);}
+  .mp-card .desc{font-size:12.5px;line-height:18px;color:var(--text-secondary);margin:3px 0 7px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .mp-card .meta{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-tertiary);}
+  .mp-card .meta .ava{width:16px;height:16px;border-radius:50%;background:linear-gradient(135deg,#6b7280,#374151);color:#fff;font-size:9px;display:flex;align-items:center;justify-content:center;}
+  .mp-card .meta svg{width:13px;height:13px;}
+  .mp-card .act{flex:0 0 auto;align-self:center;}
+  .mp-install{height:28px;padding:0 12px;border-radius:var(--radius-md);background:var(--accent);color:#fff;font-size:12px;font-weight:600;border:none;cursor:pointer;opacity:0;transition:opacity .15s,background .15s;}
+  .mp-card:hover .mp-install{opacity:1;}
+  .mp-install:hover{background:var(--accent-hover);}
+  .mp-installed{display:flex;align-items:center;gap:5px;color:var(--green);font-size:13px;font-weight:600;}
+  .mp-empty{padding:60px 0;text-align:center;color:var(--text-tertiary);font-size:14px;}
+
+  /* Knowledge */
+  .kw{display:flex;flex-direction:column;height:100%;background:var(--bg);}
+  .kw-tabs{height:44px;flex:0 0 44px;display:flex;align-items:center;gap:4px;padding-left:16px;border-bottom:1px solid var(--border);background:#fff;}
+  .kw-tab{padding:8px 12px;border-radius:6px;color:var(--text-secondary);font-size:13px;cursor:pointer;transition:background .12s,color .15s;}
+  .kw-tab:hover{background:var(--hover);color:var(--text);}
+  .kw-tab.active{background:var(--active-bg);color:var(--text);font-weight:600;}
+  .kw-body{flex:1;display:flex;min-height:0;overflow:auto;}
+  .kw-tree{width:280px;flex:0 0 280px;background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column;min-height:0;}
+  .kw-search{position:relative;margin:12px 12px 8px;}
+  .kw-search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--text-tertiary);}
+  .kw-search input{width:100%;height:34px;padding:0 10px 0 32px;border:1px solid var(--border);border-radius:var(--radius-md);font-size:13px;outline:none;font-family:inherit;}
+  .kw-search input:focus{border-color:#9ca3af;}
+  .kw-ws{display:flex;align-items:center;justify-content:space-between;padding:0 12px 10px;}
+  .kw-ws .name{font-size:13px;color:var(--text-secondary);}
+  .kw-ws .gen{font-size:12px;color:var(--blue);cursor:pointer;}
+  .kw-treescroll{flex:1;overflow:auto;padding:0 8px 16px;}
+  .kw-node{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--text);transition:background .12s;}
+  .kw-node:hover{background:var(--hover);}
+  .kw-node.selected{background:var(--active-bg);font-weight:500;}
+  .kw-node .chev{width:12px;height:12px;color:var(--text-tertiary);transition:transform .15s ease;flex:0 0 12px;}
+  .kw-node.expanded .chev{transform:rotate(90deg);}
+  .kw-detail{flex:1;display:flex;flex-direction:column;min-width:0;}
+  .kw-top{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:4px;}
+  .kw-top .branch{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--text-secondary);}
+  .kw-top .meta{font-size:12px;color:var(--text-tertiary);}
+  .kw-banner{background:var(--blue-bg);border-bottom:1px solid var(--border);padding:10px 16px;font-size:12.5px;color:var(--text-secondary);display:flex;gap:8px;align-items:flex-start;}
+  .kw-banner svg{flex:0 0 14px;width:14px;height:14px;color:var(--blue);margin-top:1px;}
+  .kw-center{flex:1;overflow:auto;padding:40px 24px;}
+  .kw-center .ic{width:48px;height:48px;border-radius:12px;background:var(--hover);display:flex;align-items:center;justify-content:center;color:var(--text-secondary);margin:0 auto;}
+  .kw-center .ttl{font-size:16px;font-weight:600;text-align:center;margin-top:16px;}
+  .kw-info{max-width:420px;margin:28px auto 0;border:1px solid var(--border);border-radius:var(--radius-lg);background:#fff;overflow:hidden;}
+  .kw-info .row{display:flex;padding:12px 16px;border-bottom:1px solid var(--border);}
+  .kw-info .row:last-child{border-bottom:none;}
+  .kw-info .lbl{width:140px;flex:0 0 140px;font-size:12px;color:var(--text-secondary);}
+  .kw-info .val{flex:1;font-size:13px;color:var(--text);}
+  .kw-info .val .lang{cursor:pointer;margin-right:8px;}
+  .kw-info .val .lang.sel{font-weight:600;color:var(--text);}
+  .kw-info .val .lang:not(.sel){color:var(--text-secondary);}
+  .kw-info .ok{color:var(--green);display:inline-flex;align-items:center;gap:4px;}
+  .kw-note{font-size:12px;color:var(--text-tertiary);text-align:center;max-width:420px;margin:16px auto 0;line-height:18px;}
+  .kw-update{display:flex;gap:8px;max-width:420px;margin:16px auto 0;}
+  .kw-update .ubtn{flex:1;height:38px;border-radius:var(--radius-md);background:var(--accent);color:#fff;font-size:13px;font-weight:600;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;}
+  .kw-update .ubtn:hover{background:var(--accent-hover);}
+  .kw-update .ubtn:disabled{opacity:.7;cursor:default;}
+  .kw-update .ubtn.more{width:38px;flex:0 0 38px;background:transparent;border:1px solid var(--border);color:var(--text-secondary);}
+  .kw-update .ubtn.more:hover{background:var(--hover);}
+  .user{display:flex;align-items:center;gap:9px;padding:10px 8px;margin-top:2px;}
+  .user .ava{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#6b7280,#374151);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:600;}
+  .user .info{flex:1;}
+  .user .name{font-size:12px;font-weight:600;}
+  .user .plan{font-size:11px;color:var(--text-tertiary);}
+  .user .icons2{display:flex;gap:2px;color:var(--text-tertiary);}
+  .user .icons2 .icw{width:22px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .12s ease,color .15s ease;}
+  .user .icons2 .icw:hover{background:var(--hover);color:var(--text);}
+  .user .icons2 .icw:hover .gear{transform:rotate(30deg);}
+  .user .icons2 .icw .gear{transition:transform .2s ease-out;}
+
+  /* Main */
+  .main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:72px;min-width:0;overflow:auto;}
+  .main-inner{width:100%;max-width:720px;padding:0 40px;}
+  h1{font-size:28px;font-weight:600;color:var(--text);margin-bottom:26px;letter-spacing:-.2px;}
+  .start-row{display:flex;align-items:center;gap:10px;margin-bottom:18px;color:var(--text-secondary);font-size:14px;flex-wrap:wrap;}
+  .pill{position:relative;display:flex;align-items:center;gap:5px;height:30px;padding:0 10px;border-radius:var(--radius-md);
+    background:var(--panel);border:1px solid var(--border);color:var(--text);font-size:13px;cursor:pointer;box-shadow:var(--shadow);user-select:none;}
+  .pill:hover{border-color:#d1d5db;}
+  .pill svg{width:13px;height:13px;color:var(--text-secondary);}
+  .pill .chev{width:10px;height:10px;color:var(--text-tertiary);}
+
+  .input-wrap{position:relative;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius-xl);
+    box-shadow:var(--shadow-input);padding:14px 16px;transition:border-color .15s;}
+  .input-wrap:focus-within{border-color:#d1d5db;box-shadow:0 1px 2px rgba(0,0,0,0.04),0 4px 12px rgba(0,0,0,0.06);}
+  .chip-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+  .ctx-chip{display:flex;align-items:center;gap:5px;height:24px;padding:0 8px;border-radius:20px;background:#eef2ff;color:var(--blue);font-size:12px;font-weight:500;cursor:default;}
+  .ctx-chip .x{width:14px;height:14px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--blue);}
+  .ctx-chip .x:hover{background:rgba(37,99,235,.15);}
+  .ctx-chip .ic{width:12px;height:12px;}
+  .mode-row{display:flex;align-items:center;gap:14px;margin:2px 0 10px;}
+  .mode-item{display:flex;align-items:center;gap:7px;cursor:pointer;user-select:none;color:var(--text-secondary);font-size:12.5px;transition:color .12s;}
+  .mode-item:hover{color:var(--text);}
+  .mode-item.active{color:var(--text);}
+  .mode-item svg{width:14px;height:14px;color:var(--text-tertiary);}
+  .mode-item.active svg{color:var(--text);}
+  .toggle{width:34px;height:18px;border-radius:9px;background:var(--border);position:relative;transition:background .15s;flex:0 0 34px;}
+  .toggle::after{content:"";position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;left:2px;top:2px;box-shadow:0 1px 2px rgba(0,0,0,.15);transition:transform .15s var(--ease-out);}
+  .mode-item.active .toggle{background:var(--accent);}
+  .mode-item.active .toggle::after{transform:translateX(16px);}
+  .input-wrap textarea{width:100%;border:none;outline:none;resize:none;background:transparent;font-family:inherit;font-size:15px;line-height:22px;color:var(--text);height:28px;}
+  .input-wrap textarea::placeholder{color:var(--text-tertiary);}
+  .input-actions{display:flex;align-items:center;justify-content:space-between;margin-top:10px;}
+  .left-tools{display:flex;align-items:center;gap:7px;}
+  .agent-pill{display:flex;align-items:center;gap:5px;height:28px;padding:0 9px 0 7px;border-radius:var(--radius-md);
+    border:1px solid var(--border);background:transparent;color:var(--text-secondary);font-size:12px;cursor:pointer;user-select:none;transition:background .12s,color .12s,border-color .12s;}
+  .agent-pill:hover{background:var(--hover);color:var(--text);border-color:#d1d5db;}
+  .agent-pill .plus{font-size:15px;line-height:1;color:var(--text-secondary);}
+  .model-pill{display:flex;align-items:center;gap:5px;height:28px;padding:0 9px;border-radius:var(--radius-md);
+    border:1px solid var(--border);background:transparent;color:var(--text-secondary);font-size:12px;cursor:pointer;user-select:none;transition:background .12s,color .12s,border-color .12s;}
+  .model-pill:hover{background:var(--hover);color:var(--text);border-color:#d1d5db;}
+  .model-pill svg{width:12px;height:12px;color:var(--text-tertiary);}
+  .right-tools{display:flex;align-items:center;gap:3px;}
+  .tool-btn{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text-secondary);cursor:pointer;transition:background .12s,color .12s;}
+  .tool-btn:hover{background:var(--hover);color:var(--text);}
+  .tool-btn.active{background:var(--active-bg);color:var(--text);}
+  .send-group{display:flex;align-items:center;gap:6px;}
+  .ic-round{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text-secondary);cursor:pointer;}
+  .ic-round:hover{background:var(--hover);color:var(--text);}
+  .btn-send{width:30px;height:30px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;transition:background .15s;}
+  .btn-send:hover{background:var(--accent-hover);}
+  .btn-send:disabled{opacity:.45;cursor:default;}
+
+  .suggestions{display:flex;gap:10px;margin-top:12px;}
+  .sugg{flex:1;min-width:0;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius-lg);
+    padding:12px 14px;font-size:13px;color:var(--text-secondary);cursor:pointer;box-shadow:var(--shadow);line-height:18px;transition:all .15s;}
+  .sugg:hover{border-color:#d1d5db;color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,0.04),0 4px 12px rgba(0,0,0,0.05);}
+
+  .banner{margin-top:28px;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow);display:flex;align-items:stretch;overflow:hidden;}
+  .banner .accent-bar{width:5px;background:var(--green);flex:0 0 5px;}
+  .banner .inner{display:flex;align-items:center;gap:16px;padding:18px 20px;flex:1;}
+  .banner .icon{width:46px;height:46px;border-radius:10px;background:var(--green-bg);display:flex;align-items:center;justify-content:center;color:var(--green);flex:0 0 46px;}
+  .banner .text{flex:1;}
+  .banner .text .title{font-size:14px;font-weight:600;margin-bottom:3px;}
+  .banner .text .desc{font-size:12.5px;color:var(--text-secondary);line-height:18px;}
+  .banner .btns{display:flex;gap:8px;flex:0 0 auto;}
+  .btn-outline{height:30px;padding:0 14px;border-radius:var(--radius-md);border:1px solid var(--border);background:#fff;color:var(--text-secondary);font-size:12px;font-weight:500;cursor:pointer;}
+  .btn-outline:hover{border-color:#d1d5db;color:var(--text);}
+  .btn-fill{height:30px;padding:0 14px;border-radius:var(--radius-md);border:1px solid var(--accent);background:var(--accent);color:#fff;font-size:12px;font-weight:500;cursor:pointer;}
+  .btn-fill:hover{background:var(--accent-hover);}
+
+  /* Chat view */
+  .chat-header{padding:16px 24px 14px;border-bottom:1px solid var(--border);background:var(--panel);display:flex;flex-direction:column;gap:4px;}
+  .chat-header .top{display:flex;align-items:center;gap:8px;}
+  .chat-header .title{font-size:15px;font-weight:600;color:var(--text);}
+  .chat-header .sub{font-size:12px;color:var(--text-secondary);display:flex;align-items:center;gap:6px;}
+  .chat-header .sub svg{width:12px;height:12px;}
+  .chat-messages{flex:1;overflow:auto;padding:24px 0;display:flex;flex-direction:column;gap:20px;align-items:center;}
+  .msg-wrap{width:100%;max-width:720px;padding:0 24px;display:flex;gap:12px;}
+  .msg-wrap.user{justify-content:flex-end;}
+  .msg-wrap.assistant{justify-content:flex-start;}
+  .msg-ava{width:26px;height:26px;border-radius:50%;flex:0 0 26px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:600;}
+  .msg-ava.user{background:linear-gradient(135deg,#6b7280,#374151);}
+  .msg-ava.assistant{background:var(--accent);}
+  .msg-bubble{max-width:560px;padding:12px 14px;border-radius:14px;font-size:14px;line-height:21px;color:var(--text);white-space:pre-wrap;}
+  .msg-wrap.user .msg-bubble{background:var(--accent);color:#fff;border-bottom-right-radius:4px;}
+  .msg-wrap.assistant .msg-bubble{background:var(--panel);border:1px solid var(--border);border-bottom-left-radius:4px;box-shadow:var(--shadow);}
+  .msg-time{font-size:11px;color:var(--text-tertiary);margin-top:4px;text-align:right;}
+  .msg-wrap.assistant .msg-time{text-align:left;}
+  .empty-chat{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text-tertiary);gap:12px;padding:40px;}
+
+  /* Right */
+  .right{width:380px;flex:0 0 380px;background:var(--panel);border-left:1px solid var(--border);display:flex;flex-direction:column;min-height:0;position:relative;}
+  .rtabs{height:44px;flex:0 0 44px;display:flex;align-items:center;gap:20px;padding:0 14px 0 20px;border-bottom:1px solid var(--border);font-size:13px;}
+  .rtab{height:100%;display:flex;align-items:center;color:var(--text-secondary);cursor:pointer;position:relative;padding-top:2px;}
+  .rtab:hover{color:var(--text);}
+  .rtab.active{color:var(--text);font-weight:600;}
+  .rtab.active::after{content:"";position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--accent);border-radius:2px 2px 0 0;}
+  .rclose{margin-left:auto;color:var(--text-tertiary);cursor:pointer;width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:5px;}
+  .rclose:hover{background:var(--hover);color:var(--text);}
+  .rcontent{flex:1;overflow:auto;padding:24px 20px;}
+  .rpanel{display:none;}
+  .rpanel.active{display:block;}
+  .rblock{margin-bottom:28px;}
+  .rblock .rt{font-size:14px;font-weight:600;margin-bottom:5px;display:flex;align-items:center;gap:7px;}
+  .rblock .rd{font-size:13px;color:var(--text-tertiary);line-height:19px;}
+  .step{display:flex;align-items:flex-start;gap:9px;padding:7px 0;border-bottom:1px solid #f0f0f0;}
+  .step .mk{width:16px;height:16px;border-radius:50%;flex:0 0 16px;display:flex;align-items:center;justify-content:center;font-size:10px;margin-top:1px;}
+  .step.done .mk{background:var(--green);color:#fff;}
+  .step.run .mk{border:2px solid var(--blue);border-top-color:transparent;animation:spin .7s linear infinite;color:transparent;}
+  .step.pending .mk{background:#eee;color:var(--text-tertiary);}
+  .step .txt .h{font-size:13px;font-weight:500;color:var(--text);}
+  .step .txt .s{font-size:12px;color:var(--text-tertiary);}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .term{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:19px;color:var(--text-secondary);}
+  .term .ok{color:#16a34a;} .term .acc{color:var(--blue);} .term .dim{color:var(--text-tertiary);} .term .pr{color:#16a34a;}
+  .term-layout{display:flex;height:100%;min-height:0;}
+  .term-sidebar{width:160px;flex:0 0 160px;border-right:1px solid var(--border);display:flex;flex-direction:column;min-height:0;background:#fafafa;}
+  .term-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;font-size:11px;font-weight:600;color:var(--text-secondary);border-bottom:1px solid var(--border);}
+  .term-add{width:18px;height:18px;border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-tertiary);transition:background .12s,color .12s;}
+  .term-add:hover{background:var(--hover);color:var(--text);}
+  .term-list{flex:1;overflow:auto;padding:6px;}
+  .term-item{display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:12.5px;color:var(--text-secondary);margin-bottom:2px;transition:background .12s,color .12s;}
+  .term-item:hover{background:var(--hover);color:var(--text);}
+  .term-item.active{background:var(--active-bg);color:var(--text);font-weight:500;}
+  .term-item svg{width:13px;height:13px;color:var(--text-tertiary);flex:0 0 13px;}
+  .term-item.active svg{color:var(--text);}
+  .term-area{flex:1;display:flex;flex-direction:column;min-width:0;}
+  .term-toolbar{height:34px;flex:0 0 34px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 12px;}
+  .term-title{font-size:12px;color:var(--text-secondary);}
+  .term-actions{display:flex;gap:2px;color:var(--text-tertiary);}
+  .term-actions .icw{width:22px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .12s,color .12s;}
+  .term-actions .icw:hover{background:var(--hover);color:var(--text);}
+  .term-scroll{flex:1;overflow:auto;padding:12px;}
+  .frow{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #f0f0f0;font-size:13px;}
+  .frow .st{font-size:10px;font-weight:700;border-radius:4px;padding:1px 5px;}
+  .frow .st.add{background:#eafbf3;color:#16a34a;} .frow .st.mod{background:#fff7e6;color:#d97706;} .frow .st.del{background:#fee2e2;color:#dc2626;}
+  .frow .pth{color:var(--text-secondary);}
+
+  /* Floating menu / popover */
+  .menu-pop{position:fixed;z-index:1000;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-pop);padding:6px;min-width:180px;max-width:280px;max-height:420px;overflow:auto;display:none;}
+  .menu-pop.open{display:block;animation:popin .12s ease;}
+  @keyframes popin{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:translateY(0);}}
+  .menu-item{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:7px;cursor:pointer;font-size:13px;color:var(--text);}
+  .menu-item:hover{background:var(--hover);}
+  .menu-item .mi-ic{width:16px;height:16px;color:var(--text-secondary);flex:0 0 16px;display:flex;align-items:center;justify-content:center;}
+  .menu-item .mi-tx{flex:1;overflow:hidden;}
+  .menu-item .mi-tx .sub{font-size:11px;color:var(--text-tertiary);}
+  .menu-item .mi-check{color:var(--blue);}
+  .menu-item .mi-arrow{color:var(--text-tertiary);margin-left:auto;}
+  .menu-search{margin:2px 6px 6px;}
+  .menu-search input{width:100%;border:1px solid var(--border);border-radius:7px;padding:6px 9px;font-size:12px;outline:none;font-family:inherit;}
+  .menu-search input:focus{border-color:#d1d5db;}
+  .menu-divider{height:1px;background:var(--border);margin:6px 4px;}
+  .menu-label{padding:4px 9px;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.4px;}
+  .menu-reset{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:7px;cursor:pointer;font-size:13px;color:var(--text);transition:background .12s ease,transform .08s ease;}
+  .menu-reset:hover{background:var(--hover);}
+  .menu-reset:active{transform:scale(.985);}
+
+  /* Toast */
+  #toast-wrap{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:2000;display:flex;flex-direction:column;gap:8px;align-items:center;}
+  .toast{background:rgba(26,26,26,.92);color:#fff;padding:9px 16px;border-radius:10px;font-size:12.5px;box-shadow:0 6px 20px rgba(0,0,0,.25);animation:tin .2s ease;}
+  @keyframes tin{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+  ::-webkit-scrollbar{width:6px;height:6px;}
+  ::-webkit-scrollbar-thumb{background:#d4d4d4;border-radius:3px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Title bar -->
+  <div class="titlebar">
+    <div class="titlebar-left">
+      <div class="traffic"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+      <div class="icon-btn" data-toast="搜索文件、命令或 Agent（⌘K）">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+      </div>
+    </div>
+    <div class="titlebar-right">
+      <div class="icon-btn" id="toggleSidebar" title="折叠/展开左侧栏" data-toast="折叠/展开左侧栏">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect><path d="M9 3v18"></path></svg>
+      </div>
+      <div class="icon-btn" id="toggleRightPanel" title="折叠/展开右侧面板" data-toast="折叠/展开右侧面板">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect><path d="M15 3v18"></path></svg>
+      </div>
+      <div class="icon-btn" data-toast="新建标签页">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
+      </div>
+      <div class="icon-btn" data-toast="进入全屏">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"></path><path d="M21 8V5a2 2 0 0 0-2-2h-3"></path><path d="M3 16v3a2 2 0 0 0 2 2h3"></path><path d="M16 21h3a2 2 0 0 0 2-2v-3"></path></svg>
+      </div>
+    </div>
+  </div>
+
+  <div class="body">
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sb-top">
+        <div class="new-quest" id="newQuest" tabindex="0">
+          <div class="l">
+            <svg class="plus" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
+            New Quest
+          </div>
+          <span class="k">⌘N</span>
+        </div>
+      </div>
+      <div class="sb-scroll">
+        <div class="section">
+          <span class="t">Quests</span>
+          <div class="icons">
+            <div class="icw" id="filterQuests" title="筛选">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 10 12.46 22 3"></polygon></svg>
+            </div>
+            <div class="icw" id="viewToggle" title="切换视图">
+              <svg class="ic1" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="14" rx="1"></rect><rect width="7" height="7" x="3" y="14" rx="1"></rect></svg>
+              <svg class="ic2" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+            </div>
+            <div class="icw" id="addQuest" title="新建 Quest">
+              <svg class="plus2" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="ws-chips" id="wsChips">
+          <span class="ws-label">Workspace</span>
+          <span class="chip active" data-ws="all">All</span>
+          <span class="chip" data-ws="nnaccel">nnaccel (1)</span>
+          <span class="chip" data-ws="mcip">mcip</span>
+          <span class="chip" data-ws="SpecOps-Web-Console">SpecOps-Web-Console</span>
+        </div>
+
+        <div class="q-list" id="qList">
+          <div class="q-item folder" data-quest="nnaccel" data-ws="nnaccel" data-status="completed" data-read="true" data-created="2026-07-20T10:00:00Z" data-updated="2026-07-21T09:00:00Z"><div class="txt">
+            <svg class="folder-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path></svg>
+            <span class="q-name">nnaccel</span>
+          </div></div>
+          <div class="q-item folder" data-quest="mcip" data-ws="mcip" data-status="completed" data-read="true" data-created="2026-07-19T10:00:00Z" data-updated="2026-07-21T08:00:00Z"><div class="txt">
+            <svg class="folder-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path></svg>
+            <span class="q-name">mcip</span>
+          </div></div>
+          <div class="q-item task" data-quest="admin ui 优化" data-ws="mcip" data-status="running" data-read="false" data-created="2026-07-21T14:00:00Z" data-updated="2026-07-21T17:00:00Z"><div class="txt">
+            <span class="task-dot"></span>
+            <span class="q-name">admin ui 优化</span>
+          </div><span class="time">3h</span></div>
+          <div class="q-item pinned" data-quest="3.8-简单任务" data-ws="mcip" data-status="completed" data-read="true" data-created="2026-07-20T12:00:00Z" data-updated="2026-07-21T12:00:00Z"><div class="txt">
+            <svg class="star-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            <span class="q-name">3.8-简单任务</span>
+          </div>
+            <div class="more" title="更多">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+            </div>
+          </div>
+          <div class="q-item folder" data-quest="SpecOps-Web-Console" data-ws="SpecOps-Web-Console" data-status="completed" data-read="true" data-created="2026-07-18T10:00:00Z" data-updated="2026-07-20T09:00:00Z"><div class="txt">
+            <svg class="folder-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path></svg>
+            <span class="q-name">SpecOps-Web-Console</span>
+          </div></div>
+          <div class="q-item task" data-quest="查看一下这个项目" data-ws="SpecOps-Web-Console" data-status="running" data-read="false" data-created="2026-07-21T10:00:00Z" data-updated="2026-07-21T13:00:00Z"><div class="txt">
+            <span class="task-dot"></span>
+            <span class="q-name">查看一下这个项目查看一下spec/i…</span>
+          </div><span class="time">7h</span></div>
+        </div>
+
+        <div class="section" style="margin-top:6px;"><span class="t">Chats</span></div>
+        <div class="chat-list" id="chatList">
+          <div class="chat-item" data-chat="nnaccel" data-ws="nnaccel" data-branch="main" data-env="Local">
+            <div class="chat-ava">n</div>
+            <div class="chat-meta">
+              <div class="chat-top"><span class="chat-name">nnaccel</span><span class="chat-time">10:23</span></div>
+              <div class="chat-last">帮我优化一下构建脚本，CI 时间太长了</div>
+            </div>
+          </div>
+          <div class="chat-item" data-chat="admin ui 优化" data-ws="mcip" data-branch="feat/admin-ui-refresh" data-env="Local">
+            <div class="chat-ava">A</div>
+            <div class="chat-meta">
+              <div class="chat-top"><span class="chat-name">admin ui 优化</span><span class="chat-time">3h</span></div>
+              <div class="chat-last">已生成 5 个组件改动，待你确认</div>
+            </div>
+          </div>
+          <div class="chat-item" data-chat="查看一下这个项目" data-ws="SpecOps-Web-Console" data-branch="dev" data-env="Remote">
+            <div class="chat-ava">S</div>
+            <div class="chat-meta">
+              <div class="chat-top"><span class="chat-name">查看一下这个项目</span><span class="chat-time">7h</span></div>
+              <div class="chat-last">我梳理了 spec 目录，发现缺少错误处理章节</div>
+            </div>
+          </div>
+          <div class="chat-item" data-chat="3.8-简单任务" data-ws="mcip" data-branch="feat/3.8-simple" data-env="Local">
+            <div class="chat-ava">3</div>
+            <div class="chat-meta">
+              <div class="chat-top"><span class="chat-name">3.8-简单任务</span><span class="chat-time">Yesterday</span></div>
+              <div class="chat-last">完成了单元测试补全，覆盖率 82%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sb-bottom">
+        <div class="sb-link" data-toast="Better Loop · 帮助中心"><div class="l">
+          <svg class="link-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m8 3 4 8 5-5 5 15H2L8 3z"></path></svg>
+          Better Loop</div><span class="tag">Help</span></div>
+        <div class="sb-link" id="sb-knowledge" data-view="knowledge"><div class="l">
+          <svg class="link-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path></svg>
+          Knowledge</div></div>
+        <div class="sb-link" id="sb-marketplace" data-view="marketplace"><div class="l">
+          <svg class="link-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"></path><path d="M2 12h20"></path><path d="m4.93 4.93 14.14 14.14"></path><path d="m19.07 4.93-14.14 14.14"></path></svg>
+          Marketplace</div></div>
+        <div class="user">
+          <div class="ava">L</div>
+          <div class="info"><div class="name">liquid727</div><div class="plan">Pro</div></div>
+          <div class="icons2">
+            <div class="icw" title="设置">
+              <svg class="gear" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"></path><path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"></path><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main -->
+    <div class="main">
+      <div class="view active" id="view-quest">
+        <div class="quest-stage active" id="home-view">
+          <div class="main-inner">
+            <h1>Quest on, hands off</h1>
+
+            <div class="start-row">
+              <span class="label">Start in</span>
+              <div class="pill" id="pillWorkspace" data-menu="workspace">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path></svg>
+                <span>mcip</span>
+                <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg>
+              </div>
+              <div class="pill" id="pillEnv" data-menu="env">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span>Local</span>
+                <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg>
+              </div>
+              <div class="pill" id="pillBranch" data-menu="branch">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" x2="6" y1="3" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+                <span>feat/admin-ui-refresh</span>
+                <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg>
+              </div>
+            </div>
+
+            <div class="suggestions">
+              <div class="sugg">Develop an online survey system</div>
+              <div class="sugg">Raise test coverage of the current project to 80%</div>
+              <div class="sugg">Research mainstream vector databases and produce a selection report</div>
+            </div>
+
+            <div class="banner">
+              <div class="accent-bar"></div>
+              <div class="inner">
+                <div class="icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></div>
+                <div class="text"><div class="title">Security, from the first line of code</div>
+                  <div class="desc">Qoder embeds security into your dev workflow — three-tier progressive scanning and one-click fixes, keeping every line secure before commit.</div></div>
+                <div class="btns"><button class="btn-outline" data-toast="打开安全扫描文档">Learn More</button><button class="btn-fill" data-toast="跳转 Security 设置页">Go to Settings</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="quest-stage" id="chat-view">
+          <div class="chat-header">
+            <div class="top">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path></svg>
+              <span class="title" id="chatTitle">Quest</span>
+            </div>
+            <div class="sub">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" x2="6" y1="3" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+              <span id="chatBranch">feat/admin-ui-refresh</span>
+              <span style="color:var(--text-quaternary);">·</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span id="chatEnv">Local</span>
+            </div>
+          </div>
+          <div class="chat-messages" id="chatMessages">
+            <div class="empty-chat">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+              <span>选择左侧 Quest 查看对话</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="composer" id="composer">
+          <div class="input-wrap">
+            <div class="chip-row" id="chipRow"></div>
+            <div class="mode-row">
+              <div class="mode-item active" id="modeSpec">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path><path d="M3 6h.01"></path><path d="M3 12h.01"></path><path d="M3 18h.01"></path></svg>
+                <span>Spec</span>
+                <div class="toggle"></div>
+              </div>
+              <div class="mode-item" id="modeGoal">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+                <span>Goal</span>
+                <div class="toggle"></div>
+              </div>
+            </div>
+            <textarea id="questInput" placeholder="Plan, @ for context, / for commands" rows="1"></textarea>
+            <div class="input-actions">
+              <div class="left-tools">
+                <div class="agent-pill" id="agentPill" data-menu="agent">
+                  <span class="plus">+</span>
+                  <span id="agentMode">Agent</span>
+                </div>
+                <div class="model-pill" id="modelPill" data-menu="model">
+                  <span id="agentModel">Qwen3.8-Max-Preview</span>
+                  <svg class="chev" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg>
+                </div>
+              </div>
+              <div class="right-tools">
+                <div class="tool-btn" id="compressBtn" title="上下文压缩" data-toast="上下文压缩（演示）">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h3"></path><path d="M5 6l4-4"></path><path d="M20 7V4h-3"></path><path d="M19 6l-4-4"></path><path d="M4 17v3h3"></path><path d="M5 18l4 4"></path><path d="M20 17v3h-3"></path><path d="M19 18l-4 4"></path><path d="M9 9h6v6H9z"></path></svg>
+                </div>
+                <div class="tool-btn" id="polishBtn" title="润色" data-toast="润色（演示）">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"></path></svg>
+                </div>
+                <div class="tool-btn" id="voiceBtn" title="语音输入" data-toast="语音输入（演示）">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19v3"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><rect x="9" y="2" width="6" height="13" rx="3"></rect></svg>
+                </div>
+                <button class="btn-send" id="sendBtn" title="发送">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"></path><path d="M22 2 15 22 11 13 2 9l20-7z"></path></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Marketplace View -->
+      <div class="view" id="view-marketplace">
+        <div class="mp">
+          <div class="mp-head">
+            <div>
+              <div class="h1">Supercharge Your AI Agent</div>
+              <div class="sub">Install plugins with skills, commands, and MCPs to extend Qoder for specialized tasks.</div>
+            </div>
+            <div class="mp-search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+              <input type="text" placeholder="Search plugin" id="mpSearch">
+            </div>
+          </div>
+          <div class="mp-body">
+            <div class="mp-cats">
+              <div class="mp-cat active" data-cat="featured">Featured</div>
+              <div class="mp-cat" data-cat="coding">Coding</div>
+              <div class="mp-cat" data-cat="database">DataBase</div>
+              <div class="mp-cat" data-cat="debug">Debug & Testing</div>
+              <div class="mp-cat" data-cat="devtools">Developer Tools</div>
+              <div class="mp-cat" data-cat="devops">DevOps</div>
+              <div class="mp-cat" data-cat="design">Product Design</div>
+              <div class="mp-cat" data-cat="workflow">Workflow</div>
+              <div class="mp-sep"></div>
+              <div class="mp-cat" data-cat="installed">Installed <span class="cb">5</span></div>
+            </div>
+            <div class="mp-content" id="mpContent"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Knowledge View -->
+      <div class="view" id="view-knowledge">
+        <div class="kw">
+          <div class="kw-tabs">
+            <div class="kw-tab active" data-kn-tab="repo-wiki">Repo Wiki</div>
+            <div class="kw-tab" data-kn-tab="knowledge-card">Knowledge Card</div>
+            <div class="kw-tab" data-kn-tab="memory">Memory</div>
+          </div>
+          <div class="kw-body">
+            <div class="kw-panel active" data-kn-panel="repo-wiki">
+              <div class="kw-tree">
+                <div class="kw-search">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+                  <input type="text" placeholder="Search Repo Wiki" id="kwSearch">
+                </div>
+                <div class="kw-ws">
+                  <span class="name">nnaccel</span>
+                  <span class="gen" id="kwGenLink">Go to generate</span>
+                </div>
+                <div class="kw-treescroll" id="kwTree"></div>
+              </div>
+              <div class="kw-detail">
+                <div class="kw-top">
+                  <div class="branch">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" x2="6" y1="3" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+                    mcip · feat/admin-ui-refresh
+                  </div>
+                  <div class="meta">Updated at 2026-07-21 20:01 · Commit ID: bb45f180a3e4</div>
+                </div>
+                <div class="kw-banner">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
+                  <span>Repo Wiki (for you) and Knowledge Card (for agents) will be generated and updated together based on your codebase.</span>
+                </div>
+                <div class="kw-center">
+                  <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"></path><path d="M3 12h18"></path><path d="m7.5 7.5 9 9"></path><path d="m16.5 7.5-9 9"></path></svg></div>
+                  <div class="ttl">mcip</div>
+                  <div class="kw-info">
+                    <div class="row"><div class="lbl">Language</div><div class="val"><span class="lang sel" data-lang="en">English</span><span class="lang" data-lang="zh">简体中文</span></div></div>
+                    <div class="row"><div class="lbl">Generation Status</div><div class="val"><span class="ok"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Wiki has commit</span></div></div>
+                    <div class="row"><div class="lbl">Wiki Files</div><div class="val">270/270 Done, 0 failed</div></div>
+                    <div class="row"><div class="lbl">Update Time</div><div class="val">2026-07-21 20:01</div></div>
+                    <div class="row"><div class="lbl">Commit ID</div><div class="val">bb45f180a3e4</div></div>
+                  </div>
+                  <div class="kw-note">The latest commit is 31aaaf7f10x102 files changed. You can update wiki manually or turn off Auto Update in preference settings.</div>
+                  <div class="kw-update">
+                    <button class="ubtn" id="kwUpdateBtn">Update</button>
+                    <button class="ubtn more">···</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="kw-panel" data-kn-panel="knowledge-card">
+              <div class="mp-empty">Knowledge Card 面板 · 展示给 Agent 的结构化卡片</div>
+            </div>
+            <div class="kw-panel" data-kn-panel="memory">
+              <div class="mp-empty">Memory 面板 · 沉淀项目约定与用户偏好</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right -->
+    <div class="right" id="rightPanel">
+      <div class="rtabs">
+        <div class="rtab active" data-tab="summary">Summary</div>
+        <div class="rtab" data-tab="terminal">Terminal</div>
+        <div class="rtab" data-tab="files">Files</div>
+        <div class="rtab" data-tab="spec">Spec</div>
+        <div class="rtab" data-tab="review">Review</div>
+        <div class="rclose" data-toast="折叠面板"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></div>
+      </div>
+      <div class="rcontent">
+        <div class="rpanel active" id="panel-summary">
+          <div class="rblock"><div class="rt">Progress</div><div class="rd" id="progressEmpty">Progress will appear here when tasks/todos generated</div><div id="progressList"></div></div>
+          <div class="rblock"><div class="rt">Artifacts</div><div class="rd" id="artifactsEmpty">No Artifacts yet</div><div id="artifactsList"></div></div>
+          <div class="rblock"><div class="rt">References</div><div class="rd" id="refsEmpty">No references yet</div><div id="refsList"></div></div>
+        </div>
+        <div class="rpanel" id="panel-terminal">
+          <div class="term-layout">
+            <div class="term-sidebar">
+              <div class="term-head"><span id="termCount">1 Terminal</span><div class="term-add" id="termAdd" title="新建终端"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></div></div>
+              <div class="term-list" id="termList"></div>
+            </div>
+            <div class="term-area">
+              <div class="term-toolbar">
+                <span class="term-title" id="termTitle">Terminal</span>
+                <div class="term-actions">
+                  <div class="icw" id="termClear" title="清空"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></div>
+                  <div class="icw" id="termMore" title="更多"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg></div>
+                </div>
+              </div>
+              <div class="term-scroll"><div class="term" id="termLog"><span class="dim">$ 等待 Quest / Agent 任务启动…</span></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="rpanel" id="panel-files">
+          <div class="rd" id="filesEmpty" style="padding-top:4px;">No files modified yet</div>
+          <div id="filesList"></div>
+        </div>
+        <div class="rpanel" id="panel-spec">
+          <div class="rd" style="padding-top:4px;">Spec 面板 · 任务规格与需求说明将在此展示</div>
+        </div>
+        <div class="rpanel" id="panel-review">
+          <div class="rd" style="padding-top:4px;">Review 面板 · 代码审查与建议将在此展示</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Floating menu container -->
+<div class="menu-pop" id="menuPop"></div>
+<div id="toast-wrap"></div>
+
+<script>
+(function(){
+  "use strict";
+  const $ = (s,r=document)=>r.querySelector(s);
+  const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
+
+  /* ---------- Toast ---------- */
+  function toast(msg){
+    const wrap=$("#toast-wrap");
+    const t=document.createElement("div");
+    t.className="toast";t.textContent=msg;
+    wrap.appendChild(t);
+    setTimeout(()=>{t.style.transition="opacity .3s";t.style.opacity="0";setTimeout(()=>t.remove(),300);},1900);
+  }
+  $$("[data-toast]").forEach(el=>el.addEventListener("click",(e)=>{e.stopPropagation();toast(el.getAttribute("data-toast"));}));
+
+  /* ---------- New Quest ---------- */
+  function newQuest(){
+    switchToHome();
+    $("#questInput").value="";renderChips();
+    $("#questInput").focus();
+    toast("New Quest 已创建，开始描述任务吧");
+  }
+  $("#newQuest").addEventListener("click",newQuest);
+  $("#newQuest").addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();newQuest();}});
+  $("#addQuest").addEventListener("click",newQuest);
+  document.addEventListener("keydown",e=>{
+    if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==="n"){e.preventDefault();newQuest();}
+  });
+
+  /* ---------- Chat data & view switching ---------- */
+  const CHATS={
+    'nnaccel':{
+      title:'nnaccel',ws:'nnaccel',branch:'main',env:'Local',
+      messages:[
+        {role:'user',text:'帮我优化一下构建脚本，CI 时间太长了',time:'10:23'},
+        {role:'assistant',text:'我检查了 `.github/workflows/ci.yml` 和 `package.json`，主要瓶颈在 `npm ci` 和重复 lint。建议：\n1. 开启 npm cache\n2. 将 lint 拆到独立 job\n3. 并行运行 unit / e2e\n预计 CI 时间从 14min 降到 6min。',time:'10:24'}
+      ]
+    },
+    'admin ui 优化':{
+      title:'admin ui 优化',ws:'mcip',branch:'feat/admin-ui-refresh',env:'Local',
+      messages:[
+        {role:'user',text:'把 Admin 后台的表格页改成卡片式布局',time:'14:05'},
+        {role:'assistant',text:'已生成 5 个组件改动：\n• UserCard / OrderCard / ProjectCard\n• 新增 GridLayout 与 ResponsiveContainer\n• 替换 src/pages/admin/Users.tsx\n\n右侧面板可查看 Files 与 Spec，确认后我将继续处理分页与筛选。',time:'14:08'}
+      ]
+    },
+    '查看一下这个项目':{
+      title:'查看一下这个项目',ws:'SpecOps-Web-Console',branch:'dev',env:'Remote',
+      messages:[
+        {role:'user',text:'看一下 spec 目录是不是完整',time:'09:12'},
+        {role:'assistant',text:'我梳理了 `spec/` 目录，发现缺少「错误处理」与「限流策略」两个章节。已基于现有代码生成补全草案，你可以点击右侧 Spec 标签查看。',time:'09:15'}
+      ]
+    },
+    '3.8-简单任务':{
+      title:'3.8-简单任务',ws:'mcip',branch:'feat/3.8-simple',env:'Local',
+      messages:[
+        {role:'user',text:'给 utils/date.ts 补充单元测试',time:'Yesterday'},
+        {role:'assistant',text:'已完成 `utils/date.test.ts`，新增 12 个用例覆盖 format、parse、duration 三个模块。当前覆盖率 82%。',time:'Yesterday'}
+      ]
+    }
+  };
+  let activeChatId=null;
+  function switchToHome(){
+    activeChatId=null;
+    $("#home-view").classList.add("active");
+    $("#chat-view").classList.remove("active");
+    $$(".q-item").forEach(q=>q.classList.remove("active"));
+    $$(".chat-item").forEach(c=>c.classList.remove("active"));
+  }
+  function switchToChat(id){
+    const chat=CHATS[id];if(!chat)return;
+    activeChatId=id;
+    $("#home-view").classList.remove("active");
+    $("#chat-view").classList.add("active");
+    $("#chatTitle").textContent=chat.title;
+    $("#chatBranch").textContent=chat.branch;
+    $("#chatEnv").textContent=chat.env;
+    renderChatMessages(chat);
+    setTimeout(()=>{
+      const cm=$("#chatMessages");cm.scrollTop=cm.scrollHeight;
+    },0);
+  }
+  function renderChatMessages(chat){
+    const cm=$("#chatMessages");cm.innerHTML="";
+    if(!chat.messages||!chat.messages.length){
+      cm.innerHTML='<div class="empty-chat"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg><span>暂无消息</span></div>';
+      return;
+    }
+    chat.messages.forEach(m=>{
+      const wrap=document.createElement("div");wrap.className="msg-wrap "+m.role;
+      wrap.innerHTML='<div class="msg-ava '+m.role+'">'+(m.role==='user'?'L':'Q')+'</div>'+
+        '<div><div class="msg-bubble">'+escapeHtml(m.text)+'</div><div class="msg-time">'+escapeHtml(m.time)+'</div></div>';
+      cm.appendChild(wrap);
+    });
+  }
+
+  /* ---------- Quest list select / star / more ---------- */
+  function selectQuest(item){
+    $$(".q-item").forEach(q=>q.classList.remove("active"));
+    $$(".chat-item").forEach(c=>c.classList.remove("active"));
+    item.classList.add("active");
+    const name=item.getAttribute("data-quest");
+    if(CHATS[name]){
+      switchToChat(name);
+      toast("已打开 Quest："+name);
+    }else{
+      switchToHome();
+      $("#questInput").value="继续处理："+name;
+      autoGrow();
+      toast("已打开 Quest："+name);
+    }
+  }
+  function bindQuestItem(item){
+    item.addEventListener("click",(e)=>{
+      if(e.target.closest(".more")||e.target.closest(".star-icon"))return;
+      selectQuest(item);
+    });
+    const star=item.querySelector(".star-icon");
+    if(star){
+      star.addEventListener("click",(e)=>{
+        e.stopPropagation();
+        item.classList.toggle("pinned");
+        toast(item.classList.contains("pinned")?"已置顶 Quest":"已取消置顶");
+      });
+    }
+    const more=item.querySelector(".more");
+    if(more){
+      more.addEventListener("click",(e)=>{
+        e.stopPropagation();
+        openMenu(more,{items:[
+          {label:item.classList.contains("pinned")?"取消置顶":"置顶",icon:'<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>',action:()=>{item.classList.toggle("pinned");toast(item.classList.contains("pinned")?"已置顶":"已取消置顶");}},
+          {label:"重命名",icon:'<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>',action:()=>toast("重命名（演示）")},
+          {label:"归档",icon:'<path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path><path d="m3.27 6.96 8.23 4.76"></path><path d="m12.73 11.72 8.23-4.76"></path><path d="M12 22V12"></path>',action:()=>toast("已归档（演示）")},
+          {label:"删除",icon:'<path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>',action:()=>{item.remove();toast("已删除（演示）");}}
+        ]});
+      });
+    }
+  }
+  $$(".q-item").forEach(bindQuestItem);
+
+  /* ---------- Chat item click ---------- */
+  function bindChatItem(item){
+    item.addEventListener("click",()=>{
+      $$(".chat-item").forEach(c=>c.classList.remove("active"));
+      $$(".q-item").forEach(q=>q.classList.remove("active"));
+      item.classList.add("active");
+      const id=item.getAttribute("data-chat");
+      switchToChat(id);
+      toast("已打开 Chat："+id);
+    });
+  }
+  $$(".chat-item").forEach(bindChatItem);
+
+  /* ---------- View toggle ---------- */
+  const viewToggle=$("#viewToggle");
+  viewToggle.addEventListener("click",function(){
+    this.classList.toggle("grid");
+    toast(this.classList.contains("grid")?"视图：网格":"视图：列表");
+  });
+
+  /* ---------- Workspace chips ---------- */
+  const filterState={
+    groupBy:'workspace',
+    sortBy:'updated',
+    sortOrder:'desc',
+    filters:{status:'all',read:'all',archive:'all'},
+    workspace:'all'
+  };
+  function updateWsChips(){
+    $$(".ws-chips .chip").forEach(c=>{
+      c.classList.toggle("active",c.getAttribute("data-ws")===filterState.workspace);
+    });
+    applyFilters();
+  }
+  $$(".ws-chips .chip").forEach(c=>{
+    c.addEventListener("click",()=>{
+      filterState.workspace=c.getAttribute("data-ws");
+      updateWsChips();
+      toast("Workspace："+(filterState.workspace==='all'?'All':filterState.workspace));
+    });
+  });
+
+  /* ---------- Filter / Sort / Group menu ---------- */
+  const ARROW='<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>';
+  const ICONS={
+    group:'<path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path>',
+    sort:'<path d="m3 8 4-4 4 4"></path><path d="M7 4v16"></path><path d="m21 16-4 4-4-4"></path><path d="M17 20V4"></path>',
+    status:'<circle cx="12" cy="12" r="10"></circle>',
+    read:'<rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect>',
+    archive:'<path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path><path d="M3.27 6.96 12 12.01l8.73-5.05"></path>',
+    reset:'<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path>'
+  };
+  const LABELS={
+    groupBy:{workspace:'Workspace',status:'Status',date:'Date',none:'None'},
+    sortBy:{updated:'Updated',created:'Created',name:'Name',status:'Status'},
+    status:{all:'All',running:'Running',completed:'Completed',failed:'Failed',archived:'Archived'},
+    read:{all:'All',read:'Read',unread:'Unread'},
+    archive:{all:'All',active:'Active',archived:'Archived'}
+  };
+
+  $("#filterQuests").addEventListener("click",function(e){
+    e.stopPropagation();
+    this.classList.add("active");
+    openFilterMenu(this);
+  });
+
+  function openFilterMenu(anchor){
+    const items=[
+      {type:'row',icon:ICONS.group,label:'Group by',value:LABELS.groupBy[filterState.groupBy],action:()=>openSubMenu(anchor,'groupBy')},
+      {type:'row',icon:ICONS.sort,label:'Sort by',value:LABELS.sortBy[filterState.sortBy],action:()=>openSubMenu(anchor,'sortBy')},
+      {type:'divider'},
+      {type:'label',text:'Filter by'},
+      {type:'row',icon:ICONS.status,label:'Status',value:LABELS.status[filterState.filters.status],action:()=>openSubMenu(anchor,'status')},
+      {type:'row',icon:ICONS.read,label:'Read',value:LABELS.read[filterState.filters.read],action:()=>openSubMenu(anchor,'read')},
+      {type:'row',icon:ICONS.archive,label:'Archive',value:LABELS.archive[filterState.filters.archive],action:()=>openSubMenu(anchor,'archive')},
+      {type:'divider'},
+      {type:'reset',icon:ICONS.reset,label:'Reset',action:()=>resetFilters()}
+    ];
+    openCustomMenu(anchor,items);
+  }
+
+  function openSubMenu(anchor,key){
+    let options,title,current;
+    if(key==='groupBy'){
+      title='Group by';options=[{k:'workspace',l:'Workspace'},{k:'status',l:'Status'},{k:'date',l:'Date'},{k:'none',l:'None'}];current=filterState.groupBy;
+    }else if(key==='sortBy'){
+      title='Sort by';options=[{k:'updated',l:'Updated'},{k:'created',l:'Created'},{k:'name',l:'Name'},{k:'status',l:'Status'}];current=filterState.sortBy;
+    }else if(key==='status'){
+      title='Status';options=[{k:'all',l:'All'},{k:'running',l:'Running'},{k:'completed',l:'Completed'},{k:'failed',l:'Failed'},{k:'archived',l:'Archived'}];current=filterState.filters.status;
+    }else if(key==='read'){
+      title='Read';options=[{k:'all',l:'All'},{k:'read',l:'Read'},{k:'unread',l:'Unread'}];current=filterState.filters.read;
+    }else if(key==='archive'){
+      title='Archive';options=[{k:'all',l:'All'},{k:'active',l:'Active'},{k:'archived',l:'Archived'}];current=filterState.filters.archive;
+    }
+    const items=[
+      {type:'back',label:title,action:()=>openFilterMenu(anchor)},
+      {type:'divider'}
+    ];
+    options.forEach(o=>{
+      items.push({type:'option',label:o.l,checked:o.k===current,action:()=>{
+        if(key==='groupBy')filterState.groupBy=o.k;
+        else if(key==='sortBy')filterState.sortBy=o.k;
+        else filterState.filters[key]=o.k;
+        applyFilters();
+        toast(title+'：'+o.l);
+        openFilterMenu(anchor);
+      }});
+    });
+    openCustomMenu(anchor,items);
+  }
+
+  function openCustomMenu(anchor,items){
+    menuState={anchor,items};
+    renderCustomMenu();
+    menuPop.classList.add("open");
+    const r=anchor.getBoundingClientRect();
+    const mw=menuPop.offsetWidth||220, mh=menuPop.offsetHeight||320;
+    let left=r.left, top=r.bottom+6;
+    if(left+mw>window.innerWidth-12)left=window.innerWidth-mw-12;
+    if(top+mh>window.innerHeight-12)top=Math.max(12,r.top-mh-6);
+    menuPop.style.left=left+"px";menuPop.style.top=top+"px";
+    document.addEventListener("mousedown",outsideClick,true);
+  }
+  function renderCustomMenu(){
+    const {items}=menuState;
+    menuPop.innerHTML="";
+    items.forEach(it=>{
+      if(it.type==='divider'){const d=document.createElement("div");d.className="menu-divider";menuPop.appendChild(d);return;}
+      if(it.type==='label'){const l=document.createElement("div");l.className="menu-label";l.textContent=it.text;menuPop.appendChild(l);return;}
+      if(it.type==='reset'){const r=document.createElement("div");r.className="menu-reset";r.innerHTML='<span class="mi-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+it.icon+'</svg></span><span class="mi-tx">'+escapeHtml(it.label)+'</span>';r.addEventListener("click",(e)=>{e.stopPropagation();it.action();});menuPop.appendChild(r);return;}
+      if(it.type==='back'){const b=document.createElement("div");b.className="menu-item";b.style.fontWeight='600';b.innerHTML='<span class="mi-ic" style="transform:rotate(180deg);">'+ARROW+'</span><span class="mi-tx">'+escapeHtml(it.label)+'</span>';b.addEventListener("click",(e)=>{e.stopPropagation();it.action();});menuPop.appendChild(b);return;}
+      const m=document.createElement("div");m.className="menu-item";
+      m.innerHTML='<span class="mi-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+(it.icon||'')+'</svg></span><span class="mi-tx">'+escapeHtml(it.label)+(it.value?'<span style="color:#9ca3af;margin-left:6px;">'+escapeHtml(it.value)+'</span>':'')+'</span>'+(it.checked?'<span class="mi-check">✓</span>':(it.type==='row'?'<span class="mi-arrow">'+ARROW+'</span>':''));
+      m.addEventListener("click",(e)=>{e.stopPropagation();if(it.action)it.action();});
+      menuPop.appendChild(m);
+    });
+  }
+
+  function resetFilters(){
+    filterState.groupBy='workspace';
+    filterState.sortBy='updated';
+    filterState.sortOrder='desc';
+    filterState.filters={status:'all',read:'all',archive:'all'};
+    filterState.workspace='all';
+    updateWsChips();
+    toast("筛选已重置");
+  }
+
+  function applyFilters(){
+    const list=$('#qList');
+    const allItems=$$('.q-item');
+    let items=Array.from(allItems).map(el=>{
+      return {
+        el,
+        ws:el.getAttribute('data-ws'),
+        status:el.getAttribute('data-status'),
+        read:el.getAttribute('data-read')==='true',
+        pinned:el.classList.contains('pinned'),
+        name:el.getAttribute('data-quest'),
+        created:new Date(el.getAttribute('data-created')),
+        updated:new Date(el.getAttribute('data-updated'))
+      };
+    });
+
+    // workspace filter
+    if(filterState.workspace!=='all')items=items.filter(i=>i.ws===filterState.workspace);
+    // status filter
+    if(filterState.filters.status!=='all')items=items.filter(i=>i.status===filterState.filters.status);
+    // read filter
+    if(filterState.filters.read!=='all')items=items.filter(i=>(filterState.filters.read==='read')===i.read);
+    // archive filter
+    if(filterState.filters.archive!=='all')items=items.filter(i=>(filterState.filters.archive==='archived')===(i.status==='archived'));
+
+    // sort
+    items.sort((a,b)=>{
+      let v=0;
+      if(filterState.sortBy==='updated')v=b.updated-a.updated;
+      else if(filterState.sortBy==='created')v=b.created-a.created;
+      else if(filterState.sortBy==='name')v=a.name.localeCompare(b.name);
+      else if(filterState.sortBy==='status'){
+        const order={running:0,completed:1,failed:2,archived:3};
+        v=(order[a.status]||0)-(order[b.status]||0);
+      }
+      return filterState.sortOrder==='desc'?v:-v;
+    });
+
+    // group
+    list.innerHTML='';
+    if(filterState.groupBy==='none'){
+      items.forEach(i=>list.appendChild(i.el));
+    }else if(filterState.groupBy==='workspace'){
+      const groups={};
+      items.forEach(i=>{groups[i.ws]=groups[i.ws]||[];groups[i.ws].push(i);});
+      Object.keys(groups).forEach(ws=>{
+        const h=document.createElement('div');h.className='q-group';h.textContent=ws;list.appendChild(h);
+        groups[ws].forEach(i=>list.appendChild(i.el));
+      });
+    }else if(filterState.groupBy==='status'){
+      const groups={};
+      items.forEach(i=>{const s=i.status||'unknown';groups[s]=groups[s]||[];groups[s].push(i);});
+      Object.keys(groups).forEach(s=>{
+        const h=document.createElement('div');h.className='q-group';h.textContent=s.charAt(0).toUpperCase()+s.slice(1);list.appendChild(h);
+        groups[s].forEach(i=>list.appendChild(i.el));
+      });
+    }else if(filterState.groupBy==='date'){
+      const groups={};
+      const now=new Date();
+      items.forEach(i=>{
+        const d=i.updated;
+        let key='Earlier';
+        if(d.toDateString()===now.toDateString())key='Today';
+        else{const y=new Date(now);y.setDate(y.getDate()-1);if(d.toDateString()===y.toDateString())key='Yesterday';}
+        groups[key]=groups[key]||[];groups[key].push(i);
+      });
+      ['Today','Yesterday','Earlier'].forEach(k=>{if(groups[k]){const h=document.createElement('div');h.className='q-group';h.textContent=k;list.appendChild(h);groups[k].forEach(i=>list.appendChild(i.el));}});
+    }
+
+    if(items.length===0){list.innerHTML='<div class="chats-empty" style="padding:14px 8px;">No matching Quests</div>';}
+  }
+
+  /* ---------- Suggestions fill ---------- */
+  $$(".sugg").forEach(s=>{
+    s.addEventListener("click",()=>{
+      $("#questInput").value=s.textContent.trim();
+      autoGrow();$("#questInput").focus();
+    });
+  });
+
+  /* ---------- Spec / Goal mode toggle ---------- */
+  const modeSpec=$("#modeSpec"), modeGoal=$("#modeGoal");
+  let specMode=true, goalMode=false;
+  function updateModeUI(){
+    modeSpec.classList.toggle("active",specMode);
+    modeGoal.classList.toggle("active",goalMode);
+  }
+  modeSpec.addEventListener("click",()=>{specMode=!specMode;updateModeUI();toast(specMode?"已开启 Spec":"已关闭 Spec");});
+  modeGoal.addEventListener("click",()=>{goalMode=!goalMode;updateModeUI();toast(goalMode?"已开启 Goal":"已关闭 Goal");});
+
+  /* ---------- Textarea: @ / menus + autogrow ---------- */
+  const input=$("#questInput");
+  function autoGrow(){input.style.height="auto";input.style.height=Math.min(input.scrollHeight,140)+"px";}
+  input.addEventListener("input",autoGrow);
+  input.addEventListener("keydown",e=>{
+    if(e.key==="@"){setTimeout(()=>openContextMenu(),0);}
+    if(e.key==="/"){const v=input.value;if(v===""||v.endsWith(" ")){setTimeout(()=>openCommandMenu(),0);}}
+    if(e.key==="Enter"&&(e.metaKey||e.ctrlKey)){e.preventDefault();sendQuest();}
+  });
+
+  /* ---------- Context chips ---------- */
+  let contexts=[];
+  const CTX_ICONS={
+    file:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline>',
+    folder:'<path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path>',
+    image:'<rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect><circle cx="9" cy="9" r="2"></circle><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path>',
+    commit:'<circle cx="12" cy="12" r="4"></circle><line x1="1.05" x2="7" y1="12" y2="12"></line><line x1="17.01" x2="22.96" y1="12" y2="12"></line>',
+    wiki:'<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path>',
+    rule:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>'
+  };
+  function renderChips(){
+    const row=$("#chipRow");row.innerHTML="";
+    contexts.forEach((c,i)=>{
+      const el=document.createElement("span");el.className="ctx-chip";
+      el.innerHTML='<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+(CTX_ICONS[c.type]||'')+'</svg>'+escapeHtml(c.label)+'<span class="x">×</span>';
+      el.querySelector(".x").addEventListener("click",ev=>{ev.stopPropagation();contexts.splice(i,1);renderChips();});
+      row.appendChild(el);
+    });
+  }
+  function escapeHtml(s){return s.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
+
+  /* ---------- Floating menu engine ---------- */
+  const menuPop=$("#menuPop");
+  let menuState=null;
+  function closeMenu(){menuPop.classList.remove("open");menuPop.innerHTML="";menuState=null;document.removeEventListener("mousedown",outsideClick,true);$('#filterQuests')&&$('#filterQuests').classList.remove('active');}
+  function outsideClick(e){if(!menuPop.contains(e.target)&&!e.target.closest("[data-menu]")&&!e.target.closest(".more")&&!e.target.closest("#filterQuests"))closeMenu();}
+
+  function openMenu(anchor,opts){
+    menuState={anchor,opts,filter:""};
+    renderMenu();
+    menuPop.classList.add("open");
+    const r=anchor.getBoundingClientRect();
+    const mw=menuPop.offsetWidth, mh=menuPop.offsetHeight;
+    let left=r.left, top=r.bottom+6;
+    if(left+mw>window.innerWidth-12)left=window.innerWidth-mw-12;
+    if(top+mh>window.innerHeight-12)top=Math.max(12,r.top-mh-6);
+    menuPop.style.left=left+"px";menuPop.style.top=top+"px";
+    document.addEventListener("mousedown",outsideClick,true);
+  }
+  function renderMenu(){
+    const {opts}=menuState;
+    menuPop.innerHTML="";
+    if(opts.search){
+      const sb=document.createElement("div");sb.className="menu-search";
+      sb.innerHTML='<input placeholder="'+opts.search+'" />';
+      const inp=sb.querySelector("input");
+      inp.addEventListener("input",()=>{menuState.filter=inp.value.toLowerCase();renderMenu();setTimeout(()=>inp.focus(),0);});
+      menuPop.appendChild(sb);
+      setTimeout(()=>inp.focus(),0);
+    }
+    const list=opts.items.filter(it=>!menuState.filter||it.label.toLowerCase().includes(menuState.filter)||(it.sub&&it.sub.toLowerCase().includes(menuState.filter)));
+    if(list.length===0){const e=document.createElement("div");e.className="menu-item";e.style.color="#9ca3af";e.textContent="无匹配项";menuPop.appendChild(e);return;}
+    list.forEach(it=>{
+      const m=document.createElement("div");m.className="menu-item";
+      m.innerHTML='<span class="mi-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+(it.icon||'')+'</svg></span><span class="mi-tx">'+escapeHtml(it.label)+(it.sub?'<div class="sub">'+escapeHtml(it.sub)+'</div>':"")+'</span>'+(it.checked?'<span class="mi-check">✓</span>':'');
+      m.addEventListener("click",ev=>{ev.stopPropagation();closeMenu();it.action&&it.action();});
+      menuPop.appendChild(m);
+    });
+  }
+
+  /* ---------- data-menus: pills + agent ---------- */
+  const MENUS={
+    workspace:{search:"搜索工作区…",items:[
+      {label:"mcip",sub:"~/projects/mcip",icon:'<path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path>',action:()=>setPillText("#pillWorkspace","mcip")},
+      {label:"workbuddy-ide",sub:"~/projects/workbuddy-ide",icon:'<path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path>',action:()=>setPillText("#pillWorkspace","workbuddy-ide")},
+      {label:"SpecOps-Web-Console",sub:"~/projects/specops",icon:'<path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path>',action:()=>setPillText("#pillWorkspace","SpecOps-Web-Console")}
+    ]},
+    env:{items:[
+      {label:"Local",sub:"在本机执行",icon:'<polyline points="20 6 9 17 4 12"></polyline>',checked:true,action:()=>setPillText("#pillEnv","Local")},
+      {label:"Remote",sub:"在远程机器执行",icon:'<path d="M12 2v20"></path><path d="M2 12h20"></path>',action:()=>setPillText("#pillEnv","Remote")},
+      {label:"Docker",sub:"容器内沙箱",icon:'<rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M3 9h18"></path><path d="M9 21V9"></path>',action:()=>setPillText("#pillEnv","Docker")}
+    ]},
+    branch:{search:"搜索分支…",items:[
+      {label:"feat/admin-ui-refresh",icon:'<line x1="6" x2="6" y1="3" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path>',checked:true,action:()=>setPillText("#pillBranch","feat/admin-ui-refresh")},
+      {label:"main",icon:'<line x1="6" x2="6" y1="3" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path>',action:()=>setPillText("#pillBranch","main")},
+      {label:"dev",icon:'<line x1="6" x2="6" y1="3" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path>',action:()=>setPillText("#pillBranch","dev")}
+    ]},
+    agent:{items:[
+      {label:"Ask",sub:"问答模式，不修改文件",icon:'<path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"></path>',checked:true,action:()=>setAgentMode("Ask")},
+      {label:"Agent",sub:"结对编程，每步确认",icon:'<path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"></path>',action:()=>setAgentMode("Agent")},
+      {label:"Quest",sub:"自主交付，异步执行",icon:'<path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"></path>',action:()=>setAgentMode("Quest")}
+    ]},
+    model:{search:"搜索模型…",items:[
+      {label:"Qwen3.8-Max-Preview",sub:"阿里云通义千问",checked:true,icon:'<circle cx="12" cy="12" r="10"></circle>',action:()=>setModel("Qwen3.8-Max-Preview")},
+      {label:"Claude 3.7 Sonnet",sub:"Anthropic",icon:'<circle cx="12" cy="12" r="10"></circle>',action:()=>setModel("Claude 3.7 Sonnet")},
+      {label:"GPT-5",sub:"OpenAI",icon:'<circle cx="12" cy="12" r="10"></circle>',action:()=>setModel("GPT-5")},
+      {label:"Gemini 2.5 Pro",sub:"Google",icon:'<circle cx="12" cy="12" r="10"></circle>',action:()=>setModel("Gemini 2.5 Pro")}
+    ]}
+  };
+  let agentMode="Agent";
+  function setAgentMode(mode){agentMode=mode;$("#agentMode").textContent=mode;toast("模式："+mode);}
+  function setModel(name){$("#agentModel").textContent=name;toast("模型："+name);}
+  function setPillText(sel,text){const span=$(sel).querySelector("span:nth-child(2)");if(span)span.textContent=text;toast("已选择："+text);}
+  $$("[data-menu]").forEach(el=>{
+    el.addEventListener("click",e=>{e.stopPropagation();const key=el.getAttribute("data-menu");if(MENUS[key])openMenu(el,MENUS[key]);});
+  });
+
+  /* ---------- @ context menu ---------- */
+  function openContextMenu(){
+    openMenu($("#questInput"),{search:"过滤上下文…",items:[
+      {label:"@file",sub:"引用文件",icon:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline>',action:()=>addContext("file","@file: AgentPanel.tsx")},
+      {label:"@folder",sub:"引用目录",icon:'<path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path>',action:()=>addContext("folder","@folder: src/components")},
+      {label:"@image",sub:"上传 / 粘贴图片",icon:'<rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect><circle cx="9" cy="9" r="2"></circle><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path>',action:()=>addContext("image","@image: screenshot.png")},
+      {label:"@gitCommit",sub:"引用某次提交",icon:'<circle cx="12" cy="12" r="4"></circle><line x1="1.05" x2="7" y1="12" y2="12"></line><line x1="17.01" x2="22.96" y1="12" y2="12"></line>',action:()=>addContext("commit","@gitCommit: a1b2c3d")},
+      {label:"@wiki",sub:"引用 Repo Wiki 节点",icon:'<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path>',action:()=>addContext("wiki","@wiki: AuthMiddleware")},
+      {label:"@rule",sub:"引用项目规则",icon:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>',action:()=>addContext("rule","@rule: prettier")}
+    ]});
+  }
+  function addContext(type,label){contexts.push({type,label});renderChips();}
+
+  /* ---------- / command menu ---------- */
+  function openCommandMenu(){
+    openMenu($("#questInput"),{search:"过滤命令…",items:[
+      {label:"/learn",sub:"学习当前项目结构",icon:'<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>',action:()=>insertCmd("/learn ")},
+      {label:"/chart",sub:"生成流程图",icon:'<rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M3 9h18"></path><path d="M9 21V9"></path>',action:()=>insertCmd("/chart ")},
+      {label:"/test",sub:"运行测试",icon:'<path d="M9 12l2 2 4-4"></path><circle cx="12" cy="12" r="10"></circle>',action:()=>insertCmd("/test ")},
+      {label:"/commit",sub:"生成提交信息",icon:'<circle cx="12" cy="12" r="4"></circle><line x1="1.05" x2="7" y1="12" y2="12"></line><line x1="17.01" x2="22.96" y1="12" y2="12"></line>',action:()=>insertCmd("/commit ")},
+      {label:"/doc",sub:"生成文档",icon:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline>',action:()=>insertCmd("/doc ")}
+    ]});
+  }
+  function insertCmd(cmd){input.value+=cmd;autoGrow();input.focus();}
+
+  /* ---------- Right panel tabs ---------- */
+  $$(".rtab").forEach(tab=>{
+    tab.addEventListener("click",()=>{
+      $$(".rtab").forEach(t=>t.classList.remove("active"));
+      tab.classList.add("active");
+      const key=tab.getAttribute("data-tab");
+      $$(".rpanel").forEach(p=>p.classList.remove("active"));
+      $("#panel-"+key).classList.add("active");
+      if(key==="terminal") renderTermContent();
+    });
+  });
+
+  /* ---------- Terminal management ---------- */
+  let termData=[{id:1,name:"Terminal",logs:['<span class="dim">$ 等待 Quest / Agent 任务启动…</span>']}];
+  let activeTermId=1;
+  function renderTermList(){
+    const list=$("#termList");list.innerHTML="";
+    termData.forEach(t=>{
+      const el=document.createElement("div");el.className="term-item "+(t.id===activeTermId?"active":"");
+      el.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17V7l10 10V7"></path><path d="M16 17h6"></path></svg><span>'+escapeHtml(t.name)+'</span>';
+      el.addEventListener("click",()=>{activeTermId=t.id;renderTermList();renderTermContent();});
+      list.appendChild(el);
+    });
+    $("#termCount").textContent=termData.length+" Terminal"+(termData.length>1?"s":"");
+  }
+  function renderTermContent(){
+    const t=termData.find(x=>x.id===activeTermId);if(!t)return;
+    $("#termTitle").textContent=t.name;
+    $("#termLog").innerHTML=t.logs.join("<br>");
+    $("#termLog").scrollTop=1e9;
+  }
+  function appendTerm(html){
+    const t=termData.find(x=>x.id===activeTermId);if(!t)return;
+    t.logs.push(html);renderTermContent();
+  }
+  function addTerm(){
+    const id=termData.length?Math.max(...termData.map(t=>t.id))+1:1;
+    termData.push({id:id,name:"Terminal "+id,logs:['<span class="dim">$ 新终端 '+id+'</span>']});
+    activeTermId=id;renderTermList();renderTermContent();toast("新建 Terminal "+id);
+  }
+  $("#termAdd").addEventListener("click",addTerm);
+  $("#termClear").addEventListener("click",()=>{
+    const t=termData.find(x=>x.id===activeTermId);if(t){t.logs=['<span class="dim">$ 终端已清空</span>'];renderTermContent();toast("Terminal 已清空");}
+  });
+  $("#termMore").addEventListener("click",()=>toast("终端更多选项（演示）"));
+
+  /* ---------- Send / simulate agent run ---------- */
+  const sendBtn=$("#sendBtn");
+  let running=false;
+  function sendQuest(){
+    const val=input.value.trim();
+    if(!val || running)return;
+    running=true;sendBtn.disabled=true;
+    const promptText=(contexts.length?contexts.map(c=>c.label).join(" ")+" ":"")+val;
+    toast("Quest 已提交，Agent 正在执行…");
+    $$(".rtab").forEach(t=>t.classList.remove("active"));
+    $('.rtab[data-tab="summary"]').classList.add("active");
+    $$(".rpanel").forEach(p=>p.classList.remove("active"));
+    $("#panel-summary").classList.add("active");
+
+    $("#progressEmpty").style.display="none";
+    $("#artifactsEmpty").style.display="none";
+    $("#refsEmpty").style.display="none";
+    $("#progressList").innerHTML="";$("#artifactsList").innerHTML="";$("#refsList").innerHTML="";
+    const curTerm=termData.find(x=>x.id===activeTermId);
+    if(curTerm){curTerm.logs=['<span class="dim">$ qoder agent run --mode '+(agentMode)+' --model '+($("#agentModel").textContent)+'</span>'];renderTermContent();}
+
+    const steps=[
+      {h:"分析任务并生成 Spec",s:"基于 Repo Wiki 理解项目结构"},
+      {h:"创建执行计划",s:"拆解为可追踪的子任务"},
+      {h:"读写文件实现功能",s:"在 feat/admin-ui-refresh 分支上修改"},
+      {h:"运行测试验证",s:"npm test / lint"},
+      {h:"生成交付报告",s:"汇总改动、产物与引用"}
+    ];
+    let i=0;
+    const tick=()=>{
+      if(i<steps.length){
+        const wrap=document.createElement("div");wrap.className="step "+(i<steps.length-1?"run":"pending");
+        wrap.innerHTML='<span class="mk">'+(i<steps.length-1?'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>':'')+'</span><span class="txt"><div class="h">'+steps[i].h+'</div><div class="s">'+steps[i].s+'</div></span>';
+        $("#progressList").appendChild(wrap);
+        appendTerm('<span class="acc">›</span> '+steps[i].h);
+        if(i>0){const prev=$$("#progressList .step")[i-1];prev.className="step done";prev.querySelector(".mk").innerHTML='✓';}
+        i++;setTimeout(tick,1100);
+      } else {
+        $$("#progressList .step").forEach(s=>{if(!s.classList.contains("done")){s.className="step done";s.querySelector(".mk").innerHTML='✓';}});
+        addArtifacts();addRefs();addFiles();appendTerm('<span class="ok">✔ Quest 完成</span> 已生成报告，待你确认。');
+        toast("Quest 执行完成 ✔");
+        running=false;sendBtn.disabled=false;
+      }
+    };
+    setTimeout(tick,500);
+  }
+  function addArtifacts(){
+    const a=["report.md — 技术方案与交付说明","diff.patch — 全部代码变更","run.log — 执行日志"];
+    a.forEach(x=>{const d=document.createElement("div");d.className="rd";d.style.padding="4px 0";d.textContent="• "+x;$("#artifactsList").appendChild(d);});
+  }
+  function addRefs(){
+    const r=["src/components/AgentPanel.tsx","Repo Wiki › AuthMiddleware","@rule: prettier-format"];
+    r.forEach(x=>{const d=document.createElement("div");d.className="rd";d.style.padding="4px 0";d.textContent="• "+x;$("#refsList").appendChild(d);});
+  }
+  function addFiles(){
+    $("#filesEmpty").style.display="none";
+    const f=[["add","src/components/QuestRunner.tsx"],["mod","src/components/AgentPanel.tsx"],["add","src/core/checkpoint.ts"]];
+    f.forEach(([st,p])=>{const d=document.createElement("div");d.className="frow";d.innerHTML='<span class="st '+st+'">'+(st==="add"?"A":st==="mod"?"M":"D")+'</span><span class="pth">'+p+'</span>';$("#filesList").appendChild(d);});
+  }
+  function appendTerm(html){$("#termLog").insertAdjacentHTML("beforeend","<br>"+html);$("#termLog").scrollTop=1e9;}
+  sendBtn.addEventListener("click",sendQuest);
+  $("#compressBtn").addEventListener("click",function(){this.classList.toggle("active");toast(this.classList.contains("active")?"上下文压缩已开启":"上下文压缩已关闭");});
+  $("#polishBtn").addEventListener("click",function(){this.classList.toggle("active");toast(this.classList.contains("active")?"润色已开启":"润色已关闭");});
+  $("#voiceBtn").addEventListener("click",()=>toast("语音输入（演示）"));
+
+  /* ---------- View switching (Quest / Marketplace / Knowledge) ---------- */
+  const VIEWS={
+    quest:$("#view-quest"),
+    marketplace:$("#view-marketplace"),
+    knowledge:$("#view-knowledge")
+  };
+  const rightPanel=$("#rightPanel");
+  function switchView(name){
+    Object.keys(VIEWS).forEach(k=>VIEWS[k].classList.toggle("active",k===name));
+    if(name==="quest") rightPanel.classList.remove("hidden");
+    else rightPanel.classList.add("hidden");
+    $$(".sb-link[data-view]").forEach(l=>l.classList.toggle("active",l.getAttribute("data-view")===name));
+    if(name==="quest") toast("回到 Quest Home");
+  }
+  $$(".sb-link[data-view]").forEach(l=>{
+    l.addEventListener("click",()=>switchView(l.getAttribute("data-view")));
+  });
+
+  /* ---------- Sidebar / right panel collapse ---------- */
+  const sidebar=$(".sidebar");
+  $("#toggleSidebar").addEventListener("click",()=>{
+    sidebar.classList.toggle("collapsed");
+    toast(sidebar.classList.contains("collapsed")?"左侧栏已折叠":"左侧栏已展开");
+  });
+  $("#toggleRightPanel").addEventListener("click",()=>{
+    rightPanel.classList.toggle("collapsed");
+    toast(rightPanel.classList.contains("collapsed")?"右侧面板已折叠":"右侧面板已展开");
+  });
+
+  /* ---------- Marketplace ---------- */
+  const PLUGINS=[
+    {id:"superpowers",name:"Superpowers",desc:"Core skills library: TDD, systematic debugging, brainstorming, parallel-agent dispatch, plan writing/execution, code review giving and...",icon:"🚀",iconBg:"#f3e8ff",color:"#9333ea",author:"Jesse Vincent",downloads:8800,category:"featured",installed:false},
+    {id:"qmind",name:"QMind Knowledge",desc:"QMind knowledge toolkit: RAG Q&A, knowledge retrieval, notebook management, batch upload, file management, knowledge compilation...",icon:"🧠",iconBg:"#dbeafe",color:"#2563eb",author:"Qoder",downloads:4000,category:"featured",installed:true},
+    {id:"vercel",name:"Vercel",desc:"Build and deploy web apps and agents with Vercel, Next.js, AI SDK, Vercel CLI, and Vercel platform guidance.",icon:"▲",iconBg:"#000",color:"#fff",author:"Vercel",downloads:1400,category:"featured",installed:false},
+    {id:"meoo",name:"Meoo",desc:"Full-stack application build and deployment guidance for the Meoo CLI, covering project initialization, cloud services, database operations, ...",icon:"M",iconBg:"#c7d2fe",color:"#4f46e5",author:"Meoo Team",downloads:1300,category:"featured",installed:false},
+    {id:"starops",name:"STAROps",desc:"STAROps delivers Agentic Ops from data queries and diagnostics to continuous protection, ensuring 24/7 business stability.",icon:"⭐",iconBg:"#fee2e2",color:"#dc2626",author:"Alibaba Cloud STAROps",downloads:1200,category:"featured",installed:false},
+    {id:"context7",name:"Context7",desc:"Up-to-date code documentation for any prompt. Fetches and injects live library docs directly into your AI context.",icon:"C7",iconBg:"#1f2937",color:"#fff",author:"Upstash / Context7",downloads:8700,category:"coding",installed:false},
+    {id:"apollo",name:"Apollo GraphQL",desc:"Agent skills for AI coding agents working with Apollo GraphQL tools (Client, Federation, Router, Rover, GraphOS MCP).",icon:"A",iconBg:"#fce7f3",color:"#db2777",author:"Apollo GraphQL",downloads:2700,category:"coding",installed:false},
+    {id:"postman",name:"Postman",desc:"Full API lifecycle management for Qoder. Sync collections, generate typed client code, discover APIs, run tests, create mocks, improve doc...",icon:"P",iconBg:"#ffedd5",color:"#ea580c",author:"Postman DevRel",downloads:2300,category:"coding",installed:false}
+  ];
+  function fmtDown(n){return n>=1000?(n/1000).toFixed(n%1000===0?0:1)+'k':n;}
+  function renderCard(p){
+    return '<div class="mp-card" data-id="'+p.id+'">'+
+      '<div class="mp-ic" style="background:'+p.iconBg+';color:'+p.color+';">'+p.icon+'</div>'+
+      '<div class="body"><div class="name">'+escapeHtml(p.name)+'</div><div class="desc">'+escapeHtml(p.desc)+'</div>'+
+      '<div class="meta"><div class="ava">'+escapeHtml(p.author[0])+'</div><span>'+escapeHtml(p.author)+'</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;"><path d="M12 5v14"></path><path d="m19 12-7 7-7-7"></path></svg><span>'+fmtDown(p.downloads)+'</span></div></div>'+
+      '<div class="act">'+(p.installed?'<div class="mp-installed"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>':'<button class="mp-install" data-id="'+p.id+'">Install</button>')+'</div></div>';
+  }
+  function renderSection(title,items){
+    return '<div class="mp-section">'+escapeHtml(title)+'</div><div class="mp-grid">'+items.map(renderCard).join('')+'</div>';
+  }
+  let currentMpCat='featured', mpSearchVal='', installedCount=5;
+  function updateInstalledBadge(){
+    installedCount=5+PLUGINS.filter(p=>p.installed).length;
+    const b=$('.mp-cat[data-cat="installed"] .cb'); if(b) b.textContent=installedCount;
+  }
+  function renderMarketplace(cat,search){
+    const content=$("#mpContent");
+    let items=PLUGINS.filter(p=>{
+      if(cat==='installed') return p.installed;
+      if(cat==='featured' || cat==='all') return true;
+      return p.category===cat;
+    }).filter(p=>{
+      if(!search) return true;
+      const s=search.toLowerCase();
+      return p.name.toLowerCase().includes(s)||p.desc.toLowerCase().includes(s)||p.author.toLowerCase().includes(s);
+    });
+    let html='';
+    if(search){
+      html=items.length?renderSection('Search results',items):'<div class="mp-empty">No plugins match "'+escapeHtml(search)+'"</div>';
+    }else if(cat==='featured'){
+      html+=renderSection('Featured',items);
+      const coding=PLUGINS.filter(p=>p.category==='coding');
+      if(coding.length) html+=renderSection('Coding',coding);
+    }else if(cat==='installed'){
+      html=items.length?renderSection('Installed',items):'<div class="mp-empty">No installed plugins</div>';
+    }else{
+      html=items.length?renderSection(cat.charAt(0).toUpperCase()+cat.slice(1),items):'<div class="mp-empty">No plugins in this category</div>';
+    }
+    content.innerHTML=html;
+    $$(".mp-install").forEach(btn=>{
+      btn.addEventListener("click",e=>{
+        e.stopPropagation();
+        const id=btn.getAttribute("data-id");
+        const p=PLUGINS.find(x=>x.id===id);
+        if(!p||p.installed) return;
+        btn.textContent="Installing..."; btn.disabled=true;
+        setTimeout(()=>{
+          p.installed=true;
+          updateInstalledBadge();
+          renderMarketplace(currentMpCat,mpSearchVal);
+          toast(p.name+" 已安装");
+        },900);
+      });
+    });
+  }
+  $$(".mp-cat").forEach(c=>{
+    c.addEventListener("click",()=>{
+      $$(".mp-cat").forEach(x=>x.classList.remove("active"));
+      c.classList.add("active");
+      currentMpCat=c.getAttribute("data-cat");
+      renderMarketplace(currentMpCat,mpSearchVal);
+    });
+  });
+  $("#mpSearch").addEventListener("input",e=>{
+    mpSearchVal=e.target.value.trim();
+    renderMarketplace(currentMpCat,mpSearchVal);
+  });
+
+  /* ---------- Knowledge ---------- */
+  const WIKI_TREE=[
+    {id:'mcip',title:'mcip',level:0,children:[
+      {id:'mcip-overview',title:'项目概述',level:1},
+      {id:'mcip-intro',title:'项目介绍',level:1},
+      {id:'mcip-stack',title:'技术栈概览',level:1},
+      {id:'mcip-arch',title:'架构总览',level:1,children:[
+        {id:'mcip-sys',title:'系统架构设计',level:2},
+        {id:'mcip-micro',title:'微服务架构',level:2,children:[
+          {id:'mcip-comm',title:'服务通信机制',level:3},
+          {id:'mcip-disc',title:'服务发现与负载均衡',level:3},
+          {id:'mcip-conf',title:'分布式配置管理',level:3},
+          {id:'mcip-obs',title:'可观测性与监控',level:3}
+        ]},
+        {id:'mcip-data',title:'数据架构',level:2,children:[
+          {id:'mcip-storage',title:'数据存储策略',level:3},
+          {id:'mcip-pg',title:'PostgreSQL主数据库',level:3},
+          {id:'mcip-redis',title:'Redis缓存策略',level:3},
+          {id:'mcip-kafka',title:'Kafka消息队列',level:3},
+          {id:'mcip-consistency',title:'数据一致性保障',level:3},
+          {id:'mcip-consist',title:'数据一致性',level:3},
+          {id:'mcip-migrate',title:'数据迁移管理',level:3},
+          {id:'mcip-security',title:'数据安全保护',level:3}
+        ]},
+        {id:'mcip-secarch',title:'安全架构',level:2},
+        {id:'mcip-deploy',title:'部署架构',level:2}
+      ]},
+      {id:'mcip-core',title:'核心模块',level:1,children:[
+        {id:'mcip-auth',title:'认证网关服务',level:2},
+        {id:'mcip-pay',title:'支付网关服务',level:2},
+        {id:'mcip-design',title:'架构设计',level:2},
+        {id:'mcip-order',title:'订单管理',level:2}
+      ]}
+    ]}
+  ];
+  let kwExpanded=new Set(['mcip','mcip-arch','mcip-micro','mcip-data','mcip-core']);
+  let kwSelected='mcip';
+  function renderNode(n,container){
+    const hasChildren=n.children && n.children.length;
+    const expanded=kwExpanded.has(n.id);
+    const div=document.createElement('div');
+    div.innerHTML='<div class="kw-node '+(n.id===kwSelected?'selected':'')+' '+(expanded?'expanded':'')+'" style="padding-left:'+(8+n.level*14)+'px" data-id="'+n.id+'">'+
+      (hasChildren?'<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>':'<span style="width:12px"></span>')+
+      '<span>'+escapeHtml(n.title)+'</span></div>';
+    const nodeEl=div.firstChild;
+    container.appendChild(nodeEl);
+    if(hasChildren && expanded) n.children.forEach(c=>renderNode(c,container));
+    nodeEl.addEventListener('click',e=>{
+      if(e.target.closest('.chev')){
+        if(expanded) kwExpanded.delete(n.id); else kwExpanded.add(n.id);
+        renderTree(WIKI_TREE,$("#kwTree"));
+        return;
+      }
+      kwSelected=n.id;
+      renderTree(WIKI_TREE,$("#kwTree"));
+      toast("Wiki 节点："+n.title);
+    });
+  }
+  function renderTree(nodes,container){container.innerHTML=''; nodes.forEach(n=>renderNode(n,container));}
+  renderTree(WIKI_TREE,$("#kwTree"));
+
+  $$(".kw-tab").forEach(t=>{
+    t.addEventListener("click",()=>{
+      $$(".kw-tab").forEach(x=>x.classList.remove("active"));
+      t.classList.add("active");
+      const key=t.getAttribute("data-kn-tab");
+      $$(".kw-panel").forEach(p=>p.classList.remove("active"));
+      $('[data-kn-panel="'+key+'"]').classList.add("active");
+    });
+  });
+  $("#kwUpdateBtn").addEventListener("click",function(){
+    this.disabled=true;
+    this.innerHTML='<svg class="ic" style="animation:spin .7s linear infinite;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg> Updating...';
+    toast("正在重新生成 Wiki...");
+    setTimeout(()=>{this.disabled=false;this.textContent="Update"; toast("Wiki 已更新");},1800);
+  });
+  $("#kwGenLink").addEventListener("click",()=>toast("跳转 Wiki 生成配置页"));
+  $("#kwSearch").addEventListener("input",e=>{
+    const val=e.target.value.trim().toLowerCase();
+    if(!val){renderTree(WIKI_TREE,$("#kwTree")); return;}
+    kwExpanded.clear();
+    function mark(nodes){nodes.forEach(n=>{kwExpanded.add(n.id); if(n.children) mark(n.children);});}
+    mark(WIKI_TREE);
+    renderTree(WIKI_TREE,$("#kwTree"));
+    $$(".kw-node").forEach(node=>{node.style.display=node.textContent.toLowerCase().includes(val)?'flex':'none';});
+  });
+  $$(".kw-info .lang").forEach(l=>{
+    l.addEventListener("click",()=>{
+      $$(".kw-info .lang").forEach(x=>x.classList.remove("sel"));
+      l.classList.add("sel");
+      toast("切换语言："+l.textContent);
+    });
+  });
+
+  // init
+  applyFilters();
+  renderMarketplace('featured','');
+  renderTermList();
+})();
+</script>
+</body>
+</html>
