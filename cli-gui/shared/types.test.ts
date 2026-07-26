@@ -87,7 +87,7 @@ describe("schema v3 contracts", () => {
     expectTypeOf<SessionStatus>().toEqualTypeOf<SessionV3["runtimeStatus"]>();
     expectTypeOf<ApiErrorResponse["error"]["code"]>().toEqualTypeOf<ApiErrorCode>();
     expectTypeOf<TerminalServerFrame["type"]>().toEqualTypeOf<"terminal-output" | "runtime-status" | "protocol-error">();
-    expectTypeOf<EventServerFrame["type"]>().toEqualTypeOf<"subscription-ready" | "transcript-event" | "session-updated" | "recording-warning" | "protocol-error">();
+    expectTypeOf<EventServerFrame["type"]>().toEqualTypeOf<"subscription-ready" | "transcript-event" | "session-updated" | "recording-warning" | "turn-status" | "protocol-error">();
 
     const pick: PickWorkspaceResponse = { cancelled: false, workspace: { id: "workspace-1", name: "Workspace", path: "/tmp/workspace", kind: "local-folder", createdAt: "2026-01-01T00:00:00Z" } };
     if (!pick.cancelled) expectTypeOf(pick.workspace.path).toBeString();

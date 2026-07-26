@@ -86,6 +86,10 @@ export async function createApplication(dependencies: ApplicationDependencies): 
       },
       hasSession(sessionId) {
         return Boolean(getSession(sessionId));
+      },
+      onTurnStatus(sessionId, turnId, status) {
+        // 实时提示帧：不承载内容、断线不补发（api-spec §4.2）
+        publishToSubscriber(sessionId, { type: "turn-status", turnId, status });
       }
     }
   });
@@ -252,6 +256,24 @@ export async function createApplication(dependencies: ApplicationDependencies): 
   async function startSession(sessionId: string, confirmed: boolean, cols = 100, rows = 30): Promise<SessionV3 | undefined> {
     if (dependencies.policy.readonly) throw new ApiHttpError(403, "READONLY_MODE", "Readonly mode disables local process startup.");
     if (!confirmed) throw new ApiHttpError(400, "VALIDATION_FAILED", "Session start requires explicit confirmation.", { field: "confirmed" });
+    const chatSession = getSession(sessionId);
+    if (chatSession?.interactionMode === "chat") {
+      // chat 会话 start 不 spawn PTY（api-spec §2.6）：校验后标记 running，Worker 由首轮 submitTurn 隐式创建
+      const workspace = state.workspaces.find((item) => item.id === chatSession.workspaceId);
+      const profile = state.profiles.find((item) => item.id === chatSession.profileId);
+      if (!workspace || !profile) throw new ApiHttpError(400, "VALIDATION_FAILED", "Session references a missing workspace or profile.");
+      if (chatSession.organizationStatus !== "active") throw new ApiHttpError(409, "SESSION_NOT_ACTIVE", "Session must be active before it can start.");
+      await resolveLaunch(profile, chatSession.launchConfig);
+      if (chatSession.runtimeStatus !== "running") {
+        chatSession.runtimeStatus = "running";
+        chatSession.error = undefined;
+        chatSession.lastActiveAt = dependencies.clock.now();
+        chatSession.revision += 1;
+        await dependencies.stateRepository.save(state);
+        publishSessionUpdate(chatSession);
+      }
+      return getSession(sessionId);
+    }
     // prepare 在 orchestrator 启动锁内执行且最多一次；这里保留全部会话/配置校验语义
     await orchestrator.start(sessionId, async () => {
       const session = requireSession(sessionId);
@@ -698,9 +720,14 @@ export async function createApplication(dependencies: ApplicationDependencies): 
         const profile = state.profiles.find((item) => item.id === profileId);
         if (!profile) throw new ApiHttpError(404, "PROFILE_NOT_FOUND", "Profile not found.");
         const launchConfig = normalizeLaunchConfig(body.launchConfig);
+        const requestedMode = body.interactionMode === undefined ? "chat" : body.interactionMode;
+        if (requestedMode !== "chat" && requestedMode !== "terminal") throw new ApiHttpError(400, "VALIDATION_FAILED", "interactionMode must be \"chat\" or \"terminal\".", { field: "interactionMode" });
         const launch = await resolveLaunch(profile, launchConfig);
+        // 缺省 chat；Profile 不支持 headless 时服务端降级 terminal，不报错（api-spec §2.6）
+        const interactionModeDowngraded = requestedMode === "chat" && !launch.capabilities.supportsHeadlessTurns;
+        const interactionMode = interactionModeDowngraded ? "terminal" as const : requestedMode;
         const session: SessionV3 = {
-          id: dependencies.idGenerator.create("session"), name: requireResourceName(body.name, "name"), workspaceId, profileId, interactionMode: "terminal",
+          id: dependencies.idGenerator.create("session"), name: requireResourceName(body.name, "name"), workspaceId, profileId, interactionMode,
           runtimeStatus: "stopped", organizationStatus: "active", pinned: false, manualOrder: nextManualOrder(), launchConfig,
           revision: 1, createdAt: now, lastActiveAt: now
         };
@@ -712,7 +739,7 @@ export async function createApplication(dependencies: ApplicationDependencies): 
           if (start && error instanceof ApiHttpError && error.code === "SESSION_START_FAILED") {
             const capabilities = launch.capabilities;
             const serialized = serializeSession(session);
-            sendJson(response, 201, { ...serialized, session: serialized, capabilities, startupError: { code: error.code, message: error.publicMessage, requestId: "create-session" } });
+            sendJson(response, 201, { ...serialized, session: serialized, capabilities, ...(interactionModeDowngraded ? { interactionModeDowngraded: true } : {}), startupError: { code: error.code, message: error.publicMessage, requestId: "create-session" } });
             return;
           }
           state.sessions = state.sessions.filter((item) => item.id !== session.id);
@@ -722,12 +749,14 @@ export async function createApplication(dependencies: ApplicationDependencies): 
         }
         const capabilities = start ? launch.capabilities : await resolveCapabilities(profile);
         const serialized = serializeSession(session);
-        sendJson(response, 201, { ...serialized, session: serialized, capabilities });
+        sendJson(response, 201, { ...serialized, session: serialized, capabilities, ...(interactionModeDowngraded ? { interactionModeDowngraded: true } : {}) });
         return;
       }
       if (method === "PATCH" && id) {
         const session = requireSession(id);
         assertRevision(session, body.expectedRevision);
+        // 创建后模式不可变（api-spec §2.6）
+        if (body.interactionMode !== undefined) throw new ApiHttpError(400, "VALIDATION_FAILED", "interactionMode cannot be changed after creation.", { field: "interactionMode" });
         if (body.name !== undefined) session.name = requireResourceName(body.name, "name");
         if (body.launchConfig !== undefined) {
           const nextConfig = { ...session.launchConfig, ...normalizeLaunchConfig(body.launchConfig, true) };
@@ -735,6 +764,16 @@ export async function createApplication(dependencies: ApplicationDependencies): 
           if (!profile) throw new ApiHttpError(404, "PROFILE_NOT_FOUND", "Profile not found.");
           await resolveLaunch(profile, nextConfig);
           session.launchConfig = nextConfig;
+        }
+        if (body.activeModel !== undefined) {
+          // 仅 chat 会话；轮次进行中允许，下一轮生效（api-spec §2.6）
+          if (session.interactionMode !== "chat") throw new ApiHttpError(400, "INTERACTION_MODE_MISMATCH", "activeModel is only available for chat sessions.");
+          const activeModel = requireText(body.activeModel, "activeModel");
+          const profile = state.profiles.find((item) => item.id === session.profileId);
+          if (!profile) throw new ApiHttpError(404, "PROFILE_NOT_FOUND", "Profile not found.");
+          const capabilities = await resolveCapabilities(profile);
+          if (!capabilities.models.some((item) => item.id === activeModel)) throw new ApiHttpError(400, "CLI_OPTION_UNSUPPORTED", "The selected CLI option is not supported.", { option: activeModel });
+          session.chatContext = { ...session.chatContext, activeModel };
         }
         session.revision += 1;
         await dependencies.stateRepository.save(state);
@@ -819,13 +858,45 @@ export async function createApplication(dependencies: ApplicationDependencies): 
           const content = requireComposerContent(body.content);
           const existing = await findMessage(id, clientMessageId);
           if (existing) {
-            sendJson(response, 202, { event: existing, runtimeStatus: session.runtimeStatus, duplicate: true });
+            const duplicateTurn = typeof existing.metadata?.turnId === "string" ? { turnId: existing.metadata.turnId } : {};
+            sendJson(response, 202, { event: existing, runtimeStatus: session.runtimeStatus, duplicate: true, ...duplicateTurn });
             return;
           }
           if (session.organizationStatus !== "active") throw new ApiHttpError(409, "SESSION_NOT_ACTIVE", "Session must be active before messages can be sent.");
           if (session.runtimeStatus !== "running") {
             if (body.startIfStopped !== true) throw new ApiHttpError(409, "SESSION_NOT_ACTIVE", "Session is not running.");
             await startSession(id, body.confirmedStart === true);
+          }
+          // interactionMode 分流（api-spec §2.2）：chat → submitTurn；terminal → 现状 PTY write 不变
+          if (session.interactionMode === "chat") {
+            const workspace = state.workspaces.find((item) => item.id === session.workspaceId);
+            const profile = state.profiles.find((item) => item.id === session.profileId);
+            if (!workspace || !profile) throw new ApiHttpError(400, "VALIDATION_FAILED", "Session references a missing workspace or profile.");
+            const registry = dependencies.profileAdapters;
+            if (!registry.buildTurn || !registry.parseEvents) throw new ApiHttpError(422, "SESSION_START_FAILED", "Chat turns are not supported by this server build.");
+            const turnId = dependencies.idGenerator.create("turn");
+            const { event } = await orchestrator.submitTurn(id, {
+              turnId,
+              prompt: content,
+              clientMessageId,
+              // CLI 语义封闭在 Adapter；Orchestrator 只拿回调（决策 D-9）
+              buildCommand: async () => {
+                const spec = await registry.buildTurn!(profile, {
+                  workspacePath: workspace.path,
+                  prompt: content,
+                  permission: session.launchConfig.permission,
+                  mode: session.launchConfig.mode,
+                  model: session.chatContext?.activeModel ?? session.launchConfig.model,
+                  resumeToken: session.chatContext?.resumeToken
+                });
+                return { command: spec.command, args: spec.args, cwd: workspace.path, env: { ...definedEnvironment(dependencies.policy.processEnvironment), ...spec.env } };
+              },
+              parseOutput: (stdout) => registry.parseEvents!(profile, stdout, { turnId })
+            });
+            session.lastActiveAt = dependencies.clock.now();
+            await dependencies.stateRepository.save(state);
+            sendJson(response, 202, { event, runtimeStatus: session.runtimeStatus, duplicate: false, turnId });
+            return;
           }
           const event = await appendEvent(session, { occurredAt: dependencies.clock.now(), kind: "user_message", source: "composer", raw: content, clientMessageId });
           if (!event) throw new ApiHttpError(500, "TRANSCRIPT_WRITE_FAILED", "Message could not be recorded.");
@@ -845,6 +916,15 @@ export async function createApplication(dependencies: ApplicationDependencies): 
         });
         return;
       }
+      if (method === "POST" && id && action === "turns" && segments[3] === "cancel") {
+        // 取消受理 202 { turnId }；终态经 error 事件（code TURN_CANCELLED）到达（api-spec §2.4）
+        const session = requireSession(id);
+        if (session.interactionMode !== "chat") throw new ApiHttpError(400, "INTERACTION_MODE_MISMATCH", "Turn cancellation is only available for chat sessions.");
+        const turnId = requireText(body.turnId, "turnId");
+        await orchestrator.cancelTurn(id, turnId);
+        sendJson(response, 202, { turnId });
+        return;
+      }
       if (method === "GET" && id && action === "transcript") {
         const afterSequence = Number(url.searchParams.get("afterSequence") ?? 0);
         const limit = Number(url.searchParams.get("limit") ?? 200);
@@ -854,6 +934,8 @@ export async function createApplication(dependencies: ApplicationDependencies): 
         return;
       }
       if (method === "POST" && id && action === "resize") {
+        // chat 会话无 PTY 可 resize（api-spec §5）
+        if (getSession(id)?.interactionMode === "chat") throw new ApiHttpError(400, "INTERACTION_MODE_MISMATCH", "Terminal resize is not available for chat sessions.");
         if (!orchestrator.isRunning(id)) throw new ApiHttpError(409, "SESSION_NOT_ACTIVE", "Session is not running.");
         orchestrator.resizeTerminal(id, body.cols, body.rows);
         sendJson(response, 204, null);
@@ -985,6 +1067,7 @@ function isKnownApiRoute(method: string, resource: string | undefined, id: strin
   if (method === "POST" && !id && !action) return true;
   if (!id) return false;
   if (method === "GET" && action === "transcript") return true;
+  if (method === "POST" && action === "turns" && segments[3] === "cancel") return true;
   if (method === "PATCH" || method === "DELETE") return !action;
   return method === "POST" && ["start", "stop", "resize", "pin", "archive", "complete", "restore", "reopen", "fork", "messages"].includes(action ?? "");
 }

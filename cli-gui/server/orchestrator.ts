@@ -2,6 +2,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { WebSocket } from "ws";
 import { ApiHttpError } from "./api-errors.js";
 import type { Clock, Logger, OrchestratorCallbacks, PreparedLaunch, PtyProcess, PtyRuntime, RuntimeOrchestrator, TurnInput, TurnParseResult } from "./ports.js";
+import type { TranscriptEvent } from "../shared/types.js";
 
 export const MAX_TERMINAL_COLS = 500;
 export const MAX_TERMINAL_ROWS = 200;
@@ -152,12 +153,15 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
       if (closing || !callbacks.hasSession(sessionId)) return;
       if (outcome.status === "completed") {
         await callbacks.appendEvent(sessionId, { occurredAt: clock.now(), kind: "lifecycle", source: "session-manager", raw: "Turn completed.", metadata: { status: "turn-completed", turnId: turn.turnId, exitCode: outcome.exitCode } });
+        callbacks.onTurnStatus?.(sessionId, turn.turnId, "completed");
       } else if (outcome.status === "cancelled") {
         await callbacks.appendEvent(sessionId, { occurredAt: clock.now(), kind: "lifecycle", source: "session-manager", raw: "Turn cancelled.", metadata: { status: "turn-cancelled", turnId: turn.turnId, exitCode: outcome.exitCode } });
         await callbacks.appendEvent(sessionId, { occurredAt: clock.now(), kind: "error", source: "session-manager", raw: "Turn cancelled by user.", metadata: { code: "TURN_CANCELLED", turnId: turn.turnId } });
+        callbacks.onTurnStatus?.(sessionId, turn.turnId, "cancelled");
       } else {
         await callbacks.appendEvent(sessionId, { occurredAt: clock.now(), kind: "lifecycle", source: "session-manager", raw: "Turn failed.", metadata: { status: "turn-failed", turnId: turn.turnId, exitCode: outcome.exitCode } });
         await callbacks.appendEvent(sessionId, { occurredAt: clock.now(), kind: "error", source: "session-manager", raw: outcome.message, metadata: { code: outcome.code, turnId: turn.turnId } });
+        callbacks.onTurnStatus?.(sessionId, turn.turnId, "failed");
       }
     };
 
@@ -306,7 +310,7 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
       try { worker.process.kill(); } catch (error) { logger.warn("PTY stop failed", { sessionId, error: String(error) }); }
       return true;
     },
-    async submitTurn(sessionId: string, input: TurnInput): Promise<{ turnId: string }> {
+    async submitTurn(sessionId: string, input: TurnInput): Promise<{ turnId: string; event: TranscriptEvent }> {
       if (closing) throw new ApiHttpError(409, "INTERNAL_ERROR", "Server is shutting down.");
       const existing = workers.get(sessionId);
       if (existing && existing.kind === "terminal") throw new ApiHttpError(400, "INTERACTION_MODE_MISMATCH", "Chat turns are not available for terminal sessions.");
@@ -319,14 +323,17 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
         await callbacks.onRuntimeStatus(sessionId, "running");
         await callbacks.appendEvent(sessionId, { occurredAt: clock.now(), kind: "lifecycle", source: "session-manager", raw: "Session running.", metadata: { status: "running" } });
       }
-      await callbacks.appendEvent(sessionId, { occurredAt: clock.now(), kind: "user_message", source: "composer", raw: input.prompt, metadata: { turnId: input.turnId }, clientMessageId: input.clientMessageId });
+      const event = await callbacks.appendEvent(sessionId, { occurredAt: clock.now(), kind: "user_message", source: "composer", raw: input.prompt, metadata: { turnId: input.turnId }, clientMessageId: input.clientMessageId });
+      // 与 terminal messages 分支对齐：落盘失败则不启动轮次（单一事实源，回放可重建）
+      if (!event) throw new ApiHttpError(500, "TRANSCRIPT_WRITE_FAILED", "Message could not be recorded.");
       const turn: ActiveTurn = { turnId: input.turnId, done: Promise.resolve() };
       worker.activeTurn = turn;
+      callbacks.onTurnStatus?.(sessionId, input.turnId, "running");
       turn.done = runTurn(sessionId, worker, turn, input).catch((error) => {
         logger.warn("Turn execution failed unexpectedly", { sessionId, turnId: input.turnId, error: String(error) });
         if (worker.activeTurn === turn) worker.activeTurn = undefined;
       });
-      return { turnId: input.turnId };
+      return { turnId: input.turnId, event };
     },
     async cancelTurn(sessionId: string, turnId: string): Promise<void> {
       const worker = workers.get(sessionId);

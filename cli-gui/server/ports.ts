@@ -66,6 +66,8 @@ export interface OrchestratorCallbacks {
   onRuntimeStatus(sessionId: string, status: SessionRuntimeStatus, extra?: { exitCode?: number; resumeToken?: string }): Promise<void>;
   onActivity(sessionId: string): void;
   hasSession(sessionId: string): boolean;
+  /** 轮次即时状态提示（api-spec §4.2 turn-status 帧）；可选，不影响事件回放完整性 */
+  onTurnStatus?(sessionId: string, turnId: string, status: "running" | "waiting_approval" | "completed" | "failed" | "cancelled"): void;
 }
 
 export interface PreparedLaunch {
@@ -93,8 +95,8 @@ export interface RuntimeOrchestrator {
   start(sessionId: string, prepare: () => Promise<PreparedLaunch>, terminal?: { cols?: number; rows?: number }): Promise<void>;
   /** 幂等 stop：无 Worker 时 no-op；返回是否有 Worker 被停止 */
   stop(sessionId: string): Promise<boolean>;
-  /** 仅 chat 模式：提交一轮；违反互斥抛 TURN_IN_PROGRESS（issue-005 实现） */
-  submitTurn(sessionId: string, input: TurnInput): Promise<{ turnId: string }>;
+  /** 仅 chat 模式：提交一轮；违反互斥抛 TURN_IN_PROGRESS；返回已落盘的 user_message 事件（api-spec §2.2 响应需要） */
+  submitTurn(sessionId: string, input: TurnInput): Promise<{ turnId: string; event: TranscriptEvent }>;
   cancelTurn(sessionId: string, turnId: string): Promise<void>;
   respondApproval(sessionId: string, approvalId: string, decision: "allow" | "deny"): Promise<void>;
   isRunning(sessionId: string): boolean;

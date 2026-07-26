@@ -35,6 +35,7 @@ type RecordedStatus = { sessionId: string; status: string; extra?: { exitCode?: 
 function createHarness(options?: { turnTimeoutMs?: number; cancelGraceMs?: number; ptyProcess?: PtyProcess }) {
   const events: RecordedEvent[] = [];
   const statusCalls: RecordedStatus[] = [];
+  const turnStatuses: { sessionId: string; turnId: string; status: string }[] = [];
   const orchestrator = createRuntimeOrchestrator({
     ptyRuntime: {
       spawn() {
@@ -50,16 +51,19 @@ function createHarness(options?: { turnTimeoutMs?: number; cancelGraceMs?: numbe
     callbacks: {
       async appendEvent(sessionId, input) {
         events.push({ sessionId, ...input });
-        return undefined;
+        return { id: `event-${events.length}`, sessionId, sequence: events.length, occurredAt: input.occurredAt, kind: input.kind, source: input.source, raw: input.raw, rawBytes: Buffer.byteLength(input.raw, "utf8"), truncated: false, metadata: input.metadata, clientMessageId: input.clientMessageId };
       },
       async onRuntimeStatus(sessionId, status, extra) {
         statusCalls.push({ sessionId, status, extra });
       },
       onActivity() {},
-      hasSession: () => true
+      hasSession: () => true,
+      onTurnStatus(sessionId, turnId, status) {
+        turnStatuses.push({ sessionId, turnId, status });
+      }
     }
   });
-  return { orchestrator, events, statusCalls };
+  return { orchestrator, events, statusCalls, turnStatuses };
 }
 
 // 行协议：普通行 → assistant_message；"token:x" 行 → resumeToken（多次取最后）
@@ -111,7 +115,7 @@ const turnEnded = (events: RecordedEvent[], turnId: string) =>
 
 describe("runtime orchestrator chat turns", () => {
   it("runs multiple sequential turns, streams events, and reports resumeToken on success only", async () => {
-    const { orchestrator, events, statusCalls } = createHarness();
+    const { orchestrator, events, statusCalls, turnStatuses } = createHarness();
     await orchestrator.submitTurn("s1", makeTurn("turn-1", "first prompt", echoScript, ["thread-1"]));
     await waitFor(() => turnEnded(events, "turn-1"));
 
@@ -129,6 +133,8 @@ describe("runtime orchestrator chat turns", () => {
     const completed = events.find((event) => event.metadata?.status === "turn-completed")!;
     expect(completed.metadata?.exitCode).toBe(0);
     expect(statusCalls).toContainEqual({ sessionId: "s1", status: "running", extra: { resumeToken: "thread-1" } });
+    // turn-status 回调序：running → completed（api-spec §4.2）
+    expect(turnStatuses.filter((item) => item.turnId === "turn-1").map((item) => item.status)).toEqual(["running", "completed"]);
     // chat Worker 轮次间驻留：running ≠ 有子进程存活
     expect(orchestrator.isRunning("s1")).toBe(true);
     expect(orchestrator.runningCount()).toBe(1);
