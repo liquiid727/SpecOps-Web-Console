@@ -210,3 +210,35 @@ test("keeps concurrent chat and terminal sessions isolated (multi-session smoke)
   await page.locator(SESSION_ROW).filter({ hasText: "Fixture session" }).first().click();
   await expect(page.locator(".chat-messages")).not.toContainText("reply:");
 });
+
+// issue-015：Quest Home 一次提交创建流 happy path（frontend-spec §2/§6；test-spec §3.7）
+test("creates and runs a chat session from Quest Home in one submit", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  // Quest Home 默认视图：选择支持 headless 的 profile
+  await page.locator(".start-in-row").getByRole("button", { name: "CLI profile" }).click();
+  await page.getByRole("option", { name: "Fixture headless" }).click();
+  const prompt = page.getByRole("textbox", { name: "Prompt" });
+  await prompt.fill("quest home first turn");
+  await prompt.press("Enter");
+  // 一次提交：创建会话 + 首条消息自动作为第一轮，进入会话视图并渲染回复
+  await expect(page.locator(".chat-messages")).toContainText("reply:quest home first turn", { timeout: 15_000 });
+  // 会话名取自首条消息，出现在会话列表
+  await expect(page.locator(NAVIGATOR)).toContainText("quest home first turn");
+});
+
+// issue-015：Quest Home 降级路径（generic profile → 服务端降级 terminal + 一次性说明）
+test("explains the downgrade when creating from Quest Home with a terminal-only profile", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.locator(".start-in-row").getByRole("button", { name: "CLI profile" }).click();
+  await page.getByRole("option", { name: "Fixture PTY" }).click();
+  const prompt = page.getByRole("textbox", { name: "Prompt" });
+  await prompt.fill("downgrade quest");
+  await prompt.press("Enter");
+  // 服务端降级 terminal：进入会话前展示一次性说明 toast，会话仍创建成功
+  await expect(page.locator(".feedback-notice").filter({ hasText: "terminal mode" }).first()).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator(NAVIGATOR)).toContainText("downgrade quest");
+});

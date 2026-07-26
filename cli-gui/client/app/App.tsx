@@ -107,7 +107,7 @@ export function App() {
     }
   }
 
-  async function createSession(input: { name: string; workspaceId: string; profileId: string }) {
+  async function createSession(input: { name: string; workspaceId: string; profileId: string; interactionMode?: "chat" | "terminal" }) {
     await runAction(async () => {
       const result = await api.createSession({ ...input, start: true, confirmed: true });
       // profile 不支持 headless → 服务端降级 terminal，一次性说明（api-spec §2.6 / frontend-spec 降级说明）
@@ -116,6 +116,23 @@ export function App() {
       updatePreferences({ currentView: "chat" });
     }, true, "sessionCreated");
   }
+
+  // Quest Home 一次提交创建流：创建 chat 会话（服务端按 capability 降级）+ 首条消息 start-and-send 首轮（frontend-spec §2、§6）
+  // 创建失败直接 reject：composer 保留输入并提示错误码文案；创建成功但首轮失败仍进入会话（可在会话内重发）
+  const quickCreateSession = useCallback(async (input: { content: string; workspaceId: string; profileId: string }) => {
+    const name = input.content.replace(/\s+/g, " ").trim().slice(0, 48) || t("newCliSession");
+    const result = await api.createSession({ name, workspaceId: input.workspaceId, profileId: input.profileId, interactionMode: "chat", start: true, confirmed: true });
+    if (result.interactionModeDowngraded) feedback.warning({ title: t("sessionDowngradedToTerminal") });
+    const sessionId = result.session?.id ?? result.id;
+    try {
+      await api.sendMessage(sessionId, { clientMessageId: crypto.randomUUID(), content: input.content, startIfStopped: true, confirmedStart: true });
+    } catch (cause) {
+      feedback.error(toFeedbackError(cause, t));
+    }
+    setActiveSessionId(sessionId);
+    updatePreferences({ currentView: "chat" });
+    await refresh();
+  }, [feedback, refresh, t, updatePreferences]);
 
   async function resumeSession(id: string) {
     await runAction(() => api.startSession(id), false, false);
@@ -197,7 +214,7 @@ export function App() {
       {preferences.navigatorOpen && <Sidebar sessions={state.sessions} groups={groupedSessions} workspaces={state.workspaces} activeSessionId={activeSessionId} activeTurns={activeTurns} currentView={preferences.currentView} grouping={preferences.sessionGrouping} filter={preferences.sessionFilter} readonly={readonly} openFolderBusy={pickerBusy} onViewChange={handleViewChange} onNewQuest={() => { updatePreferences({ currentView: "quest-home" }); setOverlay("new-session"); }} onSelectSession={selectSession} onGroupingChange={(sessionGrouping) => updatePreferences({ sessionGrouping })} onFilterChange={(sessionFilter) => updatePreferences({ sessionFilter })} onReorder={reorderSessions} onOpenFolder={openFolder} onOpenSettings={() => setOverlay("settings")} onRename={(session) => { setActiveSessionId(session.id); setOverlay("rename"); }} onPin={(session) => void runAction(() => api.pinSession(session.id, !session.pinned, session.revision ?? 1), false)} onComplete={(session) => { setActiveSessionId(session.id); if (session.organizationStatus === "completed") void runAction(() => api.restoreSession(session.id, session.revision ?? 1), false); else setOverlay("complete-session"); }} onArchive={(session) => { setActiveSessionId(session.id); if (session.organizationStatus === "archived") void runAction(() => api.restoreSession(session.id, session.revision ?? 1), false); else setOverlay("archive-session"); }} onFork={(session) => { setActiveSessionId(session.id); setOverlay("fork-session"); }} onDelete={(session) => { setActiveSessionId(session.id); setOverlay("delete-session"); }} onClose={() => updatePreferences({ navigatorOpen: false })} />}
       {preferences.navigatorOpen && <Button unstyled className="drawer-backdrop navigator-backdrop" aria-label={t("closeSessionList")} onClick={() => updatePreferences({ navigatorOpen: false })} />}
       <div className="qoder-main-column">
-        <MainArea currentView={preferences.currentView} activeSession={activeSession} activeWorkspace={activeWorkspace} activeProfile={activeProfile} workspaces={state.workspaces} readonly={readonly} centerView={activeSession ? preferences.centerViewBySession[activeSession.id] ?? "transcript" : "transcript"} onCenterViewChange={(view) => activeSession && updatePreferences({ centerViewBySession: { ...preferences.centerViewBySession, [activeSession.id]: view } })} onLaunchConfigChange={updateLaunchConfig} onNewSession={() => setOverlay("new-session")} onSendPrompt={sendPrompt} onStatus={refreshStatus} onOpenSettings={() => handleViewChange("settings")} onResume={resumeSession} onStop={stopSession} onTurnActivity={reportTurnActivity} />
+        <MainArea currentView={preferences.currentView} activeSession={activeSession} activeWorkspace={activeWorkspace} activeProfile={activeProfile} workspaces={state.workspaces} profiles={state.profiles} readonly={readonly} centerView={activeSession ? preferences.centerViewBySession[activeSession.id] ?? "transcript" : "transcript"} onCenterViewChange={(view) => activeSession && updatePreferences({ centerViewBySession: { ...preferences.centerViewBySession, [activeSession.id]: view } })} onLaunchConfigChange={updateLaunchConfig} onNewSession={() => setOverlay("new-session")} onSendPrompt={sendPrompt} onQuickCreate={quickCreateSession} onStatus={refreshStatus} onOpenSettings={() => handleViewChange("settings")} onResume={resumeSession} onStop={stopSession} onTurnActivity={reportTurnActivity} />
       </div>
       {showRightPanel && preferences.inspectorOpen && activeSession && <RightPanel session={activeSession} workspace={activeWorkspace} profile={activeProfile} readonly={readonly} activeTab={preferences.rightPanelTab} onTabChange={(tab) => updatePreferences({ rightPanelTab: tab as UiPreferencesV1["rightPanelTab"] })} onClose={() => updatePreferences({ inspectorOpen: false })} />}
       {showRightPanel && preferences.inspectorOpen && activeSession && <Button unstyled className="drawer-backdrop inspector-backdrop" aria-label={t("closeSessionDetails")} onClick={() => updatePreferences({ inspectorOpen: false })} />}
