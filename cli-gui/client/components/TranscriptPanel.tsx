@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { TranscriptEvent } from "../../shared/types";
 import { api, openTranscriptSubscription } from "../api";
 import { toFeedbackError, toFeedbackWarning } from "../feedback-errors";
-import { useI18n, type TranslationKey } from "../i18n";
+import { useI18n } from "../i18n";
 import { Icon } from "./ui/Icon";
 import { useFeedback } from "./ui/Feedback";
-import { projectTranscriptEvents, type TranscriptDisplayItem } from "../transcript-display";
+import { isNearBottom, projectTranscriptEvents, type TranscriptDisplayItem } from "../transcript-display";
 import { AsyncState } from "./patterns";
 import { Button } from "./ui";
 
@@ -129,27 +130,122 @@ export function TranscriptPanel({ sessionId }: TranscriptPanelProps) {
   }
 
   const displayEvents = useMemo(() => projectTranscriptEvents(events), [events]);
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const [following, setFollowing] = useState(true);
+  const followRef = useRef(true);
+  followRef.current = following;
+
+  // 贴底自动跟随；用户上滚后停止跟随（frontend-spec §3.2）
+  useEffect(() => {
+    const element = listRef.current;
+    if (element && followRef.current) element.scrollTop = element.scrollHeight;
+  }, [displayEvents]);
+
+  const handleScroll = () => {
+    const element = listRef.current;
+    if (!element) return;
+    setFollowing(isNearBottom(element.scrollTop, element.scrollHeight, element.clientHeight));
+  };
+
+  const backToLatest = () => {
+    const element = listRef.current;
+    if (element) element.scrollTop = element.scrollHeight;
+    setFollowing(true);
+  };
+
   if (loading) return <AsyncState className="transcript-state" state="loading" title={t("loadingTranscript")} />;
   if (error) return <AsyncState className="transcript-state error" state="error" title={t("transcriptFailed")} actions={<Button variant="secondary" className="secondary-button" onClick={() => setRetryKey((value) => value + 1)}>{t("retry")}</Button>} />;
   if (!displayEvents.length) return <AsyncState className="transcript-state" state="empty" icon={<Icon name="terminal" />} title={t("emptyTranscript")} description={t("emptyTranscriptDescription")} />;
 
-  return <div className="transcript-list" aria-label={t("transcript")}>
+  return <div className="transcript-list" aria-label={t("transcript")} ref={listRef} onScroll={handleScroll}>
     <div className="transcript-status" aria-live="polite">
       {hasMore && <Button variant="secondary" className="secondary-button" onClick={() => void loadMore()} loading={loadingMore} loadingLabel={t("loading")}>{t("loadMore")}</Button>}
       {connectionState === "reconnecting" && <span>{t("reconnecting")}</span>}
       {connectionState === "offline" && <span>{t("offlineMode")}</span>}
     </div>
     {displayEvents.map((item) => <TranscriptMessage item={item} key={item.id} />)}
+    {!following && <Button variant="secondary" className="secondary-button back-to-latest" onClick={backToLatest}>{t("backToLatest")}</Button>}
   </div>;
 }
 
-function TranscriptMessage({ item }: { item: TranscriptDisplayItem }) {
+const INTERRUPTED_LIFECYCLE = new Set(["turn-failed", "turn-cancelled"]);
+
+/** kind → 渲染全表（frontend-spec §3.1）；未知 kind 中性兜底，前向兼容不报错 */
+export function TranscriptMessage({ item }: { item: TranscriptDisplayItem }) {
   const { t } = useI18n();
   const { event } = item;
-  return <article className={`transcript-event ${event.kind}`}>
-    <header><span>{eventLabel(event.kind, t)}</span><time>{formatTime(event.occurredAt)}</time></header>
-    {event.kind === "assistant_message" ? <MarkdownLite source={item.content} truncated={item.truncated} /> : event.kind === "pty_output" ? <details className="transcript-output"><summary>{summarizeCliOutput(item.content)}</summary><pre className="transcript-plain">{item.content}</pre></details> : <pre className="transcript-plain">{item.content}</pre>}
-    <Button variant="ghost" className="copy-button" onClick={() => void navigator.clipboard?.writeText(item.raw)}>{t("copy")}</Button>
+  const kind = event.kind as string;
+  const time = <time>{formatTime(event.occurredAt)}</time>;
+
+  if (kind === "user_message") {
+    // 右对齐纯文本气泡，不渲染 Markdown
+    return <article className="transcript-event user_message">
+      <header><span>{t("you")}</span>{time}</header>
+      <pre className="transcript-plain">{item.content}</pre>
+    </article>;
+  }
+  if (kind === "assistant_message") {
+    return <article className="transcript-event assistant_message">
+      <header><span>{t("assistantMessage")}</span>{time}</header>
+      <MarkdownLite source={item.content} truncated={item.truncated} />
+      <details className="transcript-output raw-source"><summary>{t("viewRawSource")}</summary><pre className="transcript-plain">{item.raw}</pre></details>
+      <Button variant="ghost" className="copy-button" onClick={() => void navigator.clipboard?.writeText(item.raw)}>{t("copy")}</Button>
+    </article>;
+  }
+  if (kind === "tool_activity") {
+    const tool = typeof event.metadata?.tool === "string" ? event.metadata.tool : summarizeCliOutput(item.content);
+    return <article className="transcript-event tool_activity">
+      <header><span>{t("toolActivity")}</span>{time}</header>
+      <details className="transcript-output"><summary>{tool}</summary><pre className="transcript-plain">{item.raw}</pre></details>
+    </article>;
+  }
+  if (kind === "file_change") {
+    const path = typeof event.metadata?.path === "string" ? event.metadata.path : item.content;
+    return <article className="transcript-event file_change">
+      <header><span>{t("fileChangeEvent")}</span>{time}</header>
+      <p className="file-change-path"><Icon name="file" /><code>{path}</code></p>
+    </article>;
+  }
+  if (kind === "pty_output") {
+    return <article className="transcript-event pty_output">
+      <header><span>{t("cliOutput")}</span>{time}</header>
+      <details className="transcript-output"><summary>{summarizeCliOutput(item.content)}</summary><pre className="transcript-plain">{item.content}</pre></details>
+      <Button variant="ghost" className="copy-button" onClick={() => void navigator.clipboard?.writeText(item.raw)}>{t("copy")}</Button>
+    </article>;
+  }
+  if (kind === "lifecycle") {
+    const status = typeof event.metadata?.status === "string" ? event.metadata.status : "";
+    const interrupted = INTERRUPTED_LIFECYCLE.has(status);
+    return <article className={`transcript-event lifecycle${interrupted ? " interrupted" : ""}`}>
+      <header><span>{interrupted ? t("turnInterrupted") : t("lifecycleEvent")}</span>{time}</header>
+      <p className="lifecycle-text">{item.content}{status && <code className="lifecycle-status">{status}</code>}</p>
+    </article>;
+  }
+  if (kind === "error") {
+    const code = typeof event.metadata?.code === "string" ? event.metadata.code : "";
+    return <article className="transcript-event error">
+      <header><span>{t("errorEvent")}</span>{time}</header>
+      <p className="error-text">{item.content}</p>
+      {code && <code className="error-code">{code}</code>}
+    </article>;
+  }
+  if (kind === "approval_request" || kind === "approval_response") {
+    // A 段中性系统条目；审批气泡交互属 B 段（frontend-spec §5.4）
+    const decision = typeof event.metadata?.decision === "string" ? event.metadata.decision : "";
+    return <article className={`transcript-event ${kind}`}>
+      <header><span>{t("permissionRequest")}</span>{time}</header>
+      <p className="lifecycle-text">{item.content}{decision && <code className="lifecycle-status">{decision}</code>}</p>
+    </article>;
+  }
+  if (kind === "retention_marker") {
+    return <article className="transcript-event retention_marker">
+      <header><span>{t("retentionNotice")}</span>{time}</header>
+      <p className="lifecycle-text">{item.content}</p>
+    </article>;
+  }
+  return <article className="transcript-event unknown-kind" data-kind={kind}>
+    <header><span>{kind}</span>{time}</header>
+    <pre className="transcript-plain">{summarizeCliOutput(item.content)}</pre>
   </article>;
 }
 
@@ -165,26 +261,29 @@ export function MarkdownLite({ source, truncated = false }: { source: string; tr
   const rendered = new TextDecoder().decode(bytes.subarray(0, MAX_MARKDOWN_BYTES));
   return <div className="markdown-lite">
     <ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml urlTransform={safeUrl} components={{
-      a: ({ href, children, ...props }) => <a {...props} href={safeUrl(href) || "#"} target={isExternalUrl(href) ? "_blank" : undefined} rel={isExternalUrl(href) ? "noreferrer noopener" : undefined}>{children}</a>
+      a: ({ href, children, ...props }) => <a {...props} href={safeUrl(href) || "#"} target={isExternalUrl(href) ? "_blank" : undefined} rel={isExternalUrl(href) ? "noreferrer noopener" : undefined}>{children}</a>,
+      // 图片不加载远程资源：渲染为链接文本（frontend-spec §4，避免 tracking/SSRF）
+      img: ({ src, alt }) => {
+        const href = safeUrl(typeof src === "string" ? src : undefined);
+        const label = alt || (typeof src === "string" ? src : "");
+        return href && isExternalUrl(href)
+          ? <a className="markdown-image-link" href={href} target="_blank" rel="noreferrer noopener">{label}</a>
+          : <span className="markdown-image-link">{label}</span>;
+      },
+      pre: ({ children }) => <CodeBlock>{children}</CodeBlock>
     }}>{rendered}</ReactMarkdown>
     {(bounded || truncated) && <p className="markdown-truncated">{t("truncatedMessage")}</p>}
   </div>;
 }
 
-function eventLabel(kind: TranscriptEvent["kind"], t: (key: TranslationKey) => string) {
-  const keys: Partial<Record<TranscriptEvent["kind"], TranslationKey>> = {
-    user_message: "you",
-    pty_output: "cliOutput",
-    assistant_message: "cliOutput",
-    lifecycle: "lifecycleEvent",
-    error: "errorEvent",
-    tool_activity: "toolActivity",
-    file_change: "toolActivity",
-    approval_request: "permissionRequest",
-    approval_response: "permissionRequest",
-    retention_marker: "retentionNotice"
-  };
-  return t(keys[kind] ?? "cliOutput");
+/** 代码块：保留空白与语言标注，复制内容为 raw 源码（frontend-spec §4） */
+function CodeBlock({ children }: { children?: ReactNode }) {
+  const { t } = useI18n();
+  const preRef = useRef<HTMLPreElement | null>(null);
+  return <div className="markdown-code-block">
+    <Button variant="ghost" className="copy-button code-copy" onClick={() => void navigator.clipboard?.writeText(preRef.current?.textContent ?? "")}>{t("copy")}</Button>
+    <pre ref={preRef}>{children}</pre>
+  </div>;
 }
 
 function safeUrl(value: string | undefined) {

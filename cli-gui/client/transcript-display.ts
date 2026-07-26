@@ -35,10 +35,29 @@ export function projectTranscriptEvents(events: TranscriptEvent[]): TranscriptDi
       continue;
     }
     flushPtyGroup();
+    // 同 turnId 连续 assistant_message 合并为单气泡流式追加段落（frontend-spec §3.2）
+    const previous = projected.at(-1);
+    if (event.kind === "assistant_message" && previous?.event.kind === "assistant_message" && sameTurn(previous.event, event)) {
+      previous.content = `${previous.content}\n\n${event.raw}`;
+      previous.raw = `${previous.raw}\n\n${event.raw}`;
+      previous.truncated = previous.truncated || event.truncated;
+      continue;
+    }
     projected.push({ id: event.id, event, content: event.raw, raw: event.raw, truncated: event.truncated });
   }
   flushPtyGroup();
   return projected;
+}
+
+function sameTurn(left: TranscriptEvent, right: TranscriptEvent) {
+  const leftTurn = left.metadata?.turnId;
+  const rightTurn = right.metadata?.turnId;
+  return typeof leftTurn === "string" && leftTurn === rightTurn;
+}
+
+/** 贴底判定：距底部 ≤ 32px 视为跟随中（frontend-spec §3.2 滚动策略） */
+export function isNearBottom(scrollTop: number, scrollHeight: number, clientHeight: number) {
+  return scrollHeight - scrollTop - clientHeight <= 32;
 }
 
 export function sanitizePtyOutput(value: string) {
