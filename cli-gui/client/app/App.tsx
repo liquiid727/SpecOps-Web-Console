@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { CliProfile, WorkspaceV2 } from "../../shared/types";
+import { Icon } from "../components/ui/Icon";
+import type { CliProfile, SessionLaunchConfig, WorkspaceV2 } from "../../shared/types";
 import { api, type ClientAppState, mergeState } from "../api";
 import { useI18n, type TranslationKey } from "../i18n";
 import { toFeedbackError } from "../feedback-errors";
@@ -13,8 +14,11 @@ import { WorkspaceProfileManager } from "../components/WorkspaceProfileManager";
 import { useFeedback } from "../components/ui/Feedback";
 import { readPreferences, writePreferences, type UiPreferencesV1 } from "./preferences";
 import { groupSessions } from "./session-selectors";
+import { usePlatform } from "../lib/platform";
+import { Button } from "../components/ui";
 
 const emptyState: ClientAppState = { workspaces: [], profiles: [], sessions: [] };
+const viewShortcuts: Record<string, UiPreferencesV1["currentView"]> = { "1": "quest-home", "2": "chat", "3": "knowledge", "4": "marketplace", "5": "settings" };
 type OverlayState = "new-session" | "settings" | "resume" | "rename" | "delete-session" | "archive-session" | "complete-session" | "fork-session" | undefined;
 type PendingDelete = { type: "workspace"; item: WorkspaceV2 } | { type: "profile"; item: CliProfile } | undefined;
 
@@ -30,13 +34,19 @@ export function App() {
   const [overlay, setOverlay] = useState<OverlayState>();
   const [pendingDelete, setPendingDelete] = useState<PendingDelete>();
   const [pickerBusy, setPickerBusy] = useState(false);
+  const [activeTurns, setActiveTurns] = useState<Record<string, string>>({});
   const pickerBusyRef = useRef(false);
+  const platform = usePlatform();
   const refreshRequestRef = useRef(0);
   const hasLoadedRef = useRef(false);
 
   const updatePreferences = useCallback((update: Partial<UiPreferencesV1>) => {
     setPreferences((current) => ({ ...current, ...update, centerViewBySession: update.centerViewBySession ?? current.centerViewBySession }));
   }, []);
+
+  const handleViewChange = useCallback((view: string) => {
+    updatePreferences({ currentView: view as UiPreferencesV1["currentView"], inspectorOpen: view === "quest-home" || view === "chat" });
+  }, [updatePreferences]);
 
   const refresh = useCallback(async (notify = false) => {
     const requestId = ++refreshRequestRef.current;
@@ -67,10 +77,17 @@ export function App() {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "b") { event.preventDefault(); updatePreferences({ navigatorOpen: !preferences.navigatorOpen }); }
       if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === "i" && activeSessionId) { event.preventDefault(); updatePreferences({ inspectorOpen: !preferences.inspectorOpen }); }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "n") { event.preventDefault(); setOverlay("new-session"); }
+      // ⌘/Ctrl + 1..5 switch the primary view (Quest Home, Chat, Knowledge, Marketplace, Settings).
+      if ((event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey && viewShortcuts[event.key]) {
+        const view = viewShortcuts[event.key];
+        if (view === "chat" && !activeSessionId) return;
+        event.preventDefault();
+        handleViewChange(view);
+      }
     }
     window.addEventListener("keydown", onShortcut);
     return () => window.removeEventListener("keydown", onShortcut);
-  }, [activeSessionId, preferences.inspectorOpen, preferences.navigatorOpen, updatePreferences]);
+  }, [activeSessionId, handleViewChange, preferences.inspectorOpen, preferences.navigatorOpen, updatePreferences]);
 
   const activeSession = state.sessions.find((session) => session.id === activeSessionId);
   const activeWorkspace = state.workspaces.find((workspace) => workspace.id === activeSession?.workspaceId);
@@ -98,20 +115,39 @@ export function App() {
     }, true, "sessionCreated");
   }
 
-  function selectSession(id: string) {
-    setActiveSessionId(id);
-    updatePreferences({ currentView: "chat", inspectorOpen: true, ...(isNarrowViewport() ? { navigatorOpen: false } : {}) });
+  async function resumeSession(id: string) {
+    await runAction(() => api.startSession(id), false, false);
   }
 
-  function handleViewChange(view: string) {
-    updatePreferences({ currentView: view as UiPreferencesV1["currentView"], inspectorOpen: view === "quest-home" || view === "chat" });
+  async function stopSession(id: string) {
+    await runAction(() => api.stopSession(id), false, false);
   }
+
+  function selectSession(id: string) {
+    setActiveSessionId(id);
+    updatePreferences({
+      currentView: "chat",
+      ...(isNarrowViewport() ? { inspectorOpen: true, navigatorOpen: false } : {}),
+    });
+  }
+
+  const reorderSessions = useCallback((sessionIds: string[], section: { organizationStatus: "active" | "completed" | "archived"; pinned: boolean; expectedRevisions: Record<string, number> }) => {
+    void runAction(() => api.reorderSessions(sessionIds, section.expectedRevisions, section.organizationStatus, section.pinned), false, false);
+  }, []);
 
   async function openFolder() {
     if (pickerBusyRef.current) return;
     pickerBusyRef.current = true;
     setPickerBusy(true);
     try {
+      if (platform.kind === "tauri") {
+        const picked = await platform.pickFolder();
+        if (picked) {
+          const name = picked.split("/").filter(Boolean).pop() ?? picked;
+          await runAction(async () => { await api.createWorkspace({ name, path: picked }); }, false);
+          return;
+        }
+      }
       await runAction(async () => {
         const result = await api.pickWorkspace();
         if (!result.cancelled) {
@@ -125,27 +161,44 @@ export function App() {
     }
   }
 
-  const sendPrompt = useCallback(async (content: string) => {
+  const sendPrompt = useCallback(async (content: string, clientMessageId: string) => {
     if (!activeSession) return;
-    await api.sendMessage(activeSession.id, { clientMessageId: crypto.randomUUID(), content, startIfStopped: true, confirmedStart: true });
-    void refresh();
+    const result = await api.sendMessage(activeSession.id, { clientMessageId, content, startIfStopped: true, confirmedStart: true });
+    await refresh();
+    return result;
   }, [activeSession, refresh]);
+
+  // 会话列表的轮次进行中指示（frontend-spec §6）：由 ChatView 上报轮次活动
+  const reportTurnActivity = useCallback((sessionId: string, turnId?: string) => {
+    setActiveTurns((current) => {
+      if (turnId) return current[sessionId] === turnId ? current : { ...current, [sessionId]: turnId };
+      if (!(sessionId in current)) return current;
+      const next = { ...current };
+      delete next[sessionId];
+      return next;
+    });
+  }, []);
+
+  const updateLaunchConfig = useCallback((change: Partial<SessionLaunchConfig>) => {
+    if (!activeSession) return;
+    void runAction(() => api.updateLaunchConfig(activeSession.id, change, activeSession.revision ?? 1), false, false);
+  }, [activeSession]);
 
   const showRightPanel = preferences.currentView === "quest-home" || preferences.currentView === "chat";
 
   if (loading) return <main className="center-state"><span className="brand-orbit" aria-hidden="true">✦</span>{t("loadingWorkspace")}</main>;
-  if (loadError) return <main className="center-state"><Icon name="warning" /><strong>{t("failedToLoadWorkspace")}</strong><button className="secondary-button" onClick={() => { setLoading(true); void refresh(true); }}><Icon name="refresh" />{t("retry")}</button></main>;
+  if (loadError) return <main className="center-state"><Icon name="warning" /><strong>{t("failedToLoadWorkspace")}</strong><Button variant="secondary" className="secondary-button" onClick={() => { setLoading(true); void refresh(true); }}><Icon name="refresh" />{t("retry")}</Button></main>;
 
   return <div className="qoder-app">
-    <TitleBar workspaceName={activeWorkspace?.name} sidebarOpen={preferences.navigatorOpen} rightPanelOpen={showRightPanel && preferences.inspectorOpen} onToggleSidebar={() => updatePreferences({ navigatorOpen: !preferences.navigatorOpen })} onToggleRightPanel={() => updatePreferences({ inspectorOpen: !preferences.inspectorOpen })} />
+    <TitleBar title={activeSession?.name} workspaceName={activeWorkspace?.name} sidebarOpen={preferences.navigatorOpen} rightPanelOpen={showRightPanel && preferences.inspectorOpen} onToggleSidebar={() => updatePreferences({ navigatorOpen: !preferences.navigatorOpen })} onToggleRightPanel={() => updatePreferences({ inspectorOpen: !preferences.inspectorOpen })} />
     <main className={`qoder-body ${preferences.navigatorOpen ? "sidebar-open" : ""} ${showRightPanel && preferences.inspectorOpen ? "right-open" : ""}`}>
-      {preferences.navigatorOpen && <Sidebar sessions={state.sessions} workspaces={state.workspaces} activeSessionId={activeSessionId} currentView={preferences.currentView} grouping={preferences.sessionGrouping} filter={preferences.sessionFilter} readonly={readonly} openFolderBusy={pickerBusy} onViewChange={handleViewChange} onNewQuest={() => { updatePreferences({ currentView: "quest-home" }); setOverlay("new-session"); }} onSelectSession={selectSession} onGroupingChange={(sessionGrouping) => updatePreferences({ sessionGrouping })} onFilterChange={(sessionFilter) => updatePreferences({ sessionFilter })} onOpenFolder={openFolder} onOpenSettings={() => setOverlay("settings")} onRename={(session) => { setActiveSessionId(session.id); setOverlay("rename"); }} onPin={(session) => void runAction(() => api.pinSession(session.id, !session.pinned, session.revision ?? 1), false)} onComplete={(session) => { setActiveSessionId(session.id); if (session.organizationStatus === "completed") void runAction(() => api.restoreSession(session.id, session.revision ?? 1), false); else setOverlay("complete-session"); }} onArchive={(session) => { setActiveSessionId(session.id); if (session.organizationStatus === "archived") void runAction(() => api.restoreSession(session.id, session.revision ?? 1), false); else setOverlay("archive-session"); }} onFork={(session) => { setActiveSessionId(session.id); setOverlay("fork-session"); }} onDelete={(session) => { setActiveSessionId(session.id); setOverlay("delete-session"); }} />}
-      {preferences.navigatorOpen && <button className="drawer-backdrop navigator-backdrop" aria-label={t("closeSessionList")} onClick={() => updatePreferences({ navigatorOpen: false })} />}
+      {preferences.navigatorOpen && <Sidebar sessions={state.sessions} groups={groupedSessions} workspaces={state.workspaces} activeSessionId={activeSessionId} activeTurns={activeTurns} currentView={preferences.currentView} grouping={preferences.sessionGrouping} filter={preferences.sessionFilter} readonly={readonly} openFolderBusy={pickerBusy} onViewChange={handleViewChange} onNewQuest={() => { updatePreferences({ currentView: "quest-home" }); setOverlay("new-session"); }} onSelectSession={selectSession} onGroupingChange={(sessionGrouping) => updatePreferences({ sessionGrouping })} onFilterChange={(sessionFilter) => updatePreferences({ sessionFilter })} onReorder={reorderSessions} onOpenFolder={openFolder} onOpenSettings={() => setOverlay("settings")} onRename={(session) => { setActiveSessionId(session.id); setOverlay("rename"); }} onPin={(session) => void runAction(() => api.pinSession(session.id, !session.pinned, session.revision ?? 1), false)} onComplete={(session) => { setActiveSessionId(session.id); if (session.organizationStatus === "completed") void runAction(() => api.restoreSession(session.id, session.revision ?? 1), false); else setOverlay("complete-session"); }} onArchive={(session) => { setActiveSessionId(session.id); if (session.organizationStatus === "archived") void runAction(() => api.restoreSession(session.id, session.revision ?? 1), false); else setOverlay("archive-session"); }} onFork={(session) => { setActiveSessionId(session.id); setOverlay("fork-session"); }} onDelete={(session) => { setActiveSessionId(session.id); setOverlay("delete-session"); }} onClose={() => updatePreferences({ navigatorOpen: false })} />}
+      {preferences.navigatorOpen && <Button unstyled className="drawer-backdrop navigator-backdrop" aria-label={t("closeSessionList")} onClick={() => updatePreferences({ navigatorOpen: false })} />}
       <div className="qoder-main-column">
-        <MainArea currentView={preferences.currentView} activeSession={activeSession} activeWorkspace={activeWorkspace} workspaces={state.workspaces} readonly={readonly} onNewSession={() => setOverlay("new-session")} onSendPrompt={sendPrompt} />
+        <MainArea currentView={preferences.currentView} activeSession={activeSession} activeWorkspace={activeWorkspace} activeProfile={activeProfile} workspaces={state.workspaces} readonly={readonly} centerView={activeSession ? preferences.centerViewBySession[activeSession.id] ?? "transcript" : "transcript"} onCenterViewChange={(view) => activeSession && updatePreferences({ centerViewBySession: { ...preferences.centerViewBySession, [activeSession.id]: view } })} onLaunchConfigChange={updateLaunchConfig} onNewSession={() => setOverlay("new-session")} onSendPrompt={sendPrompt} onStatus={refreshStatus} onOpenSettings={() => handleViewChange("settings")} onResume={resumeSession} onStop={stopSession} onTurnActivity={reportTurnActivity} />
       </div>
-      {showRightPanel && preferences.inspectorOpen && activeSession && <RightPanel session={activeSession} workspace={activeWorkspace} profile={activeProfile} readonly={readonly} activeTab={preferences.rightPanelTab} onTabChange={(tab) => updatePreferences({ rightPanelTab: tab })} onClose={() => updatePreferences({ inspectorOpen: false })} />}
-      {showRightPanel && preferences.inspectorOpen && activeSession && <button className="drawer-backdrop inspector-backdrop" aria-label={t("closeSessionDetails")} onClick={() => updatePreferences({ inspectorOpen: false })} />}
+      {showRightPanel && preferences.inspectorOpen && activeSession && <RightPanel session={activeSession} workspace={activeWorkspace} profile={activeProfile} readonly={readonly} activeTab={preferences.rightPanelTab} onTabChange={(tab) => updatePreferences({ rightPanelTab: tab as UiPreferencesV1["rightPanelTab"] })} onClose={() => updatePreferences({ inspectorOpen: false })} />}
+      {showRightPanel && preferences.inspectorOpen && activeSession && <Button unstyled className="drawer-backdrop inspector-backdrop" aria-label={t("closeSessionDetails")} onClick={() => updatePreferences({ inspectorOpen: false })} />}
       {overlay === "new-session" && <NewSessionDialog workspaces={state.workspaces} profiles={state.profiles} readonly={readonly} onClose={() => setOverlay(undefined)} onCreate={createSession} onOpenSettings={() => setOverlay("settings")} />}
       {overlay === "settings" && <WorkspaceProfileManager workspaces={state.workspaces} profiles={state.profiles} sessions={state.sessions} readonly={readonly} onClose={() => setOverlay(undefined)} onOpenFolder={openFolder} onCreateWorkspace={async (input) => runAction(() => api.createWorkspace(input), false)} onCreateProfile={async (input) => runAction(() => api.createProfile(input), false)} onDeleteWorkspace={(item) => setPendingDelete({ type: "workspace", item })} onDeleteProfile={(item) => setPendingDelete({ type: "profile", item })} />}
       {overlay === "resume" && activeSession && <ActionDialog title={`${t("resume")} ${activeSession.name}?`} description={t("resumeDescription", { profile: activeProfile?.name ?? t("profileFallback"), workspace: activeWorkspace?.path ?? t("thisWorkspace") })} confirmLabel={t("resumeSession")} onClose={() => setOverlay(undefined)} onConfirm={() => runAction(() => api.startSession(activeSession.id))} />}

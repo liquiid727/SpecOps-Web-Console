@@ -60,6 +60,38 @@ export function isNearBottom(scrollTop: number, scrollHeight: number, clientHeig
   return scrollHeight - scrollTop - clientHeight <= 32;
 }
 
+/**
+ * 从事件流推导进行中轮次（api-spec §4.2：断线重连无 turn-status 补发）：
+ * 最后一个携带 turnId 且尚无终态（lifecycle turn-* / error）的轮次视为进行中。
+ */
+export function deriveActiveTurnId(events: TranscriptEvent[]): string | undefined {
+  const terminalTurns = new Set<string>();
+  let candidate: string | undefined;
+  for (const event of events) {
+    const turnId = typeof event.metadata?.turnId === "string" ? event.metadata.turnId : undefined;
+    if (!turnId) continue;
+    const status = typeof event.metadata?.status === "string" ? event.metadata.status : "";
+    const isTerminal = event.kind === "error" || (event.kind === "lifecycle" && status.startsWith("turn-"));
+    if (isTerminal) {
+      terminalTurns.add(turnId);
+      if (candidate === turnId) candidate = undefined;
+      continue;
+    }
+    if (!terminalTurns.has(turnId)) candidate = turnId;
+  }
+  return candidate;
+}
+
+/** turnId → 原始 prompt（失败轮次重试时以新 clientMessageId 重发原文，frontend-spec §5.2） */
+export function buildTurnPrompts(events: TranscriptEvent[]): Map<string, string> {
+  const prompts = new Map<string, string>();
+  for (const event of events) {
+    const turnId = typeof event.metadata?.turnId === "string" ? event.metadata.turnId : undefined;
+    if (event.kind === "user_message" && turnId) prompts.set(turnId, event.raw);
+  }
+  return prompts;
+}
+
 export function sanitizePtyOutput(value: string) {
   const withoutEscapeSequences = value
     .replace(/\u001b\](?:[\s\S]*?)(?:\u0007|\u001b\\)/g, "")

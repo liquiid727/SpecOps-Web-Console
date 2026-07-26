@@ -33,6 +33,7 @@ export interface TranscriptSubscriptionHandlers {
   onReady?: (afterSequence: number, latestSequence: number) => void;
   onEvent?: (event: import("../shared/types").TranscriptEvent) => void;
   onSession?: (session: import("../shared/types").SessionV2) => void;
+  onTurnStatus?: (turnId: string, status: import("../shared/websocket").TurnStatus) => void;
   onWarning?: (code: string) => void;
   onError?: (message: string) => void;
   onClose?: () => void;
@@ -59,6 +60,7 @@ export function openTranscriptSubscription(sessionId: string, afterSequence: num
       if (frame.type === "subscription-ready") handlers.onReady?.(frame.afterSequence, frame.latestSequence);
       else if (frame.type === "transcript-event") handlers.onEvent?.(frame.event);
       else if (frame.type === "session-updated") handlers.onSession?.(frame.session);
+      else if (frame.type === "turn-status") handlers.onTurnStatus?.(frame.turnId, frame.status);
       else if (frame.type === "recording-warning") handlers.onWarning?.(frame.code);
       else if (frame.type === "protocol-error") handlers.onError?.(frame.error.message);
     } catch {
@@ -127,6 +129,8 @@ export const api = {
   forkSession: (id: string, expectedRevision: number) => request<{ session: SessionWithCompatibilityStatus }>(`/api/sessions/${id}/fork`, { method: "POST", body: JSON.stringify({ expectedRevision }) }),
   reorderSessions: (orderedSessionIds: string[], expectedRevisions: Record<string, number>, organizationStatus = "active", pinned = false) => request<SessionWithCompatibilityStatus[]>("/api/sessions/reorder", { method: "POST", body: JSON.stringify({ organizationStatus, pinned, orderedSessionIds, expectedRevisions }) }),
   sendMessage: (id: string, input: SendMessageRequest) => request<SendMessageResponse>(`/api/sessions/${id}/messages`, { method: "POST", body: JSON.stringify(input) }),
+  cancelTurn: (id: string, turnId: string) => request<{ turnId: string }>(`/api/sessions/${id}/turns/cancel`, { method: "POST", body: JSON.stringify({ turnId }) }),
+  updateActiveModel: (id: string, activeModel: string, expectedRevision: number) => request<SessionWithCompatibilityStatus>(`/api/sessions/${id}`, { method: "PATCH", body: JSON.stringify({ activeModel, expectedRevision }) }),
   transcript: (id: string, afterSequence = 0, limit = 200, signal?: AbortSignal) => request<TranscriptPage>(`/api/sessions/${id}/transcript?afterSequence=${afterSequence}${limit !== 200 ? `&limit=${limit}` : ""}`, { signal }),
   workspaceFiles: (workspaceId: string, path = "", cursor?: string, signal?: AbortSignal) => {
     const query = new URLSearchParams({ ...(path ? { path } : {}), ...(cursor ? { cursor } : {}) }).toString();

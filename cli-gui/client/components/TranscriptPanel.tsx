@@ -8,7 +8,8 @@ import { toFeedbackError, toFeedbackWarning } from "../feedback-errors";
 import { useI18n } from "../i18n";
 import { Icon } from "./ui/Icon";
 import { useFeedback } from "./ui/Feedback";
-import { isNearBottom, projectTranscriptEvents, type TranscriptDisplayItem } from "../transcript-display";
+import { isNearBottom, projectTranscriptEvents, buildTurnPrompts, deriveActiveTurnId, type TranscriptDisplayItem } from "../transcript-display";
+import type { TurnStatus } from "../../shared/websocket";
 import { AsyncState } from "./patterns";
 import { Button } from "./ui";
 
@@ -16,9 +17,16 @@ const MAX_MARKDOWN_BYTES = 256 * 1024;
 
 interface TranscriptPanelProps {
   sessionId: string;
+  /** 发送响应里的 user_message 本地回显（与 WS 推送按 id 去重，frontend-spec §5.1） */
+  localEvents?: TranscriptEvent[];
+  onTurnStatus?: (turnId: string, status: TurnStatus) => void;
+  /** 从事件流推导的进行中轮次（重连/回放后无 turn-status 补发，api-spec §4.2） */
+  onDerivedTurn?: (turnId: string | undefined) => void;
+  /** 失败轮次重试：回传原 prompt，调用方以新 clientMessageId 重发（frontend-spec §5.2） */
+  onRetry?: (content: string) => void;
 }
 
-export function TranscriptPanel({ sessionId }: TranscriptPanelProps) {
+export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerivedTurn, onRetry }: TranscriptPanelProps) {
   const { t } = useI18n();
   const feedback = useFeedback();
   const [events, setEvents] = useState<TranscriptEvent[]>([]);
@@ -61,6 +69,9 @@ export function TranscriptPanel({ sessionId }: TranscriptPanelProps) {
     const acceptEvent = (event: TranscriptEvent) => {
       if (event.sessionId === sessionId && isCurrent()) mergeEvent(event);
     };
+    const acceptTurnStatus = (turnId: string, status: TurnStatus) => {
+      if (isCurrent()) onTurnStatus?.(turnId, status);
+    };
 
     api.transcript(sessionId, 0, 200, controller.signal).then((page) => {
       if (!isCurrent()) return;
@@ -75,6 +86,7 @@ export function TranscriptPanel({ sessionId }: TranscriptPanelProps) {
       closeSubscription = openTranscriptSubscription(sessionId, latestSequenceRef.current, {
         onReady: () => { if (isCurrent()) setConnectionState("connected"); },
         onEvent: acceptEvent,
+        onTurnStatus: acceptTurnStatus,
         onWarning: () => { if (isCurrent()) feedback.warning(toFeedbackWarning(undefined, t, "recordingWarning", `transcript-warning:${sessionId}`)); },
         onError: () => { if (isCurrent()) { setConnectionState("reconnecting"); feedback.error(toFeedbackError(undefined, t, "transcriptConnectionFailed", `transcript-connection:${sessionId}`)); } },
         onClose: () => {
@@ -85,6 +97,7 @@ export function TranscriptPanel({ sessionId }: TranscriptPanelProps) {
               closeSubscription();
               closeSubscription = openTranscriptSubscription(sessionId, latestSequenceRef.current, {
                 onEvent: acceptEvent,
+                onTurnStatus: acceptTurnStatus,
                 onReady: () => { if (isCurrent()) setConnectionState("connected"); },
                 onWarning: () => { if (isCurrent()) feedback.warning(toFeedbackWarning(undefined, t, "recordingWarning", `transcript-warning:${sessionId}`)); },
                 onError: () => { if (isCurrent()) { setConnectionState("reconnecting"); feedback.error(toFeedbackError(undefined, t, "transcriptConnectionFailed", `transcript-connection:${sessionId}`)); } },
@@ -109,7 +122,12 @@ export function TranscriptPanel({ sessionId }: TranscriptPanelProps) {
       if (reconnectTimer.current !== undefined) window.clearTimeout(reconnectTimer.current);
       closeSubscription();
     };
-  }, [feedback, mergeEvent, retryKey, sessionId, t]);
+  }, [feedback, mergeEvent, onTurnStatus, retryKey, sessionId, t]);
+
+  // 发送响应中的 user_message 事件立即回显（mergeEvent 按 id 去重，WS 重复推送无双气泡）
+  useEffect(() => {
+    for (const event of localEvents ?? []) if (event.sessionId === sessionId) mergeEvent(event);
+  }, [localEvents, mergeEvent, sessionId]);
 
   async function loadMore() {
     if (loadingMore || !hasMore) return;
@@ -130,6 +148,8 @@ export function TranscriptPanel({ sessionId }: TranscriptPanelProps) {
   }
 
   const displayEvents = useMemo(() => projectTranscriptEvents(events), [events]);
+  const turnPrompts = useMemo(() => buildTurnPrompts(events), [events]);
+  useEffect(() => { onDerivedTurn?.(deriveActiveTurnId(events)); }, [events, onDerivedTurn]);
   const listRef = useRef<HTMLDivElement | null>(null);
   const [following, setFollowing] = useState(true);
   const followRef = useRef(true);
@@ -163,7 +183,11 @@ export function TranscriptPanel({ sessionId }: TranscriptPanelProps) {
       {connectionState === "reconnecting" && <span>{t("reconnecting")}</span>}
       {connectionState === "offline" && <span>{t("offlineMode")}</span>}
     </div>
-    {displayEvents.map((item) => <TranscriptMessage item={item} key={item.id} />)}
+    {displayEvents.map((item) => {
+      const turnId = typeof item.event.metadata?.turnId === "string" ? item.event.metadata.turnId : undefined;
+      const prompt = item.event.kind === "error" && turnId ? turnPrompts.get(turnId) : undefined;
+      return <TranscriptMessage item={item} key={item.id} onRetry={onRetry && prompt ? () => onRetry(prompt) : undefined} />;
+    })}
     {!following && <Button variant="secondary" className="secondary-button back-to-latest" onClick={backToLatest}>{t("backToLatest")}</Button>}
   </div>;
 }
@@ -171,7 +195,7 @@ export function TranscriptPanel({ sessionId }: TranscriptPanelProps) {
 const INTERRUPTED_LIFECYCLE = new Set(["turn-failed", "turn-cancelled"]);
 
 /** kind → 渲染全表（frontend-spec §3.1）；未知 kind 中性兜底，前向兼容不报错 */
-export function TranscriptMessage({ item }: { item: TranscriptDisplayItem }) {
+export function TranscriptMessage({ item, onRetry }: { item: TranscriptDisplayItem; onRetry?: () => void }) {
   const { t } = useI18n();
   const { event } = item;
   const kind = event.kind as string;
@@ -227,6 +251,7 @@ export function TranscriptMessage({ item }: { item: TranscriptDisplayItem }) {
       <header><span>{t("errorEvent")}</span>{time}</header>
       <p className="error-text">{item.content}</p>
       {code && <code className="error-code">{code}</code>}
+      {onRetry && <Button variant="secondary" className="secondary-button retry-turn" onClick={onRetry}>{t("retry")}</Button>}
     </article>;
   }
   if (kind === "approval_request" || kind === "approval_response") {

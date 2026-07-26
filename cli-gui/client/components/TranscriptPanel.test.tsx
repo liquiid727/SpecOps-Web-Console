@@ -3,7 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TranscriptEvent } from "../../shared/types";
 import { I18nProvider } from "../i18n";
-import { isNearBottom, projectTranscriptEvents, sanitizePtyOutput } from "../transcript-display";
+import { isNearBottom, projectTranscriptEvents, sanitizePtyOutput, buildTurnPrompts, deriveActiveTurnId } from "../transcript-display";
 import { MarkdownLite, TranscriptMessage } from "./TranscriptPanel";
 
 describe("Markdown transcript rendering", () => {
@@ -196,6 +196,60 @@ describe("Markdown sanitize hardening (XSS fixtures)", () => {
     expect(block?.querySelector("code")?.className).toContain("language-ts");
     act(() => block?.querySelector<HTMLButtonElement>(".code-copy")?.click());
     expect(writeText).toHaveBeenCalledWith("const a = 1;\nconst b = 2;\n");
+  });
+});
+
+// —— issue-008：chat 轮次交互（frontend-spec §5.2，api-spec §4.2）——
+describe("chat turn interactions", () => {
+  let container: HTMLDivElement;
+  let root: Root;
+
+  beforeEach(() => {
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+  });
+
+  afterEach(() => {
+    act(() => root.unmount());
+    container.remove();
+  });
+
+  it("derives the active turn from the event stream and clears it on terminal events", () => {
+    const open = [
+      makeEvent({ id: "e1", kind: "user_message", source: "composer", metadata: { turnId: "turn-1" } }),
+      makeEvent({ id: "e2", kind: "assistant_message", metadata: { turnId: "turn-1" } })
+    ];
+    expect(deriveActiveTurnId(open)).toBe("turn-1");
+    expect(deriveActiveTurnId([...open, makeEvent({ id: "e3", kind: "lifecycle", source: "session-manager", metadata: { turnId: "turn-1", status: "turn-completed" } })])).toBeUndefined();
+    expect(deriveActiveTurnId([...open, makeEvent({ id: "e3", kind: "error", source: "session-manager", metadata: { turnId: "turn-1", code: "TURN_TIMEOUT" } })])).toBeUndefined();
+    // 无 turnId 的事件不影响推导
+    expect(deriveActiveTurnId([...open, makeEvent({ id: "e4", kind: "pty_output", source: "pty" })])).toBe("turn-1");
+  });
+
+  it("maps turnId to the original prompt for retry", () => {
+    const prompts = buildTurnPrompts([
+      makeEvent({ id: "e1", kind: "user_message", source: "composer", raw: "original prompt", metadata: { turnId: "turn-1" } }),
+      makeEvent({ id: "e2", kind: "assistant_message", raw: "reply", metadata: { turnId: "turn-1" } })
+    ]);
+    expect(prompts.get("turn-1")).toBe("original prompt");
+    expect(prompts.get("turn-2")).toBeUndefined();
+  });
+
+  it("shows a retry button on failed turn errors and invokes the retry callback", () => {
+    const onRetry = vi.fn();
+    const [item] = projectTranscriptEvents([makeEvent({ id: "e1", kind: "error", source: "session-manager", raw: "turn failed", metadata: { turnId: "turn-1", code: "TURN_FAILED" } })]);
+    act(() => root.render(<I18nProvider><TranscriptMessage item={item} onRetry={onRetry} /></I18nProvider>));
+    const retry = container.querySelector(".retry-turn") as HTMLButtonElement;
+    expect(retry?.textContent).toBe("Retry");
+    act(() => retry.click());
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it("omits the retry button when no retry callback is provided", () => {
+    const [item] = projectTranscriptEvents([makeEvent({ id: "e1", kind: "error", source: "session-manager", raw: "turn failed", metadata: { turnId: "turn-1", code: "TURN_FAILED" } })]);
+    act(() => root.render(<I18nProvider><TranscriptMessage item={item} /></I18nProvider>));
+    expect(container.querySelector(".retry-turn")).toBeNull();
   });
 });
 

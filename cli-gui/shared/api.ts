@@ -116,6 +116,8 @@ export interface SendMessageResponse {
   event: TranscriptEvent;
   runtimeStatus: SessionRuntimeStatus;
   duplicate: boolean;
+  /** chat 分流响应携带本轮 turnId（api-spec §2.2）。 */
+  turnId?: string;
 }
 
 export interface PickWorkspaceRequest {
