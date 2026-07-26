@@ -1,4 +1,5 @@
 import type http from "node:http";
+import type { Readable } from "node:stream";
 import type { AppStateV3, CliProfileV3, CliProfileCapabilities, FilePreview, FileTreePage, GitDiffResponse, GitStatusResponse, LanguageSummaryResponse, SessionRuntimeStatus, TranscriptEvent, TranscriptEventKind, TranscriptEventMetadataValue, TranscriptEventSource, TranscriptPage, Workspace } from "../shared/types.js";
 import type { WebSocket } from "ws";
 
@@ -147,6 +148,45 @@ export interface ProfileAdapterRegistry {
   readonly availableAdapterIds: readonly string[];
   capabilities?(profile: CliProfileV3): Promise<CliProfileCapabilities>;
   resolveLaunch?(profile: CliProfileV3, config: { permission: string | null; mode: string | null; model: string | null }): Promise<{ command: string; args: string[]; capabilities: CliProfileCapabilities }>;
+  /** 组装 headless 单轮 argv（chat 模式），含原生 resume（adapter-spec §2.1） */
+  buildTurn?(profile: CliProfileV3, config: TurnConfig): Promise<CommandSpec>;
+  /** 将单轮子进程 stdout 解析为规范事件流；迭代完成后 return TurnParseResult */
+  parseEvents?(profile: CliProfileV3, stream: Readable, ctx: ParseContext): AsyncGenerator<ParsedTurnEvent, TurnParseResult, void>;
+}
+
+export interface TurnConfig {
+  workspacePath: string;
+  prompt: string;
+  permission: string | null;
+  mode: string | null;
+  model: string | null;
+  resumeToken?: string;
+}
+
+export interface CommandSpec {
+  command: string;
+  /** argv 数组——安全基线：禁止 shell 字符串拼接 */
+  args: string[];
+  env?: Record<string, string>;
+}
+
+export interface ParseContext {
+  /** 注入每个产出事件的 metadata.turnId */
+  turnId: string;
+}
+
+/** parseEvents 产出：TranscriptEvent 的内容部分，id/sessionId/sequence 由落盘时补齐 */
+export interface ParsedTurnEvent {
+  kind: TranscriptEventKind;
+  source: TranscriptEventSource;
+  raw: string;
+  metadata?: Record<string, string | number | boolean>;
+}
+
+/** 轮次结束后由 Orchestrator 读取的解析结论 */
+export interface TurnParseResult {
+  resumeToken?: string;
+  usage?: { inputTokens?: number; outputTokens?: number };
 }
 
 export interface Clock {

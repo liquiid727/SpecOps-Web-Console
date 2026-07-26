@@ -16,6 +16,12 @@ export interface CliProfileCapabilities {
   models: CliOptionDefinition[];
   supportsComposer: boolean;
   supportsStructuredRecognition: boolean;
+  /** 是否支持 headless 单轮执行（决定可否创建 chat 会话，adapter-spec §2.2） */
+  supportsHeadlessTurns: boolean;
+  /** 是否支持原生多轮 resume（chat 多轮上下文的前提） */
+  supportsResume: boolean;
+  /** 是否支持 headless 审批协议（D-8；false 时权限不足→轮次失败+指引） */
+  supportsApproval: boolean;
 }
 
 export type GitFileStatus = "unmodified" | "added" | "deleted" | "modified" | "renamed" | "copied" | "untracked" | "ignored" | "conflicted";

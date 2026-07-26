@@ -227,7 +227,7 @@ export async function createApplication(dependencies: ApplicationDependencies): 
   async function resolveCapabilities(profile: SessionV3["profileId"] extends string ? AppStateV3["profiles"][number] : never): Promise<CliProfileCapabilities> {
     const adapter = profile.adapterId;
     if (dependencies.profileAdapters.capabilities) return dependencies.profileAdapters.capabilities(profile);
-    return { adapterId: adapter, compatibility: adapter === "generic" ? "supported" : "unknown-version", permissions: [], modes: [], models: [], supportsComposer: true, supportsStructuredRecognition: false };
+    return { adapterId: adapter, compatibility: adapter === "generic" ? "supported" : "unknown-version", permissions: [], modes: [], models: [], supportsComposer: true, supportsStructuredRecognition: false, supportsHeadlessTurns: false, supportsResume: false, supportsApproval: false };
   }
 
   async function resolveLaunch(profile: AppStateV3["profiles"][number], config: SessionV3["launchConfig"]) {
