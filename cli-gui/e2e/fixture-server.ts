@@ -17,11 +17,23 @@ while IFS= read -r line; do
 done
 `, "utf8");
 await fs.chmod(fixtureCliPath, 0o755);
+// 假 headless chat CLI（codex exec --json 行协议）：末尾 argv 为 prompt，回复 reply:<prompt>（test-spec §4.2 多会话冒烟）
+const fixtureChatCliPath = path.join(root, "fixture-chat-cli.cjs");
+await fs.writeFile(fixtureChatCliPath, [
+  'const prompt = process.argv[process.argv.length - 1] || "";',
+  'console.log(JSON.stringify({ type: "thread.started", thread_id: "e2e-thread" }));',
+  'console.log(JSON.stringify({ type: "item.completed", item: { type: "agent_message", text: "reply:" + prompt } }));',
+  'console.log(JSON.stringify({ type: "turn.completed", usage: { input_tokens: 1, output_tokens: 1 } }));',
+  ""
+].join("\n"), "utf8");
 await fs.writeFile(path.join(dataDirectory, "state.json"), JSON.stringify({
   schemaVersion: 2,
   state: {
     workspaces: [{ id: "workspace-fixture", name: "Fixture project", path: workspacePath, createdAt: "2026-01-01T00:00:00Z" }],
-    profiles: [{ id: "profile-fixture", name: "Fixture PTY", command: "/bin/sh", args: [fixtureCliPath], adapterId: "generic", createdAt: "2026-01-01T00:00:00Z" }],
+    profiles: [
+      { id: "profile-fixture", name: "Fixture PTY", command: "/bin/sh", args: [fixtureCliPath], adapterId: "generic", createdAt: "2026-01-01T00:00:00Z" },
+      { id: "profile-headless", name: "Fixture headless", command: process.execPath, args: [fixtureChatCliPath], adapterId: "codex", adapterVersionRange: ">=1.0.0 <100.0.0", createdAt: "2026-01-01T00:00:00Z" }
+    ],
     sessions: [{ id: "session-fixture", workspaceId: "workspace-fixture", profileId: "profile-fixture", name: "Fixture session", runtimeStatus: "stopped", organizationStatus: "active", pinned: false, manualOrder: 1000, launchConfig: { permission: null, mode: null, model: null }, revision: 1, createdAt: "2026-01-01T00:00:00Z", lastActiveAt: "2026-01-01T00:00:00Z" }]
   }
 }), "utf8");

@@ -19,6 +19,7 @@ const errorMessageKeys: Partial<Record<ApiErrorCode, TranslationKey>> = {
   SESSION_RUNNING_CONFIRMATION_REQUIRED: "sessionConfirmationRequired",
   SESSION_ALREADY_RUNNING: "sessionAlreadyRunning",
   SESSION_START_FAILED: "sessionStartFailed",
+  SESSION_CONCURRENCY_LIMIT: "sessionConcurrencyLimit",
   SESSION_HAS_FORKS: "sessionHasForks",
   MESSAGE_DUPLICATE: "messageAlreadySent",
   MESSAGE_DELIVERY_FAILED: "messageDeliveryFailed",
@@ -40,9 +41,11 @@ export function toFeedbackError(cause: unknown, t: (key: TranslationKey, params?
   const apiError = cause instanceof ApiClientError ? cause : undefined;
   const messageKey = apiError ? errorMessageKeys[apiError.code] ?? fallback : fallback;
   const reference = apiError && apiError.requestId !== "unknown" ? ` ${t("requestReference", { id: apiError.requestId })}` : "";
+  // 服务端 details（如 SESSION_CONCURRENCY_LIMIT 的 running/limit）作为文案插值参数（frontend-spec §6）
+  const params = apiError?.details ? Object.fromEntries(Object.entries(apiError.details).filter(([, value]) => typeof value === "string" || typeof value === "number") as [string, string | number][]) : undefined;
   return {
     title: t("error"),
-    description: `${t(messageKey)}${reference}`,
+    description: `${t(messageKey, params)}${reference}`,
     duration: 0,
     key: key ?? (apiError ? `api-error:${apiError.code}` : undefined)
   };

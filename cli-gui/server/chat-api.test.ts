@@ -12,7 +12,7 @@ import type { AppStateV3, TranscriptEvent, TranscriptPage } from "../shared/type
 import { createApplication } from "./application.js";
 import { createServer } from "./http-server.js";
 import { createProfileAdapterRegistry } from "./profile-adapters.js";
-import type { ApplicationDependencies, ParsedTurnEvent, TurnConfig, TurnParseResult } from "./ports.js";
+import type { ApplicationDependencies, ParsedTurnEvent, PtyProcess, PtyRuntime, TurnConfig, TurnParseResult } from "./ports.js";
 
 const emptyState: AppStateV3 = { workspaces: [], profiles: [], sessions: [] };
 
@@ -421,6 +421,159 @@ describe("chat API wiring", () => {
       expect(downgraded.json.interactionModeDowngraded).toBe(true);
       expect(state.sessions.find((item) => item.id === downgraded.json.id)?.interactionMode).toBe("terminal");
     } finally {
+      await server.close();
+    }
+  });
+});
+
+// issue-011：全局并发上限（决策 D-6，runtime-orchestrator-spec §3.3）与 4 并发零串台（test-spec §4.2）
+describe("global session concurrency limit (D-6)", () => {
+  // 回显式假 PTY：write 的内容带会话标记回显，驱动 transcript pty_output
+  function createFakePtyRuntime(): PtyRuntime {
+    return {
+      spawn: (options) => {
+        let dataListener: ((data: string) => void) | undefined;
+        let exitListener: ((event: { exitCode: number }) => void) | undefined;
+        const marker = options.args.at(-1) ?? "pty";
+        const process: PtyProcess = {
+          write: (data) => dataListener?.(`${marker}:${data.trim()}`),
+          resize: () => undefined,
+          kill: () => exitListener?.({ exitCode: 0 }),
+          onData: (listener) => { dataListener = listener; },
+          onExit: (listener) => { exitListener = listener; }
+        };
+        return process;
+      },
+      shutdown: async () => undefined
+    };
+  }
+
+  async function createChatSessions(port: number, count: number, prefix = "Quest") {
+    const ids: string[] = [];
+    for (let index = 1; index <= count; index += 1) {
+      const created = await post(port, "/api/sessions", { name: `${prefix} ${index}`, workspaceId: "workspace-1", profileId: "profile-chat" });
+      expect(created.status).toBe(201);
+      ids.push(created.json.id as string);
+    }
+    return ids;
+  }
+
+  it("rejects the fifth start with 429 SESSION_CONCURRENCY_LIMIT, keeps idempotent starts, and frees a slot on stop", async () => {
+    const { dependencies } = createChatDependencies();
+    dependencies.policy = { readonly: false, processEnvironment: { SPECOS_MAX_RUNNING_SESSIONS: "4" } };
+    const { server, port } = await startServer(dependencies);
+    try {
+      const ids = await createChatSessions(port, 5);
+      for (const id of ids.slice(0, 4)) expect((await post(port, `/api/sessions/${id}/start`, { confirmed: true })).status).toBe(200);
+
+      const rejected = await post(port, `/api/sessions/${ids[4]}/start`, { confirmed: true });
+      expect(rejected.status).toBe(429);
+      expect(rejected.json.error.code).toBe("SESSION_CONCURRENCY_LIMIT");
+      expect(rejected.json.error.details).toMatchObject({ running: 4, limit: 4 });
+
+      // start-and-send 触发启动也受限（api-spec §2.2）
+      const sendRejected = await post(port, `/api/sessions/${ids[4]}/messages`, { clientMessageId: "limit-1", content: "hi", startIfStopped: true, confirmedStart: true });
+      expect(sendRejected.status).toBe(429);
+      expect(sendRejected.json.error.code).toBe("SESSION_CONCURRENCY_LIMIT");
+
+      // 已 running 会话的幂等 start 不受限
+      expect((await post(port, `/api/sessions/${ids[0]}/start`, { confirmed: true })).status).toBe(200);
+
+      expect((await post(port, `/api/sessions/${ids[0]}/stop`, {})).status).toBe(200);
+      expect((await post(port, `/api/sessions/${ids[4]}/start`, { confirmed: true })).status).toBe(200);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("clamps values below the floor to 4 and falls back to the default on invalid values with a warning", async () => {
+    const clamped = createChatDependencies();
+    clamped.dependencies.policy = { readonly: false, processEnvironment: { SPECOS_MAX_RUNNING_SESSIONS: "2" } };
+    const clampedServer = await startServer(clamped.dependencies);
+    try {
+      const ids = await createChatSessions(clampedServer.port, 5);
+      for (const id of ids.slice(0, 4)) expect((await post(clampedServer.port, `/api/sessions/${id}/start`, { confirmed: true })).status).toBe(200);
+      const rejected = await post(clampedServer.port, `/api/sessions/${ids[4]}/start`, { confirmed: true });
+      expect(rejected.status).toBe(429);
+      expect(rejected.json.error.details).toMatchObject({ running: 4, limit: 4 });
+      expect(clamped.dependencies.logger.warn).toHaveBeenCalledWith(expect.stringContaining("below the configuration floor"), expect.objectContaining({ value: "2" }));
+    } finally {
+      await clampedServer.server.close();
+    }
+
+    const invalid = createChatDependencies();
+    invalid.dependencies.policy = { readonly: false, processEnvironment: { SPECOS_MAX_RUNNING_SESSIONS: "banana" } };
+    const invalidServer = await startServer(invalid.dependencies);
+    try {
+      const ids = await createChatSessions(invalidServer.port, 5, "Fallback");
+      for (const id of ids) expect((await post(invalidServer.port, `/api/sessions/${id}/start`, { confirmed: true })).status).toBe(200);
+      expect(invalid.dependencies.logger.warn).toHaveBeenCalledWith(expect.stringContaining("Invalid SPECOS_MAX_RUNNING_SESSIONS"), expect.objectContaining({ value: "banana", limit: 8 }));
+    } finally {
+      await invalidServer.server.close();
+    }
+  });
+
+  it("keeps 2 chat + 2 terminal sessions fully isolated under concurrency (test-spec §4.2)", async () => {
+    const { dependencies, state, transcripts } = createChatDependencies({ ptyRuntime: createFakePtyRuntime() });
+    state.profiles.push({ id: "profile-pty-a", name: "PTY A", command: "fake-pty", args: ["pty-a"], adapterId: "generic", createdAt: "2026-01-01T00:00:00Z" });
+    state.profiles.push({ id: "profile-pty-b", name: "PTY B", command: "fake-pty", args: ["pty-b"], adapterId: "generic", createdAt: "2026-01-01T00:00:00Z" });
+    const { server, port } = await startServer(dependencies);
+    const sockets: WebSocket[] = [];
+    try {
+      const [chatA, chatB] = await createChatSessions(port, 2, "Chat");
+      const termA = (await post(port, "/api/sessions", { name: "Term A", workspaceId: "workspace-1", profileId: "profile-pty-a", interactionMode: "terminal" })).json.id as string;
+      const termB = (await post(port, "/api/sessions", { name: "Term B", workspaceId: "workspace-1", profileId: "profile-pty-b", interactionMode: "terminal" })).json.id as string;
+      expect((await post(port, `/api/sessions/${termA}/start`, { confirmed: true })).status).toBe(200);
+      expect((await post(port, `/api/sessions/${termB}/start`, { confirmed: true })).status).toBe(200);
+
+      // 每个会话一条 events 订阅，断言 WS 帧无串台
+      const wsFrames = new Map<string, any[]>();
+      for (const id of [chatA, chatB, termA, termB]) {
+        const frames: any[] = [];
+        wsFrames.set(id, frames);
+        const socket = new WebSocket(`ws://127.0.0.1:${port}/ws?sessionId=${id}&channel=events`);
+        sockets.push(socket);
+        socket.on("message", (data) => frames.push(JSON.parse(String(data))));
+        await new Promise<void>((resolve, reject) => { socket.once("open", () => resolve()); socket.once("error", reject); });
+        await waitFor(() => frames.some((frame) => frame.type === "subscription-ready"));
+      }
+
+      // 4 会话并行输入输出：2 chat 轮次 + 2 terminal 消息
+      const [sentA, sentB, termSentA, termSentB] = await Promise.all([
+        post(port, `/api/sessions/${chatA}/messages`, { clientMessageId: "chat-a-1", content: "alpha task", startIfStopped: true, confirmedStart: true }),
+        post(port, `/api/sessions/${chatB}/messages`, { clientMessageId: "chat-b-1", content: "beta task", startIfStopped: true, confirmedStart: true }),
+        post(port, `/api/sessions/${termA}/messages`, { clientMessageId: "term-a-1", content: "ls-alpha" }),
+        post(port, `/api/sessions/${termB}/messages`, { clientMessageId: "term-b-1", content: "ls-beta" })
+      ]);
+      for (const sent of [sentA, sentB, termSentA, termSentB]) expect(sent.status).toBe(202);
+      await waitFor(() => turnEnded(transcripts.get(chatA), sentA.json.turnId) && turnEnded(transcripts.get(chatB), sentB.json.turnId));
+      await waitFor(() => (transcripts.get(termA) ?? []).some((event) => event.kind === "pty_output") && (transcripts.get(termB) ?? []).some((event) => event.kind === "pty_output"));
+
+      // transcript 归属零交叉：sessionId、turnId、pty 标记互不渗透；sequence 各自严格单调
+      for (const [id, otherTurnId] of [[chatA, sentB.json.turnId], [chatB, sentA.json.turnId]] as const) {
+        const events = transcripts.get(id)!;
+        expect(events.every((event) => event.sessionId === id)).toBe(true);
+        expect(events.some((event) => event.metadata?.turnId === otherTurnId)).toBe(false);
+        expect(events.every((event, index) => index === 0 || event.sequence > events[index - 1].sequence)).toBe(true);
+      }
+      const termEventsA = transcripts.get(termA)!;
+      const termEventsB = transcripts.get(termB)!;
+      expect(termEventsA.every((event) => event.sessionId === termA)).toBe(true);
+      expect(termEventsB.every((event) => event.sessionId === termB)).toBe(true);
+      expect(termEventsA.some((event) => event.kind === "pty_output" && event.raw.includes("pty-a:ls-alpha"))).toBe(true);
+      expect(termEventsA.some((event) => event.raw.includes("pty-b") || event.raw.includes("ls-beta"))).toBe(false);
+      expect(termEventsB.some((event) => event.kind === "pty_output" && event.raw.includes("pty-b:ls-beta"))).toBe(true);
+      expect(termEventsB.some((event) => event.raw.includes("pty-a") || event.raw.includes("ls-alpha"))).toBe(false);
+
+      // WS 事件帧无串台：每路订阅收到的 transcript-event 全部属于自己的会话
+      await waitFor(() => (wsFrames.get(chatA) ?? []).some((frame) => frame.type === "transcript-event" && frame.event.metadata?.status === "turn-completed"));
+      for (const id of [chatA, chatB, termA, termB]) {
+        const eventFrames = (wsFrames.get(id) ?? []).filter((frame) => frame.type === "transcript-event");
+        expect(eventFrames.length).toBeGreaterThan(0);
+        expect(eventFrames.every((frame) => frame.event.sessionId === id)).toBe(true);
+      }
+    } finally {
+      for (const socket of sockets) socket.close();
       await server.close();
     }
   });

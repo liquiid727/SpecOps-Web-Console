@@ -29,11 +29,15 @@ const MAX_TRANSCRIPT_RESPONSE_BYTES = 1 * 1024 * 1024;
 const MAX_EVENT_PENDING = 512;
 const MAX_EVENT_PENDING_BYTES = 1 * 1024 * 1024;
 const MAX_EVENT_BUFFERED_BYTES = 1 * 1024 * 1024;
+const DEFAULT_MAX_RUNNING_SESSIONS = 8;
+const MIN_MAX_RUNNING_SESSIONS = 4;
 
 type EventSubscriber = { client: WebSocket; ready: boolean; pending: TranscriptEvent[]; pendingBytes: number };
 
 export async function createApplication(dependencies: ApplicationDependencies): Promise<Application> {
   const state = await dependencies.stateRepository.load();
+  // 全局并发上限（决策 D-6，runtime-orchestrator-spec §3.3）：默认 8、配置下限 4，非法值回落默认并告警
+  const maxRunningSessions = resolveMaxRunningSessions(dependencies.policy.processEnvironment.SPECOS_MAX_RUNNING_SESSIONS, dependencies.logger);
   // 执行控制层：PTY Worker 生命周期由 orchestrator 承担；transcript 写入与 state 持久化经回调留在本层（runtime-orchestrator-spec §2.2）
   const orchestrator = createRuntimeOrchestrator({
     ptyRuntime: dependencies.ptyRuntime,
@@ -257,6 +261,11 @@ export async function createApplication(dependencies: ApplicationDependencies): 
     if (dependencies.policy.readonly) throw new ApiHttpError(403, "READONLY_MODE", "Readonly mode disables local process startup.");
     if (!confirmed) throw new ApiHttpError(400, "VALIDATION_FAILED", "Session start requires explicit confirmation.", { field: "confirmed" });
     const chatSession = getSession(sessionId);
+    // D-6 并发检查：计数口径 runtimeStatus ∈ {starting, running}（terminal 与 chat 合并）；已运行会话的幂等 start 不受限，不排队
+    if (chatSession && chatSession.runtimeStatus !== "starting" && chatSession.runtimeStatus !== "running") {
+      const running = state.sessions.filter((item) => item.runtimeStatus === "starting" || item.runtimeStatus === "running").length;
+      if (running >= maxRunningSessions) throw new ApiHttpError(429, "SESSION_CONCURRENCY_LIMIT", "Running session limit reached.", { running, limit: maxRunningSessions });
+    }
     if (chatSession?.interactionMode === "chat") {
       // chat 会话 start 不 spawn PTY（api-spec §2.6）：校验后标记 running，Worker 由首轮 submitTurn 隐式创建
       const workspace = state.workspaces.find((item) => item.id === chatSession.workspaceId);
@@ -1106,6 +1115,21 @@ function parsePositiveInteger(value: string | undefined): number | undefined {
   if (value === undefined) return undefined;
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : undefined;
+}
+
+/** SPECOS_MAX_RUNNING_SESSIONS：非法值回落默认 8；低于配置下限的合法整数抬升到 4（D-6） */
+function resolveMaxRunningSessions(value: string | undefined, logger: ApplicationDependencies["logger"]): number {
+  if (value === undefined || value === "") return DEFAULT_MAX_RUNNING_SESSIONS;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    logger.warn("Invalid SPECOS_MAX_RUNNING_SESSIONS value; falling back to the default limit.", { value, limit: DEFAULT_MAX_RUNNING_SESSIONS });
+    return DEFAULT_MAX_RUNNING_SESSIONS;
+  }
+  if (parsed < MIN_MAX_RUNNING_SESSIONS) {
+    logger.warn("SPECOS_MAX_RUNNING_SESSIONS is below the configuration floor; clamping.", { value, limit: MIN_MAX_RUNNING_SESSIONS });
+    return MIN_MAX_RUNNING_SESSIONS;
+  }
+  return parsed;
 }
 
 function definedEnvironment(environment: Readonly<Record<string, string | undefined>>) {
