@@ -110,6 +110,8 @@ export function App() {
   async function createSession(input: { name: string; workspaceId: string; profileId: string }) {
     await runAction(async () => {
       const result = await api.createSession({ ...input, start: true, confirmed: true });
+      // profile 不支持 headless → 服务端降级 terminal，一次性说明（api-spec §2.6 / frontend-spec 降级说明）
+      if (result.interactionModeDowngraded) feedback.warning({ title: t("sessionDowngradedToTerminal") });
       setActiveSessionId(result.session?.id ?? result.id);
       updatePreferences({ currentView: "chat" });
     }, true, "sessionCreated");

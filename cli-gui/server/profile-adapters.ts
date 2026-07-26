@@ -29,7 +29,8 @@ const genericCapabilities: CliProfileCapabilities = {
 
 /** 已验证 CLI 版本范围默认值（adapter-spec §5）；版本外 headless 能力关闭 */
 const defaultAdapterVersionRanges: Record<string, string | undefined> = {
-  codex: ">=0.145.0 <1.0.0"
+  codex: ">=0.145.0 <1.0.0",
+  "claude-code": ">=2.0.0 <3.0.0"
 };
 
 const claudeOptions = {
@@ -72,7 +73,18 @@ export function createProfileAdapterRegistry(): ProfileAdapterRegistry {
     async buildTurn(profile, config) {
       const detected = await capabilities(profile);
       // Adapter 无状态纯翻译：headless 不支持时被调用属上层缺陷（adapter-spec §3.3）
-      if (!detected.supportsHeadlessTurns || profile.adapterId !== "codex") throw new HeadlessTurnUnsupportedError(profile.adapterId);
+      if (!detected.supportsHeadlessTurns) throw new HeadlessTurnUnsupportedError(profile.adapterId);
+      if (profile.adapterId === "claude-code") {
+        // claude -p --output-format stream-json --verbose （adapter-spec §3.2）
+        const args = [...profile.args, "-p", "--output-format", "stream-json", "--verbose"];
+        appendOption(args, config.permission, "--permission-mode", detected.permissions);
+        appendOption(args, config.mode, undefined, detected.modes);
+        appendOption(args, config.model, "--model", detected.models);
+        if (config.resumeToken) args.push("--resume", config.resumeToken);
+        args.push(config.prompt);
+        return { command: profile.command, args };
+      }
+      if (profile.adapterId !== "codex") throw new HeadlessTurnUnsupportedError(profile.adapterId);
       const args = [...profile.args, "exec", "--json"];
       appendOption(args, config.model, "--model", detected.models);
       appendOption(args, config.mode, "--sandbox", detected.modes);
@@ -82,8 +94,9 @@ export function createProfileAdapterRegistry(): ProfileAdapterRegistry {
       return { command: profile.command, args };
     },
     parseEvents(profile, stream, ctx) {
-      if (profile.adapterId !== "codex") throw new HeadlessTurnUnsupportedError(profile.adapterId);
-      return parseCodexEvents(stream, ctx);
+      if (profile.adapterId === "codex") return parseCodexEvents(stream, ctx);
+      if (profile.adapterId === "claude-code") return parseClaudeEvents(stream, ctx);
+      throw new HeadlessTurnUnsupportedError(profile.adapterId);
     }
   };
 }
@@ -175,6 +188,80 @@ function* mapCodexLine(line: string, ctx: ParseContext, result: TurnParseResult)
   yield { kind: "pty_output", source: "profile-adapter", raw: line, metadata: { turnId: ctx.turnId } };
 }
 
+/** Claude `-p --output-format stream-json` JSONL → 规范事件；容错映射表，未识别降级 pty_output（adapter-spec §3.2、§4） */
+async function* parseClaudeEvents(stream: Readable, ctx: ParseContext): AsyncGenerator<ParsedTurnEvent, TurnParseResult, void> {
+  const result: TurnParseResult = {};
+  let buffer = "";
+  for await (const chunk of stream) {
+    buffer += typeof chunk === "string" ? chunk : chunk.toString("utf8");
+    let newline = buffer.indexOf("\n");
+    while (newline >= 0) {
+      const line = buffer.slice(0, newline);
+      buffer = buffer.slice(newline + 1);
+      yield* mapClaudeLine(line, ctx, result);
+      newline = buffer.indexOf("\n");
+    }
+  }
+  if (buffer.length > 0) yield* mapClaudeLine(buffer, ctx, result);
+  return result;
+}
+
+function* mapClaudeLine(line: string, ctx: ParseContext, result: TurnParseResult): Generator<ParsedTurnEvent> {
+  if (!line.trim()) return;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(line);
+  } catch {
+    yield { kind: "pty_output", source: "profile-adapter", raw: line, metadata: { turnId: ctx.turnId } };
+    return;
+  }
+  if (!parsed || typeof parsed !== "object" || typeof (parsed as { type?: unknown }).type !== "string") {
+    yield { kind: "pty_output", source: "profile-adapter", raw: line, metadata: { turnId: ctx.turnId } };
+    return;
+  }
+  const event = parsed as { type: string; session_id?: unknown; message?: unknown; usage?: unknown };
+  // session_id 多帧重复出现：取最后一个（adapter-spec §6）
+  if (typeof event.session_id === "string" && event.session_id) result.resumeToken = event.session_id;
+  if (event.type === "system") {
+    // init 等系统帧：提取 session_id 后不产出事件；无 session_id 的未知系统帧降级
+    if (typeof event.session_id === "string" && event.session_id) return;
+    yield { kind: "pty_output", source: "profile-adapter", raw: line, metadata: { turnId: ctx.turnId } };
+    return;
+  }
+  // user 帧为 tool_result 回显：tool_use 已产 tool_activity，且 Adapter 不得产出 user_message（adapter-spec §4）
+  if (event.type === "user") return;
+  if (event.type === "assistant" && event.message && typeof event.message === "object") {
+    const content = (event.message as { content?: unknown }).content;
+    if (Array.isArray(content)) {
+      let emitted = false;
+      for (const item of content) {
+        const block = item as { type?: unknown; text?: unknown; name?: unknown };
+        if (block?.type === "text" && typeof block.text === "string") {
+          emitted = true;
+          yield { kind: "assistant_message", source: "profile-adapter", raw: block.text, metadata: { turnId: ctx.turnId } };
+        } else if (block?.type === "tool_use" && typeof block.name === "string") {
+          emitted = true;
+          yield { kind: "tool_activity", source: "profile-adapter", raw: block.name, metadata: { turnId: ctx.turnId, tool: block.name } };
+        }
+      }
+      if (emitted) return;
+    }
+    yield { kind: "pty_output", source: "profile-adapter", raw: line, metadata: { turnId: ctx.turnId } };
+    return;
+  }
+  if (event.type === "result") {
+    const usage = event.usage as { input_tokens?: unknown; output_tokens?: unknown } | undefined;
+    if (usage && typeof usage === "object") {
+      result.usage = {
+        inputTokens: typeof usage.input_tokens === "number" ? usage.input_tokens : undefined,
+        outputTokens: typeof usage.output_tokens === "number" ? usage.output_tokens : undefined
+      };
+    }
+    return;
+  }
+  yield { kind: "pty_output", source: "profile-adapter", raw: line, metadata: { turnId: ctx.turnId } };
+}
+
 async function detectCapabilities(profile: CliProfileV2): Promise<CliProfileCapabilities> {
   if (profile.adapterId === "generic") return { ...genericCapabilities };
   let detectedVersion: string | undefined;
@@ -189,8 +276,8 @@ async function detectCapabilities(profile: CliProfileV2): Promise<CliProfileCapa
   const optionSet = profile.adapterId === "claude-code" ? claudeOptions : codexOptions;
   const versionRange = profile.adapterVersionRange ?? defaultAdapterVersionRanges[profile.adapterId];
   const withinVerifiedRange = compatibility === "supported" && versionWithinRange(detectedVersion, versionRange);
-  // A 段：仅 codex 开启 headless；claude-code 在 issue-010 接入；approval 一律 false（adapter-spec §2.2 表）
-  const headless = withinVerifiedRange && profile.adapterId === "codex";
+  // codex（A 段）与 claude-code（B 段，issue-010）开启 headless；approval 一律 false（adapter-spec §2.2 表）
+  const headless = withinVerifiedRange && (profile.adapterId === "codex" || profile.adapterId === "claude-code");
   return {
     adapterId: profile.adapterId,
     detectedVersion,

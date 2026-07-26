@@ -8,6 +8,7 @@ import { createProfileAdapterRegistry, HeadlessTurnUnsupportedError, Unsupported
 const base = (adapterId: CliProfileV2["adapterId"], command: string): CliProfileV2 => ({ id: `${adapterId}-1`, name: adapterId, command, args: [], adapterId, createdAt: "2026-01-01T00:00:00Z" });
 // process.execPath 报告的 node 版本落在宽范围内 → headless 开启（不依赖真实 codex）
 const headlessCodex = (): CliProfileV2 => ({ ...base("codex", process.execPath), adapterVersionRange: ">=1.0.0 <100.0.0" });
+const headlessClaude = (): CliProfileV2 => ({ ...base("claude-code", process.execPath), adapterVersionRange: ">=1.0.0 <100.0.0" });
 
 async function collect(iterator: AsyncGenerator<ParsedTurnEvent, TurnParseResult, void>) {
   const events: ParsedTurnEvent[] = [];
@@ -70,6 +71,20 @@ describe("headless capability fields (adapter-spec §2.2)", () => {
   it("closes headless capability outside the default verified range without touching compatibility", async () => {
     const registry = createProfileAdapterRegistry();
     const capabilities = await registry.capabilities!(base("codex", process.execPath));
+    expect(capabilities.compatibility).toBe("supported");
+    expect(capabilities).toMatchObject({ supportsHeadlessTurns: false, supportsResume: false, supportsApproval: false });
+  });
+
+  it("enables claude headless turns and resume within the verified version range, approval stays false (issue-010)", async () => {
+    const registry = createProfileAdapterRegistry();
+    const capabilities = await registry.capabilities!(headlessClaude());
+    expect(capabilities.compatibility).toBe("supported");
+    expect(capabilities).toMatchObject({ supportsHeadlessTurns: true, supportsResume: true, supportsApproval: false });
+  });
+
+  it("closes claude headless capability outside the default verified range", async () => {
+    const registry = createProfileAdapterRegistry();
+    const capabilities = await registry.capabilities!(base("claude-code", process.execPath));
     expect(capabilities.compatibility).toBe("supported");
     expect(capabilities).toMatchObject({ supportsHeadlessTurns: false, supportsResume: false, supportsApproval: false });
   });
@@ -157,5 +172,73 @@ describe("codex parseEvents (adapter-spec §3.1/§4)", () => {
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({ kind: "assistant_message", raw: "tail" });
     expect(() => registry.parseEvents!(base("generic", "anything"), new PassThrough(), { turnId: "turn-4" })).toThrow(HeadlessTurnUnsupportedError);
+  });
+});
+
+describe("claude buildTurn argv snapshots (adapter-spec §3.2)", () => {
+  it("assembles -p stream-json with options, resume and prompt as a single argv element", async () => {
+    const registry = createProfileAdapterRegistry();
+    const prompt = 'fix the "auth" bug\nthen run tests';
+    const spec = await registry.buildTurn!(headlessClaude(), { workspacePath: "/tmp/ws", prompt, permission: "acceptEdits", mode: null, model: "sonnet", resumeToken: "sess-42" });
+    expect(spec.command).toBe(process.execPath);
+    expect(spec.args).toEqual(["-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "acceptEdits", "--model", "sonnet", "--resume", "sess-42", prompt]);
+  });
+
+  it("omits default options and resume on the first turn", async () => {
+    const registry = createProfileAdapterRegistry();
+    const spec = await registry.buildTurn!(headlessClaude(), { workspacePath: "/tmp/ws", prompt: "hello", permission: "default", mode: null, model: null });
+    expect(spec.args).toEqual(["-p", "--output-format", "stream-json", "--verbose", "hello"]);
+  });
+
+  it("rejects unsupported modes and non-headless claude profiles", async () => {
+    const registry = createProfileAdapterRegistry();
+    await expect(registry.buildTurn!(headlessClaude(), { workspacePath: "/tmp/ws", prompt: "x", permission: null, mode: "workspace-write", model: null })).rejects.toBeInstanceOf(UnsupportedCliOptionError);
+    await expect(registry.buildTurn!(base("claude-code", process.execPath), { workspacePath: "/tmp/ws", prompt: "x", permission: null, mode: null, model: null })).rejects.toBeInstanceOf(HeadlessTurnUnsupportedError);
+  });
+});
+
+describe("claude parseEvents (adapter-spec §3.2/§4)", () => {
+  const fixture = [
+    "Claude Code banner line",
+    '{"type":"system","subtype":"init","session_id":"sess-1","model":"sonnet"}',
+    '{"type":"assistant","message":{"content":[{"type":"text","text":"Hello **claude**"},{"type":"tool_use","name":"Bash","input":{"command":"ls"}}]},"session_id":"sess-1"}',
+    '{"type":"user","message":{"content":[{"type":"tool_result","content":"ok"}]},"session_id":"sess-1"}',
+    '{"type":"assistant","message":{"content":[{"type":"unknown_block"}]},"session_id":"sess-1"}',
+    '{"type":"mystery.future.event","payload":1}',
+    '{"type":"result","subtype":"success","result":"done","session_id":"sess-2","usage":{"input_tokens":7,"output_tokens":3}}'
+  ].join("\n") + "\n";
+
+  it("maps stream-json to canonical kinds, extracts the last resumeToken and usage", async () => {
+    const registry = createProfileAdapterRegistry();
+    const stream = new PassThrough();
+    stream.end(fixture);
+    const { events, result } = await collect(registry.parseEvents!(headlessClaude(), stream, { turnId: "turn-c1" }));
+    expect(events.map((event) => event.kind)).toEqual(["pty_output", "assistant_message", "tool_activity", "pty_output", "pty_output"]);
+    expect(events[0].raw).toBe("Claude Code banner line");
+    expect(events[1].raw).toBe("Hello **claude**");
+    expect(events[2]).toMatchObject({ raw: "Bash", metadata: { turnId: "turn-c1", tool: "Bash" } });
+    expect(events[3].raw).toBe('{"type":"assistant","message":{"content":[{"type":"unknown_block"}]},"session_id":"sess-1"}');
+    expect(events[4].raw).toBe('{"type":"mystery.future.event","payload":1}');
+    for (const event of events) {
+      expect(event.source).toBe("profile-adapter");
+      expect(event.metadata?.turnId).toBe("turn-c1");
+      expect(["lifecycle", "error", "user_message", "approval_response"]).not.toContain(event.kind);
+    }
+    expect(result.resumeToken).toBe("sess-2");
+    expect(result.usage).toEqual({ inputTokens: 7, outputTokens: 3 });
+  });
+
+  it("yields events streamingly before the process stream ends", async () => {
+    const registry = createProfileAdapterRegistry();
+    const stream = new PassThrough();
+    const iterator = registry.parseEvents!(headlessClaude(), stream, { turnId: "turn-c2" });
+    stream.write('{"type":"assistant","message":{"content":[{"type":"text","text":"first"}]},"session_id":"sess-9"}\n');
+    const first = await iterator.next();
+    expect(first.done).toBe(false);
+    expect((first.value as ParsedTurnEvent).raw).toBe("first");
+    stream.end('{"type":"result","session_id":"sess-9","usage":{"input_tokens":1,"output_tokens":2}}\n');
+    const done = await iterator.next();
+    expect(done.done).toBe(true);
+    expect((done.value as TurnParseResult)).toMatchObject({ resumeToken: "sess-9", usage: { inputTokens: 1, outputTokens: 2 } });
   });
 });

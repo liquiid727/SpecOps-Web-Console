@@ -11,6 +11,7 @@ import { WebSocket } from "ws";
 import type { AppStateV3, TranscriptEvent, TranscriptPage } from "../shared/types.js";
 import { createApplication } from "./application.js";
 import { createServer } from "./http-server.js";
+import { createProfileAdapterRegistry } from "./profile-adapters.js";
 import type { ApplicationDependencies, ParsedTurnEvent, TurnConfig, TurnParseResult } from "./ports.js";
 
 const emptyState: AppStateV3 = { workspaces: [], profiles: [], sessions: [] };
@@ -18,13 +19,25 @@ const emptyState: AppStateV3 = { workspaces: [], profiles: [], sessions: [] };
 let fixtureDir = "";
 let echoScript = "";
 let sleepScript = "";
+let claudeScript = "";
 
 beforeAll(async () => {
   fixtureDir = await mkdtemp(path.join(tmpdir(), "chat-api-fake-cli-"));
   echoScript = path.join(fixtureDir, "echo.cjs");
   sleepScript = path.join(fixtureDir, "sleep.cjs");
+  claudeScript = path.join(fixtureDir, "claude.cjs");
   await writeFile(echoScript, 'const token = process.argv[2] || "t-1";\nconsole.log("assistant says hi");\nconsole.log("token:" + token);\n');
   await writeFile(sleepScript, 'console.log("still working");\nsetTimeout(() => {}, Number(process.argv[2] || "5000"));\n');
+  // 假 claude CLI：按 stream-json 行协议输出；--resume 有无决定 session_id 递进（test-spec §3.6）
+  await writeFile(claudeScript, [
+    'const resumeIndex = process.argv.indexOf("--resume");',
+    'const resumed = resumeIndex >= 0 ? process.argv[resumeIndex + 1] : "";',
+    'const sid = resumed ? "sess-2" : "sess-1";',
+    'console.log(JSON.stringify({ type: "system", subtype: "init", session_id: sid }));',
+    'console.log(JSON.stringify({ type: "assistant", message: { content: [{ type: "text", text: resumed ? "resumed:" + resumed : "claude first reply" }] }, session_id: sid }));',
+    'console.log(JSON.stringify({ type: "result", subtype: "success", session_id: sid, usage: { input_tokens: 1, output_tokens: 2 } }));',
+    ""
+  ].join("\n"));
 });
 
 afterAll(async () => {
@@ -358,6 +371,55 @@ describe("chat API wiring", () => {
       const blocked = await post(port, "/api/sessions/session-x/turns/cancel", { turnId: "turn-1" });
       expect(blocked.status).toBe(403);
       expect(blocked.json.error.code).toBe("READONLY_MODE");
+    } finally {
+      await server.close();
+    }
+  });
+
+  // issue-010：真实 Claude adapter + 假 stream-json CLI 的多轮 resume 集成（adapter-spec §3.2、test-spec §3.3）
+  it("runs claude multi-turn chat with resume through the real adapter registry and a fake stream-json CLI", async () => {
+    const { dependencies, state, transcripts } = createChatDependencies({ profileAdapters: createProfileAdapterRegistry() });
+    state.profiles.push({ id: "profile-claude", name: "Claude", command: process.execPath, args: [claudeScript], adapterId: "claude-code", adapterVersionRange: ">=1.0.0 <100.0.0", createdAt: "2026-01-01T00:00:00Z" });
+    const { server, port } = await startServer(dependencies);
+    try {
+      const created = await post(port, "/api/sessions", { name: "Claude chat", workspaceId: "workspace-1", profileId: "profile-claude" });
+      expect(created.status).toBe(201);
+      expect(created.json.interactionMode).toBe("chat");
+      expect(created.json.interactionModeDowngraded).toBeUndefined();
+      const sessionId = created.json.id as string;
+
+      const first = await post(port, `/api/sessions/${sessionId}/messages`, { clientMessageId: "claude-1", content: "hello claude", startIfStopped: true, confirmedStart: true });
+      expect(first.status).toBe(202);
+      await waitFor(() => turnEnded(transcripts.get(sessionId), first.json.turnId));
+      let events = transcripts.get(sessionId)!;
+      expect(events.some((event) => event.kind === "assistant_message" && event.raw === "claude first reply")).toBe(true);
+      expect(state.sessions.find((item) => item.id === sessionId)?.chatContext?.resumeToken).toBe("sess-1");
+
+      // 第二轮：--resume sess-1 经真实 buildTurn 注入，假 CLI 回显验证
+      const second = await post(port, `/api/sessions/${sessionId}/messages`, { clientMessageId: "claude-2", content: "continue" });
+      expect(second.status).toBe(202);
+      await waitFor(() => turnEnded(transcripts.get(sessionId), second.json.turnId));
+      events = transcripts.get(sessionId)!;
+      expect(events.some((event) => event.kind === "assistant_message" && event.raw === "resumed:sess-1")).toBe(true);
+      expect(state.sessions.find((item) => item.id === sessionId)?.chatContext?.resumeToken).toBe("sess-2");
+      // Adapter 不产出 user_message：仅 composer 侧产生的两条
+      expect(events.filter((event) => event.kind === "user_message")).toHaveLength(2);
+    } finally {
+      await server.close();
+    }
+  });
+
+  // issue-010：generic 降级链路走真实 registry（非假 capabilities）
+  it("downgrades generic chat sessions to terminal through the real adapter registry", async () => {
+    const { dependencies, state } = createChatDependencies({ profileAdapters: createProfileAdapterRegistry() });
+    state.profiles.push({ id: "profile-generic-real", name: "Generic real", command: process.execPath, args: [], adapterId: "generic", createdAt: "2026-01-01T00:00:00Z" });
+    const { server, port } = await startServer(dependencies);
+    try {
+      const downgraded = await post(port, "/api/sessions", { name: "Generic", workspaceId: "workspace-1", profileId: "profile-generic-real", interactionMode: "chat" });
+      expect(downgraded.status).toBe(201);
+      expect(downgraded.json.interactionMode).toBe("terminal");
+      expect(downgraded.json.interactionModeDowngraded).toBe(true);
+      expect(state.sessions.find((item) => item.id === downgraded.json.id)?.interactionMode).toBe("terminal");
     } finally {
       await server.close();
     }
