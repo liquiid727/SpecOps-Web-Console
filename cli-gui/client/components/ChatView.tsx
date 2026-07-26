@@ -14,6 +14,7 @@ import { useFeedback } from "./ui/Feedback";
 import { Badge, Button, EmptyState, Tabs } from "./ui";
 
 const TranscriptPanel = lazy(() => import("./TranscriptPanel").then((module) => ({ default: module.TranscriptPanel })));
+const ChatTerminalReplay = lazy(() => import("./ChatTerminalReplay").then((module) => ({ default: module.ChatTerminalReplay })));
 
 interface ChatViewProps {
   session: Session;
@@ -194,7 +195,7 @@ export function ChatView({ session, workspace, profile, readonly, centerView, on
         </div>
       </div>
       <div className="chat-messages">
-        {centerView === "transcript" ? <Suspense fallback={<div className="transcript-state">{t("loadingTranscript")}</div>}><TranscriptPanel sessionId={session.id} localEvents={echoEvents} onTurnStatus={handleTurnStatus} onDerivedTurn={handleDerivedTurn} onRetry={composerDisabled ? undefined : retryTurn} onApprove={approvalEnabled ? respondApproval : undefined} approvalFallback={approvalFallback} /></Suspense> : running ? <div className="chat-terminal"><TerminalView sessionId={session.id} onStatus={onStatus} /></div> : <EmptyState className="chat-empty" icon={<Icon name="terminal" />} description={t("terminalStopped")} />}
+        {centerView === "transcript" ? <Suspense fallback={<div className="transcript-state">{t("loadingTranscript")}</div>}><TranscriptPanel sessionId={session.id} localEvents={echoEvents} onTurnStatus={handleTurnStatus} onDerivedTurn={handleDerivedTurn} onRetry={composerDisabled ? undefined : retryTurn} onApprove={approvalEnabled ? respondApproval : undefined} approvalFallback={approvalFallback} /></Suspense> : chatSession ? <Suspense fallback={<div className="transcript-state">{t("loadingTranscript")}</div>}><ChatTerminalReplay sessionId={session.id} /></Suspense> : running ? <div className="chat-terminal"><TerminalView sessionId={session.id} onStatus={onStatus} /></div> : <EmptyState className="chat-empty" icon={<Icon name="terminal" />} description={t("terminalStopped")} />}
       </div>
       <div className="chat-composer">
         <PromptComposer

@@ -44,6 +44,10 @@ h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 
 .workspace-error { display: flex; gap: 10px; align-items: center; padding: 9px 12px; border-bottom: 1px solid var(--danger-border); background: var(--danger-muted); color: var(--danger-text); font-size: 11px; }
 .workspace-error strong { color: var(--error); }
 .transcript-list { min-height: 0; flex: 1; overflow: auto; display: grid; align-content: start; gap: 10px; padding: 14px; }
+.pty-replay { min-height: 0; flex: 1; overflow: auto; display: grid; align-content: start; gap: 12px; padding: 14px; }
+.pty-replay-segment { display: grid; gap: 6px; }
+.pty-replay-header { font-size: 10px; color: var(--muted); }
+.pty-replay-text { margin: 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); font: 11px/1.6 "SFMono-Regular", Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
 .transcript-event { position: relative; display: grid; gap: 8px; max-width: 880px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
 .transcript-event.user_input { margin-left: auto; width: min(760px, 94%); background: var(--bubble-user-bg); border-color: var(--bubble-user-border); }
 .transcript-event.user_message { margin-left: auto; width: min(760px, 94%); background: var(--bubble-user-bg); border-color: var(--bubble-user-border); }
