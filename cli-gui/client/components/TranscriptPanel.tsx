@@ -8,7 +8,7 @@ import { toFeedbackError, toFeedbackWarning } from "../feedback-errors";
 import { useI18n } from "../i18n";
 import { Icon } from "./ui/Icon";
 import { useFeedback } from "./ui/Feedback";
-import { isNearBottom, projectTranscriptEvents, buildTurnPrompts, deriveActiveTurnId, type TranscriptDisplayItem } from "../transcript-display";
+import { isNearBottom, projectTranscriptEvents, buildTurnPrompts, buildApprovalStates, deriveActiveTurnId, type ApprovalDisplayState, type TranscriptDisplayItem } from "../transcript-display";
 import type { TurnStatus } from "../../shared/websocket";
 import { AsyncState } from "./patterns";
 import { Button } from "./ui";
@@ -24,9 +24,13 @@ interface TranscriptPanelProps {
   onDerivedTurn?: (turnId: string | undefined) => void;
   /** 失败轮次重试：回传原 prompt，调用方以新 clientMessageId 重发（frontend-spec §5.2） */
   onRetry?: (content: string) => void;
+  /** 审批应答（frontend-spec §5.4）：仅 supportsApproval 且非只读时传入；409 竞态由调用方 toast 后抛出以定格气泡 */
+  onApprove?: (approvalId: string, decision: "allow" | "deny") => Promise<void>;
+  /** supportsApproval=false 兜底：失败轮次错误条目附权限指引文案（frontend-spec §5.4） */
+  approvalFallback?: boolean;
 }
 
-export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerivedTurn, onRetry }: TranscriptPanelProps) {
+export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerivedTurn, onRetry, onApprove, approvalFallback }: TranscriptPanelProps) {
   const { t } = useI18n();
   const feedback = useFeedback();
   const [events, setEvents] = useState<TranscriptEvent[]>([]);
@@ -149,6 +153,7 @@ export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerive
 
   const displayEvents = useMemo(() => projectTranscriptEvents(events), [events]);
   const turnPrompts = useMemo(() => buildTurnPrompts(events), [events]);
+  const approvalStates = useMemo(() => buildApprovalStates(events), [events]);
   useEffect(() => { onDerivedTurn?.(deriveActiveTurnId(events)); }, [events, onDerivedTurn]);
   const listRef = useRef<HTMLDivElement | null>(null);
   const [following, setFollowing] = useState(true);
@@ -186,7 +191,15 @@ export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerive
     {displayEvents.map((item) => {
       const turnId = typeof item.event.metadata?.turnId === "string" ? item.event.metadata.turnId : undefined;
       const prompt = item.event.kind === "error" && turnId ? turnPrompts.get(turnId) : undefined;
-      return <TranscriptMessage item={item} key={item.id} onRetry={onRetry && prompt ? () => onRetry(prompt) : undefined} />;
+      const approvalId = item.event.kind === "approval_request" && typeof item.event.metadata?.approvalId === "string" ? item.event.metadata.approvalId : undefined;
+      return <TranscriptMessage
+        item={item}
+        key={item.id}
+        onRetry={onRetry && prompt ? () => onRetry(prompt) : undefined}
+        approval={approvalId ? approvalStates.get(approvalId) : undefined}
+        onRespondApproval={onApprove && approvalId ? (decision) => onApprove(approvalId, decision) : undefined}
+        fallbackHint={approvalFallback && item.event.kind === "error" && Boolean(turnId)}
+      />;
     })}
     {!following && <Button variant="secondary" className="secondary-button back-to-latest" onClick={backToLatest}>{t("backToLatest")}</Button>}
   </div>;
@@ -195,11 +208,14 @@ export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerive
 const INTERRUPTED_LIFECYCLE = new Set(["turn-failed", "turn-cancelled"]);
 
 /** kind → 渲染全表（frontend-spec §3.1）；未知 kind 中性兜底，前向兼容不报错 */
-export function TranscriptMessage({ item, onRetry }: { item: TranscriptDisplayItem; onRetry?: () => void }) {
+export function TranscriptMessage({ item, onRetry, approval, onRespondApproval, fallbackHint }: { item: TranscriptDisplayItem; onRetry?: () => void; approval?: ApprovalDisplayState; onRespondApproval?: (decision: "allow" | "deny") => Promise<void>; fallbackHint?: boolean }) {
   const { t } = useI18n();
   const { event } = item;
   const kind = event.kind as string;
   const time = <time>{formatTime(event.occurredAt)}</time>;
+  // 审批气泡交互态：loading（待接口返回）/ 409 竞态定格过期（frontend-spec §5.4）
+  const [pendingDecision, setPendingDecision] = useState<"allow" | "deny">();
+  const [locallyExpired, setLocallyExpired] = useState(false);
 
   if (kind === "user_message") {
     // 右对齐纯文本气泡，不渲染 Markdown
@@ -251,13 +267,37 @@ export function TranscriptMessage({ item, onRetry }: { item: TranscriptDisplayIt
       <header><span>{t("errorEvent")}</span>{time}</header>
       <p className="error-text">{item.content}</p>
       {code && <code className="error-code">{code}</code>}
+      {fallbackHint && <p className="approval-fallback-hint">{t("chat.approvalFallbackHint")}</p>}
       {onRetry && <Button variant="secondary" className="secondary-button retry-turn" onClick={onRetry}>{t("retry")}</Button>}
     </article>;
   }
-  if (kind === "approval_request" || kind === "approval_response") {
-    // A 段中性系统条目；审批气泡交互属 B 段（frontend-spec §5.4）
+  if (kind === "approval_request") {
+    // 审批气泡五态：待决（Allow/Deny）/ loading / 定格 / 过期 / 回放静态记录（frontend-spec §5.4）
+    const decision = approval?.decision;
+    const expired = locallyExpired || approval?.expired === true;
+    const actionable = !decision && !expired && Boolean(onRespondApproval);
+    const respond = (choice: "allow" | "deny") => {
+      if (!onRespondApproval || pendingDecision) return;
+      setPendingDecision(choice);
+      onRespondApproval(choice)
+        .catch(() => setLocallyExpired(true))
+        .finally(() => setPendingDecision(undefined));
+    };
+    return <article className={`transcript-event approval_request${expired ? " expired" : ""}`}>
+      <header><span>{t("permissionRequest")}</span>{time}</header>
+      <p className="lifecycle-text">{item.content}</p>
+      {decision && <p className="approval-decision">{t("approvalDecided")}<code className="lifecycle-status">{decision}</code></p>}
+      {!decision && expired && <p className="approval-decision"><code className="lifecycle-status">{t("approvalExpired")}</code></p>}
+      {actionable && <div className="approval-actions">
+        <Button variant="primary" className="primary-button approval-allow" onClick={() => respond("allow")} loading={pendingDecision === "allow"} loadingLabel={t("loading")} disabled={Boolean(pendingDecision)}>{t("approvalAllow")}</Button>
+        <Button variant="secondary" className="secondary-button approval-deny" onClick={() => respond("deny")} loading={pendingDecision === "deny"} loadingLabel={t("loading")} disabled={Boolean(pendingDecision)}>{t("approvalDeny")}</Button>
+      </div>}
+    </article>;
+  }
+  if (kind === "approval_response") {
+    // 决定记录保留独立条目（回放与实时同构，event-protocol-spec §3）
     const decision = typeof event.metadata?.decision === "string" ? event.metadata.decision : "";
-    return <article className={`transcript-event ${kind}`}>
+    return <article className="transcript-event approval_response">
       <header><span>{t("permissionRequest")}</span>{time}</header>
       <p className="lifecycle-text">{item.content}{decision && <code className="lifecycle-status">{decision}</code>}</p>
     </article>;

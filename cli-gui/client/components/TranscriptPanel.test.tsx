@@ -3,7 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TranscriptEvent } from "../../shared/types";
 import { I18nProvider } from "../i18n";
-import { isNearBottom, projectTranscriptEvents, sanitizePtyOutput, buildTurnPrompts, deriveActiveTurnId } from "../transcript-display";
+import { isNearBottom, projectTranscriptEvents, sanitizePtyOutput, buildTurnPrompts, buildApprovalStates, deriveActiveTurnId } from "../transcript-display";
 import { MarkdownLite, TranscriptMessage } from "./TranscriptPanel";
 
 describe("Markdown transcript rendering", () => {
@@ -259,5 +259,95 @@ describe("scroll follow policy", () => {
     expect(isNearBottom(700, 1000, 300)).toBe(true);
     expect(isNearBottom(600, 1000, 300)).toBe(false);
     expect(isNearBottom(0, 200, 200)).toBe(true);
+  });
+});
+
+// —— issue-013：审批气泡五态 + 409 竞态（frontend-spec §5.4，test-spec §3.7）——
+describe("approval bubble interactions", () => {
+  let container: HTMLDivElement;
+  let root: Root;
+
+  beforeEach(() => {
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+  });
+
+  afterEach(() => {
+    act(() => root.unmount());
+    container.remove();
+  });
+
+  function requestItem() {
+    const [item] = projectTranscriptEvents([makeEvent({ id: "e1", kind: "approval_request", raw: "command: npm install", metadata: { approvalId: "app-1", turnId: "turn-1" } })]);
+    return item;
+  }
+
+  it("pairs requests with responses and expires dangling approvals of finished turns", () => {
+    const request = makeEvent({ id: "e1", kind: "approval_request", raw: "command: rm -rf dist", metadata: { approvalId: "app-1", turnId: "turn-1" } });
+    const paired = buildApprovalStates([
+      request,
+      makeEvent({ id: "e2", kind: "approval_response", raw: "decision recorded", metadata: { approvalId: "app-1", turnId: "turn-1", decision: "allow" } })
+    ]);
+    expect(paired.get("app-1")).toEqual({ decision: "allow", expired: false });
+
+    const dangling = buildApprovalStates([
+      request,
+      makeEvent({ id: "e2", kind: "lifecycle", source: "session-manager", raw: "Turn cancelled.", metadata: { turnId: "turn-1", status: "turn-cancelled" } })
+    ]);
+    expect(dangling.get("app-1")).toEqual({ decision: undefined, expired: true });
+
+    const active = buildApprovalStates([request]);
+    expect(active.get("app-1")).toEqual({ decision: undefined, expired: false });
+  });
+
+  it("renders Allow/Deny for pending approvals and locks buttons while responding", async () => {
+    let settle: () => void = () => undefined;
+    const onRespond = vi.fn(() => new Promise<void>((resolve) => { settle = resolve; }));
+    act(() => root.render(<I18nProvider><TranscriptMessage item={requestItem()} approval={{ decision: undefined, expired: false }} onRespondApproval={onRespond} /></I18nProvider>));
+    const allow = container.querySelector(".approval-allow") as HTMLButtonElement;
+    const deny = container.querySelector(".approval-deny") as HTMLButtonElement;
+    expect(allow?.textContent).toBe("Allow");
+    expect(deny?.textContent).toBe("Deny");
+    act(() => allow.click());
+    expect(onRespond).toHaveBeenCalledWith("allow");
+    // loading 态：接口未返回前两个按钮锁定，重复点击不发第二次请求
+    expect((container.querySelector(".approval-deny") as HTMLButtonElement).disabled).toBe(true);
+    act(() => (container.querySelector(".approval-allow") as HTMLButtonElement)?.click());
+    expect(onRespond).toHaveBeenCalledTimes(1);
+    await act(async () => { settle(); });
+  });
+
+  it("freezes into a decision record once the paired response arrives", () => {
+    act(() => root.render(<I18nProvider><TranscriptMessage item={requestItem()} approval={{ decision: "deny", expired: false }} onRespondApproval={vi.fn()} /></I18nProvider>));
+    expect(container.querySelector(".approval-allow")).toBeNull();
+    expect(container.querySelector(".approval-decision .lifecycle-status")?.textContent).toBe("deny");
+  });
+
+  it("marks dangling approvals of finished turns as expired without buttons", () => {
+    act(() => root.render(<I18nProvider><TranscriptMessage item={requestItem()} approval={{ decision: undefined, expired: true }} onRespondApproval={vi.fn()} /></I18nProvider>));
+    expect(container.querySelector(".approval-allow")).toBeNull();
+    expect(container.querySelector(".transcript-event.approval_request.expired")).not.toBeNull();
+    expect(container.querySelector(".approval-decision .lifecycle-status")?.textContent).toBe("Expired");
+  });
+
+  it("renders replayed approvals as static records when no responder is wired", () => {
+    act(() => root.render(<I18nProvider><TranscriptMessage item={requestItem()} approval={{ decision: undefined, expired: false }} /></I18nProvider>));
+    expect(container.querySelector(".approval-actions")).toBeNull();
+    expect(container.textContent).toContain("command: npm install");
+  });
+
+  it("locks the bubble as expired when the response races into 409", async () => {
+    const onRespond = vi.fn(() => Promise.reject(new Error("APPROVAL_NOT_PENDING")));
+    act(() => root.render(<I18nProvider><TranscriptMessage item={requestItem()} approval={{ decision: undefined, expired: false }} onRespondApproval={onRespond} /></I18nProvider>));
+    await act(async () => { (container.querySelector(".approval-allow") as HTMLButtonElement).click(); });
+    expect(container.querySelector(".approval-actions")).toBeNull();
+    expect(container.querySelector(".transcript-event.approval_request.expired")).not.toBeNull();
+  });
+
+  it("appends the fallback guidance to failed turn errors when approvals are unsupported", () => {
+    const [item] = projectTranscriptEvents([makeEvent({ id: "e1", kind: "error", source: "session-manager", raw: "permission denied", metadata: { turnId: "turn-1", code: "TURN_FAILED" } })]);
+    act(() => root.render(<I18nProvider><TranscriptMessage item={item} fallbackHint /></I18nProvider>));
+    expect(container.querySelector(".approval-fallback-hint")?.textContent).toContain("fork to a terminal session");
   });
 });

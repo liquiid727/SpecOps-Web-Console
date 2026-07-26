@@ -82,6 +82,35 @@ export function deriveActiveTurnId(events: TranscriptEvent[]): string | undefine
   return candidate;
 }
 
+/** 审批配对状态（frontend-spec §5.4）：approvalId → 决定/过期。悬挂审批（无 response 且所属轮次已终态）视为已过期 */
+export interface ApprovalDisplayState {
+  decision?: string;
+  expired: boolean;
+}
+
+export function buildApprovalStates(events: TranscriptEvent[]): Map<string, ApprovalDisplayState> {
+  const requestTurns = new Map<string, string | undefined>();
+  const decisions = new Map<string, string>();
+  const terminalTurns = new Set<string>();
+  for (const event of events) {
+    const approvalId = typeof event.metadata?.approvalId === "string" ? event.metadata.approvalId : undefined;
+    const turnId = typeof event.metadata?.turnId === "string" ? event.metadata.turnId : undefined;
+    if (event.kind === "approval_request" && approvalId) requestTurns.set(approvalId, turnId);
+    if (event.kind === "approval_response" && approvalId) {
+      const decision = typeof event.metadata?.decision === "string" ? event.metadata.decision : "recorded";
+      decisions.set(approvalId, decision);
+    }
+    const status = typeof event.metadata?.status === "string" ? event.metadata.status : "";
+    if (turnId && (event.kind === "error" || (event.kind === "lifecycle" && status.startsWith("turn-")))) terminalTurns.add(turnId);
+  }
+  const states = new Map<string, ApprovalDisplayState>();
+  for (const [approvalId, turnId] of requestTurns) {
+    const decision = decisions.get(approvalId);
+    states.set(approvalId, { decision, expired: !decision && Boolean(turnId && terminalTurns.has(turnId)) });
+  }
+  return states;
+}
+
 /** turnId → 原始 prompt（失败轮次重试时以新 clientMessageId 重发原文，frontend-spec §5.2） */
 export function buildTurnPrompts(events: TranscriptEvent[]): Map<string, string> {
   const prompts = new Map<string, string>();

@@ -129,6 +129,20 @@ export function ChatView({ session, workspace, profile, readonly, centerView, on
     }
   }
 
+  // 审批应答（frontend-spec §5.4 / api-spec §2.5）：409 APPROVAL_NOT_PENDING → toast 已失效 + 重抛定格气泡，刷新最终态
+  const respondApproval = useCallback(async (approvalId: string, decision: "allow" | "deny") => {
+    try {
+      await api.respondApproval(session.id, approvalId, decision);
+    } catch (cause) {
+      if (cause instanceof ApiClientError && cause.code === "APPROVAL_NOT_PENDING") {
+        feedback.warning(toFeedbackWarning(cause, t, "approvalNoLongerPending", `approval:${session.id}:${approvalId}`));
+        onStatus();
+        throw cause;
+      }
+      feedback.error(toFeedbackError(cause, t, "composerFailed", `approval:${session.id}:${approvalId}`));
+    }
+  }, [feedback, onStatus, session.id, t]);
+
   // 模型即时切换：PATCH activeModel，下一轮生效（frontend-spec §5.3 / api-spec §2.6）
   function changeActiveModel(model: string | null) {
     if (!model) return;
@@ -151,6 +165,10 @@ export function ChatView({ session, workspace, profile, readonly, centerView, on
   }
 
   const commandPreview = profile ? [profile.command, ...(profile.args ?? [])].join(" ") : "";
+  // 审批能力分流：supportsApproval 才开审批气泡；明确不支持时失败轮次错误附指引文案（frontend-spec §5.4）
+  const approvalEnabled = chatSession && !composerDisabled && capabilities?.supportsApproval === true;
+  const approvalFallback = chatSession && capabilities?.supportsApproval === false;
+  const waitingApproval = chatSession && frameTurn?.status === "waiting_approval";
 
   return (
     <div className="chat-view">
@@ -176,7 +194,7 @@ export function ChatView({ session, workspace, profile, readonly, centerView, on
         </div>
       </div>
       <div className="chat-messages">
-        {centerView === "transcript" ? <Suspense fallback={<div className="transcript-state">{t("loadingTranscript")}</div>}><TranscriptPanel sessionId={session.id} localEvents={echoEvents} onTurnStatus={handleTurnStatus} onDerivedTurn={handleDerivedTurn} onRetry={composerDisabled ? undefined : retryTurn} /></Suspense> : running ? <div className="chat-terminal"><TerminalView sessionId={session.id} onStatus={onStatus} /></div> : <EmptyState className="chat-empty" icon={<Icon name="terminal" />} description={t("terminalStopped")} />}
+        {centerView === "transcript" ? <Suspense fallback={<div className="transcript-state">{t("loadingTranscript")}</div>}><TranscriptPanel sessionId={session.id} localEvents={echoEvents} onTurnStatus={handleTurnStatus} onDerivedTurn={handleDerivedTurn} onRetry={composerDisabled ? undefined : retryTurn} onApprove={approvalEnabled ? respondApproval : undefined} approvalFallback={approvalFallback} /></Suspense> : running ? <div className="chat-terminal"><TerminalView sessionId={session.id} onStatus={onStatus} /></div> : <EmptyState className="chat-empty" icon={<Icon name="terminal" />} description={t("terminalStopped")} />}
       </div>
       <div className="chat-composer">
         <PromptComposer
@@ -189,6 +207,7 @@ export function ChatView({ session, workspace, profile, readonly, centerView, on
           activeModel={session.chatContext?.activeModel}
           onActiveModelChange={chatSession ? changeActiveModel : undefined}
           turnActive={turnActive}
+          waitingApproval={waitingApproval}
           onCancelTurn={cancelActiveTurn}
         />
       </div>

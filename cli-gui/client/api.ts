@@ -130,6 +130,7 @@ export const api = {
   reorderSessions: (orderedSessionIds: string[], expectedRevisions: Record<string, number>, organizationStatus = "active", pinned = false) => request<SessionWithCompatibilityStatus[]>("/api/sessions/reorder", { method: "POST", body: JSON.stringify({ organizationStatus, pinned, orderedSessionIds, expectedRevisions }) }),
   sendMessage: (id: string, input: SendMessageRequest) => request<SendMessageResponse>(`/api/sessions/${id}/messages`, { method: "POST", body: JSON.stringify(input) }),
   cancelTurn: (id: string, turnId: string) => request<{ turnId: string }>(`/api/sessions/${id}/turns/cancel`, { method: "POST", body: JSON.stringify({ turnId }) }),
+  respondApproval: (id: string, approvalId: string, decision: "allow" | "deny") => request<{ approvalId: string; decision: string }>(`/api/sessions/${id}/approvals/${approvalId}`, { method: "POST", body: JSON.stringify({ decision }) }),
   updateActiveModel: (id: string, activeModel: string, expectedRevision: number) => request<SessionWithCompatibilityStatus>(`/api/sessions/${id}`, { method: "PATCH", body: JSON.stringify({ activeModel, expectedRevision }) }),
   transcript: (id: string, afterSequence = 0, limit = 200, signal?: AbortSignal) => request<TranscriptPage>(`/api/sessions/${id}/transcript?afterSequence=${afterSequence}${limit !== 200 ? `&limit=${limit}` : ""}`, { signal }),
   workspaceFiles: (workspaceId: string, path = "", cursor?: string, signal?: AbortSignal) => {

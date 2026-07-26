@@ -21,10 +21,12 @@ interface PromptComposerProps {
   onActiveModelChange?: (model: string | null) => void;
   /** 轮次进行中：输入可编辑但提交禁用，提交按钮切为「停止」（frontend-spec §5.1/§5.2） */
   turnActive?: boolean;
+  /** 审批挂起中：composer 提示「等待审批」（frontend-spec §5.4） */
+  waitingApproval?: boolean;
   onCancelTurn?: () => void;
 }
 
-export function PromptComposer({ disabled, onSend, capabilities, launchConfig, onLaunchConfigChange, interactionMode, activeModel, onActiveModelChange, turnActive = false, onCancelTurn }: PromptComposerProps) {
+export function PromptComposer({ disabled, onSend, capabilities, launchConfig, onLaunchConfigChange, interactionMode, activeModel, onActiveModelChange, turnActive = false, waitingApproval = false, onCancelTurn }: PromptComposerProps) {
   const { t } = useI18n();
   const feedback = useFeedback();
   const [content, setContent] = useState("");
@@ -170,7 +172,7 @@ export function PromptComposer({ disabled, onSend, capabilities, launchConfig, o
             : <Button type="submit" variant="accent" className="composer-send icon-only" disabled={!canSend} aria-label={t("sendPrompt")} title={tooLarge ? t("promptTooLarge") : t("sendPrompt")}><Icon name="send" /></Button>}
         </div>
       </div>
-      <small>{turnActive ? t("waitForTurn") : tooLarge ? t("promptTooLarge") : t("enterToSend")}</small>
+      <small>{waitingApproval ? t("approvalWaiting") : turnActive ? t("waitForTurn") : tooLarge ? t("promptTooLarge") : t("enterToSend")}</small>
     </form>
   );
 }
