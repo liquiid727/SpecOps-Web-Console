@@ -174,6 +174,8 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
     }
 
     const child = spawn(plan.command, plan.args, { cwd: plan.cwd, env: plan.env, stdio: ["pipe", "pipe", "pipe"] });
+    // headless 轮次的 prompt 完全经 argv 传递；立即关闭 stdin（EOF），避免 CLI 等待额外 stdin 输入而挂起
+    child.stdin?.end();
     turn.child = child;
     let stderrSummary = "";
     child.stderr?.on("data", (chunk: Buffer) => {
