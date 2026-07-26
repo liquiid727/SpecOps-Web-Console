@@ -44,6 +44,7 @@ export async function createApplication(dependencies: ApplicationDependencies): 
     clock: dependencies.clock,
     logger: dependencies.logger,
     turnTimeoutMs: parsePositiveInteger(dependencies.policy.processEnvironment.SPECOS_TURN_TIMEOUT_MS),
+    approvalTimeoutMs: parsePositiveInteger(dependencies.policy.processEnvironment.SPECOS_APPROVAL_TIMEOUT_MS),
     callbacks: {
       async appendEvent(sessionId, input) {
         const session = getSession(sessionId);
@@ -883,11 +884,17 @@ export async function createApplication(dependencies: ApplicationDependencies): 
             if (!workspace || !profile) throw new ApiHttpError(400, "VALIDATION_FAILED", "Session references a missing workspace or profile.");
             const registry = dependencies.profileAdapters;
             if (!registry.buildTurn || !registry.parseEvents) throw new ApiHttpError(422, "SESSION_START_FAILED", "Chat turns are not supported by this server build.");
+            // 审批应答通道仅对 supportsApproval 的 profile 接线（D-8）；否则不产生挂起路径
+            const capabilities = await resolveCapabilities(profile);
+            const approvalWiring = capabilities.supportsApproval && registry.buildApprovalResponse
+              ? { buildApprovalResponse: (approvalId: string, decision: "allow" | "deny") => registry.buildApprovalResponse!(profile, approvalId, decision) }
+              : {};
             const turnId = dependencies.idGenerator.create("turn");
             const { event } = await orchestrator.submitTurn(id, {
               turnId,
               prompt: content,
               clientMessageId,
+              ...approvalWiring,
               // CLI 语义封闭在 Adapter；Orchestrator 只拿回调（决策 D-9）
               buildCommand: async () => {
                 const spec = await registry.buildTurn!(profile, {
@@ -932,6 +939,15 @@ export async function createApplication(dependencies: ApplicationDependencies): 
         const turnId = requireText(body.turnId, "turnId");
         await orchestrator.cancelTurn(id, turnId);
         sendJson(response, 202, { turnId });
+        return;
+      }
+      if (method === "POST" && id && action === "approvals" && segments[3]) {
+        // 审批应答（api-spec §2.5）：受理 200 { approvalId, decision }；无挂起审批 409 APPROVAL_NOT_PENDING
+        requireSession(id);
+        const decision = body.decision;
+        if (decision !== "allow" && decision !== "deny") throw new ApiHttpError(400, "VALIDATION_FAILED", "decision must be \"allow\" or \"deny\".", { field: "decision" });
+        await orchestrator.respondApproval(id, segments[3], decision);
+        sendJson(response, 200, { approvalId: segments[3], decision });
         return;
       }
       if (method === "GET" && id && action === "transcript") {
@@ -1077,6 +1093,7 @@ function isKnownApiRoute(method: string, resource: string | undefined, id: strin
   if (!id) return false;
   if (method === "GET" && action === "transcript") return true;
   if (method === "POST" && action === "turns" && segments[3] === "cancel") return true;
+  if (method === "POST" && action === "approvals" && Boolean(segments[3])) return true;
   if (method === "PATCH" || method === "DELETE") return !action;
   return method === "POST" && ["start", "stop", "resize", "pin", "archive", "complete", "restore", "reopen", "fork", "messages"].includes(action ?? "");
 }

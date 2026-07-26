@@ -12,6 +12,7 @@ let echoScript = "";
 let sleepScript = "";
 let stubbornScript = "";
 let crashScript = "";
+let approvalScript = "";
 
 beforeAll(async () => {
   fixtureDir = await mkdtemp(path.join(tmpdir(), "orchestrator-fake-cli-"));
@@ -19,10 +20,27 @@ beforeAll(async () => {
   sleepScript = path.join(fixtureDir, "sleep.cjs");
   stubbornScript = path.join(fixtureDir, "stubborn.cjs");
   crashScript = path.join(fixtureDir, "crash.cjs");
+  approvalScript = path.join(fixtureDir, "approval.cjs");
   await writeFile(echoScript, 'const token = process.argv[2] || "t-1";\nconsole.log("assistant says hi");\nconsole.log("token:" + token);\n');
   await writeFile(sleepScript, 'console.log("still working");\nsetTimeout(() => {}, Number(process.argv[2] || "5000"));\n');
   await writeFile(stubbornScript, 'process.on("SIGTERM", () => {});\nconsole.log("stubborn working");\nsetInterval(() => {}, 1000);\n');
   await writeFile(crashScript, 'process.stderr.write("boom: fake cli exploded\\n");\nprocess.exit(3);\n');
+  // 审批场景假 CLI：先发 approval_request 行，等待 stdin 决定；无 stdin 应答通道时 stdin EOF 直接完成
+  await writeFile(approvalScript, [
+    'process.stdout.write("approval:app-1\\n");',
+    'let buffered = "";',
+    'process.stdin.on("end", () => { console.log("no approval channel"); process.exit(0); });',
+    'process.stdin.on("data", (chunk) => {',
+    '  buffered += chunk.toString("utf8");',
+    '  const index = buffered.indexOf("\\n");',
+    '  if (index === -1) return;',
+    '  const line = buffered.slice(0, index).trim();',
+    '  if (line === "decision:allow") console.log("approved work done");',
+    '  else console.log("denied politely");',
+    '  process.exit(0);',
+    '});',
+    ''
+  ].join("\n"));
 });
 
 afterAll(async () => {
@@ -32,7 +50,7 @@ afterAll(async () => {
 type RecordedEvent = AppendEventInput & { sessionId: string };
 type RecordedStatus = { sessionId: string; status: string; extra?: { exitCode?: number; resumeToken?: string } };
 
-function createHarness(options?: { turnTimeoutMs?: number; cancelGraceMs?: number; ptyProcess?: PtyProcess }) {
+function createHarness(options?: { turnTimeoutMs?: number; approvalTimeoutMs?: number; cancelGraceMs?: number; ptyProcess?: PtyProcess }) {
   const events: RecordedEvent[] = [];
   const statusCalls: RecordedStatus[] = [];
   const turnStatuses: { sessionId: string; turnId: string; status: string }[] = [];
@@ -47,6 +65,7 @@ function createHarness(options?: { turnTimeoutMs?: number; cancelGraceMs?: numbe
     clock: { now: () => new Date().toISOString() },
     logger: { info() {}, warn() {}, error() {} },
     turnTimeoutMs: options?.turnTimeoutMs,
+    approvalTimeoutMs: options?.approvalTimeoutMs,
     cancelGraceMs: options?.cancelGraceMs,
     callbacks: {
       async appendEvent(sessionId, input) {
@@ -76,6 +95,9 @@ async function* parseLines(stdout: Readable): AsyncGenerator<ParsedTurnEvent, Tu
       result.resumeToken = line.slice("token:".length).trim();
       return undefined;
     }
+    if (line.startsWith("approval:")) {
+      return { kind: "approval_request", source: "profile-adapter", raw: line, metadata: { approvalId: line.slice("approval:".length).trim() } };
+    }
     return { kind: "assistant_message", source: "profile-adapter", raw: line };
   };
   for await (const chunk of stdout) {
@@ -100,6 +122,11 @@ function makeTurn(turnId: string, prompt: string, script: string, args: string[]
     buildCommand: async () => ({ command: process.execPath, args: [script, ...args], cwd: fixtureDir, env: { PATH: process.env.PATH ?? "" } }),
     parseOutput: parseLines
   };
+}
+
+// 带审批应答通道的轮次：Adapter 声明 stdin 决定格式（ports.TurnInput.buildApprovalResponse）
+function makeApprovalTurn(turnId: string, prompt: string, script: string): TurnInput {
+  return { ...makeTurn(turnId, prompt, script), buildApprovalResponse: (_approvalId, decision) => `decision:${decision}\n` };
 }
 
 async function waitFor(predicate: () => boolean, timeoutMs = 5_000) {
@@ -238,5 +265,88 @@ describe("runtime orchestrator chat turns", () => {
     expect(events.some((event) => event.metadata?.status === "turn-cancelled" && event.metadata?.turnId === "turn-a")).toBe(true);
     expect(events.some((event) => event.metadata?.code === "TURN_CANCELLED")).toBe(true);
     expect(orchestrator.isRunning("s8")).toBe(false);
+  });
+});
+
+// issue-012：审批挂起/应答/超时/取消（runtime-orchestrator-spec §3.4，test-spec §3.6）
+describe("runtime orchestrator approvals", () => {
+  const approvalRequested = (events: RecordedEvent[]) =>
+    events.some((event) => event.kind === "approval_request" && event.metadata?.approvalId === "app-1");
+
+  it("suspends on approval_request, pauses the turn timeout, and resumes on allow", async () => {
+    // turnTimeoutMs 小于挂起时长：若未暂停计时则必然 TURN_TIMEOUT，据此验证暂停/恢复记账
+    const { orchestrator, events, turnStatuses } = createHarness({ turnTimeoutMs: 300 });
+    await orchestrator.submitTurn("a1", makeApprovalTurn("turn-1", "approve this", approvalScript));
+    await waitFor(() => approvalRequested(events));
+    await waitFor(() => turnStatuses.some((item) => item.status === "waiting_approval"));
+    // 挂起期间停留超过 turnTimeoutMs，轮次不得超时
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    // approvalId 不匹配 → 409 APPROVAL_NOT_PENDING
+    await expect(orchestrator.respondApproval("a1", "nope", "allow")).rejects.toMatchObject({ status: 409, code: "APPROVAL_NOT_PENDING" });
+    await orchestrator.respondApproval("a1", "app-1", "allow");
+    await waitFor(() => turnEnded(events, "turn-1"));
+
+    expect(events.some((event) => event.kind === "error" && event.metadata?.code === "TURN_TIMEOUT")).toBe(false);
+    expect(events.some((event) => event.metadata?.status === "turn-completed" && event.metadata?.turnId === "turn-1")).toBe(true);
+    expect(events.some((event) => event.kind === "assistant_message" && event.raw === "approved work done")).toBe(true);
+    const response = events.find((event) => event.kind === "approval_response")!;
+    expect(response.metadata).toMatchObject({ approvalId: "app-1", decision: "allow", turnId: "turn-1" });
+    // approval_response 事件先于 stdin 回写后的 CLI 输出
+    expect(events.findIndex((event) => event.kind === "approval_response")).toBeLessThan(events.findIndex((event) => event.raw === "approved work done"));
+    // turn-status 序：running → waiting_approval → running → completed（api-spec §4.2）
+    expect(turnStatuses.filter((item) => item.turnId === "turn-1").map((item) => item.status)).toEqual(["running", "waiting_approval", "running", "completed"]);
+  });
+
+  it("writes the adapter-declared deny payload to stdin and completes the turn", async () => {
+    const { orchestrator, events } = createHarness();
+    await orchestrator.submitTurn("a2", makeApprovalTurn("turn-1", "deny this", approvalScript));
+    await waitFor(() => approvalRequested(events));
+    await orchestrator.respondApproval("a2", "app-1", "deny");
+    await waitFor(() => turnEnded(events, "turn-1"));
+
+    expect(events.find((event) => event.kind === "approval_response")!.metadata?.decision).toBe("deny");
+    expect(events.some((event) => event.kind === "assistant_message" && event.raw === "denied politely")).toBe(true);
+    expect(events.some((event) => event.metadata?.status === "turn-completed" && event.metadata?.turnId === "turn-1")).toBe(true);
+  });
+
+  it("expires an unanswered approval as timeout and fails the turn", async () => {
+    const { orchestrator, events } = createHarness({ approvalTimeoutMs: 120, cancelGraceMs: 100 });
+    await orchestrator.submitTurn("a3", makeApprovalTurn("turn-1", "forget me", approvalScript));
+    await waitFor(() => turnEnded(events, "turn-1"));
+
+    // 超时视同拒绝：decision="timeout"（event-protocol-spec 枚举）+ 兼容 code 标注；轮次走超时失败路径
+    const response = events.find((event) => event.kind === "approval_response")!;
+    expect(response.metadata).toMatchObject({ approvalId: "app-1", decision: "timeout", code: "APPROVAL_TIMEOUT" });
+    expect(events.some((event) => event.kind === "error" && event.metadata?.code === "TURN_TIMEOUT" && event.metadata?.turnId === "turn-1")).toBe(true);
+    expect(events.some((event) => event.metadata?.status === "turn-failed" && event.metadata?.turnId === "turn-1")).toBe(true);
+    // 已超时结算后再应答 → 409
+    await expect(orchestrator.respondApproval("a3", "app-1", "allow")).rejects.toMatchObject({ status: 409, code: "APPROVAL_NOT_PENDING" });
+  });
+
+  it("treats cancelTurn during waiting_approval as deny then cancellation", async () => {
+    const { orchestrator, events, turnStatuses } = createHarness({ cancelGraceMs: 100 });
+    await orchestrator.submitTurn("a4", makeApprovalTurn("turn-1", "cancel me", approvalScript));
+    await waitFor(() => turnStatuses.some((item) => item.status === "waiting_approval"));
+    await orchestrator.cancelTurn("a4", "turn-1");
+
+    const response = events.find((event) => event.kind === "approval_response")!;
+    expect(response.metadata).toMatchObject({ approvalId: "app-1", decision: "deny" });
+    // 事件序：approval_response(deny) 先于 error(TURN_CANCELLED)（runtime-orchestrator-spec §6 边界表）
+    expect(events.findIndex((event) => event.kind === "approval_response")).toBeLessThan(events.findIndex((event) => event.kind === "error" && event.metadata?.code === "TURN_CANCELLED"));
+    expect(events.some((event) => event.metadata?.status === "turn-cancelled" && event.metadata?.turnId === "turn-1")).toBe(true);
+    expect(turnStatuses.filter((item) => item.turnId === "turn-1").map((item) => item.status)).toEqual(["running", "waiting_approval", "cancelled"]);
+  });
+
+  it("passes approval_request through without suspending when no approval channel exists", async () => {
+    const { orchestrator, events, turnStatuses } = createHarness();
+    // 无 buildApprovalResponse：stdin 立即 EOF，假 CLI 自然退出；事件照常透传、不挂起（supportsApproval=false 路径）
+    await orchestrator.submitTurn("a5", makeTurn("turn-1", "no channel", approvalScript));
+    await waitFor(() => turnEnded(events, "turn-1"));
+
+    expect(approvalRequested(events)).toBe(true);
+    expect(events.some((event) => event.kind === "approval_response")).toBe(false);
+    expect(turnStatuses.some((item) => item.status === "waiting_approval")).toBe(false);
+    expect(events.some((event) => event.kind === "assistant_message" && event.raw === "no approval channel")).toBe(true);
+    expect(events.some((event) => event.metadata?.status === "turn-completed" && event.metadata?.turnId === "turn-1")).toBe(true);
   });
 });

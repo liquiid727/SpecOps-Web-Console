@@ -10,6 +10,7 @@ const PTY_TRANSCRIPT_FLUSH_MS = 75;
 const MAX_PTY_TRANSCRIPT_BYTES = 64 * 1024;
 const MAX_TERMINAL_BUFFERED_BYTES = 1 * 1024 * 1024;
 const DEFAULT_TURN_TIMEOUT_MS = 600_000;
+const DEFAULT_APPROVAL_TIMEOUT_MS = 300_000;
 const DEFAULT_CANCEL_GRACE_MS = 2_000;
 const MAX_TURN_STDERR_CHARS = 2_000;
 
@@ -30,6 +31,13 @@ type ActiveTurn = {
   terminationReason?: "cancelled" | "timeout";
   timeoutTimer?: ReturnType<typeof setTimeout>;
   killTimer?: ReturnType<typeof setTimeout>;
+  /** 轮次超时暂停/恢复记账（审批挂起期间暂停计时，runtime-orchestrator-spec §3.4） */
+  timeoutRemainingMs?: number;
+  timeoutArmedAt?: number;
+  /** 挂起中的审批（单挂起）；存在即轮次处于 waiting_approval */
+  pendingApproval?: { approvalId: string; timer: ReturnType<typeof setTimeout> };
+  /** Adapter 声明的审批应答 stdin 格式；Orchestrator 不理解 CLI 语义 */
+  approvalResponder?: (approvalId: string, decision: "allow" | "deny") => string;
   done: Promise<void>;
 };
 
@@ -48,6 +56,8 @@ export interface RuntimeOrchestratorDependencies {
   callbacks: OrchestratorCallbacks;
   /** 轮次超时（SPECOS_TURN_TIMEOUT_MS，默认 600000） */
   turnTimeoutMs?: number;
+  /** 审批超时（SPECOS_APPROVAL_TIMEOUT_MS，默认 300000）；超时视同拒绝，轮次走超时失败路径 */
+  approvalTimeoutMs?: number;
   /** 取消 SIGTERM → SIGKILL 宽限期（默认 2000ms） */
   cancelGraceMs?: number;
 }
@@ -61,6 +71,7 @@ export function clampDimension(value: unknown, minimum: number, maximum: number)
 export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDependencies): RuntimeOrchestrator {
   const { ptyRuntime, clock, logger, callbacks } = dependencies;
   const turnTimeoutMs = dependencies.turnTimeoutMs ?? DEFAULT_TURN_TIMEOUT_MS;
+  const approvalTimeoutMs = dependencies.approvalTimeoutMs ?? DEFAULT_APPROVAL_TIMEOUT_MS;
   const cancelGraceMs = dependencies.cancelGraceMs ?? DEFAULT_CANCEL_GRACE_MS;
   const workers = new Map<string, Worker>();
   const workerGenerations = new Map<string, number>();
@@ -139,12 +150,55 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
     }, cancelGraceMs);
   }
 
+  /** 轮次超时计时器：武装/暂停成对，审批挂起期间不计入轮次超时（§3.4） */
+  function armTurnTimeout(turn: ActiveTurn, remainingMs: number) {
+    turn.timeoutRemainingMs = remainingMs;
+    turn.timeoutArmedAt = Date.now();
+    turn.timeoutTimer = setTimeout(() => requestTurnKill(turn, "timeout"), remainingMs);
+  }
+
+  function pauseTurnTimeout(turn: ActiveTurn) {
+    if (turn.timeoutTimer !== undefined) clearTimeout(turn.timeoutTimer);
+    turn.timeoutTimer = undefined;
+    const elapsed = Date.now() - (turn.timeoutArmedAt ?? Date.now());
+    turn.timeoutRemainingMs = Math.max(1, (turn.timeoutRemainingMs ?? turnTimeoutMs) - elapsed);
+  }
+
+  /** 进入 waiting_approval：暂停轮次超时，启动审批超时计时（单挂起：已有挂起审批时忽略后续请求） */
+  function enterWaitingApproval(sessionId: string, turn: ActiveTurn, approvalId: string) {
+    if (turn.pendingApproval || turn.terminationReason) return;
+    pauseTurnTimeout(turn);
+    turn.pendingApproval = {
+      approvalId,
+      timer: setTimeout(() => { void expireApproval(sessionId, turn, approvalId); }, approvalTimeoutMs)
+    };
+    callbacks.onTurnStatus?.(sessionId, turn.turnId, "waiting_approval");
+  }
+
+  /** 落 approval_response 事件并清除挂起状态；同步清除在前，防止 respond/超时双结算 */
+  async function settleApproval(sessionId: string, turn: ActiveTurn, decision: "allow" | "deny" | "timeout", extraMetadata?: Record<string, string>) {
+    const pending = turn.pendingApproval;
+    if (!pending) return undefined;
+    turn.pendingApproval = undefined;
+    clearTimeout(pending.timer);
+    await callbacks.appendEvent(sessionId, { occurredAt: clock.now(), kind: "approval_response", source: "session-manager", raw: decision, metadata: { approvalId: pending.approvalId, decision, turnId: turn.turnId, ...extraMetadata } });
+    return pending.approvalId;
+  }
+
+  /** 审批超时：approval_response(timeout) → 走取消 kill 路径、轮次以超时失败收尾（§3.4） */
+  async function expireApproval(sessionId: string, turn: ActiveTurn, approvalId: string) {
+    if (turn.pendingApproval?.approvalId !== approvalId) return;
+    await settleApproval(sessionId, turn, "timeout", { code: "APPROVAL_TIMEOUT" });
+    requestTurnKill(turn, "timeout");
+  }
+
   async function runTurn(sessionId: string, worker: ChatWorker, turn: ActiveTurn, input: TurnInput): Promise<void> {
     type TurnOutcome =
       | { status: "completed"; exitCode: number }
       | { status: "cancelled"; exitCode: number }
       | { status: "failed"; code: "TURN_FAILED" | "TURN_TIMEOUT" | "TURN_SPAWN_FAILED"; message: string; exitCode: number };
     const finishTurn = async (outcome: TurnOutcome) => {
+      if (turn.pendingApproval) { clearTimeout(turn.pendingApproval.timer); turn.pendingApproval = undefined; }
       if (turn.timeoutTimer !== undefined) clearTimeout(turn.timeoutTimer);
       if (turn.killTimer !== undefined) clearTimeout(turn.killTimer);
       turn.timeoutTimer = undefined;
@@ -174,8 +228,10 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
     }
 
     const child = spawn(plan.command, plan.args, { cwd: plan.cwd, env: plan.env, stdio: ["pipe", "pipe", "pipe"] });
-    // headless 轮次的 prompt 完全经 argv 传递；立即关闭 stdin（EOF），避免 CLI 等待额外 stdin 输入而挂起
-    child.stdin?.end();
+    turn.approvalResponder = input.buildApprovalResponse;
+    // headless 轮次的 prompt 完全经 argv 传递；无审批应答通道时立即关闭 stdin（EOF），避免 CLI 等待额外 stdin 输入而挂起；
+    // 支持审批的 profile 保持 stdin 开放以回写决定（runtime-orchestrator-spec §3.4）
+    if (!input.buildApprovalResponse) child.stdin?.end();
     turn.child = child;
     let stderrSummary = "";
     child.stderr?.on("data", (chunk: Buffer) => {
@@ -189,7 +245,8 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
       });
       child.once("close", (code) => resolve({ type: "exit", exitCode: code ?? -1 }));
     });
-    turn.timeoutTimer = setTimeout(() => requestTurnKill(turn, "timeout"), turnTimeoutMs);
+    turn.timeoutTimer = undefined;
+    armTurnTimeout(turn, turnTimeoutMs);
 
     let parseResult: TurnParseResult = {};
     try {
@@ -200,6 +257,10 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
           const event = next.value;
           await callbacks.appendEvent(sessionId, { occurredAt: clock.now(), kind: event.kind, source: event.source, raw: event.raw, metadata: { ...event.metadata, turnId: turn.turnId } });
           callbacks.onActivity(sessionId);
+          // 审批挂起（§3.4）：仅当 Adapter 声明了应答通道才进入等待；无通道时事件照常透传、不挂起
+          if (event.kind === "approval_request" && typeof event.metadata?.approvalId === "string" && input.buildApprovalResponse) {
+            enterWaitingApproval(sessionId, turn, event.metadata.approvalId);
+          }
         }
         next = await iterator.next();
       }
@@ -300,6 +361,8 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
         // 进行中轮次先取消（SIGTERM→SIGKILL），事件序：error(turn) → lifecycle(stopped)（后者由 Session Manager 追加）
         const turn = worker.activeTurn;
         if (turn) {
+          // 挂起审批按 deny 落 approval_response 后走取消路径（runtime-orchestrator-spec §6 边界表）
+          if (turn.pendingApproval) await settleApproval(sessionId, turn, "deny");
           requestTurnKill(turn, "cancelled");
           await turn.done.catch(() => undefined);
         }
@@ -342,11 +405,25 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
       if (worker && worker.kind === "terminal") throw new ApiHttpError(400, "INTERACTION_MODE_MISMATCH", "Chat turns are not available for terminal sessions.");
       const turn = worker?.activeTurn;
       if (!turn || turn.turnId !== turnId) throw new ApiHttpError(409, "TURN_NOT_ACTIVE", "The requested turn is not in progress.");
+      // waiting_approval 中收到 cancelTurn：挂起审批按 deny 落 approval_response，再走取消路径（取消优先于审批）
+      if (turn.pendingApproval) await settleApproval(sessionId, turn, "deny");
       requestTurnKill(turn, "cancelled");
       await turn.done;
     },
-    async respondApproval(_sessionId: string, _approvalId: string, _decision: "allow" | "deny"): Promise<void> {
-      throw new Error("Approvals are not implemented yet.");
+    async respondApproval(sessionId: string, approvalId: string, decision: "allow" | "deny"): Promise<void> {
+      const worker = workers.get(sessionId);
+      const turn = worker?.kind === "chat" ? worker.activeTurn : undefined;
+      // 已应答/已超时/不存在/非挂起中轮次 → 409（api-spec §2.5）
+      if (!turn || turn.pendingApproval?.approvalId !== approvalId) throw new ApiHttpError(409, "APPROVAL_NOT_PENDING", "No pending approval matches this request.");
+      // 事件先落盘，再按 Adapter 声明的格式回写子进程 stdin，恢复计时回到 running（§3.4）
+      await settleApproval(sessionId, turn, decision);
+      const payload = turn.approvalResponder?.(approvalId, decision);
+      const child = turn.child;
+      if (payload !== undefined && child?.stdin && !child.stdin.destroyed) {
+        try { child.stdin.write(payload); } catch (error) { logger.warn("Approval response write failed", { sessionId, approvalId, error: String(error) }); }
+      }
+      armTurnTimeout(turn, turn.timeoutRemainingMs ?? turnTimeoutMs);
+      callbacks.onTurnStatus?.(sessionId, turn.turnId, "running");
     },
     isRunning(sessionId) {
       return workers.has(sessionId);

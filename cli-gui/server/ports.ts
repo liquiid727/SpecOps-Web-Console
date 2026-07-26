@@ -87,6 +87,8 @@ export interface TurnInput {
   buildCommand(): Promise<PreparedLaunch>;
   /** CLI 语义注入（Adapter parseEvents 的应用侧包装）：stdout → 规范事件流 */
   parseOutput(stdout: Readable): AsyncGenerator<ParsedTurnEvent, TurnParseResult, void>;
+  /** headless 审批应答格式（Adapter 声明，D-8）；存在时 Orchestrator 保持 stdin 开放并启用 waiting_approval 挂起路径 */
+  buildApprovalResponse?(approvalId: string, decision: "allow" | "deny"): string;
 }
 
 /** 执行控制层 port（runtime-orchestrator-spec §2.1）；不理解任何 CLI 语义 */
@@ -159,6 +161,8 @@ export interface ProfileAdapterRegistry {
   buildTurn?(profile: CliProfileV3, config: TurnConfig): Promise<CommandSpec>;
   /** 将单轮子进程 stdout 解析为规范事件流；迭代完成后 return TurnParseResult */
   parseEvents?(profile: CliProfileV3, stream: Readable, ctx: ParseContext): AsyncGenerator<ParsedTurnEvent, TurnParseResult, void>;
+  /** headless 审批应答的 stdin 写入格式（B 段，D-8）；仅 capability supportsApproval 为 true 的 profile 接线 */
+  buildApprovalResponse?(profile: CliProfileV3, approvalId: string, decision: "allow" | "deny"): string;
 }
 
 export interface TurnConfig {

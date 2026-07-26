@@ -20,12 +20,14 @@ let fixtureDir = "";
 let echoScript = "";
 let sleepScript = "";
 let claudeScript = "";
+let approvalScript = "";
 
 beforeAll(async () => {
   fixtureDir = await mkdtemp(path.join(tmpdir(), "chat-api-fake-cli-"));
   echoScript = path.join(fixtureDir, "echo.cjs");
   sleepScript = path.join(fixtureDir, "sleep.cjs");
   claudeScript = path.join(fixtureDir, "claude.cjs");
+  approvalScript = path.join(fixtureDir, "approval.cjs");
   await writeFile(echoScript, 'const token = process.argv[2] || "t-1";\nconsole.log("assistant says hi");\nconsole.log("token:" + token);\n');
   await writeFile(sleepScript, 'console.log("still working");\nsetTimeout(() => {}, Number(process.argv[2] || "5000"));\n');
   // 假 claude CLI：按 stream-json 行协议输出；--resume 有无决定 session_id 递进（test-spec §3.6）
@@ -36,7 +38,23 @@ beforeAll(async () => {
     'console.log(JSON.stringify({ type: "system", subtype: "init", session_id: sid }));',
     'console.log(JSON.stringify({ type: "assistant", message: { content: [{ type: "text", text: resumed ? "resumed:" + resumed : "claude first reply" }] }, session_id: sid }));',
     'console.log(JSON.stringify({ type: "result", subtype: "success", session_id: sid, usage: { input_tokens: 1, output_tokens: 2 } }));',
-    ""
+    ''
+  ].join("\n"));
+  // 审批场景假 CLI（issue-012）：先发 approval_request 行，等 stdin 决定后退出
+  await writeFile(approvalScript, [
+    'process.stdout.write("approval:app-1\\n");',
+    'let buffered = "";',
+    'process.stdin.on("end", () => { console.log("no approval channel"); process.exit(0); });',
+    'process.stdin.on("data", (chunk) => {',
+    '  buffered += chunk.toString("utf8");',
+    '  const index = buffered.indexOf("\\n");',
+    '  if (index === -1) return;',
+    '  const line = buffered.slice(0, index).trim();',
+    '  if (line === "decision:allow") console.log("approved work done");',
+    '  else console.log("denied politely");',
+    '  process.exit(0);',
+    '});',
+    ''
   ].join("\n"));
 });
 
@@ -53,6 +71,9 @@ async function* parseLines(stdout: Readable): AsyncGenerator<ParsedTurnEvent, Tu
     if (line.startsWith("token:")) {
       result.resumeToken = line.slice("token:".length).trim();
       return undefined;
+    }
+    if (line.startsWith("approval:")) {
+      return { kind: "approval_request", source: "profile-adapter", raw: line, metadata: { approvalId: line.slice("approval:".length).trim() } };
     }
     return { kind: "assistant_message", source: "profile-adapter", raw: line };
   };
@@ -422,6 +443,107 @@ describe("chat API wiring", () => {
       expect(state.sessions.find((item) => item.id === downgraded.json.id)?.interactionMode).toBe("terminal");
     } finally {
       await server.close();
+    }
+  });
+});
+
+// issue-012：审批应答端点（api-spec §2.5）——supportsApproval profile 的端到端挂起/应答链路
+describe("approval endpoint (api-spec §2.5)", () => {
+  function createApprovalDependencies() {
+    const base = createChatDependencies();
+    const approvalCapabilities = {
+      adapterId: "codex" as const,
+      compatibility: "supported" as const,
+      permissions: [],
+      modes: [],
+      models: [],
+      supportsComposer: true,
+      supportsStructuredRecognition: true,
+      supportsHeadlessTurns: true,
+      supportsResume: false,
+      supportsApproval: true
+    };
+    base.dependencies.profileAdapters = {
+      availableAdapterIds: ["codex", "generic"],
+      capabilities: async () => approvalCapabilities,
+      resolveLaunch: async (profile) => ({ command: profile.command, args: [...profile.args], capabilities: approvalCapabilities }),
+      buildTurn: async (_profile, config) => {
+        if (config.prompt.startsWith("approve")) return { command: process.execPath, args: [approvalScript], env: { PATH: process.env.PATH ?? "" } };
+        return { command: process.execPath, args: [echoScript], env: { PATH: process.env.PATH ?? "" } };
+      },
+      parseEvents: (_profile, stream) => parseLines(stream),
+      // Adapter 声明的 stdin 决定格式（adapter-spec §2.2）；真实 codex 无此协议，仅假 registry 验证接线
+      buildApprovalResponse: (_profile, _approvalId, decision) => `decision:${decision}\n`
+    };
+    return base;
+  }
+
+  it("suspends on approval_request, accepts the decision with 200, and rejects repeats with 409", async () => {
+    const { dependencies, transcripts } = createApprovalDependencies();
+    const { server, port } = await startServer(dependencies);
+    try {
+      const created = await post(port, "/api/sessions", { name: "Approve", workspaceId: "workspace-1", profileId: "profile-chat" });
+      const sessionId = created.json.id as string;
+
+      const frames: any[] = [];
+      const socket = new WebSocket(`ws://127.0.0.1:${port}/ws?sessionId=${sessionId}&channel=events`);
+      socket.on("message", (data) => frames.push(JSON.parse(String(data))));
+      await new Promise<void>((resolve, reject) => { socket.once("open", () => resolve()); socket.once("error", reject); });
+      await waitFor(() => frames.some((frame) => frame.type === "subscription-ready"));
+
+      const sent = await post(port, `/api/sessions/${sessionId}/messages`, { clientMessageId: "approve-1", content: "approve this", startIfStopped: true, confirmedStart: true });
+      expect(sent.status).toBe(202);
+      await waitFor(() => (transcripts.get(sessionId) ?? []).some((event) => event.kind === "approval_request" && event.metadata?.approvalId === "app-1"));
+      // waiting_approval 经 turn-status 帧广播（api-spec §4.2）
+      await waitFor(() => frames.some((frame) => frame.type === "turn-status" && frame.status === "waiting_approval"));
+
+      // decision 非法 → 400 VALIDATION_FAILED
+      const invalid = await post(port, `/api/sessions/${sessionId}/approvals/app-1`, { decision: "maybe" });
+      expect(invalid.status).toBe(400);
+      expect(invalid.json.error.code).toBe("VALIDATION_FAILED");
+
+      const accepted = await post(port, `/api/sessions/${sessionId}/approvals/app-1`, { decision: "allow" });
+      expect(accepted.status).toBe(200);
+      expect(accepted.json).toEqual({ approvalId: "app-1", decision: "allow" });
+
+      await waitFor(() => turnEnded(transcripts.get(sessionId), sent.json.turnId));
+      const events = transcripts.get(sessionId)!;
+      const response = events.find((event) => event.kind === "approval_response")!;
+      expect(response.metadata).toMatchObject({ approvalId: "app-1", decision: "allow" });
+      expect(events.some((event) => event.kind === "assistant_message" && event.raw === "approved work done")).toBe(true);
+      expect(events.some((event) => event.metadata?.status === "turn-completed" && event.metadata?.turnId === sent.json.turnId)).toBe(true);
+
+      // 已结算后重复应答 → 409 APPROVAL_NOT_PENDING
+      const repeated = await post(port, `/api/sessions/${sessionId}/approvals/app-1`, { decision: "deny" });
+      expect(repeated.status).toBe(409);
+      expect(repeated.json.error.code).toBe("APPROVAL_NOT_PENDING");
+      socket.close();
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("returns 409 for sessions without a pending approval and 403 in readonly mode", async () => {
+    const { dependencies } = createApprovalDependencies();
+    const { server, port } = await startServer(dependencies);
+    try {
+      const created = await post(port, "/api/sessions", { name: "Idle", workspaceId: "workspace-1", profileId: "profile-chat" });
+      const noPending = await post(port, `/api/sessions/${created.json.id}/approvals/app-9`, { decision: "allow" });
+      expect(noPending.status).toBe(409);
+      expect(noPending.json.error.code).toBe("APPROVAL_NOT_PENDING");
+    } finally {
+      await server.close();
+    }
+
+    const readonly = createApprovalDependencies();
+    readonly.dependencies.policy = { readonly: true, processEnvironment: {} };
+    const readonlyServer = await startServer(readonly.dependencies);
+    try {
+      const blocked = await post(readonlyServer.port, "/api/sessions/session-x/approvals/app-1", { decision: "allow" });
+      expect(blocked.status).toBe(403);
+      expect(blocked.json.error.code).toBe("READONLY_MODE");
+    } finally {
+      await readonlyServer.server.close();
     }
   });
 });
