@@ -152,8 +152,8 @@ export const api = {
   deleteProfile: (id: string) => request<void>(`/api/profiles/${id}`, { method: "DELETE", body: "{}" })
 };
 
-export type ClientAppState = AppStateV2 & { sessions: SessionWithCompatibilityStatus[] };
+export type ClientAppState = AppStateV2 & { sessions: SessionWithCompatibilityStatus[]; maxRunningSessions?: number };
 
 export function mergeState(_previous: ClientAppState, next: StateResponse): ClientAppState {
-  return { workspaces: next.workspaces, profiles: next.profiles, sessions: next.sessions };
+  return { workspaces: next.workspaces, profiles: next.profiles, sessions: next.sessions, maxRunningSessions: next.maxRunningSessions };
 }

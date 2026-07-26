@@ -80,6 +80,8 @@ export interface AppState {
 export interface StateResponse extends Omit<AppStateV3, "sessions"> {
   sessions: SessionWithCompatibilityStatus[];
   readonly: boolean;
+  /** 全局并发上限（决策 D-6）：Runtime Monitor 展示 running/limit 用 */
+  maxRunningSessions?: number;
   csrfCapability?: string;
   pickerIntentToken?: string;
 }

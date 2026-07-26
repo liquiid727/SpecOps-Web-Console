@@ -136,6 +136,7 @@ export async function createApplication(dependencies: ApplicationDependencies): 
       ...state,
       sessions: state.sessions.map(serializeSession),
       readonly: dependencies.policy.readonly,
+      maxRunningSessions,
       csrfCapability: dependencies.policy.csrfCapability,
       pickerIntentToken: pickerIntent
     };
