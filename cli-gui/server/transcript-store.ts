@@ -1,7 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import type { TranscriptEvent, TranscriptPage } from "../shared/types.js";
+import type { TranscriptEvent, TranscriptEventKind, TranscriptPage } from "../shared/types.js";
+import { isLegacyTranscriptEventKind, LEGACY_KIND_ALIASES, normalizeTranscriptEventKind } from "../shared/transcript.js";
 import type { TranscriptRepository } from "./ports.js";
 
 export const MAX_TRANSCRIPT_EVENT_BYTES = 64 * 1024;
@@ -120,12 +121,15 @@ export function createJsonTranscriptRepository({ dataDirectory, readonly = false
     async append(input) {
       if (readonly) throw new TranscriptRepositoryError("READONLY_MODE", "Readonly mode does not write transcripts.");
       if (!input.sessionId || !input.kind || !input.source) throw new TranscriptRepositoryError("TRANSCRIPT_WRITE_FAILED", "Transcript event has invalid identity.");
+      if (isLegacyTranscriptEventKind(input.kind)) {
+        throw new TranscriptRepositoryError("TRANSCRIPT_WRITE_FAILED", `Legacy transcript kind "${input.kind}" is read-only; write "${LEGACY_KIND_ALIASES[input.kind]}" instead.`);
+      }
       const target = filePath(input.sessionId);
       const previous = writeQueues.get(target) ?? Promise.resolve();
       const next = previous.catch(() => undefined).then(async () => {
         const records = await readRecords(input.sessionId);
         const existing = input.clientMessageId ? records.events.find((event) => event.clientMessageId === input.clientMessageId) : undefined;
-        if (existing) return existing;
+        if (existing) return normalizeEvent(existing);
 
         const originalBytes = Buffer.byteLength(input.raw, "utf8");
         const raw = originalBytes > MAX_TRANSCRIPT_EVENT_BYTES ? truncateUtf8(input.raw, MAX_TRANSCRIPT_EVENT_BYTES) : input.raw;
@@ -159,7 +163,7 @@ export function createJsonTranscriptRepository({ dataDirectory, readonly = false
       await (writeQueues.get(filePath(sessionId)) ?? Promise.resolve());
       const afterSequence = Number.isFinite(options.afterSequence) ? Math.max(0, options.afterSequence ?? 0) : 0;
       const limit = Math.max(1, Math.min(options.limit ?? 200, 200));
-      const matching = (await readRecords(sessionId)).events.filter((event) => event.sequence > afterSequence);
+      const matching = (await readRecords(sessionId)).events.filter((event) => event.sequence > afterSequence).map(normalizeEvent);
       const events: TranscriptEvent[] = [];
       let serializedBytes = 2;
       for (const event of matching.slice(0, limit)) {
@@ -179,11 +183,13 @@ export function createJsonTranscriptRepository({ dataDirectory, readonly = false
     },
     async latest(sessionId) {
       await (writeQueues.get(filePath(sessionId)) ?? Promise.resolve());
-      return (await readRecords(sessionId)).events.at(-1);
+      const event = (await readRecords(sessionId)).events.at(-1);
+      return event ? normalizeEvent(event) : undefined;
     },
     async findByClientMessageId(sessionId, clientMessageId) {
       await (writeQueues.get(filePath(sessionId)) ?? Promise.resolve());
-      return (await readRecords(sessionId)).events.find((event) => event.clientMessageId === clientMessageId);
+      const event = (await readRecords(sessionId)).events.find((candidate) => candidate.clientMessageId === clientMessageId);
+      return event ? normalizeEvent(event) : undefined;
     },
     async delete(sessionId) {
       if (readonly) throw new TranscriptRepositoryError("READONLY_MODE", "Readonly mode does not delete transcripts.");
@@ -198,6 +204,12 @@ export function createJsonTranscriptRepository({ dataDirectory, readonly = false
 
 function nextSequence(events: TranscriptEvent[], offset = 0) {
   return Math.max(offset ?? 0, ...events.map((event) => event.sequence)) + 1;
+}
+
+/** Read-side legacy kind normalization (storage-spec §4). Disk records stay untouched. */
+function normalizeEvent(event: TranscriptEvent): TranscriptEvent {
+  const normalized = normalizeTranscriptEventKind(event.kind);
+  return normalized === event.kind ? event : { ...event, kind: normalized as TranscriptEventKind };
 }
 
 function validateEvent(value: unknown): asserts value is TranscriptEvent {

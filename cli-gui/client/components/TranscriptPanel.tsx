@@ -8,6 +8,8 @@ import { useI18n, type TranslationKey } from "../i18n";
 import { Icon } from "./ui/Icon";
 import { useFeedback } from "./ui/Feedback";
 import { projectTranscriptEvents, type TranscriptDisplayItem } from "../transcript-display";
+import { AsyncState } from "./patterns";
+import { Button } from "./ui";
 
 const MAX_MARKDOWN_BYTES = 256 * 1024;
 
@@ -127,13 +129,13 @@ export function TranscriptPanel({ sessionId }: TranscriptPanelProps) {
   }
 
   const displayEvents = useMemo(() => projectTranscriptEvents(events), [events]);
-  if (loading) return <div className="transcript-state">{t("loadingTranscript")}</div>;
-  if (error) return <div className="transcript-state error" role="status"><strong>{t("transcriptFailed")}</strong><button className="secondary-button" onClick={() => setRetryKey((value) => value + 1)}>{t("retry")}</button></div>;
-  if (!displayEvents.length) return <div className="transcript-state"><Icon name="terminal" /><strong>{t("emptyTranscript")}</strong><p>{t("emptyTranscriptDescription")}</p></div>;
+  if (loading) return <AsyncState className="transcript-state" state="loading" title={t("loadingTranscript")} />;
+  if (error) return <AsyncState className="transcript-state error" state="error" title={t("transcriptFailed")} actions={<Button variant="secondary" className="secondary-button" onClick={() => setRetryKey((value) => value + 1)}>{t("retry")}</Button>} />;
+  if (!displayEvents.length) return <AsyncState className="transcript-state" state="empty" icon={<Icon name="terminal" />} title={t("emptyTranscript")} description={t("emptyTranscriptDescription")} />;
 
   return <div className="transcript-list" aria-label={t("transcript")}>
     <div className="transcript-status" aria-live="polite">
-      {hasMore && <button className="secondary-button" onClick={() => void loadMore()} disabled={loadingMore}>{loadingMore ? t("loading") : t("loadMore")}</button>}
+      {hasMore && <Button variant="secondary" className="secondary-button" onClick={() => void loadMore()} loading={loadingMore} loadingLabel={t("loading")}>{t("loadMore")}</Button>}
       {connectionState === "reconnecting" && <span>{t("reconnecting")}</span>}
       {connectionState === "offline" && <span>{t("offlineMode")}</span>}
     </div>
@@ -146,8 +148,8 @@ function TranscriptMessage({ item }: { item: TranscriptDisplayItem }) {
   const { event } = item;
   return <article className={`transcript-event ${event.kind}`}>
     <header><span>{eventLabel(event.kind, t)}</span><time>{formatTime(event.occurredAt)}</time></header>
-    {event.kind === "markdown" ? <MarkdownLite source={item.content} truncated={item.truncated} /> : event.kind === "pty_output" ? <details className="transcript-output"><summary>{summarizeCliOutput(item.content)}</summary><pre className="transcript-plain">{item.content}</pre></details> : <pre className="transcript-plain">{item.content}</pre>}
-    <button className="copy-button" onClick={() => void navigator.clipboard?.writeText(item.raw)}>{t("copy")}</button>
+    {event.kind === "assistant_message" ? <MarkdownLite source={item.content} truncated={item.truncated} /> : event.kind === "pty_output" ? <details className="transcript-output"><summary>{summarizeCliOutput(item.content)}</summary><pre className="transcript-plain">{item.content}</pre></details> : <pre className="transcript-plain">{item.content}</pre>}
+    <Button variant="ghost" className="copy-button" onClick={() => void navigator.clipboard?.writeText(item.raw)}>{t("copy")}</Button>
   </article>;
 }
 
@@ -171,13 +173,15 @@ export function MarkdownLite({ source, truncated = false }: { source: string; tr
 
 function eventLabel(kind: TranscriptEvent["kind"], t: (key: TranslationKey) => string) {
   const keys: Partial<Record<TranscriptEvent["kind"], TranslationKey>> = {
-    user_input: "you",
+    user_message: "you",
     pty_output: "cliOutput",
-    markdown: "cliOutput",
+    assistant_message: "cliOutput",
     lifecycle: "lifecycleEvent",
     error: "errorEvent",
     tool_activity: "toolActivity",
-    permission_request: "permissionRequest",
+    file_change: "toolActivity",
+    approval_request: "permissionRequest",
+    approval_response: "permissionRequest",
     retention_marker: "retentionNotice"
   };
   return t(keys[kind] ?? "cliOutput");

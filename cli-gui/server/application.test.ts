@@ -251,7 +251,7 @@ describe("application composition", () => {
 
     const sent = await post(address.port, "/api/sessions/session-1/messages", { clientMessageId: "client-1", content: "hello", startIfStopped: true, confirmedStart: true });
     expect(sent.status).toBe(202);
-    expect(sent.json).toMatchObject({ duplicate: false, event: { kind: "user_input", raw: "hello", clientMessageId: "client-1" }, runtimeStatus: "running" });
+    expect(sent.json).toMatchObject({ duplicate: false, event: { kind: "user_message", raw: "hello", clientMessageId: "client-1" }, runtimeStatus: "running" });
     expect(process.write).toHaveBeenCalledWith("hello\r");
 
     const duplicate = await post(address.port, "/api/sessions/session-1/messages", { clientMessageId: "client-1", content: "hello", startIfStopped: true, confirmedStart: true });
@@ -259,9 +259,9 @@ describe("application composition", () => {
     expect(process.write).toHaveBeenCalledTimes(1);
 
     const replay = await get(address.port, "/api/sessions/session-1/transcript");
-    const inputEvents = replay.json.events.filter((event: { kind: string }) => event.kind === "user_input");
+    const inputEvents = replay.json.events.filter((event: { kind: string }) => event.kind === "user_message");
     expect(inputEvents).toHaveLength(1);
-    expect(inputEvents[0]).toMatchObject({ kind: "user_input", raw: "hello" });
+    expect(inputEvents[0]).toMatchObject({ kind: "user_message", raw: "hello" });
     await server.close();
   });
 

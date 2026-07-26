@@ -906,7 +906,7 @@ export async function createApplication(dependencies: ApplicationDependencies): 
             if (body.startIfStopped !== true) throw new ApiHttpError(409, "SESSION_NOT_ACTIVE", "Session is not running.");
             await startSession(id, body.confirmedStart === true);
           }
-          const event = await appendEvent(session, { occurredAt: dependencies.clock.now(), kind: "user_input", source: "composer", raw: content, clientMessageId });
+          const event = await appendEvent(session, { occurredAt: dependencies.clock.now(), kind: "user_message", source: "composer", raw: content, clientMessageId });
           if (!event) throw new ApiHttpError(500, "TRANSCRIPT_WRITE_FAILED", "Message could not be recorded.");
           const runtime = runtimes.get(id);
           if (!runtime || session.runtimeStatus !== "running") {
