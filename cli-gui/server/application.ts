@@ -2,16 +2,16 @@ import type http from "node:http";
 import path from "node:path";
 import { WebSocket } from "ws";
 import type {
-  AppStateV2,
+  AppStateV3,
   CliProfileCapabilities,
   FilePreview,
   FileTreeEntry,
   FileTreePage,
   LanguageSummaryResponse,
-  SessionV2,
+  SessionV3,
   TranscriptEvent,
   TranscriptPage,
-  WorkspaceV2
+  WorkspaceV3
 } from "../shared/types.js";
 import { ApiHttpError, sendJson } from "./api-errors.js";
 import { commandPreview, requireArgs, requireText } from "./domain.js";
@@ -47,7 +47,7 @@ export async function createApplication(dependencies: ApplicationDependencies): 
   const state = await dependencies.stateRepository.load();
   const runtimes = new Map<string, Runtime>();
   const runtimeGenerations = new Map<string, number>();
-  const startLocks = new Map<string, Promise<SessionV2 | undefined>>();
+  const startLocks = new Map<string, Promise<SessionV3 | undefined>>();
   const sessionMutationLocks = new Map<string, Promise<void>>();
   const eventSubscribers = new Map<string, Set<EventSubscriber>>();
   const pendingTouches = new Set<string>();
@@ -79,7 +79,7 @@ export async function createApplication(dependencies: ApplicationDependencies): 
   }
 
   const getSession = (id: string) => state.sessions.find((session) => session.id === id);
-  const serializeSession = (session: SessionV2) => ({ ...session, status: session.runtimeStatus });
+  const serializeSession = (session: SessionV3) => ({ ...session, status: session.runtimeStatus });
   const serializeState = () => {
     if (Date.now() >= pickerIntentExpiresAt) renewPickerIntent();
     return {
@@ -135,7 +135,7 @@ export async function createApplication(dependencies: ApplicationDependencies): 
     }
   }
 
-  function publishSessionUpdate(session: SessionV2) {
+  function publishSessionUpdate(session: SessionV3) {
     publishToSubscriber(session.id, { type: "session-updated", session: serializeSession(session) });
   }
 
@@ -144,7 +144,7 @@ export async function createApplication(dependencies: ApplicationDependencies): 
     return boundaries.length ? Math.min(...boundaries) : undefined;
   }
 
-  async function appendEvent(session: SessionV2, input: Omit<Parameters<ApplicationDependencies["transcriptRepository"]["append"]>[0], "sessionId" | "sequenceOffset">) {
+  async function appendEvent(session: SessionV3, input: Omit<Parameters<ApplicationDependencies["transcriptRepository"]["append"]>[0], "sessionId" | "sequenceOffset">) {
     try {
       const event = await dependencies.transcriptRepository.append({
         ...input,
@@ -161,7 +161,7 @@ export async function createApplication(dependencies: ApplicationDependencies): 
     }
   }
 
-  function queuePtyTranscript(session: SessionV2, runtime: Runtime, data: string) {
+  function queuePtyTranscript(session: SessionV3, runtime: Runtime, data: string) {
     runtime.pendingTranscript += data;
     if (Buffer.byteLength(runtime.pendingTranscript, "utf8") >= MAX_PTY_TRANSCRIPT_BYTES) {
       if (runtime.transcriptTimer !== undefined) clearTimeout(runtime.transcriptTimer);
@@ -177,7 +177,7 @@ export async function createApplication(dependencies: ApplicationDependencies): 
     }
   }
 
-  function enqueuePtyTranscriptFlush(session: SessionV2, runtime: Runtime) {
+  function enqueuePtyTranscriptFlush(session: SessionV3, runtime: Runtime) {
     runtime.transcriptFlush = runtime.transcriptFlush.catch(() => undefined).then(async () => {
       const raw = runtime.pendingTranscript;
       runtime.pendingTranscript = "";
@@ -186,7 +186,7 @@ export async function createApplication(dependencies: ApplicationDependencies): 
     void runtime.transcriptFlush.catch((error) => dependencies.logger.warn("PTY transcript flush failed", { sessionId: session.id, error: String(error) }));
   }
 
-  async function flushPtyTranscript(session: SessionV2, runtime: Runtime) {
+  async function flushPtyTranscript(session: SessionV3, runtime: Runtime) {
     if (runtime.transcriptTimer !== undefined) clearTimeout(runtime.transcriptTimer);
     runtime.transcriptTimer = undefined;
     if (runtime.pendingTranscript) enqueuePtyTranscriptFlush(session, runtime);
@@ -220,13 +220,13 @@ export async function createApplication(dependencies: ApplicationDependencies): 
     }
   }
 
-  async function resolveCapabilities(profile: SessionV2["profileId"] extends string ? AppStateV2["profiles"][number] : never): Promise<CliProfileCapabilities> {
+  async function resolveCapabilities(profile: SessionV3["profileId"] extends string ? AppStateV3["profiles"][number] : never): Promise<CliProfileCapabilities> {
     const adapter = profile.adapterId;
     if (dependencies.profileAdapters.capabilities) return dependencies.profileAdapters.capabilities(profile);
     return { adapterId: adapter, compatibility: adapter === "generic" ? "supported" : "unknown-version", permissions: [], modes: [], models: [], supportsComposer: true, supportsStructuredRecognition: false };
   }
 
-  async function resolveLaunch(profile: AppStateV2["profiles"][number], config: SessionV2["launchConfig"]) {
+  async function resolveLaunch(profile: AppStateV3["profiles"][number], config: SessionV3["launchConfig"]) {
     try {
       if (dependencies.profileAdapters.resolveLaunch) return await dependencies.profileAdapters.resolveLaunch(profile, config);
       const capabilities = await resolveCapabilities(profile);
@@ -240,7 +240,7 @@ export async function createApplication(dependencies: ApplicationDependencies): 
     }
   }
 
-  async function startSession(sessionId: string, confirmed: boolean, cols = 100, rows = 30): Promise<SessionV2 | undefined> {
+  async function startSession(sessionId: string, confirmed: boolean, cols = 100, rows = 30): Promise<SessionV3 | undefined> {
     if (dependencies.policy.readonly) throw new ApiHttpError(403, "READONLY_MODE", "Readonly mode disables local process startup.");
     if (!confirmed) throw new ApiHttpError(400, "VALIDATION_FAILED", "Session start requires explicit confirmation.", { field: "confirmed" });
     if (runtimes.has(sessionId)) return getSession(sessionId);
@@ -559,10 +559,10 @@ export async function createApplication(dependencies: ApplicationDependencies): 
     return (await visibleTranscript(sessionId)).events.at(-1);
   }
 
-  async function forkDepth(session: SessionV2) {
+  async function forkDepth(session: SessionV3) {
     let depth = 0;
     const visited = new Set<string>();
-    let current: SessionV2 | undefined = session;
+    let current: SessionV3 | undefined = session;
     while (current?.parentSessionId) {
       if (visited.has(current.id)) throw new ApiHttpError(500, "INTERNAL_ERROR", "Session fork lineage is cyclic.");
       visited.add(current.id);
@@ -665,7 +665,7 @@ export async function createApplication(dependencies: ApplicationDependencies): 
             sendJson(response, 200, { cancelled: false, workspace: existing, duplicate: true, pickerIntentToken: pickerIntent });
             return;
           }
-          const workspace: WorkspaceV2 = { id: dependencies.idGenerator.create("workspace"), name: path.basename(workspacePath), path: workspacePath, createdAt: dependencies.clock.now() };
+          const workspace: WorkspaceV3 = { id: dependencies.idGenerator.create("workspace"), name: path.basename(workspacePath), path: workspacePath, kind: "local-folder", createdAt: dependencies.clock.now() };
           state.workspaces.push(workspace);
           await dependencies.stateRepository.save(state);
           sendJson(response, 201, { cancelled: false, workspace, pickerIntentToken: pickerIntent });
@@ -675,7 +675,7 @@ export async function createApplication(dependencies: ApplicationDependencies): 
         }
       }
       if (method === "POST" && !id && !action) {
-        const workspace = { id: dependencies.idGenerator.create("workspace"), name: requireResourceName(body.name, "name"), path: await validateWorkspacePath(requireText(body.path, "path")), createdAt: dependencies.clock.now() };
+        const workspace: WorkspaceV3 = { id: dependencies.idGenerator.create("workspace"), name: requireResourceName(body.name, "name"), path: await validateWorkspacePath(requireText(body.path, "path")), kind: "local-folder", createdAt: dependencies.clock.now() };
         state.workspaces.push(workspace);
         await dependencies.stateRepository.save(state);
         sendJson(response, 201, workspace);
@@ -778,8 +778,8 @@ export async function createApplication(dependencies: ApplicationDependencies): 
         if (!profile) throw new ApiHttpError(404, "PROFILE_NOT_FOUND", "Profile not found.");
         const launchConfig = normalizeLaunchConfig(body.launchConfig);
         const launch = await resolveLaunch(profile, launchConfig);
-        const session: SessionV2 = {
-          id: dependencies.idGenerator.create("session"), name: requireResourceName(body.name, "name"), workspaceId, profileId,
+        const session: SessionV3 = {
+          id: dependencies.idGenerator.create("session"), name: requireResourceName(body.name, "name"), workspaceId, profileId, interactionMode: "terminal",
           runtimeStatus: "stopped", organizationStatus: "active", pinned: false, manualOrder: nextManualOrder(), launchConfig,
           revision: 1, createdAt: now, lastActiveAt: now
         };
@@ -873,11 +873,11 @@ export async function createApplication(dependencies: ApplicationDependencies): 
         const latest = visibleParent.events.at(-1);
         const materialize = await forkDepth(parent) >= 32;
         const now = dependencies.clock.now();
-        const child: SessionV2 = {
+        const child: SessionV3 = {
           ...parent, id: dependencies.idGenerator.create("session"), name: typeof body.name === "string" && body.name.trim() ? requireResourceName(body.name, "name") : `${parent.name} fork`,
           runtimeStatus: "stopped", organizationStatus: "active", pinned: false, manualOrder: nextManualOrder(), parentSessionId: materialize ? undefined : parent.id,
           forkEventId: materialize ? undefined : latest?.id, forkSequence: materialize ? undefined : latest?.sequence ?? 0, forkedAt: now, createdAt: now, lastActiveAt: now,
-          completedAt: undefined, archivedAt: undefined, exitCode: undefined, error: undefined, revision: 1
+          chatContext: undefined, completedAt: undefined, archivedAt: undefined, exitCode: undefined, error: undefined, revision: 1
         };
         state.sessions.push(child);
         try {
@@ -1129,9 +1129,9 @@ function definedEnvironment(environment: Readonly<Record<string, string | undefi
 
 export { commandPreview };
 
-function bump(session: SessionV2) { session.revision += 1; }
+function bump(session: SessionV3) { session.revision += 1; }
 
-function assertRevision(session: SessionV2, expectedRevision: unknown) {
+function assertRevision(session: SessionV3, expectedRevision: unknown) {
   if (expectedRevision !== session.revision) throw new ApiHttpError(409, "SESSION_REVISION_CONFLICT", "Session revision conflict.", { expectedRevision, currentRevision: session.revision, session: { ...session, status: session.runtimeStatus } });
 }
 

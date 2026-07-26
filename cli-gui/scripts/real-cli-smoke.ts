@@ -11,14 +11,16 @@ import { createProductionDependencies } from "../server/production.js";
 
 const commands = ["codex", "claude"] as const;
 const execFileAsync = promisify(execFile);
-for (const command of commands) {
+const availableCommands = commands.filter((command) => {
   try {
     execFileSync(command, ["--version"], { stdio: "ignore", timeout: 5_000, shell: false });
+    return true;
   } catch {
     console.log(`SKIP: ${command} is unavailable or failed its version probe.`);
-    process.exit(0);
+    return false;
   }
-}
+});
+if (!availableCommands.length) process.exit(0);
 
 const root = await fs.mkdtemp(path.join(os.tmpdir(), "specos-real-cli-smoke-"));
 const dataDirectory = path.join(root, "data");
@@ -34,11 +36,11 @@ let server: Awaited<ReturnType<typeof createServer>> | undefined;
 
 try {
   const providerResults = [];
-  providerResults.push(await runProviderPrompt("codex", ["exec", "--ephemeral", "--sandbox", "read-only", "--skip-git-repo-check", "--color", "never", "-C", workspacePath, "Reply with exactly CODEX_SMOKE_OK and do not use tools."], "CODEX_SMOKE_OK", workspacePath));
-  providerResults.push(await runProviderPrompt("claude", ["-p", "Reply with exactly CLAUDE_SMOKE_OK and do not use tools.", "--no-session-persistence", "--tools", "", "--output-format", "text", "--permission-mode", "plan"], "CLAUDE_SMOKE_OK", workspacePath));
+  if (availableCommands.includes("codex")) providerResults.push(await runProviderPrompt("codex", ["exec", "--ephemeral", "--sandbox", "read-only", "--skip-git-repo-check", "--color", "never", "-C", workspacePath, "Reply with exactly CODEX_SMOKE_OK and do not use tools."], "CODEX_SMOKE_OK", workspacePath));
+  if (availableCommands.includes("claude")) providerResults.push(await runProviderPrompt("claude", ["-p", "Reply with exactly CLAUDE_SMOKE_OK and do not use tools.", "--no-session-persistence", "--tools", "", "--output-format", "text", "--permission-mode", "plan"], "CLAUDE_SMOKE_OK", workspacePath));
   const blockedProviders = providerResults.filter((result) => result.status !== "pass").map((result) => result.command);
   if (blockedProviders.length) console.log(`BLOCKED: authenticated provider prompt validation unavailable for ${blockedProviders.join(", ")}; PTY lifecycle validation will continue.`);
-  else console.log("PASS: authenticated Codex and Claude prompt validation.");
+  else console.log(`PASS: authenticated prompt validation for ${availableCommands.join(" and ")}.`);
 
   const processEnvironment = {
     PATH: process.env.PATH,
@@ -53,13 +55,14 @@ try {
   };
   const dependencies = createProductionDependencies({ dataDirectory, readonly: false, processEnvironment });
   const initial = await dependencies.stateRepository.load();
-  initial.workspaces.push({ id: "workspace-smoke", name: "Smoke workspace", path: workspacePath, createdAt: new Date().toISOString() });
+  initial.workspaces.push({ id: "workspace-smoke", name: "Smoke workspace", path: workspacePath, kind: "local-folder", createdAt: new Date().toISOString() });
   initial.profiles.push({ id: "profile-smoke-exit", name: "Exit smoke", command: process.execPath, args: ["-e", "process.exit(17)"], adapterId: "generic", createdAt: new Date().toISOString() });
-  const realSessions = commands.flatMap((command, commandIndex) => Array.from({ length: 2 }, (_, index) => ({
+  const realSessions = availableCommands.flatMap((command, commandIndex) => Array.from({ length: 2 }, (_, index) => ({
     id: `session-smoke-${commandIndex}-${index}`,
     workspaceId: "workspace-smoke",
     profileId: command === "codex" ? "profile-codex" : "profile-claude",
     name: `${command} smoke ${index + 1}`,
+    interactionMode: "terminal" as const,
     runtimeStatus: "stopped" as const,
     organizationStatus: "active" as const,
     pinned: false,
@@ -74,6 +77,7 @@ try {
     workspaceId: "workspace-smoke",
     profileId: "profile-smoke-exit",
     name: "abnormal exit smoke",
+    interactionMode: "terminal" as const,
     runtimeStatus: "stopped" as const,
     organizationStatus: "active" as const,
     pinned: false,
@@ -109,7 +113,7 @@ try {
   const abnormalStart = await post(address.port, `/api/sessions/${abnormalSession.id}/start`, dependencies.policy.csrfCapability!);
   if (abnormalStart !== 200) throw new Error(`abnormal exit start smoke returned status ${abnormalStart}`);
   await waitForSession(address.port, abnormalSession.id, (session) => session.runtimeStatus === "stopped" && session.exitCode === 17);
-  console.log(`PASS: started ${realSessions.length} real CLI PTY sessions concurrently and exercised resize/Ctrl+C/stop/recovery/abnormal-exit.`);
+  console.log(`PASS: started ${realSessions.length} real CLI terminal sessions concurrently and exercised resize/Ctrl+C/stop/recovery/abnormal-exit. Check runtime warnings above to determine whether node-pty or the pipe fallback was used.`);
 } finally {
   await server?.close().catch(() => undefined);
   await fs.rm(root, { recursive: true, force: true });

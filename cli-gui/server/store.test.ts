@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import type { AppStateEnvelopeV2, AppStateV2 } from "../shared/types.js";
+import type { AppStateEnvelopeV2, AppStateEnvelopeV3, AppStateV2, AppStateV3 } from "../shared/types.js";
 import { createJsonStateRepository, StateRepositoryError } from "./store.js";
 
 const roots: string[] = [];
@@ -12,27 +12,57 @@ afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })));
 });
 
+async function makeDataDirectory(prefix: string) {
+  const dataDirectory = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
+  roots.push(dataDirectory);
+  return dataDirectory;
+}
+
+function buildV2Envelope(workspacePath: string): AppStateEnvelopeV2 {
+  const state: AppStateV2 = {
+    workspaces: [{ id: "workspace-1", name: "Workspace", path: workspacePath, createdAt: "2026-01-01T00:00:00Z", lastOpenedAt: "2026-01-02T00:00:00Z" }],
+    profiles: [
+      { id: "profile-codex", name: "Codex CLI", command: "codex", args: ["--foo"], adapterId: "codex", createdAt: "2026-01-01T00:00:00Z" },
+      { id: "profile-claude", name: "Claude CLI", command: "claude", args: [], adapterId: "claude-code", adapterVersionRange: ">=1", createdAt: "2026-01-01T00:00:00Z" }
+    ],
+    sessions: [
+      {
+        id: "session-1", workspaceId: "workspace-1", profileId: "profile-codex", name: "Root session",
+        runtimeStatus: "stopped", organizationStatus: "active", pinned: true, manualOrder: 1000,
+        launchConfig: { permission: "on-request", mode: "workspace-write", model: "gpt-5" },
+        createdAt: "2026-01-01T00:00:00Z", lastActiveAt: "2026-01-03T00:00:00Z", exitCode: 7, revision: 4
+      },
+      {
+        id: "session-2", workspaceId: "workspace-1", profileId: "profile-claude", name: "Fork session",
+        runtimeStatus: "stopped", organizationStatus: "completed", pinned: false, manualOrder: 2000,
+        launchConfig: { permission: null, mode: null, model: null },
+        parentSessionId: "session-1", forkEventId: "event-9", forkSequence: 9, forkedAt: "2026-01-02T00:00:00Z",
+        createdAt: "2026-01-02T00:00:00Z", lastActiveAt: "2026-01-02T12:00:00Z", completedAt: "2026-01-02T12:00:00Z", revision: 2
+      }
+    ]
+  };
+  return { schemaVersion: 2, state };
+}
+
 describe("JSON state repository lifecycle", () => {
   it("owns an isolated queue and drains the latest snapshot", async () => {
-    const dataDirectory = await fs.mkdtemp(path.join(os.tmpdir(), "cli-gui-state-"));
-    roots.push(dataDirectory);
+    const dataDirectory = await makeDataDirectory("cli-gui-state-");
     const repository = createJsonStateRepository({ dataDirectory, clock: { now: () => "2026-01-01T00:00:00Z" } });
-    const state: AppStateV2 = { workspaces: [], profiles: [], sessions: [] };
+    const state: AppStateV3 = { workspaces: [], profiles: [], sessions: [] };
 
     const first = repository.save(state);
-    state.workspaces.push({ id: "workspace-1", name: "Workspace", path: "/tmp/workspace", createdAt: "2026-01-01T00:00:00Z" });
+    state.workspaces.push({ id: "workspace-1", name: "Workspace", path: "/tmp/workspace", kind: "local-folder", createdAt: "2026-01-01T00:00:00Z" });
     const second = repository.save(state);
     state.workspaces[0].name = "Mutated after save";
     await Promise.all([first, second, repository.drain()]);
 
-    const written = JSON.parse(await fs.readFile(path.join(dataDirectory, "state.json"), "utf8")) as AppStateEnvelopeV2;
-    expect(written.schemaVersion).toBe(2);
+    const written = JSON.parse(await fs.readFile(path.join(dataDirectory, "state.json"), "utf8")) as AppStateEnvelopeV3;
+    expect(written.schemaVersion).toBe(3);
     expect(written.state.workspaces[0].name).toBe("Workspace");
   });
 
-  it("migrates a legacy state only after canonical validation and preserves a backup", async () => {
-    const dataDirectory = await fs.mkdtemp(path.join(os.tmpdir(), "cli-gui-state-migration-"));
-    roots.push(dataDirectory);
+  it("migrates a legacy v1 state only after canonical validation and preserves a backup", async () => {
+    const dataDirectory = await makeDataDirectory("cli-gui-state-migration-");
     const workspacePath = await fs.mkdtemp(path.join(dataDirectory, "workspace-"));
     const legacy = {
       workspaces: [{ id: "workspace-1", name: "Workspace", path: workspacePath, createdAt: "2026-01-01T00:00:00Z" }],
@@ -43,14 +73,14 @@ describe("JSON state repository lifecycle", () => {
     await fs.writeFile(statePath, JSON.stringify(legacy), "utf8");
 
     const state = await createJsonStateRepository({ dataDirectory, clock: { now: () => "2026-01-02T00:00:00Z" } }).load();
-    expect(state.sessions[0]).toMatchObject({ id: "session-1", runtimeStatus: "stopped", exitCode: 7, organizationStatus: "active", revision: 1 });
-    expect(JSON.parse(await fs.readFile(statePath, "utf8")).schemaVersion).toBe(2);
+    expect(state.sessions[0]).toMatchObject({ id: "session-1", interactionMode: "terminal", runtimeStatus: "stopped", exitCode: 7, organizationStatus: "active", revision: 1 });
+    expect(state.workspaces[0].kind).toBe("local-folder");
+    expect(JSON.parse(await fs.readFile(statePath, "utf8")).schemaVersion).toBe(3);
     expect(JSON.parse(await fs.readFile(`${statePath}.v1.bak`, "utf8")).sessions[0].id).toBe("session-1");
   });
 
   it("leaves corrupt input untouched and performs no writes in readonly mode", async () => {
-    const dataDirectory = await fs.mkdtemp(path.join(os.tmpdir(), "cli-gui-state-corrupt-"));
-    roots.push(dataDirectory);
+    const dataDirectory = await makeDataDirectory("cli-gui-state-corrupt-");
     const statePath = path.join(dataDirectory, "state.json");
     await fs.writeFile(statePath, "{not-json", "utf8");
     const repository = createJsonStateRepository({ dataDirectory, readonly: true, clock: { now: () => "2026-01-01T00:00:00Z" } });
@@ -62,5 +92,104 @@ describe("JSON state repository lifecycle", () => {
     const state = await readonlyEmpty.load();
     expect(state.sessions).toEqual([]);
     await expect(fs.access(emptyDirectory)).rejects.toThrow();
+  });
+});
+
+describe("schema v2 -> v3 migration", () => {
+  it("migrates a realistic v2 envelope with zero entity or field loss and writes state.json.v2.bak once", async () => {
+    const dataDirectory = await makeDataDirectory("cli-gui-state-v2v3-");
+    const workspacePath = await fs.realpath(await fs.mkdtemp(path.join(dataDirectory, "workspace-")));
+    const envelope = buildV2Envelope(workspacePath);
+    const statePath = path.join(dataDirectory, "state.json");
+    const original = JSON.stringify(envelope, null, 2);
+    await fs.writeFile(statePath, original, "utf8");
+
+    const repository = createJsonStateRepository({ dataDirectory, clock: { now: () => "2026-02-01T00:00:00Z" } });
+    const state = await repository.load();
+
+    // 零丢失门禁：实体计数与字段值逐项相等（test-spec §3.4）。
+    expect(state.workspaces).toHaveLength(1);
+    expect(state.profiles).toHaveLength(2);
+    expect(state.sessions).toHaveLength(2);
+    expect(state.workspaces[0]).toEqual({ ...envelope.state.workspaces[0], path: workspacePath, kind: "local-folder" });
+    expect(state.profiles).toEqual(envelope.state.profiles);
+    expect(state.sessions[0]).toEqual({ ...envelope.state.sessions[0], interactionMode: "terminal" });
+    expect(state.sessions[1]).toEqual({ ...envelope.state.sessions[1], interactionMode: "terminal" });
+
+    // 写回后 envelope 升级为 v3，且源版本备份 state.json.v2.bak 保留原始内容。
+    await repository.drain();
+    const written = JSON.parse(await fs.readFile(statePath, "utf8")) as AppStateEnvelopeV3;
+    expect(written.schemaVersion).toBe(3);
+    expect(await fs.readFile(`${statePath}.v2.bak`, "utf8")).toBe(original);
+
+    // 重复加载：已是 v3，备份不被覆盖。
+    await fs.writeFile(`${statePath}.v2.bak`, "sentinel", "utf8");
+    const reloaded = await createJsonStateRepository({ dataDirectory, clock: { now: () => "2026-02-02T00:00:00Z" } }).load();
+    expect(reloaded).toEqual(state);
+    expect(await fs.readFile(`${statePath}.v2.bak`, "utf8")).toBe("sentinel");
+  });
+
+  it("keeps chat context for chat sessions and strips it from terminal sessions (I-3)", async () => {
+    const dataDirectory = await makeDataDirectory("cli-gui-state-chatctx-");
+    const workspacePath = await fs.realpath(await fs.mkdtemp(path.join(dataDirectory, "workspace-")));
+    const envelope = buildV2Envelope(workspacePath) as unknown as { schemaVersion: number; state: { sessions: Record<string, unknown>[] } };
+    envelope.schemaVersion = 3;
+    envelope.state.sessions[0].interactionMode = "chat";
+    envelope.state.sessions[0].chatContext = { resumeToken: "thread-1", activeModel: "gpt-5", lastTurnCompletedAt: "2026-01-03T00:00:00Z" };
+    envelope.state.sessions[1].interactionMode = "terminal";
+    envelope.state.sessions[1].chatContext = { resumeToken: "should-be-stripped" };
+    const statePath = path.join(dataDirectory, "state.json");
+    await fs.writeFile(statePath, JSON.stringify(envelope), "utf8");
+
+    const state = await createJsonStateRepository({ dataDirectory, clock: { now: () => "2026-02-01T00:00:00Z" } }).load();
+    expect(state.sessions[0].chatContext).toEqual({ resumeToken: "thread-1", activeModel: "gpt-5", lastTurnCompletedAt: "2026-01-03T00:00:00Z" });
+    expect(state.sessions[0].runtimeStatus).toBe("stopped");
+    expect(state.sessions[1].chatContext).toBeUndefined();
+  });
+
+  it.each([
+    ["invalid interactionMode", (state: { sessions: Record<string, unknown>[] }) => { state.sessions[0].interactionMode = "voice"; }],
+    ["forged workspace kind", (state: { workspaces: Record<string, unknown>[] }) => { state.workspaces[0].kind = "ssh-remote"; }],
+    ["malformed chatContext", (state: { sessions: Record<string, unknown>[] }) => { state.sessions[0].interactionMode = "chat"; state.sessions[0].chatContext = { resumeToken: 42 }; }]
+  ])("fails migration on %s and leaves the source untouched", async (_label, mutate) => {
+    const dataDirectory = await makeDataDirectory("cli-gui-state-invalid-");
+    const workspacePath = await fs.realpath(await fs.mkdtemp(path.join(dataDirectory, "workspace-")));
+    const envelope = buildV2Envelope(workspacePath) as unknown as { state: never };
+    mutate(envelope.state);
+    const statePath = path.join(dataDirectory, "state.json");
+    const original = JSON.stringify(envelope);
+    await fs.writeFile(statePath, original, "utf8");
+
+    const repository = createJsonStateRepository({ dataDirectory, clock: { now: () => "2026-02-01T00:00:00Z" } });
+    await expect(repository.load()).rejects.toMatchObject<StateRepositoryError>({ code: "STATE_MIGRATION_FAILED" });
+    expect(await fs.readFile(statePath, "utf8")).toBe(original);
+    await expect(fs.access(`${statePath}.v2.bak`)).rejects.toThrow();
+  });
+
+  it("rejects unknown future schema versions without touching the source", async () => {
+    const dataDirectory = await makeDataDirectory("cli-gui-state-future-");
+    const statePath = path.join(dataDirectory, "state.json");
+    const original = JSON.stringify({ schemaVersion: 4, state: { workspaces: [], profiles: [], sessions: [] } });
+    await fs.writeFile(statePath, original, "utf8");
+
+    const repository = createJsonStateRepository({ dataDirectory, clock: { now: () => "2026-02-01T00:00:00Z" } });
+    await expect(repository.load()).rejects.toMatchObject<StateRepositoryError>({ code: "STATE_MIGRATION_FAILED" });
+    expect(await fs.readFile(statePath, "utf8")).toBe(original);
+  });
+
+  it("migrates in memory only under readonly mode", async () => {
+    const dataDirectory = await makeDataDirectory("cli-gui-state-readonly-");
+    const workspacePath = await fs.realpath(await fs.mkdtemp(path.join(dataDirectory, "workspace-")));
+    const envelope = buildV2Envelope(workspacePath);
+    const statePath = path.join(dataDirectory, "state.json");
+    const original = JSON.stringify(envelope);
+    await fs.writeFile(statePath, original, "utf8");
+
+    const repository = createJsonStateRepository({ dataDirectory, readonly: true, clock: { now: () => "2026-02-01T00:00:00Z" } });
+    const state = await repository.load();
+    expect(state.sessions[0].interactionMode).toBe("terminal");
+    expect(state.workspaces[0].kind).toBe("local-folder");
+    expect(await fs.readFile(statePath, "utf8")).toBe(original);
+    await expect(fs.access(`${statePath}.v2.bak`)).rejects.toThrow();
   });
 });

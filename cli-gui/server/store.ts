@@ -5,11 +5,13 @@ import {
   CURRENT_SCHEMA_VERSION,
   type AppState,
   type AppStateEnvelopeV2,
-  type AppStateV2,
-  type CliProfileV2,
+  type AppStateEnvelopeV3,
+  type AppStateV3,
+  type CliProfileV3,
+  type SessionChatContext,
   type SessionRuntimeError,
-  type SessionV2,
-  type WorkspaceV2
+  type SessionV3,
+  type WorkspaceV3
 } from "../shared/types.js";
 import type { Clock, StateRepository } from "./ports.js";
 
@@ -33,14 +35,14 @@ export function createJsonStateRepository({ dataDirectory, clock, readonly = fal
   const statePath = path.join(resolvedDataDirectory, "state.json");
   let migrationPending = false;
 
-  const defaultProfiles = (): CliProfileV2[] => [
+  const defaultProfiles = (): CliProfileV3[] => [
     { id: "profile-codex", name: "Codex CLI", command: "codex", args: [], adapterId: "codex", createdAt: clock.now() },
     { id: "profile-claude", name: "Claude CLI", command: "claude", args: [], adapterId: "claude-code", createdAt: clock.now() }
   ];
 
-  const save = (state: AppStateV2) => {
+  const save = (state: AppStateV3) => {
     if (readonly) return Promise.reject(new StateRepositoryError("READONLY_MODE", "Readonly mode does not write state."));
-    const snapshot: AppStateEnvelopeV2 = { schemaVersion: CURRENT_SCHEMA_VERSION, state: structuredClone(state) };
+    const snapshot: AppStateEnvelopeV3 = { schemaVersion: CURRENT_SCHEMA_VERSION, state: structuredClone(state) };
     const previous = writeQueues.get(statePath) ?? Promise.resolve();
     const next = previous.catch(() => undefined).then(async () => {
       await fs.mkdir(resolvedDataDirectory, { recursive: true });
@@ -67,7 +69,7 @@ export function createJsonStateRepository({ dataDirectory, clock, readonly = fal
       }
 
       if (raw === undefined) {
-        const state: AppStateV2 = { workspaces: [], profiles: defaultProfiles(), sessions: [] };
+        const state: AppStateV3 = { workspaces: [], profiles: defaultProfiles(), sessions: [] };
         if (!readonly) await save(state);
         return structuredClone(state);
       }
@@ -80,10 +82,11 @@ export function createJsonStateRepository({ dataDirectory, clock, readonly = fal
         throw new StateRepositoryError("STATE_CORRUPT", "State file is not valid JSON; the source was left unchanged.", { cause: error });
       }
 
-      const envelope = isEnvelopeV2(parsed) ? parsed : undefined;
-      let state: AppStateV2;
+      const envelope = isEnvelopeV3(parsed) ? parsed : undefined;
+      const sourceVersion = detectSourceVersion(parsed);
+      let state: AppStateV3;
       try {
-        state = await migrateAndValidate(parsed as AppState | AppStateEnvelopeV2, clock);
+        state = await migrateAndValidate(parsed as AppState | AppStateEnvelopeV2 | AppStateEnvelopeV3, clock);
       } catch (error) {
         if (error instanceof StateRepositoryError) throw error;
         throw new StateRepositoryError("STATE_MIGRATION_FAILED", "State file could not be migrated safely; the source was left unchanged.", { cause: error });
@@ -93,7 +96,7 @@ export function createJsonStateRepository({ dataDirectory, clock, readonly = fal
       if (changed) {
         migrationPending = true;
         if (!readonly) {
-          await createRecoveryBackup(statePath);
+          await createRecoveryBackup(statePath, sourceVersion);
           await save(state);
           migrationPending = false;
         }
@@ -106,8 +109,8 @@ export function createJsonStateRepository({ dataDirectory, clock, readonly = fal
     }
   };
 
-  async function createRecoveryBackup(sourcePath: string) {
-    const backupPath = `${sourcePath}.v1.bak`;
+  async function createRecoveryBackup(sourcePath: string, sourceVersion: number) {
+    const backupPath = `${sourcePath}.v${sourceVersion}.bak`;
     try {
       await fs.copyFile(sourcePath, backupPath, fs.constants.COPYFILE_EXCL);
     } catch (error) {
@@ -116,9 +119,9 @@ export function createJsonStateRepository({ dataDirectory, clock, readonly = fal
   }
 }
 
-export async function migrateAndValidate(parsed: AppState | AppStateEnvelopeV2, clock: Clock): Promise<AppStateV2> {
+export async function migrateAndValidate(parsed: AppState | AppStateEnvelopeV2 | AppStateEnvelopeV3, clock: Clock): Promise<AppStateV3> {
   if (!parsed || typeof parsed !== "object") throw new Error("state root must be an object");
-  const envelope = isEnvelopeV2(parsed) ? parsed : undefined;
+  const envelope = isEnvelopeV3(parsed) ? parsed : isEnvelopeV2(parsed) ? parsed : undefined;
   if ("schemaVersion" in parsed && !envelope) throw new Error("unsupported state schema version");
   const source = (envelope?.state ?? parsed) as Partial<AppState>;
   if (!Array.isArray(source.workspaces) || !Array.isArray(source.profiles) || !Array.isArray(source.sessions)) {
@@ -129,9 +132,9 @@ export async function migrateAndValidate(parsed: AppState | AppStateEnvelopeV2, 
     { id: "profile-codex", name: "Codex CLI", command: "codex", args: [], adapterId: "codex" as const, createdAt: clock.now() },
     { id: "profile-claude", name: "Claude CLI", command: "claude", args: [], adapterId: "claude-code" as const, createdAt: clock.now() }
   ];
-  const profiles = (source.profiles.length ? source.profiles : fallbackProfiles).map((profile): CliProfileV2 => {
+  const profiles = (source.profiles.length ? source.profiles : fallbackProfiles).map((profile): CliProfileV3 => {
     if (!profile || typeof profile !== "object") throw new Error("profile must be an object");
-    const candidate = profile as Partial<CliProfileV2>;
+    const candidate = profile as Partial<CliProfileV3>;
     if (!nonEmpty(candidate.id) || !nonEmpty(candidate.name) || !nonEmpty(candidate.command) || !Array.isArray(candidate.args) || candidate.args.some((arg) => typeof arg !== "string") || (candidate.adapterId !== undefined && !["claude-code", "codex", "generic"].includes(candidate.adapterId))) {
       throw new Error("profile has invalid fields");
     }
@@ -146,31 +149,38 @@ export async function migrateAndValidate(parsed: AppState | AppStateEnvelopeV2, 
     };
   });
 
-  const workspaces = await Promise.all(source.workspaces.map(async (workspace): Promise<WorkspaceV2> => {
+  const workspaces = await Promise.all(source.workspaces.map(async (workspace): Promise<WorkspaceV3> => {
     if (!workspace || typeof workspace !== "object") throw new Error("workspace must be an object");
-    const candidate = workspace as Partial<WorkspaceV2>;
+    const candidate = workspace as Partial<WorkspaceV3>;
     if (!nonEmpty(candidate.id) || !nonEmpty(candidate.name) || !nonEmpty(candidate.path) || (candidate.createdAt !== undefined && typeof candidate.createdAt !== "string") || (candidate.lastOpenedAt !== undefined && typeof candidate.lastOpenedAt !== "string")) throw new Error("workspace has invalid fields");
+    // v2 -> v3: kind 缺失回填 "local-folder"；预留值/伪造值在 MVP01 一律拒绝（storage-spec §3.3）。
+    const kind = candidate.kind ?? "local-folder";
+    if (kind !== "local-folder") throw new Error(`workspace kind is not runnable in MVP01: ${String(kind)}`);
     const canonicalPath = await fs.realpath(candidate.path).catch((error) => {
       throw new Error(`workspace path cannot be canonicalized: ${candidate.path}`, { cause: error });
     });
     const stat = await fs.stat(canonicalPath).catch(() => undefined);
     if (!stat?.isDirectory()) throw new Error(`workspace path is not a directory: ${candidate.path}`);
-    return { id: candidate.id, name: candidate.name, path: canonicalPath, createdAt: candidate.createdAt ?? clock.now(), lastOpenedAt: candidate.lastOpenedAt };
+    return { id: candidate.id, name: candidate.name, path: canonicalPath, kind, createdAt: candidate.createdAt ?? clock.now(), lastOpenedAt: candidate.lastOpenedAt };
   }));
 
   const workspaceIds = new Set(workspaces.map((workspace) => workspace.id));
   if (new Set(workspaces.map((workspace) => workspace.path)).size !== workspaces.length) throw new Error("state contains duplicate workspace paths");
   const profileIds = new Set(profiles.map((profile) => profile.id));
-  const sessions = source.sessions.map((session, index): SessionV2 => {
+  const sessions = source.sessions.map((session, index): SessionV3 => {
     if (!session || typeof session !== "object") throw new Error("session must be an object");
-    const candidate = session as Partial<SessionV2> & { status?: string; error?: unknown };
+    const candidate = session as Partial<SessionV3> & { status?: string; error?: unknown };
     if (!nonEmpty(candidate.id) || !nonEmpty(candidate.name) || !nonEmpty(candidate.workspaceId) || !nonEmpty(candidate.profileId) || !workspaceIds.has(candidate.workspaceId) || !profileIds.has(candidate.profileId)) {
       throw new Error("session contains an invalid reference");
     }
     const launchConfig = candidate.launchConfig && typeof candidate.launchConfig === "object"
       ? candidate.launchConfig
       : { permission: null, mode: null, model: null };
-    if ([launchConfig.permission, launchConfig.mode, launchConfig.model].some((value) => value !== null && value !== undefined && typeof value !== "string")) throw new Error("session has invalid launch configuration");
+    if ([launchConfig.permission, launchConfig.mode, launchConfig.model, launchConfig.branch].some((value) => value !== null && value !== undefined && typeof value !== "string")) throw new Error("session has invalid launch configuration");
+    // v2 -> v3: interactionMode 缺失回填 "terminal"（历史会话全部是 PTY 会话）。
+    const interactionMode = candidate.interactionMode ?? "terminal";
+    if (interactionMode !== "chat" && interactionMode !== "terminal") throw new Error("session has invalid interaction mode");
+    const chatContext = normalizeChatContext(candidate.chatContext, interactionMode);
     const manualOrder = typeof candidate.manualOrder === "number" && Number.isFinite(candidate.manualOrder) ? candidate.manualOrder : (index + 1) * 1000;
     const revision = typeof candidate.revision === "number" && Number.isInteger(candidate.revision) && candidate.revision > 0 ? candidate.revision : 1;
     if (!["active", "completed", "archived"].includes(candidate.organizationStatus ?? "active")) throw new Error("session has invalid organization status");
@@ -182,6 +192,7 @@ export async function migrateAndValidate(parsed: AppState | AppStateEnvelopeV2, 
       workspaceId: candidate.workspaceId,
       profileId: candidate.profileId,
       name: candidate.name,
+      interactionMode,
       runtimeStatus: "stopped",
       organizationStatus: candidate.organizationStatus ?? "active",
       pinned: candidate.pinned ?? false,
@@ -189,8 +200,10 @@ export async function migrateAndValidate(parsed: AppState | AppStateEnvelopeV2, 
       launchConfig: {
         permission: launchConfig.permission ?? null,
         mode: launchConfig.mode ?? null,
-        model: launchConfig.model ?? null
+        model: launchConfig.model ?? null,
+        ...(launchConfig.branch !== undefined ? { branch: launchConfig.branch } : {})
       },
+      ...(chatContext !== undefined ? { chatContext } : {}),
       parentSessionId: candidate.parentSessionId,
       forkEventId: candidate.forkEventId,
       forkSequence: candidate.forkSequence,
@@ -214,19 +227,20 @@ export async function migrateAndValidate(parsed: AppState | AppStateEnvelopeV2, 
   return { workspaces, profiles, sessions };
 }
 
-export function migrateState(parsed: AppState | AppStateEnvelopeV2, clock: Clock): AppStateV2 {
-  const source = isEnvelopeV2(parsed) ? parsed.state : parsed;
+export function migrateState(parsed: AppState | AppStateEnvelopeV2 | AppStateEnvelopeV3, clock: Clock): AppStateV3 {
+  const source = isEnvelopeV3(parsed) || isEnvelopeV2(parsed) ? parsed.state : parsed;
   const profiles = source.profiles?.length ? source.profiles : [
     { id: "profile-codex", name: "Codex CLI", command: "codex", args: [], adapterId: "codex" as const, createdAt: clock.now() },
     { id: "profile-claude", name: "Claude CLI", command: "claude", args: [], adapterId: "claude-code" as const, createdAt: clock.now() }
   ];
   return {
-    workspaces: source.workspaces ?? [],
+    workspaces: (source.workspaces ?? []).map((workspace) => ({ ...workspace, kind: (workspace as Partial<WorkspaceV3>).kind ?? "local-folder" })),
     profiles: profiles.map((profile) => ({ ...profile, adapterId: profile.adapterId ?? inferAdapterId(profile.command) })),
     sessions: (source.sessions ?? []).map((rawSession, index) => {
-      const session = rawSession as Partial<SessionV2>;
+      const session = rawSession as Partial<SessionV3>;
       return {
         ...session,
+      interactionMode: session.interactionMode ?? "terminal",
       runtimeStatus: "stopped" as const,
       organizationStatus: session.organizationStatus ?? "active",
       pinned: session.pinned ?? false,
@@ -235,10 +249,36 @@ export function migrateState(parsed: AppState | AppStateEnvelopeV2, clock: Clock
       revision: session.revision ?? 1
       };
     })
-  } as AppStateV2;
+  } as AppStateV3;
+}
+
+function normalizeChatContext(value: unknown, interactionMode: "chat" | "terminal"): SessionChatContext | undefined {
+  if (value === undefined) return undefined;
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("session has invalid chat context");
+  const candidate = value as Partial<SessionChatContext>;
+  if ([candidate.resumeToken, candidate.activeModel, candidate.lastTurnCompletedAt].some((field) => field !== undefined && typeof field !== "string")) throw new Error("session has invalid chat context");
+  // 不变式 I-3：terminal 会话不得携带 chatContext，迁移时剥除。
+  if (interactionMode !== "chat") return undefined;
+  return {
+    ...(candidate.resumeToken !== undefined ? { resumeToken: candidate.resumeToken } : {}),
+    ...(candidate.activeModel !== undefined ? { activeModel: candidate.activeModel } : {}),
+    ...(candidate.lastTurnCompletedAt !== undefined ? { lastTurnCompletedAt: candidate.lastTurnCompletedAt } : {})
+  };
+}
+
+function detectSourceVersion(value: unknown): number {
+  if (value && typeof value === "object" && "schemaVersion" in value) {
+    const version = (value as { schemaVersion?: unknown }).schemaVersion;
+    return typeof version === "number" ? version : 0;
+  }
+  return 1;
 }
 
 function isEnvelopeV2(value: unknown): value is AppStateEnvelopeV2 {
+  return Boolean(value && typeof value === "object" && "schemaVersion" in value && (value as { schemaVersion?: unknown }).schemaVersion === 2 && "state" in value);
+}
+
+function isEnvelopeV3(value: unknown): value is AppStateEnvelopeV3 {
   return Boolean(value && typeof value === "object" && "schemaVersion" in value && (value as { schemaVersion?: unknown }).schemaVersion === CURRENT_SCHEMA_VERSION && "state" in value);
 }
 

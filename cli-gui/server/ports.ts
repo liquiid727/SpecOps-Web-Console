@@ -1,10 +1,10 @@
 import type http from "node:http";
-import type { AppStateV2, CliProfileV2, CliProfileCapabilities, FilePreview, FileTreePage, GitDiffResponse, GitStatusResponse, LanguageSummaryResponse, TranscriptEvent, TranscriptEventKind, TranscriptEventMetadataValue, TranscriptEventSource, TranscriptPage, Workspace } from "../shared/types.js";
+import type { AppStateV3, CliProfileV3, CliProfileCapabilities, FilePreview, FileTreePage, GitDiffResponse, GitStatusResponse, LanguageSummaryResponse, TranscriptEvent, TranscriptEventKind, TranscriptEventMetadataValue, TranscriptEventSource, TranscriptPage, Workspace } from "../shared/types.js";
 import type { WebSocket } from "ws";
 
 export interface StateRepository {
-  load(): Promise<AppStateV2>;
-  save(state: AppStateV2): Promise<void>;
+  load(): Promise<AppStateV3>;
+  save(state: AppStateV3): Promise<void>;
   drain(): Promise<void>;
 }
 
@@ -92,8 +92,8 @@ export interface DirectoryPicker {
 
 export interface ProfileAdapterRegistry {
   readonly availableAdapterIds: readonly string[];
-  capabilities?(profile: CliProfileV2): Promise<CliProfileCapabilities>;
-  resolveLaunch?(profile: CliProfileV2, config: { permission: string | null; mode: string | null; model: string | null }): Promise<{ command: string; args: string[]; capabilities: CliProfileCapabilities }>;
+  capabilities?(profile: CliProfileV3): Promise<CliProfileCapabilities>;
+  resolveLaunch?(profile: CliProfileV3, config: { permission: string | null; mode: string | null; model: string | null }): Promise<{ command: string; args: string[]; capabilities: CliProfileCapabilities }>;
 }
 
 export interface Clock {
