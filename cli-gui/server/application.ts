@@ -15,8 +15,9 @@ import type {
 } from "../shared/types.js";
 import { ApiHttpError, sendJson } from "./api-errors.js";
 import { commandPreview, requireArgs, requireText } from "./domain.js";
+import { createRuntimeOrchestrator } from "./orchestrator.js";
 import { UnsupportedCliOptionError } from "./profile-adapters.js";
-import type { Application, ApplicationDependencies, PtyProcess } from "./ports.js";
+import type { Application, ApplicationDependencies } from "./ports.js";
 
 const MAX_FILE_DEPTH = 32;
 const MAX_FILE_PAGE = 500;
@@ -25,29 +26,64 @@ const MAX_LANGUAGE_BYTES = 250 * 1024 * 1024;
 const MAX_LANGUAGE_MS = 2_000;
 const MAX_PREVIEW_BYTES = 1 * 1024 * 1024;
 const MAX_TRANSCRIPT_RESPONSE_BYTES = 1 * 1024 * 1024;
-const MAX_TERMINAL_COLS = 500;
-const MAX_TERMINAL_ROWS = 200;
-const PTY_TRANSCRIPT_FLUSH_MS = 75;
-const MAX_PTY_TRANSCRIPT_BYTES = 64 * 1024;
 const MAX_EVENT_PENDING = 512;
 const MAX_EVENT_PENDING_BYTES = 1 * 1024 * 1024;
 const MAX_EVENT_BUFFERED_BYTES = 1 * 1024 * 1024;
 
-type Runtime = {
-  process: PtyProcess;
-  clients: Set<WebSocket>;
-  generation: number;
-  pendingTranscript: string;
-  transcriptTimer?: ReturnType<typeof setTimeout>;
-  transcriptFlush: Promise<void>;
-};
 type EventSubscriber = { client: WebSocket; ready: boolean; pending: TranscriptEvent[]; pendingBytes: number };
 
 export async function createApplication(dependencies: ApplicationDependencies): Promise<Application> {
   const state = await dependencies.stateRepository.load();
-  const runtimes = new Map<string, Runtime>();
-  const runtimeGenerations = new Map<string, number>();
-  const startLocks = new Map<string, Promise<SessionV3 | undefined>>();
+  // 执行控制层：PTY Worker 生命周期由 orchestrator 承担；transcript 写入与 state 持久化经回调留在本层（runtime-orchestrator-spec §2.2）
+  const orchestrator = createRuntimeOrchestrator({
+    ptyRuntime: dependencies.ptyRuntime,
+    clock: dependencies.clock,
+    logger: dependencies.logger,
+    callbacks: {
+      async appendEvent(sessionId, input) {
+        const session = getSession(sessionId);
+        if (!session) return undefined;
+        return appendEvent(session, input);
+      },
+      async onRuntimeStatus(sessionId, status, extra) {
+        const session = getSession(sessionId);
+        if (!session) return;
+        if (status === "starting") {
+          session.runtimeStatus = "starting";
+          session.error = undefined;
+          session.revision += 1;
+          await dependencies.stateRepository.save(state);
+        } else if (status === "running") {
+          session.runtimeStatus = "running";
+          session.lastActiveAt = dependencies.clock.now();
+          session.revision += 1;
+          await dependencies.stateRepository.save(state);
+          publishSessionUpdate(session);
+        } else if (status === "stopped") {
+          session.runtimeStatus = "stopped";
+          session.exitCode = extra?.exitCode;
+          session.lastActiveAt = dependencies.clock.now();
+          session.revision += 1;
+          await appendEvent(session, { occurredAt: dependencies.clock.now(), kind: "lifecycle", source: "session-manager", raw: "Session stopped.", metadata: { status: "stopped", exitCode: extra?.exitCode ?? -1 } });
+          await dependencies.stateRepository.save(state);
+          publishSessionUpdate(session);
+        } else if (status === "error") {
+          session.runtimeStatus = "error";
+          session.error = { code: "SESSION_START_FAILED", message: "Failed to start the session.", occurredAt: dependencies.clock.now() };
+          session.revision += 1;
+          await dependencies.stateRepository.save(state);
+          await appendEvent(session, { occurredAt: dependencies.clock.now(), kind: "error", source: "session-manager", raw: "Failed to start the session.", metadata: { code: "SESSION_START_FAILED" } });
+          publishSessionUpdate(session);
+        }
+      },
+      onActivity(sessionId) {
+        touchSession(sessionId);
+      },
+      hasSession(sessionId) {
+        return Boolean(getSession(sessionId));
+      }
+    }
+  });
   const sessionMutationLocks = new Map<string, Promise<void>>();
   const eventSubscribers = new Map<string, Set<EventSubscriber>>();
   const pendingTouches = new Set<string>();
@@ -161,38 +197,6 @@ export async function createApplication(dependencies: ApplicationDependencies): 
     }
   }
 
-  function queuePtyTranscript(session: SessionV3, runtime: Runtime, data: string) {
-    runtime.pendingTranscript += data;
-    if (Buffer.byteLength(runtime.pendingTranscript, "utf8") >= MAX_PTY_TRANSCRIPT_BYTES) {
-      if (runtime.transcriptTimer !== undefined) clearTimeout(runtime.transcriptTimer);
-      runtime.transcriptTimer = undefined;
-      enqueuePtyTranscriptFlush(session, runtime);
-      return;
-    }
-    if (runtime.transcriptTimer === undefined) {
-      runtime.transcriptTimer = setTimeout(() => {
-        runtime.transcriptTimer = undefined;
-        enqueuePtyTranscriptFlush(session, runtime);
-      }, PTY_TRANSCRIPT_FLUSH_MS);
-    }
-  }
-
-  function enqueuePtyTranscriptFlush(session: SessionV3, runtime: Runtime) {
-    runtime.transcriptFlush = runtime.transcriptFlush.catch(() => undefined).then(async () => {
-      const raw = runtime.pendingTranscript;
-      runtime.pendingTranscript = "";
-      if (raw) await appendEvent(session, { occurredAt: dependencies.clock.now(), kind: "pty_output", source: "pty", raw });
-    });
-    void runtime.transcriptFlush.catch((error) => dependencies.logger.warn("PTY transcript flush failed", { sessionId: session.id, error: String(error) }));
-  }
-
-  async function flushPtyTranscript(session: SessionV3, runtime: Runtime) {
-    if (runtime.transcriptTimer !== undefined) clearTimeout(runtime.transcriptTimer);
-    runtime.transcriptTimer = undefined;
-    if (runtime.pendingTranscript) enqueuePtyTranscriptFlush(session, runtime);
-    await runtime.transcriptFlush;
-  }
-
   function touchSession(id: string) {
     if (closing || pendingTouches.has(id)) return;
     const session = getSession(id);
@@ -243,111 +247,23 @@ export async function createApplication(dependencies: ApplicationDependencies): 
   async function startSession(sessionId: string, confirmed: boolean, cols = 100, rows = 30): Promise<SessionV3 | undefined> {
     if (dependencies.policy.readonly) throw new ApiHttpError(403, "READONLY_MODE", "Readonly mode disables local process startup.");
     if (!confirmed) throw new ApiHttpError(400, "VALIDATION_FAILED", "Session start requires explicit confirmation.", { field: "confirmed" });
-    if (runtimes.has(sessionId)) return getSession(sessionId);
-    const pending = startLocks.get(sessionId);
-    if (pending) return pending;
-    const operation = (async () => {
-      if (runtimes.has(sessionId)) return getSession(sessionId);
+    // prepare 在 orchestrator 启动锁内执行且最多一次；这里保留全部会话/配置校验语义
+    await orchestrator.start(sessionId, async () => {
       const session = requireSession(sessionId);
       const workspace = state.workspaces.find((item) => item.id === session.workspaceId);
       const profile = state.profiles.find((item) => item.id === session.profileId);
       if (!workspace || !profile) throw new ApiHttpError(400, "VALIDATION_FAILED", "Session references a missing workspace or profile.");
       if (session.organizationStatus !== "active") throw new ApiHttpError(409, "SESSION_NOT_ACTIVE", "Session must be active before it can start.");
       const launch = await resolveLaunch(profile, session.launchConfig);
-      const terminal = { cols: clampDimension(cols, 20, MAX_TERMINAL_COLS), rows: clampDimension(rows, 5, MAX_TERMINAL_ROWS) };
-      session.runtimeStatus = "starting";
-      session.error = undefined;
-      session.revision += 1;
-      await dependencies.stateRepository.save(state);
-      await appendEvent(session, { occurredAt: dependencies.clock.now(), kind: "lifecycle", source: "session-manager", raw: "Session starting.", metadata: { status: "starting" } });
-      try {
-        const process = dependencies.ptyRuntime.spawn({
-          command: launch.command,
-          args: launch.args,
-          name: "xterm-256color",
-          cols: terminal.cols,
-          rows: terminal.rows,
-          cwd: workspace.path,
-          env: { ...definedEnvironment(dependencies.policy.processEnvironment), TERM: "xterm-256color" }
-        });
-        const generation = (runtimeGenerations.get(sessionId) ?? 0) + 1;
-        runtimeGenerations.set(sessionId, generation);
-        const runtime: Runtime = { process, clients: new Set<WebSocket>(), generation, pendingTranscript: "", transcriptFlush: Promise.resolve() };
-        runtimes.set(sessionId, runtime);
-        process.onData((data) => {
-          if (closing || runtimes.get(sessionId)?.generation !== generation) return;
-          broadcastTerminal(sessionId, { type: "terminal-output", data });
-          queuePtyTranscript(session, runtime, data);
-          touchSession(sessionId);
-        });
-        process.onExit(({ exitCode }) => {
-          if (closing || runtimes.get(sessionId)?.generation !== generation) return;
-          void finishExit(sessionId, generation, exitCode);
-        });
-        session.runtimeStatus = "running";
-        session.lastActiveAt = dependencies.clock.now();
-        session.revision += 1;
-        await dependencies.stateRepository.save(state);
-        broadcastTerminal(sessionId, { type: "runtime-status", status: "running" });
-        publishSessionUpdate(session);
-        await appendEvent(session, { occurredAt: dependencies.clock.now(), kind: "lifecycle", source: "session-manager", raw: "Session running.", metadata: { status: "running" } });
-        return session;
-      } catch (error) {
-        const runtime = runtimes.get(sessionId);
-        if (runtime) {
-          await flushPtyTranscript(session, runtime);
-          runtimes.delete(sessionId);
-          try { runtime.process.kill(); } catch { /* process already exited */ }
-        }
-        session.runtimeStatus = "error";
-        session.error = { code: "SESSION_START_FAILED", message: "Failed to start the session.", occurredAt: dependencies.clock.now() };
-        session.revision += 1;
-        await dependencies.stateRepository.save(state);
-        await appendEvent(session, { occurredAt: dependencies.clock.now(), kind: "error", source: "session-manager", raw: "Failed to start the session.", metadata: { code: "SESSION_START_FAILED" } });
-        publishSessionUpdate(session);
-        throw error instanceof ApiHttpError ? error : new ApiHttpError(422, "SESSION_START_FAILED", "Failed to start the session.", undefined, { cause: error });
-      }
-    })();
-    startLocks.set(sessionId, operation);
-    try {
-      return await operation;
-    } finally {
-      if (startLocks.get(sessionId) === operation) startLocks.delete(sessionId);
-    }
-  }
-
-  async function finishExit(sessionId: string, generation: number, exitCode: number) {
-    const runtime = runtimes.get(sessionId);
-    if (!runtime || runtime.generation !== generation) return;
-    const session = getSession(sessionId);
-    if (!session) {
-      runtimes.delete(sessionId);
-      return;
-    }
-    await flushPtyTranscript(session, runtime);
-    broadcastTerminal(sessionId, { type: "runtime-status", status: "stopped", exitCode });
-    runtimes.delete(sessionId);
-    session.runtimeStatus = "stopped";
-    session.exitCode = exitCode;
-    session.lastActiveAt = dependencies.clock.now();
-    session.revision += 1;
-    await appendEvent(session, { occurredAt: dependencies.clock.now(), kind: "lifecycle", source: "session-manager", raw: "Session stopped.", metadata: { status: "stopped", exitCode } });
-    await dependencies.stateRepository.save(state);
-    publishSessionUpdate(session);
+      return { command: launch.command, args: launch.args, cwd: workspace.path, env: definedEnvironment(dependencies.policy.processEnvironment) };
+    }, { cols, rows });
+    return getSession(sessionId);
   }
 
   async function stopSession(sessionId: string) {
-    const pending = startLocks.get(sessionId);
-    if (pending) await pending.catch(() => undefined);
-    const runtime = runtimes.get(sessionId);
+    const hadRuntime = await orchestrator.stop(sessionId);
     const session = getSession(sessionId);
-    if (!runtime && (!session || session.runtimeStatus === "stopped")) return session;
-    if (runtime) {
-      if (session) await flushPtyTranscript(session, runtime);
-      runtimes.delete(sessionId);
-      broadcastTerminal(sessionId, { type: "runtime-status", status: "stopped" });
-      try { runtime.process.kill(); } catch (error) { dependencies.logger.warn("PTY stop failed", { sessionId, error: String(error) }); }
-    }
+    if (!hadRuntime && (!session || session.runtimeStatus === "stopped")) return session;
     if (session) {
       session.runtimeStatus = "stopped";
       session.lastActiveAt = dependencies.clock.now();
@@ -908,13 +824,12 @@ export async function createApplication(dependencies: ApplicationDependencies): 
           }
           const event = await appendEvent(session, { occurredAt: dependencies.clock.now(), kind: "user_message", source: "composer", raw: content, clientMessageId });
           if (!event) throw new ApiHttpError(500, "TRANSCRIPT_WRITE_FAILED", "Message could not be recorded.");
-          const runtime = runtimes.get(id);
-          if (!runtime || session.runtimeStatus !== "running") {
+          if (!orchestrator.isRunning(id) || session.runtimeStatus !== "running") {
             await appendEvent(session, { occurredAt: dependencies.clock.now(), kind: "error", source: "session-manager", raw: "Message was recorded but could not be delivered.", metadata: { code: "MESSAGE_DELIVERY_FAILED", clientMessageId } });
             throw new ApiHttpError(502, "MESSAGE_DELIVERY_FAILED", "Message was recorded but could not be delivered.");
           }
           try {
-            runtime.process.write(`${content}\r`);
+            orchestrator.writeTerminal(id, `${content}\r`);
           } catch (error) {
             await appendEvent(session, { occurredAt: dependencies.clock.now(), kind: "error", source: "session-manager", raw: "Message was recorded but could not be delivered.", metadata: { code: "MESSAGE_DELIVERY_FAILED", clientMessageId } });
             throw new ApiHttpError(502, "MESSAGE_DELIVERY_FAILED", "Message was recorded but could not be delivered.", undefined, { cause: error });
@@ -934,29 +849,13 @@ export async function createApplication(dependencies: ApplicationDependencies): 
         return;
       }
       if (method === "POST" && id && action === "resize") {
-        const runtime = runtimes.get(id);
-        if (!runtime) throw new ApiHttpError(409, "SESSION_NOT_ACTIVE", "Session is not running.");
-        runtime.process.resize(clampDimension(body.cols, 20, MAX_TERMINAL_COLS), clampDimension(body.rows, 5, MAX_TERMINAL_ROWS));
+        if (!orchestrator.isRunning(id)) throw new ApiHttpError(409, "SESSION_NOT_ACTIVE", "Session is not running.");
+        orchestrator.resizeTerminal(id, body.cols, body.rows);
         sendJson(response, 204, null);
         return;
       }
     }
     throw new ApiHttpError(404, "ROUTE_NOT_FOUND", "Route not found.");
-  }
-
-  function broadcastTerminal(sessionId: string, message: unknown) {
-    const runtime = runtimes.get(sessionId);
-    if (!runtime) return;
-    const encoded = JSON.stringify(message);
-    for (const client of runtime.clients) {
-      if (client.readyState !== WebSocket.OPEN) continue;
-      if (client.bufferedAmount > MAX_EVENT_BUFFERED_BYTES) {
-        client.close(1013, "terminal client is behind");
-        runtime.clients.delete(client);
-        continue;
-      }
-      client.send(encoded);
-    }
   }
 
   return {
@@ -1000,23 +899,17 @@ export async function createApplication(dependencies: ApplicationDependencies): 
         client.on("error", () => subscribers.delete(subscriber));
         return;
       }
-      const runtime = runtimes.get(sessionId);
-      if (runtime) {
-        runtime.clients.add(client);
-        client.send(JSON.stringify({ type: "runtime-status", status: getSession(sessionId)?.runtimeStatus ?? "stopped" }));
-      } else {
-        client.send(JSON.stringify({ type: "runtime-status", status: getSession(sessionId)?.runtimeStatus ?? "stopped" }));
-      }
+      orchestrator.attachTerminalClient(sessionId, client);
+      client.send(JSON.stringify({ type: "runtime-status", status: getSession(sessionId)?.runtimeStatus ?? "stopped" }));
       client.on("message", (raw) => {
         try {
           const message = JSON.parse(raw.toString()) as { type: string; data?: string; cols?: number; rows?: number };
-          const current = runtimes.get(sessionId);
-          if (!current) return;
+          if (!orchestrator.isRunning(sessionId)) return;
           if ((message.type === "terminal-input" || message.type === "input") && typeof message.data === "string") {
-            current.process.write(message.data);
+            orchestrator.writeTerminal(sessionId, message.data);
             touchSession(sessionId);
           } else if ((message.type === "terminal-resize" || message.type === "resize") && Number.isInteger(message.cols) && Number.isInteger(message.rows)) {
-            current.process.resize(clampDimension(message.cols, 20, MAX_TERMINAL_COLS), clampDimension(message.rows, 5, MAX_TERMINAL_ROWS));
+            orchestrator.resizeTerminal(sessionId, message.cols, message.rows);
           } else {
             client.send(JSON.stringify({ type: "protocol-error", error: { code: "VALIDATION_FAILED", message: "Invalid terminal frame.", requestId: "websocket" } }));
           }
@@ -1024,19 +917,18 @@ export async function createApplication(dependencies: ApplicationDependencies): 
           client.send(JSON.stringify({ type: "protocol-error", error: { code: "INVALID_JSON", message: "Invalid terminal frame.", requestId: "websocket" } }));
         }
       });
-      client.on("close", () => runtimes.get(sessionId)?.clients.delete(client));
+      client.on("close", () => orchestrator.detachTerminalClient(sessionId, client));
     },
     close() {
       if (closePromise) return closePromise;
       closePromise = (async () => {
         closing = true;
+        orchestrator.beginShutdown();
         await waitForIdle();
+        const stoppedSessionIds = await orchestrator.shutdown();
         let changed = false;
-        for (const [sessionId, runtime] of runtimes) {
+        for (const sessionId of stoppedSessionIds) {
           const session = getSession(sessionId);
-          if (session) await flushPtyTranscript(session, runtime);
-          for (const client of runtime.clients) client.close(1001, "server shutting down");
-          try { runtime.process.kill(); } catch { /* process already exited */ }
           if (session && session.runtimeStatus !== "stopped") {
             session.runtimeStatus = "stopped";
             session.lastActiveAt = dependencies.clock.now();
@@ -1046,7 +938,6 @@ export async function createApplication(dependencies: ApplicationDependencies): 
         }
         for (const subscribers of eventSubscribers.values()) for (const subscriber of subscribers) subscriber.client.close(1001, "server shutting down");
         eventSubscribers.clear();
-        runtimes.clear();
         const failures: unknown[] = [];
         const shutdown = await Promise.allSettled([dependencies.ptyRuntime.shutdown(), changed && !dependencies.policy.readonly ? dependencies.stateRepository.save(state) : Promise.resolve()]);
         for (const result of shutdown) if (result.status === "rejected") failures.push(result.reason);
@@ -1157,12 +1048,6 @@ function requireComposerContent(value: unknown) {
   if (!content.trim()) throw new ApiHttpError(400, "VALIDATION_FAILED", "content must not be empty.", { field: "content" });
   if (Buffer.byteLength(content, "utf8") > 65_536) throw new ApiHttpError(413, "PAYLOAD_TOO_LARGE", "Composer content exceeds 64 KiB.");
   return content;
-}
-
-function clampDimension(value: unknown, minimum: number, maximum: number) {
-  if (value === undefined) return minimum === 20 ? 100 : 30;
-  if (typeof value !== "number" || !Number.isInteger(value) || !Number.isFinite(value)) throw new ApiHttpError(400, "VALIDATION_FAILED", "Terminal dimensions must be integers.");
-  return Math.min(maximum, Math.max(minimum, value));
 }
 
 function languageForPath(filePath: string) {
