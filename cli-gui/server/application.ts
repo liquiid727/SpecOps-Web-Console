@@ -39,6 +39,7 @@ export async function createApplication(dependencies: ApplicationDependencies): 
     ptyRuntime: dependencies.ptyRuntime,
     clock: dependencies.clock,
     logger: dependencies.logger,
+    turnTimeoutMs: parsePositiveInteger(dependencies.policy.processEnvironment.SPECOS_TURN_TIMEOUT_MS),
     callbacks: {
       async appendEvent(sessionId, input) {
         const session = getSession(sessionId);
@@ -54,6 +55,10 @@ export async function createApplication(dependencies: ApplicationDependencies): 
           session.revision += 1;
           await dependencies.stateRepository.save(state);
         } else if (status === "running") {
+          // 轮次成功后 Orchestrator 上报 resumeToken，写入 chatContext（domain-spec §2.1；保持 I-3：terminal 不写）
+          if (extra?.resumeToken && session.interactionMode === "chat") {
+            session.chatContext = { ...session.chatContext, resumeToken: extra.resumeToken };
+          }
           session.runtimeStatus = "running";
           session.lastActiveAt = dependencies.clock.now();
           session.revision += 1;
@@ -1012,6 +1017,12 @@ async function readJson(request: http.IncomingMessage) {
     if (error instanceof ApiHttpError) throw error;
     throw new ApiHttpError(400, "INVALID_JSON", "Request body must contain valid UTF-8 JSON.", undefined, { cause: error });
   }
+}
+
+function parsePositiveInteger(value: string | undefined): number | undefined {
+  if (value === undefined) return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : undefined;
 }
 
 function definedEnvironment(environment: Readonly<Record<string, string | undefined>>) {

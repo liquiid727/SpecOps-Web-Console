@@ -78,8 +78,13 @@ export interface PreparedLaunch {
 export interface TurnInput {
   turnId: string;
   prompt: string;
+  clientMessageId?: string;
   model?: string;
   resumeToken?: string;
+  /** CLI 语义注入（Adapter buildTurn 的应用侧包装）：Orchestrator 不理解任何 CLI 语义 */
+  buildCommand(): Promise<PreparedLaunch>;
+  /** CLI 语义注入（Adapter parseEvents 的应用侧包装）：stdout → 规范事件流 */
+  parseOutput(stdout: Readable): AsyncGenerator<ParsedTurnEvent, TurnParseResult, void>;
 }
 
 /** 执行控制层 port（runtime-orchestrator-spec §2.1）；不理解任何 CLI 语义 */
