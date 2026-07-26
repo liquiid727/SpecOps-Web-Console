@@ -4,6 +4,8 @@ import { useI18n } from "../i18n";
 import { useTheme } from "../theme";
 import { Icon } from "./ui/Icon";
 import { Overlay } from "./ui/Overlay";
+import { Button, IconButton, Tabs, TextField } from "./ui";
+import { ResourceRow, SettingsSection } from "./patterns";
 
 interface WorkspaceProfileManagerProps {
   profiles: CliProfile[];
@@ -46,42 +48,40 @@ export function WorkspaceProfileManager(props: WorkspaceProfileManagerProps) {
 
   return <Overlay kind="drawer" title={t("workspaceSettings")} description={t("workspaceSettingsDescription")} onClose={props.onClose}>
     <div className="settings-layout">
-      <nav className="settings-nav" aria-label={t("settingsCategory")} role="tablist">
-        {categories.map(([id, label]) => <button key={id} role="tab" data-settings-category={id} aria-selected={category === id} className={category === id ? "active" : ""} onClick={() => setCategory(id)}>{label}</button>)}
-      </nav>
+      <Tabs className="settings-nav" ariaLabel={t("settingsCategory")} value={category} onChange={setCategory} items={categories.map(([id, label]) => ({ id, label, buttonProps: { "data-settings-category": id } }))} />
       <div className="settings-content">
         {category === "environment" ? <>
-          <div className="settings-section">
+          <SettingsSection title={<span className="visually-hidden">{t("projects")}</span>}>
             <div className="settings-heading"><div><span className="eyebrow">{t("projects").toUpperCase()}</span><h3>{t("projects")}</h3></div><span className="count-badge">{props.workspaces.length}</span></div>
-            <button className="secondary-button open-folder-button" disabled={props.readonly || openingFolder} onClick={async () => { setOpeningFolder(true); try { await props.onOpenFolder(); } finally { setOpeningFolder(false); } }}><Icon name="folder" />{openingFolder ? t("working") : t("openFolder")}</button>
+            <Button variant="secondary" className="secondary-button open-folder-button" disabled={props.readonly} loading={openingFolder} loadingLabel={t("working")} onClick={async () => { setOpeningFolder(true); try { await props.onOpenFolder(); } finally { setOpeningFolder(false); } }}><Icon name="folder" />{t("openFolder")}</Button>
             <div className="resource-list">
               {props.workspaces.map((workspace) => {
                 const inUse = props.sessions.some((session) => session.workspaceId === workspace.id);
-                return <div className="resource-row" key={workspace.id}><div className="resource-icon"><Icon name="folder" /></div><div><strong>{workspace.name}</strong><small title={workspace.path}>{workspace.path}</small></div><button className="icon-button danger" onClick={() => props.onDeleteWorkspace(workspace)} disabled={props.readonly || inUse} aria-label={`${t("deleteWorkspace")} ${workspace.name}`} title={inUse ? t("deleteSessionsFirst") : t("deleteWorkspace")}><Icon name="trash" /></button></div>;
+                return <ResourceRow key={workspace.id} icon={<div className="resource-icon"><Icon name="folder" /></div>} primary={workspace.name} secondary={<span title={workspace.path}>{workspace.path}</span>} actions={<IconButton className="danger" icon="trash" onClick={() => props.onDeleteWorkspace(workspace)} disabled={props.readonly || inUse} label={`${t("deleteWorkspace")} ${workspace.name}`} title={inUse ? t("deleteSessionsFirst") : t("deleteWorkspace")} />} />;
               })}
               {!props.workspaces.length && <p className="resource-empty">{t("noWorkspacesRegistered")}</p>}
             </div>
             <form className="compact-form" onSubmit={submitWorkspace}>
-              <label><span>{t("name")}</span><input required placeholder="Payment platform" value={workspaceForm.name} onChange={(event) => setWorkspaceForm({ ...workspaceForm, name: event.target.value })} /></label>
-              <label><span>{t("localPath")}</span><input required placeholder="/Users/me/project" value={workspaceForm.path} onChange={(event) => setWorkspaceForm({ ...workspaceForm, path: event.target.value })} /></label>
-              <button className="primary-button" disabled={props.readonly}><Icon name="add" />{t("addWorkspace")}</button>
+              <TextField label={t("name")} required placeholder="Payment platform" value={workspaceForm.name} onChange={(event) => setWorkspaceForm({ ...workspaceForm, name: event.target.value })} />
+              <TextField label={t("localPath")} required placeholder="/Users/me/project" value={workspaceForm.path} onChange={(event) => setWorkspaceForm({ ...workspaceForm, path: event.target.value })} />
+              <Button type="submit" variant="primary" className="primary-button" disabled={props.readonly}><Icon name="add" />{t("addWorkspace")}</Button>
             </form>
-          </div>
+          </SettingsSection>
 
-          <div className="settings-section">
+          <SettingsSection title={<span className="visually-hidden">{t("cliProfiles")}</span>}>
             <div className="settings-heading"><div><span className="eyebrow">{t("launchers").toUpperCase()}</span><h3>{t("cliProfiles")}</h3></div><span className="count-badge">{props.profiles.length}</span></div>
             <div className="resource-list">
               {props.profiles.map((profile) => {
                 const inUse = props.sessions.some((session) => session.profileId === profile.id);
-                return <div className="resource-row" key={profile.id}><div className="resource-icon"><Icon name="terminal" /></div><div><strong>{profile.name}</strong><small className="mono">{[profile.command, ...profile.args].join(" ")}</small></div><button className="icon-button danger" onClick={() => props.onDeleteProfile(profile)} disabled={props.readonly || inUse} aria-label={`${t("deleteCliProfile")} ${profile.name}`} title={inUse ? t("deleteSessionsFirst") : t("deleteCliProfile")}><Icon name="trash" /></button></div>;
+                return <ResourceRow key={profile.id} icon={<div className="resource-icon"><Icon name="terminal" /></div>} primary={profile.name} secondary={<span className="mono">{[profile.command, ...profile.args].join(" ")}</span>} actions={<IconButton className="danger" icon="trash" onClick={() => props.onDeleteProfile(profile)} disabled={props.readonly || inUse} label={`${t("deleteCliProfile")} ${profile.name}`} title={inUse ? t("deleteSessionsFirst") : t("deleteCliProfile")} />} />;
               })}
             </div>
             <form className="compact-form" onSubmit={submitProfile}>
-              <label><span>{t("name")}</span><input required placeholder="Review Claude" value={profileForm.name} onChange={(event) => setProfileForm({ ...profileForm, name: event.target.value })} /></label>
-              <div className="field-grid"><label><span>{t("command")}</span><input required placeholder="claude" value={profileForm.command} onChange={(event) => setProfileForm({ ...profileForm, command: event.target.value })} /></label><label><span>{t("arguments")}</span><input placeholder="--model opus" value={profileForm.args} onChange={(event) => setProfileForm({ ...profileForm, args: event.target.value })} /></label></div>
-              <button className="primary-button" disabled={props.readonly}><Icon name="add" />{t("saveProfile")}</button>
+              <TextField label={t("name")} required placeholder="Review Claude" value={profileForm.name} onChange={(event) => setProfileForm({ ...profileForm, name: event.target.value })} />
+              <div className="field-grid"><TextField label={t("command")} required placeholder="claude" value={profileForm.command} onChange={(event) => setProfileForm({ ...profileForm, command: event.target.value })} /><TextField label={t("arguments")} placeholder="--model opus" value={profileForm.args} onChange={(event) => setProfileForm({ ...profileForm, args: event.target.value })} /></div>
+              <Button type="submit" variant="primary" className="primary-button" disabled={props.readonly}><Icon name="add" />{t("saveProfile")}</Button>
             </form>
-          </div>
+          </SettingsSection>
       </> : category === "appearance" ? <AppearanceSettings /> : <div className="settings-placeholder"><Icon name="info" /><strong>{categories.find(([id]) => id === category)?.[1]}</strong><p>{t("settingsPlaceholder")}</p></div>}
       </div>
     </div>
@@ -95,18 +95,18 @@ function AppearanceSettings() {
     <div className="settings-section">
       <div className="settings-heading"><div><span className="eyebrow">{t("settingsAppearance").toUpperCase()}</span><h3>{t("language")}</h3></div></div>
       <div className="theme-choice-list" role="radiogroup" aria-label={t("language")}>
-        {(["en", "zh"] as const).map((value) => <button key={value} type="button" data-language-choice={value} role="radio" aria-checked={language === value} className={language === value ? "active" : ""} onClick={() => setLanguage(value)}>
+        {(["en", "zh"] as const).map((value) => <Button variant="ghost" key={value} data-language-choice={value} role="radio" aria-checked={language === value} className={language === value ? "active" : ""} onClick={() => setLanguage(value)}>
           <span>{value === "en" ? t("languageEnglish") : t("languageChinese")}</span>
-        </button>)}
+        </Button>)}
       </div>
     </div>
     <div className="settings-section">
       <div className="settings-heading"><div><span className="eyebrow">{t("settingsAppearance").toUpperCase()}</span><h3>{t("theme")}</h3></div></div>
       <div className="theme-choice-list" role="radiogroup" aria-label={t("theme")}>
-        {themes.map((option) => <button key={option.id} type="button" data-theme-choice={option.id} role="radio" aria-checked={theme === option.id} className={theme === option.id ? "active" : ""} onClick={() => setTheme(option.id)}>
+        {themes.map((option) => <Button variant="ghost" key={option.id} data-theme-choice={option.id} role="radio" aria-checked={theme === option.id} className={theme === option.id ? "active" : ""} onClick={() => setTheme(option.id)}>
           <span>{t(option.labelKey)}</span>
           <small>{t(option.id === "qoder-light" ? "themeQoderLightDescription" : option.id === "neo" ? "themeNeoDescription" : "themeClassicDescription")}</small>
-        </button>)}
+        </Button>)}
       </div>
     </div>
   </div>;

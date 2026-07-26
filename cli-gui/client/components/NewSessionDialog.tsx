@@ -55,7 +55,7 @@ export function NewSessionDialog({ profiles, readonly, workspaces, onClose, onCr
       <label className="interaction-mode-field"><span>{t("interactionModeLabel")}</span><Select ariaLabel={t("interactionModeLabel")} value={effectiveMode} disabled={chatLocked} options={[{ value: "chat", label: t("interactionModeChat") }, { value: "terminal", label: t("interactionModeTerminal") }]} onChange={(next) => setMode(next as "chat" | "terminal")} /></label>
       {chatLocked && <small className="interaction-mode-locked">{t("interactionModeLocked")}</small>}
       <LaunchPreview workspace={workspaces.find((item) => item.id === form.workspaceId)} profile={profiles.find((item) => item.id === form.profileId)} />
-      <DialogActions><Button variant="secondary" className="secondary-button" onClick={onClose}>{t("cancel")}</Button><Button variant="primary" className="primary-button" disabled={readonly} loading={submitting} loadingLabel={t("starting")}>{t("confirmAndStart")}</Button></DialogActions>
+      <DialogActions><Button variant="secondary" className="secondary-button" onClick={onClose}>{t("cancel")}</Button><Button type="submit" variant="primary" className="primary-button" disabled={readonly} loading={submitting} loadingLabel={t("starting")}>{t("confirmAndStart")}</Button></DialogActions>
     </form>}
   </Overlay>;
 }

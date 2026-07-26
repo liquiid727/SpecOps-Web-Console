@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { Overlay } from "./ui/Overlay";
 import { useI18n } from "../i18n";
+import { Button, TextField } from "./ui";
+import { DialogActions } from "./patterns";
 
 interface ActionDialogProps {
   confirmLabel: string;
@@ -27,8 +29,8 @@ export function ActionDialog({ confirmLabel, danger, description, initialValue, 
 
   return <Overlay title={title} description={description} onClose={onClose}>
     <form className="dialog-form" onSubmit={submit}>
-      {inputLabel && <label><span>{inputLabel}</span><input autoFocus value={value} onChange={(event) => setValue(event.target.value)} /></label>}
-      <footer className="dialog-actions"><button type="button" className="secondary-button" onClick={onClose}>{t("cancel")}</button><button className={danger ? "danger-button" : "primary-button"} disabled={submitting}>{submitting ? t("working") : confirmLabel}</button></footer>
+      {inputLabel && <TextField autoFocus label={inputLabel} value={value} onChange={(event) => setValue(event.target.value)} />}
+      <DialogActions><Button variant="secondary" className="secondary-button" onClick={onClose}>{t("cancel")}</Button><Button type="submit" variant={danger ? "danger" : "primary"} className={danger ? "danger-button" : "primary-button"} loading={submitting} loadingLabel={t("working")}>{confirmLabel}</Button></DialogActions>
     </form>
   </Overlay>;
 }

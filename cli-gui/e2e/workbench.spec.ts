@@ -178,6 +178,9 @@ test("keeps concurrent chat and terminal sessions isolated (multi-session smoke)
       const response = await fetch("/api/sessions", { method: "POST", headers, body: JSON.stringify({ name, workspaceId: "workspace-fixture", profileId: "profile-headless", start: true, confirmed: true }) });
       if (response.status !== 201) throw new Error(`create failed: ${response.status}`);
     }
+    // issue-017 G-B1：补第 2 个 terminal 会话，凑足 2 chat + 2 terminal ≥4 并发（test-spec §4.2）
+    const terminal = await fetch("/api/sessions", { method: "POST", headers, body: JSON.stringify({ name: "Terminal quest C", workspaceId: "workspace-fixture", profileId: "profile-fixture", start: true, confirmed: true }) });
+    if (terminal.status !== 201) throw new Error(`create failed: ${terminal.status}`);
   });
   await page.reload();
 
@@ -206,8 +209,10 @@ test("keeps concurrent chat and terminal sessions isolated (multi-session smoke)
   await expect(page.locator(".chat-messages")).toContainText("reply:alpha task", { timeout: 10_000 });
   await expect(page.locator(".chat-messages")).not.toContainText("beta task");
 
-  // 终端会话的 transcript 不含任何 chat 回复
+  // 终端会话的 transcript 不含任何 chat 回复（两个 terminal 会话都验证零串台）
   await page.locator(SESSION_ROW).filter({ hasText: "Fixture session" }).first().click();
+  await expect(page.locator(".chat-messages")).not.toContainText("reply:");
+  await page.locator(SESSION_ROW).filter({ hasText: "Terminal quest C" }).first().click();
   await expect(page.locator(".chat-messages")).not.toContainText("reply:");
 });
 
@@ -241,4 +246,49 @@ test("explains the downgrade when creating from Quest Home with a terminal-only 
   // 服务端降级 terminal：进入会话前展示一次性说明 toast，会话仍创建成功
   await expect(page.locator(".feedback-notice").filter({ hasText: "terminal mode" }).first()).toBeVisible({ timeout: 10_000 });
   await expect(page.locator(NAVIGATOR)).toContainText("downgrade quest");
+});
+
+// issue-017：B 段门禁 E2E 冒烟链路（test-spec §4.2；PRD §9.2）
+// Quest Home 创建 → 多轮 → 取消一轮 → chat Terminal tab 原始输出 → 刷新回放 → 归档
+test("runs the B-gate smoke chain: create, multi-turn, cancel, terminal replay, reload, archive", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.locator(".start-in-row").getByRole("button", { name: "CLI profile" }).click();
+  await page.getByRole("option", { name: "Fixture headless" }).click();
+  const prompt = page.getByRole("textbox", { name: "Prompt" });
+  await prompt.fill("smoke first turn");
+  await prompt.press("Enter");
+  await expect(page.locator(".chat-messages")).toContainText("reply:smoke first turn", { timeout: 15_000 });
+
+  // 第二轮：同一会话多轮往返
+  await prompt.fill("smoke second turn");
+  await prompt.press("Enter");
+  await expect(page.locator(".chat-messages")).toContainText("reply:smoke second turn", { timeout: 15_000 });
+
+  // 取消一轮：slow: 前缀让假 CLI 挂起 20s，点击 Stop turn 中止本轮
+  await prompt.fill("slow:hang turn");
+  await prompt.press("Enter");
+  const stopTurn = page.getByRole("button", { name: "Stop turn" });
+  await expect(stopTurn).toBeVisible({ timeout: 10_000 });
+  await stopTurn.click();
+  await expect(stopTurn).toHaveCount(0, { timeout: 10_000 });
+
+  // chat Terminal tab：各轮 CLI 原始输出（降级 pty_output）只读回放
+  await page.getByRole("tab", { name: "Terminal" }).click();
+  await expect(page.locator(".pty-replay")).toContainText("cli-raw smoke first turn", { timeout: 10_000 });
+  await page.getByRole("tab", { name: "Transcript" }).click();
+
+  // 刷新回放：transcript 从磁盘重放后依旧完整
+  await page.reload();
+  await page.locator(`${NAVIGATOR} ${SESSION_ROW}`).filter({ hasText: "smoke first turn" }).first().click();
+  await expect(page.locator(".chat-messages")).toContainText("reply:smoke first turn", { timeout: 15_000 });
+  await expect(page.locator(".chat-messages")).toContainText("reply:smoke second turn");
+
+  // 归档：右键菜单 → Archive → 确认对话框（运行中会话 stopRunning）→ active 过滤下消失
+  const row = page.locator(`${NAVIGATOR} ${SESSION_ROW}`).filter({ hasText: "smoke first turn" }).first();
+  await row.click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Archive" }).click();
+  await page.getByRole("button", { name: "Archive", exact: true }).click();
+  await expect(page.locator(`${NAVIGATOR} ${SESSION_ROW}`).filter({ hasText: "smoke first turn" })).toHaveCount(0, { timeout: 10_000 });
 });
