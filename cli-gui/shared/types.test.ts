@@ -48,14 +48,15 @@ describe("schema v3 contracts", () => {
     expectTypeOf(envelope.schemaVersion).toEqualTypeOf<3>();
     expectTypeOf<AppStateV3["sessions"][number]>().toEqualTypeOf<SessionV3>();
     expectTypeOf<AppStateEnvelopeV2["schemaVersion"]>().toEqualTypeOf<2>();
-    expectTypeOf<SessionV2>().toEqualTypeOf<Omit<SessionV3, "interactionMode" | "chatContext">>();
+    expectTypeOf<SessionV2>().toEqualTypeOf<Omit<SessionV3, "interactionMode" | "chatContext" | "terminalContext">>();
   });
 
   it("carries interaction mode and chat context on canonical sessions", () => {
     expectTypeOf(canonicalSession.interactionMode).toEqualTypeOf<"chat" | "terminal">();
     expect(canonicalSession.chatContext?.resumeToken).toBe("thread-42");
-    const terminalSession: SessionV3 = { ...canonicalSession, interactionMode: "terminal", chatContext: undefined };
+    const terminalSession: SessionV3 = { ...canonicalSession, interactionMode: "terminal", chatContext: undefined, terminalContext: { resumeToken: "rollout-42" } };
     expect(terminalSession.chatContext).toBeUndefined();
+    expect(terminalSession.terminalContext?.resumeToken).toBe("rollout-42");
   });
 
   it("derives the temporary status alias without mutating canonical sessions", () => {
@@ -87,7 +88,7 @@ describe("schema v3 contracts", () => {
     expectTypeOf<SessionStatus>().toEqualTypeOf<SessionV3["runtimeStatus"]>();
     expectTypeOf<ApiErrorResponse["error"]["code"]>().toEqualTypeOf<ApiErrorCode>();
     expectTypeOf<TerminalServerFrame["type"]>().toEqualTypeOf<"terminal-output" | "runtime-status" | "protocol-error">();
-    expectTypeOf<EventServerFrame["type"]>().toEqualTypeOf<"subscription-ready" | "transcript-event" | "session-updated" | "recording-warning" | "turn-status" | "protocol-error">();
+    expectTypeOf<EventServerFrame["type"]>().toEqualTypeOf<"subscription-ready" | "transcript-event" | "session-updated" | "recording-warning" | "turn-status" | "turn-delta" | "protocol-error">();
 
     const pick: PickWorkspaceResponse = { cancelled: false, workspace: { id: "workspace-1", name: "Workspace", path: "/tmp/workspace", kind: "local-folder", createdAt: "2026-01-01T00:00:00Z" } };
     if (!pick.cancelled) expectTypeOf(pick.workspace.path).toBeString();

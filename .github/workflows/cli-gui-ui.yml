@@ -1,0 +1,42 @@
+name: CLI GUI UI
+
+on:
+  pull_request:
+    paths:
+      - "cli-gui/**"
+      - ".agents/manifest.yaml"
+      - ".agents/roles/cli-gui-agent.md"
+      - "ai/agents/cli-gui-agent.md"
+      - ".github/workflows/cli-gui-ui.yml"
+  push:
+    branches: [main]
+    paths:
+      - "cli-gui/**"
+      - ".agents/manifest.yaml"
+      - ".agents/roles/cli-gui-agent.md"
+      - "ai/agents/cli-gui-agent.md"
+      - ".github/workflows/cli-gui-ui.yml"
+
+concurrency:
+  group: cli-gui-ui-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cli-gui
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: cli-gui/package-lock.json
+      - run: npm ci
+      - run: npm run ui:check
+      - run: npm run test
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e

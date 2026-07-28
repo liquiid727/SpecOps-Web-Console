@@ -1,10 +1,12 @@
 # Test Editor
 
-Owns independent test generation and maintenance from feature specs.
+Owns independent Test Spec generation and verification maintenance from approved Feature Specs.
 
 ## Responsibilities
 
-- Derive a normalized `test-plan` from feature specs before selecting execution tools.
+- Use `spec-to-test` to derive one version-bound Test Spec from each approved Feature Spec.
+- Reject draft, stale, superseded, or version-mismatched source contracts as release baselines.
+- Derive normalized `test-plan` and `test-schedule` artifacts from the approved Test Spec before selecting execution tools.
 - Keep API contract, scenario, E2E, UI, and specialized checks traceable to the same spec version.
 - Orchestrate the developer test loop by turning spec APIs, flows, rules, edge cases, observability, performance targets, and concurrency invariants into a runnable scope matrix.
 - Normalize test outputs into one scenario-result model for report consumption.
@@ -16,6 +18,7 @@ Owns independent test generation and maintenance from feature specs.
 ## Fixed Output
 
 - Test-plan documents or schema instances
+- Approved or reviewed Test Specs bound to exact Feature Spec versions
 - Bruno/API, scenario, E2E, and Playwright verification assets
 - Coverage and branch gap notes
 - Normalized result references for the test console

@@ -10,10 +10,13 @@ Let a new project reuse the SpecOS agent system without turning `AGENTS.md` into
 
 ## Roles
 
-- `pola`: coordinator. Owns intake, routing preview, subagent task boundaries, report merge, false-positive filtering, and the final actionable recommendation.
+SpecOS uses a layered model: `pola` (coordinator) routes to one of four main agents (`tier: main`), and each main agent opens its `tier: specialist` roles on demand as subagents.
+
+- `pola`: coordinator. Owns intake, routing preview, subagent task boundaries, report merge, false-positive filtering, and the final actionable recommendation. Never a dispatch target.
 - entry agent: reads `AGENTS.md`, `.codex/instructions.md`, and `.agents/manifest.yaml`, then classifies the request.
-- main primary agent: one of `architecture-agent`, `implementation-agent`, `deployment-agent`, or `testing-agent`.
-- specialist agents: registered roles that answer bounded questions for surfaces outside the main primary agent ownership.
+- main primary agent: one of `architecture-agent`, `implementation-agent`, `testing-agent`, or `qa-agent`.
+- intake specialist: `product-architect-agent` compiles raw ideas into accepted PRDs (`/prd`) before `spec-editor` runs `/prd-to-spec`; both are managed by `architecture-agent`.
+- specialist agents: registered `tier: specialist` roles with a `managed_by` main agent. They answer bounded questions and are activated on demand by their managing main agent, not pre-dispatched.
 - host runtime: starts agents, controls parallelism, and returns reports to `pola`.
 
 ## Dispatch Contract
@@ -36,8 +39,10 @@ If a host persists the execution plan itself, it should validate that file befor
 ## Canonical Artifact Flow
 
 ```text
-docs/spec-modes/ -> current/ -> spec-draft/ -> design/ -> specs/roadmap.md -> specs/<SPEC-ID>-<slug>/spec.md -> implementation/ -> reviews/ -> tests/
+Idea -> PRD (.prd/) -> Feature Spec (.features/) -> Test Spec (.features/) -> Issues (.issues/) -> implementation -> review-it -> note-it -> ship-it
 ```
+
+Stage ownership follows `ai/workflows/README.md` and `skills/developer/README.md`: `product-architect-agent` owns `Idea -> PRD`, and `spec-editor` owns `PRD -> Approved Feature Spec` plus Issue generation (`/prd-to-spec`, `/spec-to-test`, `/to-issues`). Artifact locations are declared by `.specos/manifest.yaml` `artifacts` and `rules/shared/artifact-locations.md`. This repository additionally keeps legacy governance directories (`spec-draft/`, `design/`, `specs/roadmap.md`, `specs/<SPEC-ID>-<slug>/`, `implementation/`, `reviews/`, `tests/`) for platform truth and delivery evidence; do not mix the engine-template `specs/current/` + `specs/changes/<change-id>/` layout with the flat `specs/<SPEC-ID>-<slug>/` layout inside one project.
 
 ## Architecture Requests
 
@@ -47,26 +52,36 @@ Main agents:
 
 - `architecture-agent`: spec impact, architecture decisions, domain/API/data/UI/test/deployment impact mapping.
 - `implementation-agent`: frontend and backend execution coordination; independent testing stays outside this role.
-- `deployment-agent`: CI, release gates, deployment readiness, and delivery evidence handoff.
-- `testing-agent`: independent verification, evidence orchestration, and QA acceptance readiness.
+- `testing-agent`: independent verification and evidence orchestration.
+- `qa-agent`: QA acceptance, final quality decision, and release/deployment readiness.
 
-Typical specialist agents:
+Specialist agents grouped by managing main agent:
 
-- `spec-editor`: draft-to-design, roadmap, and feature-spec shaping.
-- `ddd-domain-agent`: bounded contexts, invariants, and domain risk.
-- `openapi-agent`: API contract and error semantics.
-- `db-migration-agent`: schema, migration, compatibility, rollout, and rollback.
-- `ui-design-agent`: user-facing state, copy, workflow, and responsive behavior.
-- `unit-test-agent`: implementation-coupled unit coverage analysis.
-- `test-editor`: coverage model and independent verification split.
-- `test-editor`: API scenario assertions, test-plan structure, and Bruno execution assets.
-- `playwright-test-agent`: browser behavior, UI state coverage, traces, and flaky risk under the testing track.
-- `e2e-test-agent`: business journey coverage.
-- `performance-test-agent`: latency, throughput, SLO, and baseline risk.
-- `concurrency-test-agent`: idempotency, duplicate submission, locking, and final-state invariants.
-- `ci-editor`: release gates and reproducible validation commands.
-- `reviewer`: final cross-rule risk review.
-- `qa-agent`: acceptance decision after evidence exists.
+- Managed by `architecture-agent`:
+  - `product-architect-agent`: idea intake and accepted PRD production.
+  - `spec-editor`: draft-to-design, roadmap, and feature-spec shaping.
+  - `ddd-domain-agent`: bounded contexts, invariants, and domain risk.
+  - `openapi-agent`: API contract and error semantics.
+  - `db-migration-agent`: schema, migration, compatibility, rollout, and rollback.
+- Managed by `implementation-agent`:
+  - `frontend-agent`: frontend delivery orchestration for the UI branch of a change package.
+  - `backend-agent`: backend delivery orchestration for Architecture, Database, and API branches.
+  - `implementation-editor`: focused code and artifact edits from approved specs.
+  - `cli-gui-agent`: standalone Product AI OS CLI GUI delivery.
+  - `ui-design-agent`: user-facing state, copy, workflow, and responsive behavior.
+  - `execution-editor`: local scripts and workflow wiring.
+- Managed by `testing-agent`:
+  - `test-editor`: coverage model, independent verification split, API scenario assertions, test-plan structure, and Bruno execution assets.
+  - `unit-test-agent`: implementation-coupled unit coverage analysis.
+  - `playwright-test-agent`: browser behavior, UI state coverage, traces, and flaky risk under the testing track.
+  - `e2e-test-agent`: business journey coverage.
+  - `performance-test-agent`: latency, throughput, SLO, and baseline risk.
+  - `concurrency-test-agent`: idempotency, duplicate submission, locking, and final-state invariants.
+  - `specialized-check-agent`: focused specialized checks.
+- Managed by `qa-agent`:
+  - `reviewer`: final cross-rule risk review.
+  - `ci-editor`: release gates and reproducible validation commands.
+  - `deployment-agent`: deployment readiness evidence, rollout order, and rollback criteria.
 
 ## Output Shape
 

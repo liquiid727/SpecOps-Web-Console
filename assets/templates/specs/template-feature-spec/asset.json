@@ -1,0 +1,44 @@
+{
+  "id": "template-feature-spec",
+  "type": "spec_template",
+  "title": "Feature Spec Template",
+  "summary": "Primary feature-spec bundle for small, dependency-aware feature slices.",
+  "direction": "fullstack",
+  "stacks": [
+    "go",
+    "react",
+    "python"
+  ],
+  "tags": [
+    "spec",
+    "template",
+    "feature-spec"
+  ],
+  "appliesTo": [
+    "backend",
+    "frontend"
+  ],
+  "dependsOn": [
+    "template-feature-draft"
+  ],
+  "conflictsWith": [],
+  "sourcePath": "assets/templates/specs/template-feature-spec/spec.example.md",
+  "files": [
+    "specs/_template/feature/spec.example.md",
+    "specs/_template/feature/task-plan.example.md",
+    "specs/_template/feature/model.example.md",
+    "specs/_template/feature/changelog.example.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "按 feature slice 拆小 spec，不要写成大模块",
+    "补全 Depends On、Prerequisites、Deliverables 和 Definition of Done"
+  ],
+  "sampleOutput": "一套 Feature Spec、Task Plan、模型和变更记录模板。",
+  "contentFiles": {
+    "specs/_template/feature/spec.example.md": "assets/templates/specs/template-feature-spec/spec.example.md",
+    "specs/_template/feature/task-plan.example.md": "assets/templates/specs/template-feature-spec/task-plan.example.md",
+    "specs/_template/feature/model.example.md": "assets/templates/specs/template-feature-spec/model.example.md",
+    "specs/_template/feature/changelog.example.md": "assets/templates/specs/template-feature-spec/changelog.example.md"
+  }
+}

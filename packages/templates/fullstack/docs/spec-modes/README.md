@@ -3,7 +3,7 @@
 This project supports three documented operating modes:
 
 - `LiteSpec`: the default, feature-driven, low-token mode
-- `GoalSpec`: the workflow-driven mode built around the six-step goal loop (prd -> prd-to-spec -> to-issues -> goal -> review-it -> ship-it)
+- `GoalSpec`: the workflow-driven mode where approved Feature Specs branch into implementation and version-bound independent verification
 - `EnterpriseSpec`: the governed, delivery-driven mode
 
 Start from `LiteSpec`. Move to `GoalSpec` once the team wants a standing issue-driven loop with review and ship gates. Move to `EnterpriseSpec` when QA, audit, release governance, or multi-team delivery requires it.

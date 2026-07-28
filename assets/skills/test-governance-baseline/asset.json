@@ -1,0 +1,42 @@
+{
+  "id": "skill-test-governance-baseline",
+  "type": "skill",
+  "title": "Test Governance Baseline",
+  "summary": "Reuse a generic multi-track test governance workflow with stable Test Plan and Test Report artifacts. Use when a project needs track selection, coverage expectations, and reusable testing templates.",
+  "direction": "backend",
+  "stacks": [
+    "go",
+    "specos"
+  ],
+  "tags": [
+    "test",
+    "governance",
+    "quality",
+    "go-pack"
+  ],
+  "appliesTo": [
+    "backend"
+  ],
+  "dependsOn": [],
+  "conflictsWith": [],
+  "sourcePath": "assets/skills/test-governance-baseline/SKILL.md",
+  "files": [
+    "skills/developer/test-governance-baseline/SKILL.md",
+    "skills/developer/test-governance-baseline/agents/openai.yaml",
+    "skills/developer/test-governance-baseline/references/coverage-and-risks.md",
+    "skills/developer/test-governance-baseline/references/test-artifacts.md",
+    "skills/developer/test-governance-baseline/references/track-selection.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "按项目类型确认是否启用该 skill，并检查引用资料是否适配目标仓库。"
+  ],
+  "sampleOutput": "可复用 skill 说明、触发条件、参考资料和运行边界。",
+  "contentFiles": {
+    "skills/developer/test-governance-baseline/SKILL.md": "assets/skills/test-governance-baseline/SKILL.md",
+    "skills/developer/test-governance-baseline/agents/openai.yaml": "assets/skills/test-governance-baseline/agents/openai.yaml",
+    "skills/developer/test-governance-baseline/references/coverage-and-risks.md": "assets/skills/test-governance-baseline/references/coverage-and-risks.md",
+    "skills/developer/test-governance-baseline/references/test-artifacts.md": "assets/skills/test-governance-baseline/references/test-artifacts.md",
+    "skills/developer/test-governance-baseline/references/track-selection.md": "assets/skills/test-governance-baseline/references/track-selection.md"
+  }
+}

@@ -44,13 +44,36 @@ h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 
 .workspace-error { display: flex; gap: 10px; align-items: center; padding: 9px 12px; border-bottom: 1px solid var(--danger-border); background: var(--danger-muted); color: var(--danger-text); font-size: 11px; }
 .workspace-error strong { color: var(--error); }
 .transcript-list { min-height: 0; flex: 1; overflow: auto; display: grid; align-content: start; gap: 10px; padding: 14px; }
+/* chat 模式类终端直显：用户右侧灰色气泡 + 助手左侧无框 Markdown 流，无名称/raw（参考 Qoder 对话布局） */
+.transcript-list.chat-mode { gap: 16px; padding: 18px 22px; }
+.transcript-list.chat-mode .transcript-event.assistant_message { max-width: 100%; padding: 2px 0; border: none; background: transparent; }
+.transcript-list.chat-mode .transcript-event.user_message { justify-self: end; margin-left: 0; width: auto; max-width: 78%; padding: 10px 14px; border: none; background: var(--surface-hover); border-radius: var(--radius-xl); }
+.transcript-list.chat-mode .transcript-event.assistant_message .raw-source { display: none; }
+.transcript-list.chat-mode .transcript-event.assistant_message .copy-button { justify-self: start; opacity: 0; transition: opacity .16s ease; }
+.transcript-list.chat-mode .transcript-event.assistant_message:hover .copy-button,
+.transcript-list.chat-mode .transcript-event.assistant_message .copy-button:focus-visible { opacity: 1; }
+.transcript-list.chat-mode .transcript-event.turn-pending,
+.transcript-list.chat-mode .transcript-event.streaming { padding: 2px 0; border: none; background: transparent; }
+/* 生成中指示器：无流式增量时填补等待空白（耗时计时 + 三点动画） */
+.transcript-event.turn-pending { background: transparent; border-style: dashed; color: var(--muted); }
+.turn-pending-text { display: inline-flex; align-items: center; gap: 8px; margin: 0; font-size: 12px; }
+.turn-pending-dots { display: inline-flex; gap: 3px; }
+.turn-pending-dots i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; animation: turn-pending-bounce 1.2s ease-in-out infinite; }
+.turn-pending-dots i:nth-child(2) { animation-delay: 0.15s; }
+.turn-pending-dots i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes turn-pending-bounce { 0%, 60%, 100% { opacity: 0.35; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
+/* 流式气泡光标（streaming-spec FR-5） */
+.transcript-event.streaming .streaming-cursor { display: inline-block; width: 7px; height: 14px; background: currentColor; opacity: 0.6; animation: streaming-cursor-blink 0.9s steps(2, start) infinite; }
+@keyframes streaming-cursor-blink { 0%, 100% { opacity: 0.6; } 50% { opacity: 0; } }
 .pty-replay { min-height: 0; flex: 1; overflow: auto; display: grid; align-content: start; gap: 12px; padding: 14px; }
 .pty-replay-segment { display: grid; gap: 6px; }
 .pty-replay-header { font-size: 10px; color: var(--muted); }
 .pty-replay-text { margin: 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); font: 11px/1.6 "SFMono-Regular", Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
 .transcript-event { position: relative; display: grid; gap: 8px; max-width: 880px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
-.transcript-event.user_input { margin-left: auto; width: min(760px, 94%); background: var(--bubble-user-bg); border-color: var(--bubble-user-border); }
-.transcript-event.user_message { margin-left: auto; width: min(760px, 94%); background: var(--bubble-user-bg); border-color: var(--bubble-user-border); }
+/* 用户消息：右侧中性圆角气泡；助手消息：左侧无框 Markdown 流（不带名称） */
+.transcript-event.user_input,
+.transcript-event.user_message { justify-self: end; margin-left: auto; width: auto; max-width: 78%; padding: 10px 14px; border: none; background: var(--surface-hover); border-radius: var(--radius-xl); }
+.transcript-event.assistant_message { max-width: 100%; padding: 2px 0; border: none; background: transparent; }
 .transcript-event.lifecycle { justify-self: center; width: min(760px, 94%); text-align: center; background: transparent; border-style: dashed; color: var(--muted); }
 .transcript-event.lifecycle.interrupted { border-color: var(--danger-border); color: var(--danger); }
 .transcript-event.approval_request, .transcript-event.approval_response { background: transparent; border-style: dashed; color: var(--muted); }
@@ -99,6 +122,10 @@ h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 
 .composer-box textarea { min-height: 52px; max-height: 140px; resize: vertical; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--canvas); color: var(--text); padding: 10px 11px; font: 12px/1.45 Inter, sans-serif; }
 .primary-button.icon-only { width: 38px; padding: 0; }
 .prompt-composer small { color: var(--muted); font-size: 10px; }
+/* 听写 interim 灰显 + 润色撤销（project-quest SPEC §5.7/§5.8） */
+.prompt-composer .composer-interim { margin-left: 8px; color: var(--text-secondary); font-style: italic; }
+.prompt-composer .composer-undo { margin-left: 8px; color: var(--focus); font-size: 10px; text-decoration: underline; cursor: pointer; }
+.prompt-composer .composer-undo:hover { color: var(--text); }
 
 .custom-select { position: relative; min-width: 0; }
 .custom-select-trigger { width: 100%; min-height: 30px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 9px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--canvas); color: var(--text-secondary); text-align: left; font-size: 10px; transition: background .16s ease, border-color .16s ease, color .16s ease; }

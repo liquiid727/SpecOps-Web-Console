@@ -1,9 +1,13 @@
-# Loop Status
+# Dual-Track Delivery Status
 
-Tracks progress through the six-step goal loop for the active issue set.
+Tracks the source versions and progress of the active implementation and verification Issue sets.
 
-- Open issues:
-- In progress (`/goal`):
+- Feature Spec ID / version:
+- Test Spec ID / source version:
+- Open implementation Issues:
+- Open verification Issues:
+- In progress:
 - In review (`/review-it`):
+- Evidence blockers:
 - Shipped (`/ship-it`):
 - Updated at:

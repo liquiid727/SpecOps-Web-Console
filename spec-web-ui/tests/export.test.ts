@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import * as exportsLib from "@/lib/export";
+import * as exportsLib from "@/features/exports/server";
 import type { CatalogAsset, ProjectManifest } from "@/lib/types";
 
 const project: ProjectManifest = {
@@ -15,7 +15,7 @@ const project: ProjectManifest = {
     { assetId: "template-project-modes", enabled: true },
     { assetId: "template-current-workspace", enabled: true },
     { assetId: "agent-spec-editor", enabled: true },
-    { assetId: "skill-tool-config-ui", enabled: true },
+    { assetId: "skill-spec-to-test", enabled: true },
     { assetId: "team-governance-pack", enabled: true }
   ],
   draftTemplateId: "template-feature-draft",
@@ -50,16 +50,16 @@ const selectedAssets: CatalogAsset[] = [
     appliesTo: ["backend", "frontend"],
     dependsOn: [],
     conflictsWith: [],
-    sourcePath: "spec-web-ui/catalog/spec-templates/template-feature-draft/product-ui.template.md",
+    sourcePath: "assets/templates/specs/template-feature-draft/product-ui.template.md",
     files: [
       "spec-draft/_template/feature/product-ui.template.md",
       "specs/_template/feature/spec.example.md"
     ],
     contentFiles: {
       "spec-draft/_template/feature/product-ui.template.md":
-        "spec-web-ui/catalog/spec-templates/template-feature-draft/product-ui.template.md",
+        "assets/templates/specs/template-feature-draft/product-ui.template.md",
       "specs/_template/feature/spec.example.md":
-        "spec-web-ui/catalog/spec-templates/template-feature-spec/spec.example.md"
+        "assets/templates/specs/template-feature-spec/spec.example.md"
     },
     version: "1.0.0"
   },
@@ -74,7 +74,7 @@ const selectedAssets: CatalogAsset[] = [
     appliesTo: ["backend", "frontend"],
     dependsOn: [],
     conflictsWith: [],
-    sourcePath: "spec-web-ui/catalog/spec-templates/template-project-modes/README.md",
+    sourcePath: "assets/templates/specs/template-project-modes/README.md",
     files: [
       "docs/spec-modes/README.md",
       "docs/spec-modes/LiteSpec/README.md",
@@ -83,13 +83,13 @@ const selectedAssets: CatalogAsset[] = [
     ],
     contentFiles: {
       "docs/spec-modes/README.md":
-        "spec-web-ui/catalog/spec-templates/template-project-modes/README.md",
+        "assets/templates/specs/template-project-modes/README.md",
       "docs/spec-modes/LiteSpec/README.md":
-        "spec-web-ui/catalog/spec-templates/template-project-modes/LiteSpec.md",
+        "assets/templates/specs/template-project-modes/LiteSpec.md",
       "docs/spec-modes/GoalSpec/README.md":
-        "spec-web-ui/catalog/spec-templates/template-project-modes/GoalSpec.md",
+        "assets/templates/specs/template-project-modes/GoalSpec.md",
       "docs/spec-modes/EnterpriseSpec/README.md":
-        "spec-web-ui/catalog/spec-templates/template-project-modes/EnterpriseSpec.md"
+        "assets/templates/specs/template-project-modes/EnterpriseSpec.md"
     },
     version: "1.0.0"
   },
@@ -124,18 +124,18 @@ const selectedAssets: CatalogAsset[] = [
     version: "1.0.0"
   },
   {
-    id: "skill-tool-config-ui",
+    id: "skill-spec-to-test",
     type: "skill",
-    title: "Tool Config UI Skill",
-    summary: "Safe configuration UI patterns.",
+    title: "Spec to Test Skill",
+    summary: "Independent Test Specs from approved Feature Specs.",
     direction: "frontend",
     stacks: ["react"],
     tags: ["skill", "config"],
     appliesTo: ["frontend"],
     dependsOn: [],
     conflictsWith: [],
-    sourcePath: ".skills/tool-config-ui/SKILL.md",
-    files: [".skills/tool-config-ui/SKILL.md"],
+    sourcePath: "skills/developer/spec-to-test/SKILL.md",
+    files: ["skills/developer/spec-to-test/SKILL.md"],
     version: "1.0.0"
   },
   {
@@ -174,7 +174,7 @@ describe("buildExportBundle", () => {
       "docs/spec-modes/EnterpriseSpec/README.md",
       "current/README.md",
       "agent-teams/governance-pack/README.md",
-      ".skills/tool-config-ui/SKILL.md",
+      "skills/developer/spec-to-test/SKILL.md",
       "ai/agents/spec-editor.md"
     ]);
     expect(bundle.summary).toContain("7 selected assets");
@@ -189,7 +189,7 @@ describe("buildExportBundle", () => {
     expect(bundle.bundleManifest.id).toBe("reward-center-bundle");
     expect(bundle.bundleManifest.workflow.default).toBe("spec-driven-default");
     expect(bundle.bundleManifest.installs).toEqual([
-      { target: ".skills/", from: "files/.skills/" },
+      { target: "skills/developer/", from: "files/skills/developer/" },
       { target: "agent-teams/", from: "files/agent-teams/" },
       { target: "ai/agents/", from: "files/ai/agents/" },
       { target: "current/", from: "files/current/" },

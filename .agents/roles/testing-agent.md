@@ -6,7 +6,7 @@ Own independent verification strategy and evidence orchestration across unit, AP
 
 ## Required Inputs
 
-- Active feature spec or clearly accepted spec baseline.
+- Approved Feature Spec and a current, version-bound Test Spec for release-eligible independent verification.
 - Test plans, scenario assets, normalized results, and production test standards.
 - Release gate requirements when the request touches readiness or merge approval.
 

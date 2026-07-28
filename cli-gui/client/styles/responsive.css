@@ -1,27 +1,11 @@
-@media (max-width: 1279px) {
-  .app-shell.inspector-visible, .app-shell.navigator-visible.inspector-visible { grid-template-columns: var(--sidebar-width) minmax(0, 1fr); }
-  .app-shell.inspector-visible:not(.navigator-visible) { grid-template-columns: minmax(0, 1fr); }
-  .session-inspector { position: fixed; z-index: var(--z-drawer); top: 0; right: 0; bottom: 0; width: min(var(--inspector-width), 92vw); padding-top: env(safe-area-inset-top); padding-right: env(safe-area-inset-right); padding-bottom: env(safe-area-inset-bottom); box-shadow: -24px 0 70px rgba(0,0,0,.42); animation: drawer-in-right .18s ease-out; }
-  .inspector-backdrop { display: block; position: fixed; z-index: var(--z-drawer-backdrop); inset: 0 min(var(--inspector-width), 92vw) 0 0; border: 0; background: rgba(0,0,0,.35); animation: overlay-in .16s ease-out; }
-}
-
 @media (max-width: 899px) {
-  .app-shell, .app-shell.navigator-visible, .app-shell.inspector-visible, .app-shell.navigator-visible.inspector-visible { grid-template-columns: minmax(0, 1fr); }
-  .session-navigator { position: fixed; z-index: var(--z-drawer); top: 0; bottom: 0; left: 0; width: min(var(--sidebar-width), 92vw); padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); box-shadow: 24px 0 70px rgba(0,0,0,.28); animation: drawer-in-left .18s ease-out; }
-  .navigator-backdrop { display: block; position: fixed; z-index: var(--z-drawer-backdrop); inset: 0 0 0 min(var(--sidebar-width), 92vw); border: 0; background: rgba(0,0,0,.28); animation: overlay-in .16s ease-out; }
-  .workspace-toolbar { padding-left: 16px; }
   .terminal-surface { margin: 8px; }
 }
 
 @media (max-width: 639px) {
   :root { --sidebar-width: 306px; }
-  .workspace-toolbar { min-height: 68px; padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) 10px 14px; gap: 10px; }
   h1 { font-size: 15px; }
-  .workspace-title-block p { max-width: 52vw; }
-  .workspace-actions .readonly-label, .workspace-actions .status-badge { display: none; }
   .primary-button, .secondary-button, .danger-button { min-height: 44px; padding-inline: 10px; }
-  .workspace-actions > .primary-button, .workspace-actions > .secondary-button { font-size: 0; width: 44px; padding: 0; }
-  .workspace-actions > .primary-button svg, .workspace-actions > .secondary-button svg { margin: 0; }
   .terminal-chrome > span:last-child { max-width: 55vw; }
   .view-tabs button { min-height: 40px; padding-inline: 7px; }
   .terminal-surface { margin-right: max(8px, env(safe-area-inset-right)); }
@@ -34,8 +18,6 @@
   .composer-box { grid-template-columns: minmax(0, 1fr) 44px; }
   .composer-box textarea { font-size: 16px; }
   .primary-button.icon-only { width: 44px; min-height: 44px; }
-  .session-inline-actions { flex-wrap: wrap; }
-  .session-inline-actions button { min-height: 34px; }
   .overlay-backdrop, .overlay-backdrop:has(.drawer) { padding: 0; }
   .overlay-panel, .overlay-panel.drawer { width: 100%; max-height: 100dvh; height: 100dvh; border: 0; border-radius: 0; }
   .overlay-header { padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) 17px max(20px, env(safe-area-inset-left)); }
@@ -45,9 +27,6 @@
   .settings-nav { position: static; display: flex; gap: 3px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
   .settings-nav button { flex: 0 0 auto; min-height: 40px; padding-inline: 10px; text-align: center; white-space: nowrap; }
   .field-grid { grid-template-columns: 1fr; }
-  .inspector-header .icon-button { width: 44px; height: 44px; }
-  .inspector-tabs button { min-height: 40px; }
-  .inspector-actions { grid-template-columns: 1fr; padding-bottom: max(14px, env(safe-area-inset-bottom)); }
   .dialog-actions { flex-wrap: wrap; }
   .dialog-actions > button { flex: 1 1 120px; min-height: 44px; }
   input { font-size: 16px; }
@@ -59,4 +38,31 @@
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+/* ---- Qoder shell responsive behaviour ---- */
+@media (max-width: 1279px) {
+  .qoder-body.right-open, .qoder-body.sidebar-open.right-open { grid-template-columns: var(--sidebar-width) minmax(0, 1fr); }
+  .qoder-body.right-open:not(.sidebar-open) { grid-template-columns: minmax(0, 1fr); }
+  .qoder-right-panel { position: fixed; z-index: var(--z-drawer); top: var(--titlebar-height); right: 0; bottom: 0; width: min(var(--inspector-width), 92vw); padding-bottom: env(safe-area-inset-bottom); box-shadow: var(--shadow-drawer); animation: drawer-in-right .18s ease-out; }
+  .inspector-backdrop { display: block; position: fixed; z-index: var(--z-drawer-backdrop); inset: var(--titlebar-height) min(var(--inspector-width), 92vw) 0 0; border: 0; background: var(--backdrop-medium); animation: overlay-in .16s ease-out; }
+}
+
+@media (max-width: 899px) {
+  .qoder-titlebar { z-index: calc(var(--z-drawer) + 1); grid-template-columns: auto minmax(0, 1fr) auto; }
+  .qoder-body, .qoder-body.sidebar-open, .qoder-body.right-open, .qoder-body.sidebar-open.right-open { grid-template-columns: minmax(0, 1fr); }
+  .qoder-sidebar { position: fixed; z-index: var(--z-drawer); top: var(--titlebar-height); bottom: 0; left: 0; width: min(var(--sidebar-width), 92vw); padding-bottom: env(safe-area-inset-bottom); box-shadow: var(--shadow-drawer); animation: drawer-in-left .18s ease-out; }
+  .navigator-backdrop { display: block; position: fixed; z-index: var(--z-drawer-backdrop); inset: var(--titlebar-height) 0 0 min(var(--sidebar-width), 92vw); border: 0; background: var(--backdrop-soft); animation: overlay-in .16s ease-out; }
+}
+
+@media (max-width: 639px) {
+  .quest-home { padding: var(--space-5) var(--space-3); }
+  .quest-home-title { font-size: var(--text-2xl); }
+  .chat-header, .view-header { padding-inline: var(--space-3); }
+  .chat-messages, .view-content { padding: var(--space-3); }
+  .settings-view .settings-layout { grid-template-columns: 1fr; }
+  .settings-view .settings-nav { position: static; flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--border); }
+  .qoder-titlebar .traffic-lights { display: none; }
+  .chat-composer { max-width: none; padding-inline: var(--space-2); }
+  .chat-composer .composer-toolbar { flex-wrap: wrap; }
 }

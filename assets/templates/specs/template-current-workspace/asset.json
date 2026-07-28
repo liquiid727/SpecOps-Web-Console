@@ -1,0 +1,52 @@
+{
+  "id": "template-current-workspace",
+  "type": "spec_template",
+  "title": "Current Workspace Seed",
+  "summary": "Seeds the active delivery workspace so agents can load current status, tasks, blockers, and handoff context.",
+  "direction": "fullstack",
+  "categories": [
+    "operations",
+    "product"
+  ],
+  "stacks": [
+    "go",
+    "react",
+    "python"
+  ],
+  "tags": [
+    "current",
+    "workspace",
+    "handoff"
+  ],
+  "appliesTo": [
+    "backend",
+    "frontend"
+  ],
+  "dependsOn": [],
+  "conflictsWith": [],
+  "sourcePath": "assets/templates/specs/template-current-workspace/README.md",
+  "files": [
+    "current/README.md",
+    "current/project-status.md",
+    "current/active-feature.md",
+    "current/active-context.md",
+    "current/active-tasks.md",
+    "current/blockers.md",
+    "current/handoff.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "保持 current 很小，只保留正在执行的内容",
+    "交接前先更新 blockers、validation 和 next owner"
+  ],
+  "sampleOutput": "一组供 Agent 读取的当前项目状态和交接文件。",
+  "contentFiles": {
+    "current/README.md": "assets/templates/specs/template-current-workspace/README.md",
+    "current/project-status.md": "assets/templates/specs/template-current-workspace/project-status.md",
+    "current/active-feature.md": "assets/templates/specs/template-current-workspace/active-feature.md",
+    "current/active-context.md": "assets/templates/specs/template-current-workspace/active-context.md",
+    "current/active-tasks.md": "assets/templates/specs/template-current-workspace/active-tasks.md",
+    "current/blockers.md": "assets/templates/specs/template-current-workspace/blockers.md",
+    "current/handoff.md": "assets/templates/specs/template-current-workspace/handoff.md"
+  }
+}

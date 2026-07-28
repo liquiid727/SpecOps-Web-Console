@@ -1,0 +1,35 @@
+{
+  "id": "template-go-pack-spec-acceptance",
+  "type": "spec_template",
+  "title": "Spec Acceptance Template",
+  "summary": "Reusable Spec Acceptance Template template from the Go skill and agent pack.",
+  "direction": "fullstack",
+  "stacks": [
+    "go",
+    "specos"
+  ],
+  "tags": [
+    "template",
+    "go-pack",
+    "spec",
+    "acceptance"
+  ],
+  "appliesTo": [
+    "backend",
+    "frontend"
+  ],
+  "dependsOn": [],
+  "conflictsWith": [],
+  "sourcePath": "assets/templates/specs/template-go-pack-spec-acceptance/spec-acceptance.md",
+  "files": [
+    "ai/templates/spec-acceptance.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "选择后按目标项目的 spec/change/test 语义填写，不直接复制来源仓库事实。"
+  ],
+  "sampleOutput": "Routing、计划、交接、评审或测试报告类 Markdown 模板。",
+  "contentFiles": {
+    "ai/templates/spec-acceptance.md": "assets/templates/specs/template-go-pack-spec-acceptance/spec-acceptance.md"
+  }
+}

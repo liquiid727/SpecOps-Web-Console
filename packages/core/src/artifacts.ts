@@ -190,9 +190,12 @@ export type RequestRouteAgentRole =
   | "implementation-agent"
   | "deployment-agent"
   | "testing-agent"
+  | "product-architect-agent"
   | "spec-editor"
   | "ui-design-agent"
   | "cli-gui-agent"
+  | "frontend-agent"
+  | "backend-agent"
   | "ddd-domain-agent"
   | "openapi-agent"
   | "db-migration-agent"
@@ -208,6 +211,46 @@ export type RequestRouteAgentRole =
   | "test-editor"
   | "qa-agent"
   | "reviewer";
+export type RequestMainAgentRole =
+  | "architecture-agent"
+  | "implementation-agent"
+  | "testing-agent"
+  | "qa-agent";
+export type RequestSpecialistAgentRole = Exclude<RequestRouteAgentRole, RequestMainAgentRole>;
+export const mainAgentRoles: RequestMainAgentRole[] = [
+  "architecture-agent",
+  "implementation-agent",
+  "testing-agent",
+  "qa-agent",
+];
+export const specialistManagedBy: Record<RequestSpecialistAgentRole, RequestMainAgentRole> = {
+  "product-architect-agent": "architecture-agent",
+  "spec-editor": "architecture-agent",
+  "ddd-domain-agent": "architecture-agent",
+  "openapi-agent": "architecture-agent",
+  "db-migration-agent": "architecture-agent",
+  "frontend-agent": "implementation-agent",
+  "backend-agent": "implementation-agent",
+  "implementation-editor": "implementation-agent",
+  "cli-gui-agent": "implementation-agent",
+  "ui-design-agent": "implementation-agent",
+  "execution-editor": "implementation-agent",
+  "test-editor": "testing-agent",
+  "unit-test-agent": "testing-agent",
+  "playwright-test-agent": "testing-agent",
+  "e2e-test-agent": "testing-agent",
+  "performance-test-agent": "testing-agent",
+  "concurrency-test-agent": "testing-agent",
+  "specialized-check-agent": "testing-agent",
+  "reviewer": "qa-agent",
+  "ci-editor": "qa-agent",
+  "deployment-agent": "qa-agent",
+};
+export function managingMainAgentFor(role: RequestRouteAgentRole): RequestMainAgentRole {
+  return (mainAgentRoles as RequestRouteAgentRole[]).includes(role)
+    ? role as RequestMainAgentRole
+    : specialistManagedBy[role as RequestSpecialistAgentRole];
+}
 export type ProjectMode = "litespec" | "goalspec" | "enterprisespec";
 
 const productionTestStandardVersion: TestStandardVersion = "specos-test-standard/v1";
@@ -576,6 +619,8 @@ export interface AgentExecutionTask {
 export interface SpecialistDispatchTask {
   id: string;
   role: RequestRouteAgentRole;
+  managedBy: RequestMainAgentRole;
+  activation: "on-demand";
   priority: number;
   parallelizable: true;
   reason: string;
@@ -779,10 +824,10 @@ const requestRoutingAgents: Record<RequestWorkType, RequestRouteAgentRole[]> = {
     "concurrency-test-agent",
     "reviewer",
   ],
-  backend: ["ddd-domain-agent", "openapi-agent", "db-migration-agent", "unit-test-agent"],
-  frontend: ["cli-gui-agent", "ui-design-agent", "test-editor"],
+  backend: ["backend-agent", "ddd-domain-agent", "openapi-agent", "db-migration-agent", "unit-test-agent"],
+  frontend: ["frontend-agent", "cli-gui-agent", "ui-design-agent", "test-editor"],
   ui_prototype: ["spec-editor", "ui-design-agent"],
-  spec: ["spec-editor", "ddd-domain-agent", "test-editor"],
+  spec: ["product-architect-agent", "spec-editor", "ddd-domain-agent", "test-editor"],
   tests: [
     "test-editor",
     "unit-test-agent",
@@ -792,7 +837,7 @@ const requestRoutingAgents: Record<RequestWorkType, RequestRouteAgentRole[]> = {
     "concurrency-test-agent",
     "qa-agent",
   ],
-  ci: ["ci-editor", "execution-editor", "qa-agent"],
+  ci: ["ci-editor", "execution-editor", "deployment-agent", "qa-agent"],
   orchestration: ["execution-editor", "ci-editor", "qa-agent", "reviewer"],
 };
 
@@ -813,6 +858,7 @@ const routeModeRoleOverrides: Record<ProjectMode, RequestRouteAgentRole[]> = {
     "spec-editor",
     "implementation-agent",
     "testing-agent",
+    "qa-agent",
     "reviewer",
     "ci-editor",
     "deployment-agent",
@@ -845,9 +891,12 @@ const allRouteAgentRoles: RequestRouteAgentRole[] = [
   "implementation-agent",
   "deployment-agent",
   "testing-agent",
+  "product-architect-agent",
   "spec-editor",
   "ui-design-agent",
   "cli-gui-agent",
+  "frontend-agent",
+  "backend-agent",
   "ddd-domain-agent",
   "openapi-agent",
   "db-migration-agent",
@@ -917,6 +966,10 @@ const defaultRoutePromptManifest: AgentRuntimeManifest = {
 };
 
 const specialistRoleKeywords: Partial<Record<RequestRouteAgentRole, string[]>> = {
+  "product-architect-agent": ["idea", "想法", "需求", "prd", "product", "产品", "blueprint", "蓝图", "intake"],
+  "deployment-agent": ["deploy", "deployment", "release", "rollout", "发布", "上线", "部署"],
+  "frontend-agent": ["frontend", "前端", "ui branch", "页面", "component", "组件"],
+  "backend-agent": ["backend", "后端", "service", "服务端", "api", "migration"],
   "ddd-domain-agent": ["domain", "ddd", "bounded context", "领域", "边界", "invariant", "不变量"],
   "openapi-agent": ["api", "contract", "schema", "swagger", "openapi", "接口"],
   "db-migration-agent": ["db", "database", "sql", "migration", "schema", "table", "迁移", "表"],
@@ -937,6 +990,7 @@ const specialistRoleKeywords: Partial<Record<RequestRouteAgentRole, string[]>> =
 
 const primaryRoleDispatchPriority: Record<RequestRouteAgentRole, RequestRouteAgentRole[]> = {
   "architecture-agent": [
+    "product-architect-agent",
     "openapi-agent",
     "db-migration-agent",
     "ddd-domain-agent",
@@ -959,6 +1013,8 @@ const primaryRoleDispatchPriority: Record<RequestRouteAgentRole, RequestRouteAge
     "testing-agent",
   ],
   "implementation-agent": [
+    "frontend-agent",
+    "backend-agent",
     "ui-design-agent",
     "openapi-agent",
     "db-migration-agent",
@@ -1024,9 +1080,34 @@ const primaryRoleDispatchPriority: Record<RequestRouteAgentRole, RequestRouteAge
     "specialized-check-agent",
     "implementation-editor",
   ],
+  "qa-agent": [
+    "reviewer",
+    "ci-editor",
+    "deployment-agent",
+    "execution-editor",
+    "performance-test-agent",
+    "concurrency-test-agent",
+    "test-editor",
+    "openapi-agent",
+    "db-migration-agent",
+    "spec-editor",
+    "ddd-domain-agent",
+    "ui-design-agent",
+    "unit-test-agent",
+    "playwright-test-agent",
+    "e2e-test-agent",
+    "specialized-check-agent",
+    "architecture-agent",
+    "implementation-agent",
+    "testing-agent",
+    "implementation-editor",
+  ],
+  "product-architect-agent": allRouteAgentRoles,
   "spec-editor": allRouteAgentRoles,
   "ui-design-agent": allRouteAgentRoles,
   "cli-gui-agent": allRouteAgentRoles,
+  "frontend-agent": allRouteAgentRoles,
+  "backend-agent": allRouteAgentRoles,
   "ddd-domain-agent": allRouteAgentRoles,
   "openapi-agent": allRouteAgentRoles,
   "db-migration-agent": allRouteAgentRoles,
@@ -1040,7 +1121,6 @@ const primaryRoleDispatchPriority: Record<RequestRouteAgentRole, RequestRouteAge
   "execution-editor": allRouteAgentRoles,
   "implementation-editor": allRouteAgentRoles,
   "test-editor": allRouteAgentRoles,
-  "qa-agent": allRouteAgentRoles,
   "reviewer": allRouteAgentRoles,
 };
 
@@ -1162,7 +1242,7 @@ export function buildRequestRoute(
     skills.add(".codex/skills/specos-ui-design/SKILL.md");
   }
   if (workTypes.has("ci")) {
-    skills.add(".skills/team-ci-agent/SKILL.md");
+    skills.add("skills/developer/ship-it/SKILL.md");
   }
 
   const rules = [...workTypes].flatMap((workType) => requestRoutingRules[workType]);
@@ -1566,7 +1646,7 @@ export function validateRouteRequestOutput(
     "SPECOS_ROUTE_OUTPUT_INVALID",
     "workTypes",
   );
-  requireAgentRole(state, output.primaryAgent, "primaryAgent");
+  requireMainAgentRole(state, output.primaryAgent, "primaryAgent");
   requireAgentRoleArray(state, output.supportingAgents, "supportingAgents");
   requireStringArrayAllowEmpty(state, output.rules, "SPECOS_ROUTE_OUTPUT_INVALID", "rules");
   requireStringArrayAllowEmpty(state, output.skills, "SPECOS_ROUTE_OUTPUT_INVALID", "skills");
@@ -1885,6 +1965,8 @@ function buildSpecialistDispatchTask(
   const dispatchTask: SpecialistDispatchTask = {
     id: `dispatch-${ordinal}-${task.role}`,
     role: task.role,
+    managedBy: managingMainAgentFor(task.role),
+    activation: "on-demand",
     priority,
     parallelizable: true,
     reason: specialistDispatchReason(task.role, executionPlan),
@@ -1950,6 +2032,9 @@ function specialistTaskScore(
   if (executionPlan.route.requestKind === "review" && role === "reviewer") {
     score += 30;
   }
+  if (executionPlan.route.requestKind === "raw-requirement" && role === "product-architect-agent") {
+    score += 25;
+  }
   if (executionPlan.route.requestKind === "raw-requirement" && role === "spec-editor") {
     score += 20;
   }
@@ -1959,6 +2044,9 @@ function specialistTaskScore(
 
 function roleWorkTypeWeight(role: RequestRouteAgentRole, workType: RequestWorkType): number {
   const roleWeights: Partial<Record<RequestRouteAgentRole, Partial<Record<RequestWorkType, number>>>> = {
+    "product-architect-agent": { spec: 26, architecture: 12 },
+    "frontend-agent": { frontend: 30, ui_prototype: 12 },
+    "backend-agent": { backend: 30, architecture: 10 },
     "ddd-domain-agent": { architecture: 24, spec: 18, backend: 10 },
     "openapi-agent": { backend: 26, architecture: 16, tests: 8 },
     "db-migration-agent": { backend: 26, architecture: 16, tests: 8 },
@@ -1967,6 +2055,7 @@ function roleWorkTypeWeight(role: RequestRouteAgentRole, workType: RequestWorkTy
     "performance-test-agent": { tests: 24, backend: 14, ci: 10 },
     "concurrency-test-agent": { tests: 24, backend: 14, ci: 10 },
     "ci-editor": { ci: 26, orchestration: 18, tests: 10 },
+    "deployment-agent": { ci: 24, orchestration: 12, tests: 8 },
     "execution-editor": { orchestration: 26, ci: 14 },
     "qa-agent": { tests: 20, ci: 18, orchestration: 10 },
     "reviewer": { architecture: 16, tests: 14, ci: 14, orchestration: 12, spec: 10 },
@@ -1984,6 +2073,9 @@ function specialistDispatchReason(
   executionPlan: Omit<AgentExecutionPlan, "specialistDispatchPlan">,
 ): string {
   const reasons: Partial<Record<RequestRouteAgentRole, string>> = {
+    "product-architect-agent": "Compile raw product intent into an accepted PRD before prd-to-spec decomposition and downstream planning.",
+    "frontend-agent": "Coordinate frontend delivery for the UI branch so specialist handoffs stay bounded and traceable.",
+    "backend-agent": "Coordinate backend delivery across Architecture, Database, and API branches before implementation fans out.",
     "ddd-domain-agent": "Clarify domain boundaries, invariants, and model-level risk before broader implementation or testing decisions.",
     "openapi-agent": "Narrow contract and error-semantics changes early so downstream implementation and tests stay aligned.",
     "db-migration-agent": "Surface schema, rollout, rollback, and compatibility risks before code and release work diverge.",
@@ -1992,6 +2084,7 @@ function specialistDispatchReason(
     "performance-test-agent": "Identify latency and throughput risk where feature behavior may pass functionally but still fail under load.",
     "concurrency-test-agent": "Identify race, retry, idempotency, and final-state invariant risk that ordinary tests can miss.",
     "ci-editor": "Keep release gates and validation commands aligned with the current change and evidence model.",
+    "deployment-agent": "Sequence release readiness checks, rollout order, and deployment evidence once QA acceptance is in scope.",
     "execution-editor": "Keep workflow wiring and local automation aligned with the selected delivery path.",
     "qa-agent": "Provide final acceptance framing once verification evidence exists.",
     "reviewer": "Provide cross-rule risk review and reject local false positives before merge or release claims.",
@@ -2006,6 +2099,9 @@ function specialistDispatchQuestion(
 ): string {
   const request = executionPlan.request.trim();
   const questions: Partial<Record<RequestRouteAgentRole, string>> = {
+    "product-architect-agent": `For "${request}", what requirements, acceptance criteria, scope boundaries, assumptions, and open questions should the PRD capture across Product, Architecture, Database, API, and UI branches?`,
+    "frontend-agent": `For "${request}", what frontend implementation plan, UI state coverage, and specialist handoffs are required for the UI branch?`,
+    "backend-agent": `For "${request}", what backend implementation plan, specialist routing, and migration or compatibility risks must be handled first?`,
     "ddd-domain-agent": `For "${request}", what domain boundaries, invariants, and entity/value-object responsibilities are most likely to cause design drift?`,
     "openapi-agent": `For "${request}", what request/response contract, error semantics, and compatibility constraints must be locked before implementation proceeds?`,
     "db-migration-agent": `For "${request}", what schema changes, migration order, backfill concerns, and rollback constraints must be handled explicitly?`,
@@ -2014,6 +2110,7 @@ function specialistDispatchQuestion(
     "performance-test-agent": `For "${request}", what SLO-sensitive paths, baseline assumptions, and minimal load scenarios should be tested first?`,
     "concurrency-test-agent": `For "${request}", what concurrent actors, idempotency constraints, and final-state invariants should be tested first?`,
     "ci-editor": `For "${request}", what gate checks, command sequence, and release evidence requirements must be updated?`,
+    "deployment-agent": `For "${request}", what validation order, rollout steps, and rollback criteria are required before claiming deployment readiness?`,
     "execution-editor": `For "${request}", what workflow or script wiring must change so the delivery path stays reproducible?`,
     "qa-agent": `For "${request}", what acceptance blockers, missing evidence, and waiver decisions remain before promotion?`,
     "reviewer": `For "${request}", what cross-rule risks, regressions, or missing neighboring updates remain after local implementation decisions?`,
@@ -2028,6 +2125,9 @@ function specialistDispatchQuestion(
 
 function specialistDispatchNonGoals(role: RequestRouteAgentRole): string[] {
   const defaults: Partial<Record<RequestRouteAgentRole, string[]>> = {
+    "product-architect-agent": ["Do not promote the PRD into an approved Feature Spec baseline.", "Do not decompose into Feature Specs, Test Specs, or Issues; hand the accepted PRD to spec-editor."],
+    "frontend-agent": ["Do not absorb backend or migration ownership.", "Do not replace independent browser or E2E verification ownership."],
+    "backend-agent": ["Do not absorb frontend or UI design ownership.", "Do not skip contract and migration specialists for cross-surface changes."],
     "ddd-domain-agent": ["Do not redesign unrelated bounded contexts.", "Do not rewrite API or migration details unless domain changes require it."],
     "openapi-agent": ["Do not invent fields not justified by the spec or request.", "Do not drift into full backend implementation."],
     "db-migration-agent": ["Do not assume destructive schema changes are safe.", "Do not redesign unrelated storage surfaces."],
@@ -2036,6 +2136,7 @@ function specialistDispatchNonGoals(role: RequestRouteAgentRole): string[] {
     "performance-test-agent": ["Do not claim production capacity from ad hoc local runs.", "Do not substitute raw load-tool output for normalized findings."],
     "concurrency-test-agent": ["Do not stop at response-code counts without final-state checks.", "Do not treat flaky concurrent behavior as acceptable by default."],
     "ci-editor": ["Do not redesign the full CI surface.", "Do not add unrelated release ceremony."],
+    "deployment-agent": ["Do not own the final QA acceptance decision; that stays with qa-agent.", "Do not claim release readiness without explicit gate evidence."],
     "execution-editor": ["Do not rewrite unrelated workflows.", "Do not broaden into role or spec redesign."],
     "qa-agent": ["Do not own implementation decisions.", "Do not waive missing evidence without stating the blocker."],
     "reviewer": ["Do not duplicate every local finding from other specialists.", "Do not expand beyond rule and evidence impact."],
@@ -2053,6 +2154,7 @@ function primaryDispatchReason(
     "implementation-agent": "Own the concrete implementation path and keep code changes aligned with accepted spec and design boundaries.",
     "deployment-agent": "Own release readiness, validation order, and delivery evidence sequencing.",
     "testing-agent": "Own independent verification strategy and decide where specialist evidence is required before acceptance.",
+    "qa-agent": "Own the final quality decision, acceptance evidence, and release readiness across review, CI, and deployment specialists.",
   };
 
   return reasons[role] ?? `Own the main delivery track for "${executionPlan.request}".`;
@@ -2068,6 +2170,7 @@ function primaryDispatchQuestion(
     "implementation-agent": `For "${request}", what is the narrowest implementation plan that can be executed safely end to end?`,
     "deployment-agent": `For "${request}", what validation and release sequence is required before claiming deployment readiness?`,
     "testing-agent": `For "${request}", what independent verification plan is required, and which specialist test tracks must run first?`,
+    "qa-agent": `For "${request}", what acceptance evidence, release gates, and deployment readiness checks decide promotion, and which QA specialists must be opened first?`,
   };
 
   return questions[role] ?? `For "${request}", what primary-agent execution plan should ${role} lead?`;
@@ -2094,6 +2197,10 @@ function primaryDispatchNonGoals(
       "Do not rewrite implementation details unless they directly block independent verification.",
       "Do not accept missing P0/P1 evidence as complete by default.",
     ],
+    "qa-agent": [
+      "Do not own implementation or architecture decisions.",
+      "Do not waive missing gate evidence without recording the blocker.",
+    ],
   };
 
   return defaults[role] ?? [
@@ -2111,6 +2218,8 @@ function buildSpecialistDispatchMessage(
   return [
     `Role: ${task.role}`,
     `Primary Role: ${executionPlan.primaryTask.role}`,
+    `Managed By: ${task.managedBy}`,
+    `Activation: ${task.activation} — open this specialist as a subagent only when the managing main agent needs it`,
     `Request: ${executionPlan.request}`,
     "",
     "Reason",
@@ -2223,7 +2332,7 @@ function requireExecutionPlanShape(state: MutableValidation, value: unknown, pat
   if (!primaryTask) {
     state.errors.push(makeError("SPECOS_ROUTE_OUTPUT_INVALID", `${path}.primaryTask`));
   } else {
-    requireAgentRole(state, primaryTask.role, `${path}.primaryTask.role`);
+    requireMainAgentRole(state, primaryTask.role, `${path}.primaryTask.role`);
     requireOneOf(state, primaryTask.dispatch, ["primary", "supporting"], "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.primaryTask.dispatch`);
     requireBoolean(state, primaryTask, "parallelizable", "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.primaryTask.parallelizable`);
     requireStringArray(state, primaryTask.requiredContext, "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.primaryTask.requiredContext`);
@@ -2239,7 +2348,7 @@ function requireExecutionPlanShape(state: MutableValidation, value: unknown, pat
     state.errors.push(makeError("SPECOS_ROUTE_OUTPUT_INVALID", `${path}.specialistDispatchPlan`));
     return;
   }
-  requireAgentRole(state, dispatchPlan.primaryRole, `${path}.specialistDispatchPlan.primaryRole`);
+  requireMainAgentRole(state, dispatchPlan.primaryRole, `${path}.specialistDispatchPlan.primaryRole`);
   if (typeof dispatchPlan.maxTasks !== "number") {
     state.errors.push(makeError("SPECOS_ROUTE_OUTPUT_INVALID", `${path}.specialistDispatchPlan.maxTasks`));
   }
@@ -2257,6 +2366,8 @@ function requireExecutionPlanShape(state: MutableValidation, value: unknown, pat
         return;
       }
       requireAgentRole(state, taskRecord.role, `${taskPath}.role`);
+      requireMainAgentRole(state, taskRecord.managedBy, `${taskPath}.managedBy`);
+      requireOneOf(state, taskRecord.activation, ["on-demand"], "SPECOS_ROUTE_OUTPUT_INVALID", `${taskPath}.activation`);
       requireString(state, taskRecord, "id", "SPECOS_ROUTE_OUTPUT_INVALID", `${taskPath}.id`);
       requireString(state, taskRecord, "reason", "SPECOS_ROUTE_OUTPUT_INVALID", `${taskPath}.reason`);
       requireString(state, taskRecord, "exactQuestion", "SPECOS_ROUTE_OUTPUT_INVALID", `${taskPath}.exactQuestion`);
@@ -2278,9 +2389,12 @@ function requireAgentRole(state: MutableValidation, value: unknown, path: string
       "implementation-agent",
       "deployment-agent",
       "testing-agent",
+      "product-architect-agent",
       "spec-editor",
       "ui-design-agent",
       "cli-gui-agent",
+      "frontend-agent",
+      "backend-agent",
       "ddd-domain-agent",
       "openapi-agent",
       "db-migration-agent",
@@ -2300,6 +2414,10 @@ function requireAgentRole(state: MutableValidation, value: unknown, path: string
     "SPECOS_ROUTE_OUTPUT_INVALID",
     path,
   );
+}
+
+function requireMainAgentRole(state: MutableValidation, value: unknown, path: string): void {
+  requireOneOf(state, value, mainAgentRoles, "SPECOS_ROUTE_OUTPUT_INVALID", path);
 }
 
 function requireAgentRoleArray(state: MutableValidation, value: unknown, path: string): void {
@@ -2335,13 +2453,13 @@ function joinPosixPath(...segments: string[]): string {
     .join("/");
 }
 
-function primaryAgentForRequest(kind: RequestKind, workTypes: Set<RequestWorkType>): RequestRouteAgentRole {
+function primaryAgentForRequest(kind: RequestKind, workTypes: Set<RequestWorkType>): RequestMainAgentRole {
   if (workTypes.has("architecture")) return "architecture-agent";
   if (kind === "test") return "testing-agent";
-  if (kind === "acceptance") return "testing-agent";
+  if (kind === "acceptance") return "qa-agent";
   if (kind === "implementation") return "implementation-agent";
-  if (kind === "tooling-configuration") return workTypes.has("ci") ? "deployment-agent" : "architecture-agent";
-  if (workTypes.has("ci")) return "deployment-agent";
+  if (kind === "tooling-configuration") return workTypes.has("ci") ? "qa-agent" : "architecture-agent";
+  if (workTypes.has("ci")) return "qa-agent";
   if (kind === "review") return "architecture-agent";
   if (workTypes.has("frontend") || workTypes.has("backend")) return "implementation-agent";
   if (kind === "raw-requirement" || kind === "draft-only" || kind === "active-change") return "architecture-agent";

@@ -1,0 +1,50 @@
+{
+  "id": "skill-product-architect",
+  "type": "skill",
+  "title": "Product Architect",
+  "summary": "Transforms raw ideas into an accepted PRD with Product, Architecture, Database, API, and UI branch coverage for spec-editor prd-to-spec decomposition.",
+  "direction": "fullstack",
+  "categories": [
+    "product",
+    "operations"
+  ],
+  "stacks": [
+    "go",
+    "react",
+    "python",
+    "specos"
+  ],
+  "tags": [
+    "product",
+    "prd",
+    "spec",
+    "intake",
+    "orchestration"
+  ],
+  "appliesTo": [
+    "backend",
+    "frontend",
+    "ui"
+  ],
+  "dependsOn": [
+    "template-spec-blueprint-yaml",
+    "template-task-graph-yaml",
+    "template-prd-draft",
+    "template-product-spec-yaml",
+    "template-feature-draft"
+  ],
+  "conflictsWith": [],
+  "sourcePath": "assets/skills/product-architect/SKILL.md",
+  "files": [
+    "skills/developer/product-architect/SKILL.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "先输出 PRD 并经人工接受，再交给 spec-editor 执行 prd-to-spec 拆分 Feature Spec",
+    "保留开放问题和假设，避免把推断当成 accepted truth"
+  ],
+  "sampleOutput": "面向 artifacts.draftsDir 的 Idea -> Accepted PRD 产物，并保留后续 prd-to-spec 拆分所需的需求标识与验收口径。",
+  "contentFiles": {
+    "skills/developer/product-architect/SKILL.md": "assets/skills/product-architect/SKILL.md"
+  }
+}

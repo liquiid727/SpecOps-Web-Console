@@ -57,6 +57,9 @@ export interface Session {
   pinned?: boolean;
   manualOrder?: number;
   launchConfig?: import("./state.js").SessionLaunchConfig;
+  interactionMode?: import("./state.js").SessionInteractionMode;
+  chatContext?: import("./state.js").SessionChatContext;
+  terminalContext?: import("./state.js").SessionTerminalContext;
   parentSessionId?: string;
   forkEventId?: string;
   forkSequence?: number;

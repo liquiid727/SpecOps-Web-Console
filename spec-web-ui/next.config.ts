@@ -6,14 +6,14 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: path.resolve(__dirname, ".."),
   outputFileTracingIncludes: {
     "/*": [
-      "./catalog/**/*",
       "./workspace/**/*",
       "../rules/**/*",
       "../spec-draft/**/*",
       "../specs/**/*",
       "../ai/**/*",
-      "../agent-teams/**/*",
-      "../.skills/**/*"
+      "../assets/**/*",
+      "../packages/catalog/config/**/*",
+      "../skills/developer/**/*"
     ]
   }
 };

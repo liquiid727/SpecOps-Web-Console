@@ -1,0 +1,49 @@
+{
+  "id": "template-task-graph-yaml",
+  "type": "spec_template",
+  "title": "Task Graph IR YAML Template",
+  "summary": "Machine-readable Task Graph IR template that compiles Canonical Spec branches into executable, verifiable task nodes.",
+  "direction": "fullstack",
+  "categories": [
+    "product",
+    "operations"
+  ],
+  "stacks": [
+    "go",
+    "react",
+    "python",
+    "specos"
+  ],
+  "tags": [
+    "task",
+    "graph",
+    "ir",
+    "compiler",
+    "template"
+  ],
+  "appliesTo": [
+    "backend",
+    "frontend",
+    "ui"
+  ],
+  "dependsOn": [
+    "template-spec-blueprint-yaml",
+    "template-product-spec-yaml",
+    "template-feature-draft"
+  ],
+  "conflictsWith": [],
+  "sourcePath": "assets/templates/specs/template-task-graph-yaml/task-graph.template.yaml",
+  "files": [
+    "tasks/task-graph.yaml"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "由 Spec Compiler 从 Canonical Spec 生成",
+    "每个 node 必须携带 sourceSpecRefs、context、outputs 和 verificationRefs",
+    "execution layer 读取 node context，而不是固定 frontend/backend agent 名称"
+  ],
+  "sampleOutput": "一份包含 taskGraph.nodes、sourceSpecRefs、context、dependencies、outputs、verificationRefs 的 Task Graph IR YAML。",
+  "contentFiles": {
+    "tasks/task-graph.yaml": "assets/templates/specs/template-task-graph-yaml/task-graph.template.yaml"
+  }
+}

@@ -10,9 +10,10 @@ Keep the CLI GUI aligned with its MVP role: a polished local GUI management laye
 
 ## Required Knowledge
 
-- Product spec: `cli-gui/doc/cli-gui.md`
-- Visual direction notes: `cli-gui/doc/todo.md`
-- GUI agent knowledge base: `cli-gui/doc/cli-gui-agent.md`
+- Entry PRD: `cli-gui/doc/mvp01/Agent_Console_MVP01_PRD.md`
+- Delivery-chain docs: `cli-gui/doc/mvp01/`, `workbench/`, `project-quest/`, `qoder-ui/` (see `cli-gui/doc/README.md` index)
+- Original draft: `cli-gui/doc/mvp01/cli-gui.md`
+- Visual references: `cli-gui/DESIGN.md`, `cli-gui/doc/design/cli-gui-design.md`, `cli-gui/doc/qoder-ui/reference/`
 - Runtime app: `cli-gui/README.md`, `cli-gui/client/**`, `cli-gui/server/**`, `cli-gui/shared/types.ts`
 
 ## Non-Negotiable i18n Requirement
@@ -22,8 +23,15 @@ Keep the CLI GUI aligned with its MVP role: a polished local GUI management laye
 - All current and future UI copy changes must go through `cli-gui/client/i18n.tsx`.
 - Add both `en` and `zh` translations in the same change.
 - Use `I18nProvider`, `useI18n().t(...)`, and `statusLabel(...)`; do not hardcode user-facing copy in components.
-- Keep the left rail language switcher available and persistent.
+- Language switching lives in Settings (Appearance) and stays persistent; sync `document.documentElement.lang` with the selected mode and persist the choice in `localStorage`. Do not mount a standalone left rail switcher.
+- Keep dynamic text parameterized with `{{name}}` style placeholders and use stable semantic keys, not component-local ad hoc labels.
 - Tests for translated components must render under `I18nProvider`.
+
+## i18n Implementation Pointers
+
+- i18n provider and dictionary: `cli-gui/client/i18n.tsx`
+- Language switcher: Settings → Appearance (`cli-gui/client/components/WorkspaceProfileManager.tsx` `AppearanceSettings`; toggle component kept at `cli-gui/client/components/LanguageToggle.tsx`)
+- Provider mount: `cli-gui/client/main.tsx`
 
 ## UI Delivery Rules
 

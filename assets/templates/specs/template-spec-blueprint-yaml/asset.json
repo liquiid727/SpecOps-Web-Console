@@ -1,0 +1,45 @@
+{
+  "id": "template-spec-blueprint-yaml",
+  "type": "spec_template",
+  "title": "Spec Blueprint YAML Template",
+  "summary": "Idea-to-Spec Draft blueprint template with Product, Architecture, Database, API, and UI branches for Canonical Spec and Task Graph IR compilation.",
+  "direction": "fullstack",
+  "categories": [
+    "product"
+  ],
+  "stacks": [
+    "go",
+    "react",
+    "python",
+    "specos"
+  ],
+  "tags": [
+    "idea",
+    "spec",
+    "architecture",
+    "database",
+    "api",
+    "ui",
+    "template"
+  ],
+  "appliesTo": [
+    "backend",
+    "frontend",
+    "ui"
+  ],
+  "dependsOn": [],
+  "conflictsWith": [],
+  "sourcePath": "assets/templates/specs/template-spec-blueprint-yaml/spec-blueprint.template.yaml",
+  "files": [
+    "spec-draft/_template/product/spec-blueprint.template.yaml"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "按 Idea -> Spec Draft -> Canonical Spec -> Task Graph IR 填写",
+    "Spec 至少覆盖 Product、Architecture、Database、API 和 UI"
+  ],
+  "sampleOutput": "一份包含 Product、Architecture、Database、API、UI 和 Task Graph IR 编译线索的 Spec Blueprint YAML。",
+  "contentFiles": {
+    "spec-draft/_template/product/spec-blueprint.template.yaml": "assets/templates/specs/template-spec-blueprint-yaml/spec-blueprint.template.yaml"
+  }
+}

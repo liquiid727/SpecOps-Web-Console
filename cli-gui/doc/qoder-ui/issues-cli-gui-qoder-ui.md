@@ -1,0 +1,363 @@
+# Issues: CLI-GUI Qoder UI 改造
+
+> 从 SPEC `cli-gui/doc/qoder-ui/spec-cli-gui-qoder-ui.md` 拆解
+> Generated: 2026-07-22
+
+---
+
+## Issue #1: 建立 Design Token 系统与基础设施
+
+**Labels**: `infrastructure`, `design-system`, `high-priority`
+
+### Description
+
+建立统一的设计变量层（Design Token），初始化 Tauri 工程，引入 Lucide Icons，为后续 UI 改造奠定基础。
+
+### Acceptance Criteria
+
+- [ ] 创建 `client/styles/tokens.css`，定义颜色、字体、间距、圆角、阴影 token
+- [ ] 创建 `client/styles/themes/qoder-light.css`，实现 Qoder Light Theme
+- [ ] 创建 `client/styles/themes/qoder-dark.css`（可选，基础框架）
+- [ ] 修改 `client/styles/themes/neo.css`，清理与 token 冲突的硬编码
+- [ ] 初始化 `src-tauri/` 目录（`Cargo.toml`, `tauri.conf.json`, `src/main.rs`）
+- [ ] 安装 `lucide-react`，更新 `client/components/ui/Icon.tsx`
+- [ ] 更新 `package.json` 添加新依赖
+- [ ] 更新 `vite.config.ts` 配置 Tauri dev server 代理
+- [ ] 更新 `index.html` 的 `theme-color` meta 标签
+
+### Technical Notes
+
+- Token 命名参考 Qoder PRD §5.1
+- Tauri 使用 v2 API
+- Lucide icons 映射表参考 PRD §5.4
+
+---
+
+## Issue #2: 实现 TitleBar 和 Sidebar 组件
+
+**Labels**: `ui`, `component`, `high-priority`
+
+### Description
+
+实现 Qoder 风格的顶部标题栏和左侧导航栏，替代现有的 SessionNavigator。
+
+### Acceptance Criteria
+
+- [ ] 创建 `client/components/TitleBar.tsx`
+  - 44px 高度，macOS 风格（交通灯 + 搜索 + 通知 + 用户头像）
+  - 半透明毛玻璃效果
+- [ ] 创建 `client/components/Sidebar.tsx`
+  - New Quest 按钮（顶部，带 ⌘N 快捷键提示）
+  - Quests 分区（列表项 40-44px，hover/active 态）
+  - Chats 分区（空状态 / 会话列表）
+  - 底部链接（Better Loop / Knowledge / Marketplace）
+  - 用户卡片（头像 / 名称 / Pro badge / 设置）
+- [ ] 迁移 `SessionNavigator.tsx` 核心逻辑到 Sidebar
+- [ ] 更新 `client/styles/components.css` 重写 sidebar 相关样式
+- [ ] 支持 sidebar 折叠/展开
+
+### Technical Notes
+
+- Sidebar 宽度 260px
+- 使用新 Design Token
+- 保持现有 drag-and-drop 功能
+
+---
+
+## Issue #3: 实现 MainArea（QuestHome + ChatView）
+
+**Labels**: `ui`, `component`, `high-priority`
+
+### Description
+
+实现中间主内容区的 Quest Home 视图和 Chat 视图，替代现有的 SessionWorkspace。
+
+### Acceptance Criteria
+
+- [ ] 创建 `client/components/QuestHome.tsx`
+  - 标题 "Quest on, hands off"
+  - Start in 选择器行（工作区 / 环境 / Git 分支）
+  - 主输入框（支持 @ 和 / 触发浮层）
+  - Spec/Goal 开关行
+  - 推荐任务卡片（3 个）
+  - Security Banner
+- [ ] 创建 `client/components/ChatView.tsx`
+  - 消息气泡（用户右/深色，Agent 左/白色）
+  - 消息列表滚动
+  - 顶部 header（标题 + 分支/环境）
+- [ ] 创建 `client/components/MainArea.tsx`（视图路由器）
+- [ ] 迁移 `SessionWorkspace.tsx` 核心逻辑
+- [ ] 更新 `client/styles/components.css` 重写 main-column 样式
+
+### Technical Notes
+
+- Quest Home 和 Chat View 共享 PromptComposer
+- 使用新 Design Token
+- 保持现有 transcript/terminal 功能
+
+---
+
+## Issue #4: 实现 RightPanel（Summary/Terminal/Files/Spec/Review）
+
+**Labels**: `ui`, `component`, `high-priority`
+
+### Description
+
+实现右侧信息面板，包含五个 Tab，替代现有的 SessionInspector。
+
+### Acceptance Criteria
+
+- [ ] 创建 `client/components/RightPanel.tsx`
+  - Tab 栏（Summary / Terminal / Files / Spec / Review）
+  - 选中态：文字加粗 + 底部 2px accent 下划线
+  - 右侧关闭/折叠按钮
+- [ ] Summary Tab：Progress / Artifacts / References 空状态
+- [ ] Terminal Tab：左右分栏（终端列表 + 输出区）
+- [ ] Files Tab：A/M/D 文件列表
+- [ ] Spec Tab：Markdown 渲染
+- [ ] Review Tab：代码审查（空状态）
+- [ ] 迁移 `SessionInspector.tsx` 核心逻辑
+- [ ] 更新 `client/styles/components.css` 重写 inspector 样式
+
+### Technical Notes
+
+- RightPanel 在 Knowledge/Marketplace 视图下自动隐藏
+- Terminal 复用现有 xterm.js 实现
+- 保持现有 file preview / diff / git 功能
+
+---
+
+## Issue #5: 升级主题系统（Qoder Light Theme）
+
+**Labels**: `ui`, `theme`, `medium-priority`
+
+### Description
+
+添加 Qoder Light Theme 为默认主题，清理硬编码颜色、圆角、阴影。
+
+### Acceptance Criteria
+
+- [ ] 修改 `client/theme.tsx`
+  - 添加 `"qoder-light"` 到 ThemeId
+  - 设为默认主题
+  - 更新 themeDefinitions
+- [ ] 清理 `client/styles/components.css` 硬编码颜色
+- [ ] 统一圆角使用 `--radius-*` 变量
+- [ ] 统一阴影定义
+- [ ] 确保 neo 和 classic 主题仍然可用
+- [ ] 主题切换动画（可选）
+
+### Technical Notes
+
+- 使用 CSS 变量实现主题切换
+- 避免使用 JS 切换样式
+- 测试所有三个主题
+
+---
+
+## Issue #6: 增强 PromptComposer（输入框）
+
+**Labels**: `ui`, `component`, `medium-priority`
+
+### Description
+
+重写 PromptComposer，添加 Qoder 风格的输入栏功能。
+
+### Acceptance Criteria
+
+- [ ] 修改 `client/components/PromptComposer.tsx`
+  - 添加 Spec/Goal 开关（Toggle 34×18px）
+  - 添加 Agent/Model 选择器（圆角 pill）
+  - 添加 @ 触发上下文选择浮层
+  - 添加 / 触发命令面板
+  - 添加语音输入、润色、压缩按钮
+  - 发送按钮（圆形，深色背景）
+- [ ] 创建 `client/components/ContextMention.tsx`
+  - @file/@folder/@image/@gitCommit/@wiki/@rule
+- [ ] 创建 `client/components/CommandPalette.tsx`
+  - /learn /chart /test /commit /doc
+- [ ] 更新 `client/styles/components.css` 重写 prompt-composer 样式
+
+### Technical Notes
+
+- 输入框 placeholder: "Plan, @ for context, / for commands"
+- 保持现有发送逻辑
+- 使用新 Design Token
+
+---
+
+## Issue #7: 实现视图路由（View Router）
+
+**Labels**: `feature`, `routing`, `medium-priority`
+
+### Description
+
+实现应用内的视图路由，支持 Quest Home、Chat、Knowledge、Marketplace、Settings 之间的切换。
+
+### Acceptance Criteria
+
+- [ ] 修改 `client/app/App.tsx`
+  - 添加视图状态管理
+  - 根据当前视图渲染不同 MainArea 组件
+  - 右侧面板根据视图自动显示/隐藏
+- [ ] 修改 `client/app/preferences.ts`
+  - 添加 `AppView` 类型
+  - 添加 `currentView` 到 preferences
+- [ ] Sidebar 导航项点击切换视图
+- [ ] 支持键盘快捷键（⌘+1/2/3/4/5 切换视图）
+- [ ] URL 同步（可选，future）
+
+### Technical Notes
+
+- 使用 React Context 或 useState 管理视图状态
+- 不引入 react-router（单页应用，无 URL 路由需求）
+
+---
+
+## Issue #8: 实现 Knowledge、Marketplace、Settings 页面
+
+**Labels**: `ui`, `page`, `low-priority`
+
+### Description
+
+实现 Knowledge、Marketplace、Settings 三个页面的空壳结构。
+
+### Acceptance Criteria
+
+- [ ] 创建 `client/components/KnowledgeView.tsx`
+  - Repo Wiki / Knowledge Card / Memory 三 Tab
+  - 左侧 Wiki 目录树
+  - 右侧详情面板
+- [ ] 创建 `client/components/MarketplaceView.tsx`
+  - 分类导航（200px）
+  - 插件搜索
+  - 卡片网格（2 列）
+- [ ] 创建 `client/components/SettingsView.tsx`
+  - 账户 / Credits
+  - 模型配置
+  - MCP / Skills / Plugins
+  - 安全与隐私
+- [ ] 更新 `client/styles/components.css`
+
+### Technical Notes
+
+- 先做静态 UI，后续接入真实数据
+- Marketplace 卡片使用 mock 数据
+- Settings 使用现有 WorkspaceProfileManager 逻辑
+
+---
+
+## Issue #9: Tauri 桌面端集成
+
+**Labels**: `desktop`, `tauri`, `low-priority`
+
+### Description
+
+完成 Tauri 桌面端的配置和集成。
+
+### Acceptance Criteria
+
+- [x] 配置 `src-tauri/tauri.conf.json`
+  - 窗口大小、标题、菜单
+  - 允许的文件系统访问权限
+- [x] 实现 `src-tauri/src/lib.rs`（命令在 `main.rs` 入口注册）
+  - 注册 Tauri 命令 `read_text_file` / `write_text_file` / `list_directory` / `platform_info`
+  - 文件系统读写
+  - 终端命令执行（通过 `tauri-plugin-shell`）
+- [x] 创建 `client/lib/platform.ts`
+  - PlatformAdapter 接口
+  - Web 实现（`WebPlatformAdapter`）和 Tauri 实现（`TauriPlatformAdapter`，走 `window.__TAURI__.core.invoke` 全局桥，不依赖 `@tauri-apps/api`）
+- [x] 修改相关组件使用 PlatformAdapter（`App.tsx` 的 `openFolder` 已接入 `pickFolder` → `createWorkspace`，Web 端回退到原生目录选择器）
+- [x] 构建并测试 macOS/Windows
+  - macOS 本地 `cargo build` 通过（warning-free，已移除未使用的 `tauri::Manager` 导入）
+  - Windows 由 `.github/workflows/tauri-build.yml` 矩阵 CI 验证（macOS + windows-latest，`tauri-action` 打包 + 上传产物）
+
+### Status / Evidence
+
+**SHIPPED.** 前端通过 `isTauri()` / `getPlatform()` / `usePlatform()` 在 Web 与 Tauri 双实现间切换；四个 Rust 命令名与 `platform.ts` 的 `invoke` 调用逐一对应。本地 cargo 构建通过即 macOS 验证证据；Windows 构建交付由 CI 工作流覆盖（无法在本机 macOS 验证 Windows，符合 Issue #9 的"Windows CI verify"要求，非口头声称）。
+
+### Technical Notes
+
+- Tauri v2 API
+- 前端通过 feature flag 切换 Web/Tauri 模式
+- 文件系统操作使用 Tauri fs API
+
+---
+
+## Issue #10: 多端适配与验证
+
+**Labels**: `testing`, `responsive`, `low-priority`
+
+### Description
+
+完成多端适配、响应式优化、测试验证。
+
+### Acceptance Criteria
+
+- [x] Web 端功能完整验证
+  - 单元测试 `npm run test`：**109/109 通过**（32 个测试文件）
+  - 构建 `npm run build`：tsc + vite build 通过（CSS 85.79 kB，JS 624.21 kB）
+  - Playwright E2E `npm run test:e2e`：**5/5 通过**
+- [x] Tauri 桌面端构建验证
+  - 见 Issue #9（本地 `cargo build` 通过 + `tauri-build.yml` CI 覆盖）
+- [x] 移动端响应式优化（< 640px）
+  - 侧边栏折叠为 drawer（`responsive.css` 中 `.qoder-sidebar` 固定定位 + `.navigator-backdrop`）
+  - 右侧面板 drawer（`responsive.css` 中 `.qoder-right-panel` + `.inspector-backdrop`）
+  - 输入框适配（`@media (max-width: 639px)` 内 `.prompt-composer` / `.composer-controls` 网格化）
+  - 修复 Qoder `.navigator-backdrop` / `.inspector-backdrop` 全宽 `inset` 导致点击落入抽屉内的回归；窄视口选中会话自动开 inspector、关 navigator（`App.tsx` `selectSession` + `isNarrowViewport`）
+- [x] Playwright E2E 测试
+  - 主题切换（neo/classic 持久化）
+  - 视图路由（⌘/Ctrl+1..5）
+  - 响应式布局（390 / 320 视口、抽屉焦点恢复、Escape 关闭并归还焦点）
+  - 会话生命周期（Resume / Stop / 实时 transcript / terminal / files / README 预览 / Open folder / Settings）
+- [ ] 性能测试（Lighthouse score >= 90）— **未执行**：本环境无 Lighthouse CI，属于环境限制，非代码缺陷。需求未将其列为强制门禁。
+- [x] 文档更新（README、设计文档）
+  - 本 issue 文档状态同步；`cli-gui/doc/design/cli-gui-design.md` 与 `spec-cli-gui-qoder-ui.md` 为设计真相来源；`.loop-state.json` 汇总 10 Issue 状态。
+
+### Status / Evidence
+
+**SHIPPED（含 1 项环境阻塞，已如实标注）。**
+
+- 通过：`npm run test` 109/109、`npm run build` 通过、`npm run test:e2e` 5/5。
+- 真实 CLI PTY 生命周期 `npm run smoke:real-cli`：**SKIP / 环境阻塞**——脚本先探测 `codex` 与 `claude` CLI，二者均存在才进入 PTY 验证；本机 `claude` 未安装（`codex` 可用），脚本直接 `process.exit(0)` 跳过。属外部依赖（凭证/网络）缺失，按需求 #7 不得将其误报为通过。
+- 移动端 / 桌面 Web / Tauri 代码路径均已就位并验证（e2e 覆盖移动 + 桌面 Web，cargo build 覆盖 Tauri 编译）。
+
+### Technical Notes
+
+- 使用 Playwright 进行交互验证（非仅截图对比）
+- Lighthouse CI 集成（可选，未在本环境执行）
+- 测试覆盖率 >= 80% 为软目标，本环境未强制测量
+
+---
+
+## Issue 映射关系
+
+```
+#1 (Infrastructure)
+├── #2 (TitleBar + Sidebar)
+├── #3 (MainArea)
+├── #4 (RightPanel)
+└── #5 (Theme System)
+    ├── #6 (PromptComposer)
+    ├── #7 (View Router)
+    └── #8 (Knowledge/Marketplace/Settings)
+        └── #9 (Tauri)
+            └── #10 (Validation)
+```
+
+---
+
+## 优先级汇总
+
+| Issue | 标题 | Priority | Estimate |
+|-------|------|----------|----------|
+| #1 | Design Token + Infrastructure | High | 1-2 days |
+| #2 | TitleBar + Sidebar | High | 2-3 days |
+| #3 | MainArea (QuestHome + ChatView) | High | 2-3 days |
+| #4 | RightPanel | High | 2-3 days |
+| #5 | Theme System Upgrade | Medium | 2 days |
+| #6 | PromptComposer Enhancement | Medium | 2-3 days |
+| #7 | View Router | Medium | 1-2 days |
+| #8 | Knowledge/Marketplace/Settings | Low | 3-4 days |
+| #9 | Tauri Desktop | Low | 3-5 days |
+| #10 | Multi-platform Validation | Low | 2-3 days |

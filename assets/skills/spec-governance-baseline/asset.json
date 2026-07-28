@@ -1,0 +1,42 @@
+{
+  "id": "skill-spec-governance-baseline",
+  "type": "skill",
+  "title": "Spec Governance Baseline",
+  "summary": "Reuse a generic spec-governance workflow with design artifacts, stable truth boundaries, and reviewer gates. Use when a team needs direction/execution style spec discipline without adopting repository-specific business truth.",
+  "direction": "backend",
+  "stacks": [
+    "go",
+    "specos"
+  ],
+  "tags": [
+    "spec",
+    "governance",
+    "workflow",
+    "go-pack"
+  ],
+  "appliesTo": [
+    "backend"
+  ],
+  "dependsOn": [],
+  "conflictsWith": [],
+  "sourcePath": "assets/skills/spec-governance-baseline/SKILL.md",
+  "files": [
+    "skills/developer/spec-governance-baseline/SKILL.md",
+    "skills/developer/spec-governance-baseline/agents/openai.yaml",
+    "skills/developer/spec-governance-baseline/references/direction-and-execution.md",
+    "skills/developer/spec-governance-baseline/references/reviewer-gates.md",
+    "skills/developer/spec-governance-baseline/references/truth-boundaries.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "按项目类型确认是否启用该 skill，并检查引用资料是否适配目标仓库。"
+  ],
+  "sampleOutput": "可复用 skill 说明、触发条件、参考资料和运行边界。",
+  "contentFiles": {
+    "skills/developer/spec-governance-baseline/SKILL.md": "assets/skills/spec-governance-baseline/SKILL.md",
+    "skills/developer/spec-governance-baseline/agents/openai.yaml": "assets/skills/spec-governance-baseline/agents/openai.yaml",
+    "skills/developer/spec-governance-baseline/references/direction-and-execution.md": "assets/skills/spec-governance-baseline/references/direction-and-execution.md",
+    "skills/developer/spec-governance-baseline/references/reviewer-gates.md": "assets/skills/spec-governance-baseline/references/reviewer-gates.md",
+    "skills/developer/spec-governance-baseline/references/truth-boundaries.md": "assets/skills/spec-governance-baseline/references/truth-boundaries.md"
+  }
+}

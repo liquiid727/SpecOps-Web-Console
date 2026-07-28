@@ -1,0 +1,41 @@
+{
+  "id": "agent-spec-editor",
+  "type": "agent_role",
+  "tier": "specialist",
+  "managedBy": "architecture-agent",
+  "title": "Spec Editor",
+  "summary": "Compiles draft intent into design docs, roadmap updates, and feature specs.",
+  "direction": "fullstack",
+  "stacks": [
+    "go",
+    "react",
+    "python"
+  ],
+  "tags": [
+    "spec",
+    "compiler",
+    "openapi"
+  ],
+  "appliesTo": [
+    "backend",
+    "frontend"
+  ],
+  "dependsOn": [
+    "template-feature-draft",
+    "template-task-graph-yaml"
+  ],
+  "conflictsWith": [],
+  "sourcePath": "assets/agents/roles/agent-spec-editor/spec-editor.md",
+  "files": [
+    "ai/agents/spec-editor.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "检查 PRD 中是否缺少边界、状态、权限和观测性内容",
+    "生成 Issues 时实现轨和验证轨分开，且都要携带来源 spec_id 和版本"
+  ],
+  "sampleOutput": "Approved Feature Spec、版本绑定 Test Spec、实现/验证 Issues、design 更新建议、roadmap 变更点和待确认差异项。",
+  "contentFiles": {
+    "ai/agents/spec-editor.md": "assets/agents/roles/agent-spec-editor/spec-editor.md"
+  }
+}

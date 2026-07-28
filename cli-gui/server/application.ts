@@ -3,6 +3,7 @@ import path from "node:path";
 import { WebSocket } from "ws";
 import type {
   AppStateV3,
+  CapabilityDetectionResult,
   CliProfileCapabilities,
   FilePreview,
   FileTreeEntry,
@@ -13,11 +14,16 @@ import type {
   TranscriptPage,
   WorkspaceV3
 } from "../shared/types.js";
+import type { CliAdapterId } from "../shared/state.js";
 import { ApiHttpError, sendJson } from "./api-errors.js";
 import { commandPreview, requireArgs, requireText } from "./domain.js";
 import { createRuntimeOrchestrator } from "./orchestrator.js";
-import { UnsupportedCliOptionError } from "./profile-adapters.js";
-import type { Application, ApplicationDependencies } from "./ports.js";
+import { UnsupportedCliOptionError, mapDetectionFailureToDowngradeReason } from "./profile-adapters.js";
+import { builtinModelIds, mergeModelSources, readSyncedModels } from "./model-catalog.js";
+import { ENHANCE_INPUT_LIMIT, EnhanceExecutionError, buildEnhancePrompt, runEnhance } from "./prompt-enhance.js";
+import { listSkills, readSkillContent, type SkillScanOptions } from "./skills.js";
+import { discoverTerminalResumeToken } from "./terminal-resume.js";
+import type { Application, ApplicationDependencies, PersistentTurnHandlers } from "./ports.js";
 
 const MAX_FILE_DEPTH = 32;
 const MAX_FILE_PAGE = 500;
@@ -32,12 +38,21 @@ const MAX_EVENT_BUFFERED_BYTES = 1 * 1024 * 1024;
 const DEFAULT_MAX_RUNNING_SESSIONS = 8;
 const MIN_MAX_RUNNING_SESSIONS = 4;
 
+/** launchConfig 选项 → 常驻运行时参数："default"/空 → null（与 argv 路径 appendOption 跳过语义同源） */
+function normalizeOption(value: string | null | undefined): string | null {
+  return value && value !== "default" ? value : null;
+}
+
 type EventSubscriber = { client: WebSocket; ready: boolean; pending: TranscriptEvent[]; pendingBytes: number };
 
 export async function createApplication(dependencies: ApplicationDependencies): Promise<Application> {
   const state = await dependencies.stateRepository.load();
   // 全局并发上限（决策 D-6，runtime-orchestrator-spec §3.3）：默认 8、配置下限 4，非法值回落默认并告警
   const maxRunningSessions = resolveMaxRunningSessions(dependencies.policy.processEnvironment.SPECOS_MAX_RUNNING_SESSIONS, dependencies.logger);
+  // terminal 原生 resume：记录本次 spawn 时刻（token 归因窗口起点）与本次启动使用的 token（失败兜底清除）
+  const terminalSpawnAt = new Map<string, number>();
+  const terminalResumeAttempt = new Map<string, string>();
+  const discoverResumeToken = dependencies.terminalResumeDiscovery ?? discoverTerminalResumeToken;
   // 执行控制层：PTY Worker 生命周期由 orchestrator 承担；transcript 写入与 state 持久化经回调留在本层（runtime-orchestrator-spec §2.2）
   const orchestrator = createRuntimeOrchestrator({
     ptyRuntime: dependencies.ptyRuntime,
@@ -74,15 +89,17 @@ export async function createApplication(dependencies: ApplicationDependencies): 
           session.exitCode = extra?.exitCode;
           session.lastActiveAt = dependencies.clock.now();
           session.revision += 1;
+          await captureTerminalResumeToken(session);
           await appendEvent(session, { occurredAt: dependencies.clock.now(), kind: "lifecycle", source: "session-manager", raw: "Session stopped.", metadata: { status: "stopped", exitCode: extra?.exitCode ?? -1 } });
           await dependencies.stateRepository.save(state);
           publishSessionUpdate(session);
         } else if (status === "error") {
           session.runtimeStatus = "error";
-          session.error = { code: "SESSION_START_FAILED", message: "Failed to start the session.", occurredAt: dependencies.clock.now() };
+          session.error = { code: "SESSION_START_FAILED", message: extra?.errorMessage ?? "Failed to start the session.", occurredAt: dependencies.clock.now() };
           session.revision += 1;
+          await clearFailedTerminalResume(session);
           await dependencies.stateRepository.save(state);
-          await appendEvent(session, { occurredAt: dependencies.clock.now(), kind: "error", source: "session-manager", raw: "Failed to start the session.", metadata: { code: "SESSION_START_FAILED" } });
+          await appendEvent(session, { occurredAt: dependencies.clock.now(), kind: "error", source: "session-manager", raw: session.error.message, metadata: { code: "SESSION_START_FAILED" } });
           publishSessionUpdate(session);
         }
       },
@@ -95,6 +112,10 @@ export async function createApplication(dependencies: ApplicationDependencies): 
       onTurnStatus(sessionId, turnId, status) {
         // 实时提示帧：不承载内容、断线不补发（api-spec §4.2）
         publishToSubscriber(sessionId, { type: "turn-status", turnId, status });
+      },
+      onTurnDelta(sessionId, turnId, delta) {
+        // 流式增量帧：同 turn-status 临时帧语义，不落 transcript（streaming-spec FR-1）
+        publishToSubscriber(sessionId, { type: "turn-delta", turnId, delta });
       }
     }
   });
@@ -239,15 +260,30 @@ export async function createApplication(dependencies: ApplicationDependencies): 
     }
   }
 
-  async function resolveCapabilities(profile: SessionV3["profileId"] extends string ? AppStateV3["profiles"][number] : never): Promise<CliProfileCapabilities> {
+  async function resolveCapabilities(profile: SessionV3["profileId"] extends string ? AppStateV3["profiles"][number] : never): Promise<CapabilityDetectionResult> {
     const adapter = profile.adapterId;
     if (dependencies.profileAdapters.capabilities) return dependencies.profileAdapters.capabilities(profile);
-    return { adapterId: adapter, compatibility: adapter === "generic" ? "supported" : "unknown-version", permissions: [], modes: [], models: [], supportsComposer: true, supportsStructuredRecognition: false, supportsHeadlessTurns: false, supportsResume: false, supportsApproval: false };
+    return { adapterId: adapter, compatibility: adapter === "generic" ? "supported" : "unknown-version", permissions: [], modes: [], models: [], supportsComposer: true, supportsStructuredRecognition: false, supportsHeadlessTurns: false, supportsResume: false, supportsApproval: false, supportsPromptEnhancement: false };
   }
 
-  async function resolveLaunch(profile: AppStateV3["profiles"][number], config: SessionV3["launchConfig"]) {
+  const requireProfile = (id: string) => {
+    const profile = state.profiles.find((item) => item.id === id);
+    if (!profile) throw new ApiHttpError(404, "PROFILE_NOT_FOUND", "Profile not found.");
+    return profile;
+  };
+
+  /** 三层模型来源合并 + source 标注（console-gaps SPEC §2.4）：builtin 仅在探测 supported 时参与，同步/导入条目始终展示 */
+  async function mergedProfileModels(profile: AppStateV3["profiles"][number]) {
+    const capabilities = await resolveCapabilities(profile);
+    const builtin = capabilities.compatibility === "supported" ? builtinModelIds(profile.adapterId, capabilities.detectedVersion) : [];
+    return mergeModelSources(builtin, profile.syncedModels ?? [], profile.customModels ?? []);
+  }
+
+  const readProfileSyncedModels = dependencies.modelSyncReader ?? ((profile: AppStateV3["profiles"][number]) => readSyncedModels(profile.adapterId));
+
+  async function resolveLaunch(profile: AppStateV3["profiles"][number], config: SessionV3["launchConfig"], resumeToken?: string) {
     try {
-      if (dependencies.profileAdapters.resolveLaunch) return await dependencies.profileAdapters.resolveLaunch(profile, config);
+      if (dependencies.profileAdapters.resolveLaunch) return await dependencies.profileAdapters.resolveLaunch(profile, resumeToken ? { ...config, resumeToken } : config);
       const capabilities = await resolveCapabilities(profile);
       if (config.permission || config.mode || config.model) throw new UnsupportedCliOptionError(config.permission ?? config.mode ?? config.model ?? "option");
       return { command: profile.command, args: [...profile.args], capabilities };
@@ -257,6 +293,29 @@ export async function createApplication(dependencies: ApplicationDependencies): 
       }
       throw error;
     }
+  }
+
+  /** terminal 会话退出后归因捕获 CLI 原生会话 id（best-effort，失败静默）；仅用户下次点「恢复」时才会用它 resume */
+  async function captureTerminalResumeToken(session: SessionV3) {
+    const spawnedAt = terminalSpawnAt.get(session.id);
+    terminalSpawnAt.delete(session.id);
+    terminalResumeAttempt.delete(session.id);
+    if (spawnedAt === undefined || session.interactionMode !== "terminal") return;
+    const workspace = state.workspaces.find((item) => item.id === session.workspaceId);
+    const profile = state.profiles.find((item) => item.id === session.profileId);
+    if (!workspace || !profile) return;
+    const token = await discoverResumeToken({ adapterId: profile.adapterId, cwd: workspace.path, sinceMs: spawnedAt, env: dependencies.policy.processEnvironment });
+    if (token) session.terminalContext = { ...session.terminalContext, resumeToken: token };
+  }
+
+  /** 以 resume 启动失败（token 过期/被清理）时清除凭据，下次恢复回到全新启动 */
+  async function clearFailedTerminalResume(session: SessionV3) {
+    const attempted = terminalResumeAttempt.get(session.id);
+    terminalSpawnAt.delete(session.id);
+    terminalResumeAttempt.delete(session.id);
+    if (!attempted || session.terminalContext?.resumeToken !== attempted) return;
+    session.terminalContext = { ...session.terminalContext, resumeToken: undefined };
+    await appendEvent(session, { occurredAt: dependencies.clock.now(), kind: "lifecycle", source: "session-manager", raw: "Native resume failed; the next start launches a fresh CLI session.", metadata: { resume: "cleared" } });
   }
 
   async function startSession(sessionId: string, confirmed: boolean, cols = 100, rows = 30): Promise<SessionV3 | undefined> {
@@ -292,7 +351,13 @@ export async function createApplication(dependencies: ApplicationDependencies): 
       const profile = state.profiles.find((item) => item.id === session.profileId);
       if (!workspace || !profile) throw new ApiHttpError(400, "VALIDATION_FAILED", "Session references a missing workspace or profile.");
       if (session.organizationStatus !== "active") throw new ApiHttpError(409, "SESSION_NOT_ACTIVE", "Session must be active before it can start.");
-      const launch = await resolveLaunch(profile, session.launchConfig);
+      // 存在已捕获的 token 时以 CLI 原生 resume 启动（codex resume <id> / claude --resume <id>），续上上一次交互上下文
+      const resumeToken = session.terminalContext?.resumeToken;
+      const launch = await resolveLaunch(profile, session.launchConfig, resumeToken);
+      if (resumeToken) terminalResumeAttempt.set(sessionId, resumeToken);
+      else terminalResumeAttempt.delete(sessionId);
+      // 归因窗口留 2s 宽容：避免 CLI 建档时间略早于本处记录时刻而漏捕
+      terminalSpawnAt.set(sessionId, Date.parse(dependencies.clock.now()) - 2_000);
       return { command: launch.command, args: launch.args, cwd: workspace.path, env: definedEnvironment(dependencies.policy.processEnvironment) };
     }, { cols, rows });
     return getSession(sessionId);
@@ -300,12 +365,16 @@ export async function createApplication(dependencies: ApplicationDependencies): 
 
   async function stopSession(sessionId: string) {
     const hadRuntime = await orchestrator.stop(sessionId);
+    // chat 常驻进程随会话 stop 释放（streaming-spec FR-6）
+    dependencies.persistentChatRuntime?.release(sessionId);
     const session = getSession(sessionId);
     if (!hadRuntime && (!session || session.runtimeStatus === "stopped")) return session;
     if (session) {
       session.runtimeStatus = "stopped";
       session.lastActiveAt = dependencies.clock.now();
       session.revision += 1;
+      // 用户主动 stop 不经过 onRuntimeStatus("stopped")（orchestrator 先删 worker），在此同样归因捕获 resume token
+      await captureTerminalResumeToken(session);
       await appendEvent(session, { occurredAt: dependencies.clock.now(), kind: "lifecycle", source: "session-manager", raw: "Session stopped by user.", metadata: { status: "stopped" } });
       await dependencies.stateRepository.save(state);
       publishSessionUpdate(session);
@@ -576,6 +645,52 @@ export async function createApplication(dependencies: ApplicationDependencies): 
       return;
     }
 
+    if (resource === "skills" && method === "GET") {
+      // 只读端点（console-gaps SPEC §7.3）：scope 必选；workspace scope 要求 workspaceId 命中已注册工作区
+      const scopeParam = url.searchParams.get("scope");
+      if (scopeParam !== "system" && scopeParam !== "workspace") throw new ApiHttpError(400, "VALIDATION_FAILED", "scope must be system or workspace.", { field: "scope" });
+      let scanOptions: SkillScanOptions = { homeDirectory: dependencies.policy.skillsHomeDirectory };
+      if (scopeParam === "workspace") {
+        const workspaceId = url.searchParams.get("workspaceId");
+        if (!workspaceId) throw new ApiHttpError(400, "VALIDATION_FAILED", "workspaceId is required for workspace scope.", { field: "workspaceId" });
+        const workspace = state.workspaces.find((item) => item.id === workspaceId);
+        if (!workspace) throw new ApiHttpError(404, "WORKSPACE_NOT_FOUND", "Workspace not found.");
+        scanOptions = { workspacePath: workspace.path };
+      }
+      if (!id) {
+        sendJson(response, 200, { skills: await listSkills(scopeParam, scanOptions) });
+        return;
+      }
+      if (id === "content") {
+        const skillId = url.searchParams.get("id");
+        if (!skillId) throw new ApiHttpError(400, "VALIDATION_FAILED", "Skill id is required.", { field: "id" });
+        const content = await readSkillContent(scopeParam, skillId, scanOptions);
+        if (!content) throw new ApiHttpError(404, "FILE_NOT_FOUND", "Skill not found.");
+        sendJson(response, 200, content);
+        return;
+      }
+    }
+
+    if (resource === "prompt" && id === "enhance" && method === "POST") {
+      // 润色/压缩一次性调用（project-quest SPEC §5.7）：readonly 已由入口统一拦截
+      const enhanceBody = body as { profileId?: unknown; action?: unknown; content?: unknown; locale?: unknown };
+      if (enhanceBody.action !== "polish" && enhanceBody.action !== "compress") throw new ApiHttpError(400, "VALIDATION_FAILED", "action must be polish or compress.", { field: "action" });
+      if (typeof enhanceBody.content !== "string" || !enhanceBody.content.trim()) throw new ApiHttpError(400, "VALIDATION_FAILED", "content is required.", { field: "content" });
+      if (Buffer.byteLength(enhanceBody.content, "utf8") > ENHANCE_INPUT_LIMIT) throw new ApiHttpError(400, "VALIDATION_FAILED", "content exceeds the 32KiB limit.", { field: "content", limit: ENHANCE_INPUT_LIMIT });
+      const locale = enhanceBody.locale === "zh" ? "zh" : "en";
+      const profile = requireProfile(typeof enhanceBody.profileId === "string" ? enhanceBody.profileId : "");
+      const detected = await resolveCapabilities(profile);
+      if (!detected.supportsPromptEnhancement || !dependencies.profileAdapters.buildEnhance) throw new ApiHttpError(400, "ENHANCE_UNAVAILABLE", "The selected CLI profile does not support prompt enhancement.");
+      const spec = await dependencies.profileAdapters.buildEnhance(profile, { prompt: buildEnhancePrompt(enhanceBody.action, locale, enhanceBody.content) });
+      try {
+        sendJson(response, 200, await runEnhance(spec, { env: dependencies.policy.processEnvironment, timeoutMs: dependencies.policy.enhanceTimeoutMs }));
+      } catch (error) {
+        if (error instanceof EnhanceExecutionError) throw new ApiHttpError(error.code === "ENHANCE_TIMEOUT" ? 504 : 502, error.code, error.message);
+        throw error;
+      }
+      return;
+    }
+
     if (resource === "workspaces") {
       if (method === "GET" && id && action === "files") {
         sendJson(response, 200, await listWorkspaceFiles(id, url.searchParams.get("path") ?? "", url.searchParams.get("cursor") ?? undefined, Number(url.searchParams.get("limit") ?? MAX_FILE_PAGE)));
@@ -660,9 +775,46 @@ export async function createApplication(dependencies: ApplicationDependencies): 
         sendJson(response, 200, await resolveCapabilities(profile));
         return;
       }
+      if (method === "GET" && id && action === "models" && !segments[3]) {
+        sendJson(response, 200, { models: await mergedProfileModels(requireProfile(id)) });
+        return;
+      }
+      if (method === "POST" && id && action === "models" && segments[3] === "sync" && !segments[4]) {
+        const profile = requireProfile(id);
+        // 配置缺失/解析失败容错为 []（model-catalog 内部吞异常），回写后合并列表自动含 synced 条目
+        profile.syncedModels = await readProfileSyncedModels(profile);
+        await dependencies.stateRepository.save(state);
+        sendJson(response, 200, { models: await mergedProfileModels(profile), synced: profile.syncedModels });
+        return;
+      }
+      if (method === "POST" && id && action === "models" && segments[3] === "custom" && !segments[4]) {
+        const profile = requireProfile(id);
+        const model = requireText(body.model, "model").trim();
+        if (!model || model.length > 128) throw new ApiHttpError(400, "VALIDATION_FAILED", "Model id must be 1-128 characters.", { field: "model" });
+        if ((await mergedProfileModels(profile)).some((entry) => entry.id === model)) throw new ApiHttpError(400, "VALIDATION_FAILED", "Model id already exists for this profile.", { field: "model" });
+        profile.customModels = [...(profile.customModels ?? []), model];
+        await dependencies.stateRepository.save(state);
+        sendJson(response, 201, { models: await mergedProfileModels(profile) });
+        return;
+      }
+      if (method === "DELETE" && id && action === "models" && segments[3] === "custom" && segments[4]) {
+        const profile = requireProfile(id);
+        let model = segments[4];
+        try {
+          model = decodeURIComponent(model);
+        } catch {
+          // 非法百分号编码：按原文匹配
+        }
+        if (!(profile.customModels ?? []).includes(model)) throw new ApiHttpError(404, "VALIDATION_FAILED", "Custom model not found.", { field: "model" });
+        profile.customModels = (profile.customModels ?? []).filter((item) => item !== model);
+        if (!profile.customModels.length) profile.customModels = undefined;
+        await dependencies.stateRepository.save(state);
+        sendJson(response, 200, { models: await mergedProfileModels(profile) });
+        return;
+      }
       if (method === "POST" && !id) {
         const command = requireText(body.command, "command");
-        const adapterId = body.adapterId === "claude-code" || body.adapterId === "codex" || body.adapterId === "generic" ? body.adapterId : inferProfileAdapter(command);
+        const adapterId = isKnownAdapterId(body.adapterId) ? body.adapterId : inferProfileAdapter(command);
         const profile = { id: dependencies.idGenerator.create("profile"), name: requireResourceName(body.name, "name"), command, args: requireArgs(body.args), adapterId, createdAt: dependencies.clock.now() };
         state.profiles.push(profile);
         await dependencies.stateRepository.save(state);
@@ -674,7 +826,7 @@ export async function createApplication(dependencies: ApplicationDependencies): 
         if (!profile) throw new ApiHttpError(404, "PROFILE_NOT_FOUND", "Profile not found.");
         if (body.name !== undefined) profile.name = requireResourceName(body.name, "name");
         if (body.command !== undefined) profile.command = requireText(body.command, "command");
-        if (body.adapterId === "claude-code" || body.adapterId === "codex" || body.adapterId === "generic") profile.adapterId = body.adapterId;
+        if (isKnownAdapterId(body.adapterId)) profile.adapterId = body.adapterId;
         else if (body.command !== undefined) profile.adapterId = inferProfileAdapter(profile.command);
         if (body.args !== undefined) profile.args = requireArgs(body.args);
         await dependencies.stateRepository.save(state);
@@ -736,6 +888,7 @@ export async function createApplication(dependencies: ApplicationDependencies): 
         const launch = await resolveLaunch(profile, launchConfig);
         // 缺省 chat；Profile 不支持 headless 时服务端降级 terminal，不报错（api-spec §2.6）
         const interactionModeDowngraded = requestedMode === "chat" && !launch.capabilities.supportsHeadlessTurns;
+        const downgradeReason = interactionModeDowngraded ? mapDetectionFailureToDowngradeReason(launch.capabilities.detectionFailure) : undefined;
         const interactionMode = interactionModeDowngraded ? "terminal" as const : requestedMode;
         const session: SessionV3 = {
           id: dependencies.idGenerator.create("session"), name: requireResourceName(body.name, "name"), workspaceId, profileId, interactionMode,
@@ -750,7 +903,7 @@ export async function createApplication(dependencies: ApplicationDependencies): 
           if (start && error instanceof ApiHttpError && error.code === "SESSION_START_FAILED") {
             const capabilities = launch.capabilities;
             const serialized = serializeSession(session);
-            sendJson(response, 201, { ...serialized, session: serialized, capabilities, ...(interactionModeDowngraded ? { interactionModeDowngraded: true } : {}), startupError: { code: error.code, message: error.publicMessage, requestId: "create-session" } });
+            sendJson(response, 201, { ...serialized, session: serialized, capabilities, ...(interactionModeDowngraded ? { interactionModeDowngraded: true } : {}), ...(downgradeReason ? { downgradeReason } : {}), startupError: { code: error.code, message: error.publicMessage, requestId: "create-session" } });
             return;
           }
           state.sessions = state.sessions.filter((item) => item.id !== session.id);
@@ -760,7 +913,7 @@ export async function createApplication(dependencies: ApplicationDependencies): 
         }
         const capabilities = start ? launch.capabilities : await resolveCapabilities(profile);
         const serialized = serializeSession(session);
-        sendJson(response, 201, { ...serialized, session: serialized, capabilities, ...(interactionModeDowngraded ? { interactionModeDowngraded: true } : {}) });
+        sendJson(response, 201, { ...serialized, session: serialized, capabilities, ...(interactionModeDowngraded ? { interactionModeDowngraded: true } : {}), ...(downgradeReason ? { downgradeReason } : {}) });
         return;
       }
       if (method === "PATCH" && id) {
@@ -848,7 +1001,7 @@ export async function createApplication(dependencies: ApplicationDependencies): 
           ...parent, id: dependencies.idGenerator.create("session"), name: typeof body.name === "string" && body.name.trim() ? requireResourceName(body.name, "name") : `${parent.name} fork`,
           runtimeStatus: "stopped", organizationStatus: "active", pinned: false, manualOrder: nextManualOrder(), parentSessionId: materialize ? undefined : parent.id,
           forkEventId: materialize ? undefined : latest?.id, forkSequence: materialize ? undefined : latest?.sequence ?? 0, forkedAt: now, createdAt: now, lastActiveAt: now,
-          chatContext: undefined, completedAt: undefined, archivedAt: undefined, exitCode: undefined, error: undefined, revision: 1
+          chatContext: undefined, terminalContext: undefined, completedAt: undefined, archivedAt: undefined, exitCode: undefined, error: undefined, revision: 1
         };
         state.sessions.push(child);
         try {
@@ -891,11 +1044,29 @@ export async function createApplication(dependencies: ApplicationDependencies): 
               ? { buildApprovalResponse: (approvalId: string, decision: "allow" | "deny") => registry.buildApprovalResponse!(profile, approvalId, decision) }
               : {};
             const turnId = dependencies.idGenerator.create("turn");
+            // codex 常驻运行时注入（streaming-spec §3.5）：选项翻译与 argv 路径同源（default → 省略）
+            const persistentRuntime = dependencies.persistentChatRuntime;
+            const persistentWiring = persistentRuntime && profile.adapterId === "codex" && capabilities.supportsHeadlessTurns
+              ? {
+                  runPersistent: (handlers: PersistentTurnHandlers) => persistentRuntime.runTurn(id, {
+                    turnId,
+                    prompt: content,
+                    cwd: workspace.path,
+                    env: definedEnvironment(dependencies.policy.processEnvironment),
+                    command: profile.command,
+                    model: normalizeOption(session.chatContext?.activeModel ?? session.launchConfig.model),
+                    sandboxMode: normalizeOption(session.launchConfig.mode),
+                    approvalPolicy: normalizeOption(session.launchConfig.permission),
+                    resumeToken: session.chatContext?.resumeToken
+                  }, handlers)
+                }
+              : {};
             const { event } = await orchestrator.submitTurn(id, {
               turnId,
               prompt: content,
               clientMessageId,
               ...approvalWiring,
+              ...persistentWiring,
               // CLI 语义封闭在 Adapter；Orchestrator 只拿回调（决策 D-9）
               buildCommand: async () => {
                 const spec = await registry.buildTurn!(profile, {
@@ -908,7 +1079,7 @@ export async function createApplication(dependencies: ApplicationDependencies): 
                 });
                 return { command: spec.command, args: spec.args, cwd: workspace.path, env: { ...definedEnvironment(dependencies.policy.processEnvironment), ...spec.env } };
               },
-              parseOutput: (stdout) => registry.parseEvents!(profile, stdout, { turnId })
+              parseOutput: (stdout, hooks) => registry.parseEvents!(profile, stdout, { turnId }, hooks)
             });
             session.lastActiveAt = dependencies.clock.now();
             await dependencies.stateRepository.save(state);
@@ -1039,6 +1210,8 @@ export async function createApplication(dependencies: ApplicationDependencies): 
         orchestrator.beginShutdown();
         await waitForIdle();
         const stoppedSessionIds = await orchestrator.shutdown();
+        // 全部 chat 常驻进程随服务关停终止（streaming-spec FR-6）
+        await dependencies.persistentChatRuntime?.shutdown();
         let changed = false;
         for (const sessionId of stoppedSessionIds) {
           const session = getSession(sessionId);
@@ -1086,8 +1259,13 @@ function isKnownApiRoute(method: string, resource: string | undefined, id: strin
   }
   if (resource === "profiles") {
     if (method === "GET" && id && action === "capabilities") return true;
+    if (method === "GET" && id && action === "models" && !segments[3]) return true;
+    if (method === "POST" && id && action === "models" && ["sync", "custom"].includes(segments[3] ?? "") && !segments[4]) return true;
+    if (method === "DELETE" && id && action === "models" && segments[3] === "custom" && Boolean(segments[4]) && !segments[5]) return true;
     return !action && ((method === "POST" && !id) || Boolean(id && (method === "PATCH" || method === "DELETE")));
   }
+  if (resource === "skills") return method === "GET" && (!id || (id === "content" && !action));
+  if (resource === "prompt") return method === "POST" && id === "enhance" && !action;
   if (resource !== "sessions") return false;
   if (method === "POST" && id === "reorder" && !action) return true;
   if (method === "POST" && !id && !action) return true;
@@ -1196,10 +1374,16 @@ function isExcluded(name: string) {
   return new Set(["node_modules", ".next", "dist", "build", "coverage", ".cache", ".DS_Store"]).has(name);
 }
 
+function isKnownAdapterId(value: unknown): value is CliAdapterId {
+  return value === "claude-code" || value === "codex" || value === "kimi" || value === "glm" || value === "generic";
+}
+
 function inferProfileAdapter(command: string) {
   const normalized = command.toLowerCase();
   if (normalized.includes("codex")) return "codex" as const;
   if (normalized.includes("claude")) return "claude-code" as const;
+  if (normalized.includes("kimi")) return "kimi" as const;
+  if (normalized.includes("glm")) return "glm" as const;
   return "generic" as const;
 }
 

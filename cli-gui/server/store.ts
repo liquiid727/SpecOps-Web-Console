@@ -145,6 +145,9 @@ export async function migrateAndValidate(parsed: AppState | AppStateEnvelopeV2 |
       args: [...candidate.args],
       adapterId: candidate.adapterId ?? inferAdapterId(candidate.command),
       adapterVersionRange: candidate.adapterVersionRange,
+      // 可选增量字段（console-gaps SPEC §2.3）：宽容放行，形状不对时丢弃而非拒绝整份 state
+      customModels: sanitizeModelList(candidate.customModels),
+      syncedModels: sanitizeModelList(candidate.syncedModels),
       createdAt: candidate.createdAt ?? clock.now()
     };
   });
@@ -284,6 +287,13 @@ function isEnvelopeV3(value: unknown): value is AppStateEnvelopeV3 {
 
 function nonEmpty(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+/** 可选模型列表字段：仅接受非空字符串数组，其余形状丢弃（缺省读取等价 []） */
+function sanitizeModelList(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const models = value.filter(nonEmpty).map((model) => model.trim());
+  return models.length ? [...new Set(models)] : undefined;
 }
 
 function isRuntimeError(value: unknown): value is SessionRuntimeError {

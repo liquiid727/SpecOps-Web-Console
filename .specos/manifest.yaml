@@ -5,14 +5,25 @@ stacks:
   frontend: next
   backend: node-api
 artifacts:
-  draftsDir: spec-draft
-  specsDir: specs
+  # Single source of truth for spec artifact locations.
+  # Resolution order for skills: explicit user request > this manifest >
+  # legacy convention detection (spec-draft/, specs/) > built-in defaults.
+  draftsDir: .prd
+  specsDir: .features
+  issuesDir: .issues
   testsDir: tests
   resultsDir: tests/results
 rulePacks:
   - spec-driven-delivery
 agentTemplates:
-  - fullstack-agent
+  - product-architect-agent
+  - spec-editor
+  - frontend-agent
+  - backend-agent
+  - testing-agent
+  - qa-agent
+  - ci-editor
+  - reviewer
 workflows:
   - default-fullstack
 ci:

@@ -1,5 +1,5 @@
 mode: goalspec
-description: Workflow-driven overlays for the six-step goal loop (prd -> prd-to-spec -> to-issues -> goal -> review-it -> ship-it).
+description: Workflow-driven overlays for the approved Feature Spec -> implementation plus version-bound Test Spec -> verification delivery loop.
 load_order:
   - .agents/roles/<role>.md
   - ai/agents/<role>.md
@@ -9,6 +9,7 @@ overrides:
   - spec-editor
   - implementation-agent
   - testing-agent
+  - qa-agent
   - reviewer
   - ci-editor
   - deployment-agent

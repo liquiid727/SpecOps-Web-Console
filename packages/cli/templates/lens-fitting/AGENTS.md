@@ -23,6 +23,8 @@ This is the artifact chain. Agents are invoked as compiler-layer implementations
 - QA Agent verifies Code against Task Graph and Spec refs.
 - CI / Deploy gates consume verification evidence for release.
 
+These compiler roles map onto the SpecOS layered agent model: `pola` coordinates, the four main agents (`architecture-agent`, `implementation-agent`, `testing-agent`, `qa-agent`) own their stages, and specialists such as `spec-editor`, `frontend-agent`, `backend-agent`, `ci-editor`, and `deployment-agent` run as on-demand subagents under their managing main agent.
+
 ## Rules
 
 - Do not write accepted truth directly into `specs/current/` without review.

@@ -1,5 +1,7 @@
-import { useRef, useState, type KeyboardEvent } from "react";
-import type { CliProfileCapabilities, SessionLaunchConfig } from "../../shared/types";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import type { CliProfileCapabilities, PromptEnhanceAction, SessionLaunchConfig } from "../../shared/types";
+import { WORK_MODES, type ComposerWorkMode } from "../app/preferences";
+import { api } from "../api";
 import { toFeedbackError } from "../feedback-errors";
 import { useI18n } from "../i18n";
 import { useFeedback } from "./ui/Feedback";
@@ -7,6 +9,7 @@ import { Icon } from "./ui/Icon";
 import { Select } from "./ui/Select";
 import { ContextMention, contextToken, type ContextType } from "./ContextMention";
 import { CommandPalette, commandToken } from "./CommandPalette";
+import { useSpeechInput } from "./useSpeechInput";
 import { Button, IconButton, TextArea } from "./ui";
 
 interface PromptComposerProps {
@@ -24,23 +27,57 @@ interface PromptComposerProps {
   /** 审批挂起中：composer 提示「等待审批」（frontend-spec §5.4） */
   waitingApproval?: boolean;
   onCancelTurn?: () => void;
+  /** 四态工作模式：状态提升到 App 层持久化，仅 UI 状态不改发送内容（console-gaps SPEC §3） */
+  workMode?: ComposerWorkMode;
+  onWorkModeChange?: (mode: ComposerWorkMode) => void;
+  /** 润色/压缩目标 profile（project-quest SPEC §5.7）；缺省时润色按钮禁用 */
+  profileId?: string;
+  /** capability.supportsPromptEnhancement；明确 false 时禁用并解释，undefined（未探测）时允许尝试由服务端兵底 */
+  enhanceSupported?: boolean;
 }
 
-export function PromptComposer({ disabled, onSend, capabilities, launchConfig, onLaunchConfigChange, interactionMode, activeModel, onActiveModelChange, turnActive = false, waitingApproval = false, onCancelTurn }: PromptComposerProps) {
-  const { t } = useI18n();
+export function PromptComposer({ disabled, onSend, capabilities, launchConfig, onLaunchConfigChange, interactionMode, activeModel, onActiveModelChange, turnActive = false, waitingApproval = false, onCancelTurn, workMode = "default", onWorkModeChange, profileId, enhanceSupported }: PromptComposerProps) {
+  const { t, language } = useI18n();
   const feedback = useFeedback();
   const [content, setContent] = useState("");
   const [sending, setSending] = useState(false);
-  const [composerMode, setComposerMode] = useState<"spec" | "goal">("spec");
   const [popover, setPopover] = useState<null | "context" | "command">(null);
   const [triggerIndex, setTriggerIndex] = useState<number | null>(null);
-  const [listening, setListening] = useState(false);
+  const [interim, setInterim] = useState("");
+  const [enhancing, setEnhancing] = useState<PromptEnhanceAction | null>(null);
+  const [undoContent, setUndoContent] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
+
+  // 听写（project-quest SPEC §5.8）：interim 灰显回填，final 落定追加到光标位置
+  const speech = useSpeechInput({
+    locale: language,
+    onInterim: setInterim,
+    onFinal: (text) => {
+      const el = textareaRef.current;
+      const caret = el?.selectionStart ?? undefined;
+      setContent((previous) => {
+        const at = caret ?? previous.length;
+        return previous.slice(0, at) + text + previous.slice(at);
+      });
+    }
+  });
+  const listening = speech.status === "listening";
+  useEffect(() => {
+    if (speech.status === "permission-denied") feedback.error({ title: t("qoderMic"), description: t("micPermissionDenied"), key: "mic-permission" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [speech.status]);
 
   const trimmed = content.trim();
   const tooLarge = new TextEncoder().encode(content).length > 65_536;
-  const canSend = Boolean(trimmed) && !disabled && !sending && !tooLarge && !turnActive;
+  const busy = sending || enhancing !== null;
+  const canSend = Boolean(trimmed) && !disabled && !busy && !tooLarge && !turnActive;
   const chatMode = interactionMode === "chat";
+  // 润色可用性：空输入/处理中/无 profile 禁用；capability 明确不支持时禁用并解释（project-quest SPEC §5.7）
+  const enhanceDisabled = disabled || busy || !trimmed || !profileId || enhanceSupported === false;
+  const enhanceTitle = (fallback: string) => (enhanceSupported === false ? t("enhanceUnavailable") : fallback);
+  const workModeLabels: Record<ComposerWorkMode, string> = { default: t("workModeDefault"), spec: t("workModeSpec"), goal: t("workModeGoal"), plan: t("workModePlan") };
 
   async function submit() {
     if (!canSend) return;
@@ -48,9 +85,10 @@ export function PromptComposer({ disabled, onSend, capabilities, launchConfig, o
     try {
       await onSend(content, crypto.randomUUID());
       setContent("");
+      setUndoContent(null);
       setPopover(null);
       setTriggerIndex(null);
-      feedback.success({ title: t("messageSent") });
+      // 成功静默：消息以 user_message 事件即时回显到 transcript，弹 toast 是冗余噪音
     } catch (cause) {
       // start-and-send 确认弹窗被取消：保留输入，不报错（frontend-spec §5.1）
       if ((cause as Error | undefined)?.name !== "ComposerCancelled") feedback.error(toFeedbackError(cause, t, "composerFailed", "composer-send"));
@@ -86,6 +124,8 @@ export function PromptComposer({ disabled, onSend, capabilities, launchConfig, o
 
   function handleChange(next: string) {
     setContent(next);
+    // 听写中手动编辑：interim 缓冲丢弃（project-quest SPEC §5.11）
+    if (interim) setInterim("");
     const el = textareaRef.current;
     detectPopover(next, el?.selectionStart ?? next.length);
   }
@@ -127,30 +167,63 @@ export function PromptComposer({ disabled, onSend, capabilities, launchConfig, o
   }
 
   function toggleMic() {
-    if (typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window)) {
-      setListening((value) => !value);
+    if (!speech.supported) {
+      feedback.info({ title: t("qoderMic"), description: t("qoderInstallUnavailable") });
       return;
     }
-    feedback.info({ title: t("qoderMic"), description: t("qoderInstallUnavailable") });
+    if (listening) {
+      speech.stop();
+      setInterim("");
+      return;
+    }
+    speech.start();
   }
 
-  function enhance(kind: "polish" | "compress") {
-    feedback.info({ title: t(kind === "polish" ? "qoderPolish" : "qoderCompress") });
+  async function enhance(kind: PromptEnhanceAction) {
+    if (enhanceDisabled || !profileId) return;
+    setEnhancing(kind);
+    const original = content;
+    try {
+      const result = await api.enhancePrompt({ profileId, action: kind, content: original, locale: language === "zh" ? "zh" : "en" });
+      // 卸载（切换会话/视图）后结果丢弃，不误写其它 composer 实例（project-quest SPEC §5.11）
+      if (!mountedRef.current) return;
+      setUndoContent(original);
+      setContent(result.content);
+      if (result.truncated) feedback.info({ title: t(kind === "polish" ? "qoderPolish" : "qoderCompress"), description: t("enhanceTruncated") });
+    } catch (cause) {
+      // 失败保留原文可重试：content 未动，仅提示错误
+      if (mountedRef.current) feedback.error(toFeedbackError(cause, t, "enhanceFailed", "prompt-enhance"));
+    } finally {
+      if (mountedRef.current) setEnhancing(null);
+    }
   }
+
+  function undoEnhance() {
+    if (undoContent === null) return;
+    setContent(undoContent);
+    setUndoContent(null);
+  }
+
+  // 占位能力（Qoder 1:1 布局先行，功能后续增设）
+  function comingSoon(title: string) {
+    feedback.info({ title, description: t("qoderComingSoon") });
+  }
+
+  // 发送/停止按钮两布局共用；chat 布局用上箭头圆钮（Qoder 样式）
+  const sendOrStop = turnActive
+    ? <Button variant="secondary" className="composer-send composer-stop icon-only" onClick={() => onCancelTurn?.()} disabled={disabled} aria-label={t("stopTurn")} title={t("stopTurn")}><Icon name="stop" /></Button>
+    : <Button type="submit" variant="accent" className="composer-send icon-only" disabled={!canSend} aria-label={t("sendPrompt")} title={waitingApproval ? t("approvalWaiting") : tooLarge ? t("promptTooLarge") : t("sendPrompt")}><Icon name={chatMode ? "arrow-up" : "send"} /></Button>;
 
   return (
-    <form className="prompt-composer qoder-composer" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
-      <div className="composer-controls" aria-label={t("launchControls")}>
-        <SpecGoalToggle mode={composerMode} onChange={setComposerMode} label={t("qoderModeToggle")} specLabel={t("qoderSpec")} goalLabel={t("qoderGoal")} />
+    <form className={`prompt-composer qoder-composer${chatMode ? " chat-layout" : ""}`} onSubmit={(event) => { event.preventDefault(); void submit(); }}>
+      {!chatMode && <div className="composer-controls" aria-label={t("launchControls")}>
+        <WorkModeSelector mode={workMode} onChange={(mode) => onWorkModeChange?.(mode)} label={t("workModeLabel")} labels={workModeLabels} />
         <CapabilitySelector label={t("permission")} defaultLabel={t("permissionDefault")} hint={capabilities?.permissions?.length ? t("capabilityApplies") : t("capabilityUnavailable")} value={launchConfig?.permission} options={capabilities?.permissions} disabled={disabled} onChange={(value) => onLaunchConfigChange?.({ permission: value })} />
         <CapabilitySelector label={t("mode")} defaultLabel={t("modeDefault")} hint={capabilities?.modes?.length ? t("capabilityApplies") : t("capabilityUnavailable")} value={launchConfig?.mode} options={capabilities?.modes} disabled={disabled} onChange={(value) => onLaunchConfigChange?.({ mode: value })} />
-        {chatMode
-          ? <CapabilitySelector label={t("model")} defaultLabel={t("modelDefault")} hint={capabilities?.models?.length ? t("modelNextTurn") : t("capabilityUnavailable")} value={activeModel} options={capabilities?.models} disabled={disabled} onChange={(value) => onActiveModelChange?.(value)} />
-          : <CapabilitySelector label={t("model")} defaultLabel={t("modelDefault")} hint={capabilities?.models?.length ? t("capabilityApplies") : t("capabilityUnavailable")} value={launchConfig?.model} options={capabilities?.models} disabled={disabled} onChange={(value) => onLaunchConfigChange?.({ model: value })} />}
-        {chatMode && Boolean(capabilities?.models?.length) && <small className="model-next-turn-hint">{t("modelNextTurn")}</small>}
-      </div>
+        <CapabilitySelector label={t("model")} defaultLabel={t("modelDefault")} hint={capabilities?.models?.length ? t("capabilityApplies") : t("capabilityUnavailable")} value={launchConfig?.model} options={capabilities?.models} disabled={disabled} onChange={(value) => onLaunchConfigChange?.({ model: value })} />
+      </div>}
       <div className="composer-box">
-        <TextArea ref={textareaRef} aria-label={t("prompt")} placeholder={t("qoderPromptPlaceholder")} value={content} onChange={(event) => handleChange(event.target.value)} onKeyDown={keyDown} disabled={disabled || sending} />
+        <TextArea ref={textareaRef} aria-label={t("prompt")} placeholder={t("qoderPromptPlaceholder")} value={content} onChange={(event) => handleChange(event.target.value)} onKeyDown={keyDown} disabled={disabled || busy} />
         {popover === "context" && (
           <div className="composer-popover-anchor">
             <ContextMention onSelect={selectContext} onClose={() => { setPopover(null); setTriggerIndex(null); }} />
@@ -161,34 +234,66 @@ export function PromptComposer({ disabled, onSend, capabilities, launchConfig, o
             <CommandPalette onSelect={selectCommand} onClose={() => { setPopover(null); setTriggerIndex(null); }} />
           </div>
         )}
-        <div className="composer-actions">
-          <IconButton appearance="composer" className={listening ? "active" : ""} onClick={toggleMic} disabled={disabled} label={t("qoderMic")} title={t("qoderMic")} icon="mic" />
-          <IconButton appearance="composer" onClick={() => enhance("polish")} disabled={disabled} label={t("qoderPolish")} title={t("qoderPolish")} icon="wand" />
-          <IconButton appearance="composer" onClick={() => enhance("compress")} disabled={disabled} label={t("qoderCompress")} title={t("qoderCompress")} icon="compress" />
-          <IconButton appearance="composer" onClick={() => openExplicit("context")} disabled={disabled} label={t("qoderContext")} title={t("qoderContext")} icon="at" />
-          <IconButton appearance="composer" onClick={() => openExplicit("command")} disabled={disabled} label={t("qoderCommands")} title={t("qoderCommands")} icon="command" />
-          {turnActive
-            ? <Button variant="secondary" className="composer-send composer-stop icon-only" onClick={() => onCancelTurn?.()} disabled={disabled} aria-label={t("stopTurn")} title={t("stopTurn")}><Icon name="stop" /></Button>
-            : <Button type="submit" variant="accent" className="composer-send icon-only" disabled={!canSend} aria-label={t("sendPrompt")} title={tooLarge ? t("promptTooLarge") : t("sendPrompt")}><Icon name="send" /></Button>}
-        </div>
+        {chatMode
+          ? <div className="composer-toolbar">
+            {/* 左簇：[+] [∞ Agent ▾] [模型 ▾] [Spec chip]（Qoder 截图 1:1；+/Agent 为占位） */}
+            <div className="composer-toolbar-group">
+              <IconButton appearance="composer" onClick={() => comingSoon(t("qoderAttach"))} disabled={disabled} label={t("qoderAttach")} title={t("qoderAttach")} icon="add" />
+              <Button unstyled className="composer-pill" onClick={() => comingSoon(t("qoderAgent"))} disabled={disabled} title={t("qoderAgent")}><Icon name="infinity" /><span>{t("qoderAgent")}</span><Icon name="chevron-down" /></Button>
+              <CapabilitySelector label={t("model")} defaultLabel={t("modelDefault")} hint={capabilities?.models?.length ? t("modelNextTurn") : t("capabilityUnavailable")} value={activeModel} options={capabilities?.models} disabled={disabled} onChange={(value) => onActiveModelChange?.(value)} />
+              <WorkModeSelector chip mode={workMode} onChange={(mode) => onWorkModeChange?.(mode)} label={t("workModeLabel")} labels={workModeLabels} />
+            </div>
+            {/* 右簇：[列表] [星形] [麦克风] [发送圆钮] */}
+            <div className="composer-toolbar-group">
+              <IconButton appearance="composer" onClick={() => comingSoon(t("qoderList"))} disabled={disabled} label={t("qoderList")} title={t("qoderList")} icon="list" />
+              <IconButton appearance="composer" onClick={() => enhance("polish")} disabled={enhanceDisabled} label={t("qoderPolish")} title={enhanceTitle(t("qoderPolish"))} icon="sparkles" />
+              <IconButton appearance="composer" className={listening ? "active" : ""} onClick={toggleMic} disabled={disabled} label={t("qoderMic")} title={t("qoderMic")} icon="mic" />
+              {sendOrStop}
+            </div>
+          </div>
+          : <div className="composer-actions">
+            <IconButton appearance="composer" className={listening ? "active" : ""} onClick={toggleMic} disabled={disabled} label={t("qoderMic")} title={t("qoderMic")} icon="mic" />
+            <IconButton appearance="composer" onClick={() => enhance("polish")} disabled={enhanceDisabled} label={t("qoderPolish")} title={enhanceTitle(t("qoderPolish"))} icon="wand" />
+            <IconButton appearance="composer" onClick={() => enhance("compress")} disabled={enhanceDisabled} label={t("qoderCompress")} title={enhanceTitle(t("qoderCompress"))} icon="compress" />
+            <IconButton appearance="composer" onClick={() => openExplicit("context")} disabled={disabled} label={t("qoderContext")} title={t("qoderContext")} icon="at" />
+            <IconButton appearance="composer" onClick={() => openExplicit("command")} disabled={disabled} label={t("qoderCommands")} title={t("qoderCommands")} icon="command" />
+            {sendOrStop}
+          </div>}
       </div>
-      <small>{waitingApproval ? t("approvalWaiting") : turnActive ? t("waitForTurn") : tooLarge ? t("promptTooLarge") : t("enterToSend")}</small>
+      <small>
+        {enhancing ? t("enhanceBusy") : waitingApproval ? t("approvalWaiting") : turnActive ? t("waitForTurn") : tooLarge ? t("promptTooLarge") : t("enterToSend")}
+        {interim && <span className="composer-interim">{interim}</span>}
+        {undoContent !== null && !enhancing && <Button unstyled className="composer-undo" onClick={undoEnhance}>{t("enhanceUndo")}</Button>}
+      </small>
     </form>
   );
 }
 
-function SpecGoalToggle({ mode, onChange, label, specLabel, goalLabel }: { mode: "spec" | "goal"; onChange: (mode: "spec" | "goal") => void; label: string; specLabel: string; goalLabel: string }) {
+function WorkModeSelector({ mode, onChange, label, labels, chip = false }: { mode: ComposerWorkMode; onChange: (mode: ComposerWorkMode) => void; label: string; labels: Record<ComposerWorkMode, string>; chip?: boolean }) {
+  const [open, setOpen] = useState(false);
   return (
-    <div className="spec-goal-toggle" role="group" aria-label={label}>
-      <Button variant="ghost" className={mode === "spec" ? "active" : ""} aria-pressed={mode === "spec"} onClick={() => onChange("spec")}>{specLabel}</Button>
-      <Button variant="ghost" className={mode === "goal" ? "active" : ""} aria-pressed={mode === "goal"} onClick={() => onChange("goal")}>{goalLabel}</Button>
+    <div className="work-mode-selector">
+      <Button unstyled className={chip ? "composer-chip" : "work-mode-trigger"} aria-haspopup="menu" aria-expanded={open} title={label} onClick={() => setOpen((value) => !value)}>
+        <Icon name="list" /><span>{labels[mode]}</span><Icon name="chevron-down" />
+      </Button>
+      {open && (
+        <div className="work-mode-menu" role="menu" aria-label={label}>
+          {WORK_MODES.map((option) => (
+            <Button unstyled key={option} role="menuitemradio" aria-checked={option === mode} className={`work-mode-option${option === mode ? " active" : ""}`} onClick={() => { onChange(option); setOpen(false); }}>
+              <span>{labels[option]}</span>
+              {option === mode && <Icon name="check" />}
+            </Button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
 function CapabilitySelector({ label, defaultLabel, hint, value, options, disabled, onChange }: { label: string; defaultLabel: string; hint: string; value?: string | null; options?: CliProfileCapabilities["permissions"]; disabled: boolean; onChange: (value: string | null) => void }) {
   const unavailable = !options || options.length === 0;
-  const selectOptions = [{ value: "default", label: defaultLabel }, ...(options ?? []).map((option) => ({ value: option.id, label: option.id }))];
+  // 适配器选项里的 "default" 与合成默认项语义重复（均映射为 null 不传参），过滤避免重复 key
+  const selectOptions = [{ value: "default", label: defaultLabel }, ...(options ?? []).filter((option) => option.id !== "default").map((option) => ({ value: option.id, label: option.id }))];
   return <label className="capability-selector" title={hint}>
     <span>{label}</span>
     <Select ariaLabel={label} value={value ?? "default"} options={selectOptions} disabled={disabled || unavailable} onChange={(next) => onChange(next === "default" ? null : next)} />

@@ -1,5 +1,8 @@
 // @vitest-environment node
 import http from "node:http";
+import { promises as fs } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import type { AppStateV3, GitDiffResponse, GitStatusResponse, TranscriptEvent, TranscriptPage } from "../shared/types.js";
 import { createApplication } from "./application.js";
@@ -367,6 +370,292 @@ describe("application composition", () => {
     expect((await get(address.port, "/api/workspaces/workspace-1/git/status")).json).toMatchObject({ repository: true, branch: "feature", clean: false });
     expect((await get(address.port, "/api/workspaces/workspace-1/git/diff?scope=unstaged")).json).toMatchObject({ scope: "unstaged", shownLines: 1 });
     await server.close();
+  });
+});
+
+describe("profile model catalog APIs (console-gaps SPEC §2)", () => {
+  const supportedCapabilities = vi.fn(async () => ({
+    adapterId: "codex" as const,
+    compatibility: "supported" as const,
+    detectedVersion: "0.145.0",
+    permissions: [],
+    modes: [],
+    models: [],
+    supportsComposer: true,
+    supportsStructuredRecognition: false,
+    supportsHeadlessTurns: false,
+    supportsResume: false,
+    supportsApproval: false,
+    supportsPromptEnhancement: false
+  }));
+
+  function pushCodexProfile(state: AppStateV3, extra: Partial<AppStateV3["profiles"][number]> = {}) {
+    state.profiles.push({ id: "profile-1", name: "Codex", command: "codex", args: [], adapterId: "codex", createdAt: "2026-01-01T00:00:00Z", ...extra });
+  }
+
+  async function boot(overrides: Partial<ApplicationDependencies> = {}) {
+    const context = createDependencies({ profileAdapters: { availableAdapterIds: ["codex"], capabilities: supportedCapabilities }, ...overrides });
+    const application = await createApplication(context.dependencies);
+    const server = createServer(application, { host: "127.0.0.1", port: 0, logger: context.dependencies.logger, requestIdFactory: () => "request-test" });
+    const address = await server.listen();
+    return { ...context, server, address };
+  }
+
+  it("merges builtin, synced, and custom sources with source labels and default first", async () => {
+    const { server, address, state } = await boot();
+    pushCodexProfile(state, { syncedModels: ["gpt-5", "o4-mini"], customModels: ["my-model"] });
+
+    try {
+      const models = await get(address.port, "/api/profiles/profile-1/models");
+      expect(models.status).toBe(200);
+      expect(models.json.models[0]).toEqual({ id: "default", source: "builtin" });
+      expect(models.json.models).toContainEqual({ id: "gpt-5", source: "builtin" });
+      expect(models.json.models).toContainEqual({ id: "o4-mini", source: "synced" });
+      expect(models.json.models).toContainEqual({ id: "my-model", source: "custom" });
+
+      const missing = await get(address.port, "/api/profiles/absent/models");
+      expect(missing.status).toBe(404);
+      expect(missing.json.error.code).toBe("PROFILE_NOT_FOUND");
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("omits builtin models when the CLI is not detected as supported", async () => {
+    const { server, address, state } = await boot({ profileAdapters: { availableAdapterIds: ["codex"] } });
+    pushCodexProfile(state, { syncedModels: ["o4-mini"], customModels: ["my-model"] });
+
+    try {
+      const models = await get(address.port, "/api/profiles/profile-1/models");
+      expect(models.json.models).toEqual([{ id: "o4-mini", source: "synced" }, { id: "my-model", source: "custom" }]);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("syncs local CLI config models through the injected reader and persists them", async () => {
+    const modelSyncReader = vi.fn(async () => ["gpt-5.1-from-config"]);
+    const { server, address, state, dependencies } = await boot({ modelSyncReader });
+    pushCodexProfile(state);
+
+    try {
+      const synced = await post(address.port, "/api/profiles/profile-1/models/sync", {});
+      expect(synced.status).toBe(200);
+      expect(synced.json.synced).toEqual(["gpt-5.1-from-config"]);
+      expect(synced.json.models).toContainEqual({ id: "gpt-5.1-from-config", source: "synced" });
+      expect(state.profiles[0].syncedModels).toEqual(["gpt-5.1-from-config"]);
+      expect(dependencies.stateRepository.save).toHaveBeenCalled();
+      expect(modelSyncReader).toHaveBeenCalledOnce();
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("validates custom model imports and removes them again", async () => {
+    const { server, address, state } = await boot();
+    pushCodexProfile(state);
+
+    try {
+      const missingField = await post(address.port, "/api/profiles/profile-1/models/custom", {});
+      expect(missingField.status).toBe(400);
+
+      const tooLong = await post(address.port, "/api/profiles/profile-1/models/custom", { model: "x".repeat(129) });
+      expect(tooLong.status).toBe(400);
+      expect(tooLong.json.error.code).toBe("VALIDATION_FAILED");
+
+      const duplicate = await post(address.port, "/api/profiles/profile-1/models/custom", { model: "gpt-5" });
+      expect(duplicate.status).toBe(400);
+      expect(duplicate.json.error.code).toBe("VALIDATION_FAILED");
+
+      const created = await post(address.port, "/api/profiles/profile-1/models/custom", { model: " my-model " });
+      expect(created.status).toBe(201);
+      expect(created.json.models).toContainEqual({ id: "my-model", source: "custom" });
+      expect(state.profiles[0].customModels).toEqual(["my-model"]);
+
+      const removedMissing = await send(address.port, "/api/profiles/profile-1/models/custom/absent", "DELETE", {});
+      expect(removedMissing.status).toBe(404);
+
+      const removed = await send(address.port, `/api/profiles/profile-1/models/custom/${encodeURIComponent("my-model")}`, "DELETE", {});
+      expect(removed.status).toBe(200);
+      expect(removed.json.models).not.toContainEqual({ id: "my-model", source: "custom" });
+      expect(state.profiles[0].customModels).toBeUndefined();
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("rejects model mutations in readonly mode while keeping reads open", async () => {
+    const { server, address, state } = await boot({ policy: { readonly: true, processEnvironment: {} } });
+    pushCodexProfile(state);
+
+    try {
+      expect((await get(address.port, "/api/profiles/profile-1/models")).status).toBe(200);
+      const sync = await post(address.port, "/api/profiles/profile-1/models/sync", {});
+      expect(sync.status).toBe(403);
+      expect(sync.json.error.code).toBe("READONLY_MODE");
+      expect((await post(address.port, "/api/profiles/profile-1/models/custom", { model: "m" })).status).toBe(403);
+      expect((await send(address.port, "/api/profiles/profile-1/models/custom/m", "DELETE", {})).status).toBe(403);
+    } finally {
+      await server.close();
+    }
+  });
+});
+
+describe("skills read-only APIs (console-gaps SPEC §7)", () => {
+  async function bootWithSkills() {
+    const home = await fs.mkdtemp(path.join(os.tmpdir(), "app-skills-"));
+    const skillDirectory = path.join(home, ".claude", "skills", "alpha");
+    await fs.mkdir(skillDirectory, { recursive: true });
+    await fs.writeFile(path.join(skillDirectory, "SKILL.md"), "---\nname: Alpha\ndescription: demo\n---\nBody text", "utf8");
+    const { dependencies, state } = createDependencies({ policy: { readonly: false, processEnvironment: {}, skillsHomeDirectory: home } });
+    const application = await createApplication(dependencies);
+    const server = createServer(application, { host: "127.0.0.1", port: 0, logger: dependencies.logger, requestIdFactory: () => "request-test" });
+    const address = await server.listen();
+    return { home, state, server, address };
+  }
+
+  it("lists system skills from the configured home and serves content by scanned id", async () => {
+    const { home, server, address } = await bootWithSkills();
+
+    try {
+      const list = await get(address.port, "/api/skills?scope=system");
+      expect(list.status).toBe(200);
+      expect(list.json.skills).toEqual([{ id: "claude:alpha", name: "Alpha", description: "demo", source: "claude", scope: "system", path: "~/.claude/skills/alpha" }]);
+
+      const content = await get(address.port, "/api/skills/content?scope=system&id=claude%3Aalpha");
+      expect(content.status).toBe(200);
+      expect(content.json).toEqual({ content: "---\nname: Alpha\ndescription: demo\n---\nBody text", truncated: false });
+
+      const missing = await get(address.port, "/api/skills/content?scope=system&id=claude%3Aabsent");
+      expect(missing.status).toBe(404);
+      expect(missing.json.error.code).toBe("FILE_NOT_FOUND");
+    } finally {
+      await server.close();
+      await fs.rm(home, { recursive: true, force: true });
+    }
+  });
+
+  it("validates scope and workspace parameters and rejects non-GET methods", async () => {
+    const { home, state, server, address } = await bootWithSkills();
+    state.workspaces.push({ id: "workspace-1", name: "Workspace", path: home, kind: "local-folder", createdAt: "2026-01-01T00:00:00Z" });
+
+    try {
+      const badScope = await get(address.port, "/api/skills?scope=other");
+      expect(badScope.status).toBe(400);
+      expect(badScope.json.error.code).toBe("VALIDATION_FAILED");
+
+      const missingWorkspace = await get(address.port, "/api/skills?scope=workspace");
+      expect(missingWorkspace.status).toBe(400);
+
+      const unknownWorkspace = await get(address.port, "/api/skills?scope=workspace&workspaceId=absent");
+      expect(unknownWorkspace.status).toBe(404);
+      expect(unknownWorkspace.json.error.code).toBe("WORKSPACE_NOT_FOUND");
+
+      // workspace scope 扫 <workspace>/.claude/skills：本 fixture 重用 home 目录作为 workspace 根
+      const workspaceSkills = await get(address.port, "/api/skills?scope=workspace&workspaceId=workspace-1");
+      expect(workspaceSkills.status).toBe(200);
+      expect(workspaceSkills.json.skills).toMatchObject([{ id: "claude:alpha", scope: "workspace", path: ".claude/skills/alpha" }]);
+
+      const mutation = await post(address.port, "/api/skills", {});
+      expect(mutation.status).toBe(404);
+      expect(mutation.json.error.code).toBe("ROUTE_NOT_FOUND");
+    } finally {
+      await server.close();
+      await fs.rm(home, { recursive: true, force: true });
+    }
+  });
+});
+
+// 润色/压缩端点（project-quest SPEC §5.7）：假 CLI 用 node -e 脚本模拟，不依赖真实 codex/claude
+describe("prompt enhance endpoint (project-quest SPEC §5.7)", () => {
+  const enhanceCapabilities = (supportsPromptEnhancement: boolean) => vi.fn(async () => ({
+    adapterId: "codex" as const,
+    compatibility: "supported" as const,
+    detectedVersion: "0.145.0",
+    permissions: [],
+    modes: [],
+    models: [],
+    supportsComposer: true,
+    supportsStructuredRecognition: true,
+    supportsHeadlessTurns: true,
+    supportsResume: true,
+    supportsApproval: false,
+    supportsPromptEnhancement
+  }));
+
+  async function bootEnhance(script: string, overrides: Partial<ApplicationDependencies> = {}, supportsPromptEnhancement = true) {
+    const buildEnhance = vi.fn(async (_profile: unknown, config: { prompt: string }) => ({ command: process.execPath, args: ["-e", script, "--", config.prompt] }));
+    const context = createDependencies({ profileAdapters: { availableAdapterIds: ["codex"], capabilities: enhanceCapabilities(supportsPromptEnhancement), buildEnhance }, ...overrides });
+    context.state.profiles.push({ id: "profile-1", name: "Codex", command: "codex", args: [], adapterId: "codex", createdAt: "2026-01-01T00:00:00Z" });
+    const application = await createApplication(context.dependencies);
+    const server = createServer(application, { host: "127.0.0.1", port: 0, logger: context.dependencies.logger, requestIdFactory: () => "request-test" });
+    const address = await server.listen();
+    return { ...context, server, address, buildEnhance };
+  }
+
+  it("runs the CLI once, trims stdout, and injects the locale instruction template", async () => {
+    const { server, address, buildEnhance } = await bootEnhance("console.log('  Enhanced prompt.  ')");
+    try {
+      const response = await post(address.port, "/api/prompt/enhance", { profileId: "profile-1", action: "polish", content: "make login", locale: "zh" });
+      expect(response.status).toBe(200);
+      expect(response.json).toEqual({ content: "Enhanced prompt.", truncated: false });
+      const prompt = buildEnhance.mock.calls[0][1].prompt;
+      expect(prompt.endsWith("\n\nmake login")).toBe(true);
+      expect(prompt.startsWith("将下面的任务提示词")).toBe(true);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("maps empty CLI output to 502 ENHANCE_FAILED and keeps 32KiB input limit at 400", async () => {
+    const { server, address } = await bootEnhance("process.exit(0)");
+    try {
+      const empty = await post(address.port, "/api/prompt/enhance", { profileId: "profile-1", action: "polish", content: "x" });
+      expect(empty.status).toBe(502);
+      expect(empty.json.error.code).toBe("ENHANCE_FAILED");
+
+      const oversized = await post(address.port, "/api/prompt/enhance", { profileId: "profile-1", action: "polish", content: "y".repeat(32 * 1024 + 1) });
+      expect(oversized.status).toBe(400);
+      expect(oversized.json.error.code).toBe("VALIDATION_FAILED");
+
+      const badAction = await post(address.port, "/api/prompt/enhance", { profileId: "profile-1", action: "expand", content: "x" });
+      expect(badAction.status).toBe(400);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("kills the CLI after enhanceTimeoutMs and reports 504 ENHANCE_TIMEOUT", async () => {
+    const { server, address } = await bootEnhance("setTimeout(() => {}, 5000)", { policy: { readonly: false, processEnvironment: {}, enhanceTimeoutMs: 200 } });
+    try {
+      const response = await post(address.port, "/api/prompt/enhance", { profileId: "profile-1", action: "compress", content: "x" });
+      expect(response.status).toBe(504);
+      expect(response.json.error.code).toBe("ENHANCE_TIMEOUT");
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("rejects readonly mode and unsupported profiles without spawning the CLI", async () => {
+    const readonlyBoot = await bootEnhance("console.log('never')", { policy: { readonly: true, processEnvironment: {} } });
+    try {
+      const denied = await post(readonlyBoot.address.port, "/api/prompt/enhance", { profileId: "profile-1", action: "polish", content: "x" });
+      expect(denied.status).toBe(403);
+      expect(denied.json.error.code).toBe("READONLY_MODE");
+      expect(readonlyBoot.buildEnhance).not.toHaveBeenCalled();
+    } finally {
+      await readonlyBoot.server.close();
+    }
+
+    const unsupportedBoot = await bootEnhance("console.log('never')", {}, false);
+    try {
+      const unsupported = await post(unsupportedBoot.address.port, "/api/prompt/enhance", { profileId: "profile-1", action: "polish", content: "x" });
+      expect(unsupported.status).toBe(400);
+      expect(unsupported.json.error.code).toBe("ENHANCE_UNAVAILABLE");
+      expect(unsupportedBoot.buildEnhance).not.toHaveBeenCalled();
+    } finally {
+      await unsupportedBoot.server.close();
+    }
   });
 });
 

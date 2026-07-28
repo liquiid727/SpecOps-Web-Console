@@ -27,10 +27,16 @@ describe("NewSessionDialog", () => {
     container.remove();
   });
 
-  it("renders launch context and submits the API-shaped payload with the default chat mode", async () => {
+  it("renders launch context and submits terminal mode while chat is feature-flagged off", async () => {
     const onCreate = vi.fn().mockResolvedValue(undefined);
     const loadCapabilities = vi.fn().mockResolvedValue(capabilitiesWith(true));
     await act(async () => root.render(<I18nProvider><NewSessionDialog workspaces={[workspace]} profiles={[profile]} readonly={false} onClose={() => undefined} onCreate={onCreate} onOpenSettings={() => undefined} loadCapabilities={loadCapabilities} /></I18nProvider>));
+
+    // chat 封闭期（console-gaps SPEC §1）：模式控件锁定 terminal + 「暂未开放」说明
+    const modeTrigger = container.querySelector<HTMLButtonElement>(".interaction-mode-field .custom-select-trigger")!;
+    expect(modeTrigger.disabled).toBe(true);
+    expect(modeTrigger.textContent).toContain("Terminal");
+    expect(container.textContent).toContain("Chat mode is temporarily unavailable");
 
     const input = container.querySelector("input")!;
     act(() => {
@@ -45,19 +51,18 @@ describe("NewSessionDialog", () => {
     expect(container.textContent).toContain("Project");
     expect(container.textContent).not.toContain("Workspace");
     expect(loadCapabilities).toHaveBeenCalledWith(profile.id, expect.anything());
-    expect(onCreate).toHaveBeenCalledWith({ name: "Backend refactor", workspaceId: workspace.id, profileId: profile.id, interactionMode: "chat" });
+    expect(onCreate).toHaveBeenCalledWith({ name: "Backend refactor", workspaceId: workspace.id, profileId: profile.id, interactionMode: "terminal" });
   });
 
-  it("locks the mode to terminal with an explanation when the profile cannot run chat turns", async () => {
+  it("locks the mode to terminal when the profile cannot run chat turns", async () => {
     const onCreate = vi.fn().mockResolvedValue(undefined);
     const loadCapabilities = vi.fn().mockResolvedValue(capabilitiesWith(false));
     await act(async () => root.render(<I18nProvider><NewSessionDialog workspaces={[workspace]} profiles={[profile]} readonly={false} onClose={() => undefined} onCreate={onCreate} onOpenSettings={() => undefined} loadCapabilities={loadCapabilities} /></I18nProvider>));
 
-    // 模式控件锁定 terminal + 降级说明（frontend-spec §6）
+    // 能力锁定与功能开关叠加：仍锁定 terminal（开关文案优先，frontend-spec §6 降级路径不变）
     const modeTrigger = container.querySelector<HTMLButtonElement>(".interaction-mode-field .custom-select-trigger")!;
     expect(modeTrigger.disabled).toBe(true);
     expect(modeTrigger.textContent).toContain("Terminal");
-    expect(container.textContent).toContain("This CLI profile does not support chat mode");
 
     const input = container.querySelector("input")!;
     act(() => {
@@ -67,6 +72,20 @@ describe("NewSessionDialog", () => {
     });
     await act(async () => container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
     expect(onCreate).toHaveBeenCalledWith({ name: "Terminal only", workspaceId: workspace.id, profileId: profile.id, interactionMode: "terminal" });
+  });
+
+  it("auto-generates a session name from the workspace when the name is left empty", async () => {
+    const onCreate = vi.fn().mockResolvedValue(undefined);
+    const loadCapabilities = vi.fn().mockResolvedValue(capabilitiesWith(true));
+    await act(async () => root.render(<I18nProvider><NewSessionDialog workspaces={[workspace]} profiles={[profile]} readonly={false} onClose={() => undefined} onCreate={onCreate} onOpenSettings={() => undefined} loadCapabilities={loadCapabilities} /></I18nProvider>));
+
+    // 名称留空直接提交：自动生成「工作区名 + 时间」，不阻断创建
+    await act(async () => container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+
+    expect(onCreate).toHaveBeenCalledOnce();
+    const payload = onCreate.mock.calls[0][0] as { name: string; workspaceId: string; profileId: string; interactionMode: string };
+    expect(payload.name).toMatch(/^Payment Platform \d{2}-\d{2} \d{2}:\d{2}$/);
+    expect(payload).toMatchObject({ workspaceId: workspace.id, profileId: profile.id, interactionMode: "terminal" });
   });
 
   it("directs incomplete setup to settings", () => {

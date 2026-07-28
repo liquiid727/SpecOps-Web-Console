@@ -577,7 +577,7 @@ describe("specos cli", () => {
     const route = JSON.parse(routed.stdout.split("\n").slice(1).join("\n"));
     expect(route).toMatchObject({
       projectMode: "goalspec",
-      primaryAgent: "testing-agent",
+      primaryAgent: "qa-agent",
     });
     expect(route.promptAssembly.overlayManifest).toBe(".agents/modes/goalspec/manifest.overlay.yaml");
   });

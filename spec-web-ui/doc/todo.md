@@ -47,7 +47,7 @@ Future Todo：specosai-agent
   - `.agents/roles/*.md`
   - `ai/agents/*.md`
   - `.codex/skills/*`
-  - `.skills/*`
+  - `skills/developer/*`
   - `.rules/rule-map.yaml`
   - `rules/**/*.md`
   - `spec-draft/`、`specs/`、`tests/` 相关模板

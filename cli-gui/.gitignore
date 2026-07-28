@@ -5,3 +5,8 @@ data/*.json
 data/*.tmp
 data/*.bak
 .env*
+.loop-state.json
+src-tauri/target/
+.qoder/
+.playwright-cli/
+output/

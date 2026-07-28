@@ -1,0 +1,56 @@
+{
+  "id": "agent-product-architect",
+  "type": "agent_role",
+  "tier": "specialist",
+  "managedBy": "architecture-agent",
+  "title": "Product Architect Agent",
+  "summary": "Compiles raw ideas into an accepted PRD covering Product, Architecture, Database, API, and UI branches before spec-editor runs prd-to-spec.",
+  "direction": "fullstack",
+  "categories": [
+    "product",
+    "operations"
+  ],
+  "stacks": [
+    "go",
+    "react",
+    "python",
+    "specos"
+  ],
+  "tags": [
+    "product",
+    "prd",
+    "spec",
+    "intake",
+    "agent"
+  ],
+  "appliesTo": [
+    "backend",
+    "frontend",
+    "ui"
+  ],
+  "dependsOn": [
+    "skill-product-architect",
+    "agent-frontend",
+    "agent-backend",
+    "agent-qa",
+    "template-spec-blueprint-yaml",
+    "template-task-graph-yaml",
+    "template-prd-draft",
+    "template-product-spec-yaml",
+    "template-feature-draft"
+  ],
+  "conflictsWith": [],
+  "sourcePath": "assets/agents/roles/agent-product-architect/product-architect-agent.md",
+  "files": [
+    "ai/agents/product-architect-agent.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "先确认产品目标、需求边界、MVP 范围和验收口径",
+    "PRD 保存到 artifacts.draftsDir，接受后交给 spec-editor 执行 prd-to-spec"
+  ],
+  "sampleOutput": "Idea -> Accepted PRD(Product/Architecture/Database/API/UI)，再交给 spec-editor 执行 prd-to-spec 拆分 Feature Spec。",
+  "contentFiles": {
+    "ai/agents/product-architect-agent.md": "assets/agents/roles/agent-product-architect/product-architect-agent.md"
+  }
+}

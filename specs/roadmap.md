@@ -2,6 +2,12 @@
 
 Use this file as the only canonical index for epic grouping, release sequencing, and feature-spec dependencies.
 
+## SpecOS Platform
+
+### Repository Architecture
+
+- `SPECOS-001 Repository Modularization`
+
 ## Example Structure
 
 ### Risk Platform

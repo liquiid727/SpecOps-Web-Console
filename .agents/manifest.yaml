@@ -50,9 +50,12 @@ calling_convention:
     - Prefer switching agents or splitting tasks over broadening one agent's skill set.
     - Roles with empty skills run as role-and-rules-only agents.
     - Do not invent ad-hoc roles; main primary and specialist agents must be registered in this manifest.
+    - "User-facing routing targets only tier: main agents: architecture-agent, implementation-agent, testing-agent, and qa-agent; pola coordinates across them."
+    - "Roles with tier: specialist are never default entrypoints; open them as on-demand subagents through their managed_by main agent."
     - Treat route-request and classify-request as routing previews, not agent execution.
     - route-request and classify-request should resolve projectMode first, then expose the resulting overlay manifest and role prompt load order.
     - For nested host-side dispatch, use pola as coordinator and follow ai/workflows/nested-agent-orchestration.md.
+    - Route raw idea, one-line requirement, and product intake requests to architecture-agent, which opens product-architect-agent for /prd before spec-editor runs /prd-to-spec.
     - Shared prompts are the default backbone; mode overlay prompts add only the selected mode's differences.
 
 mode_overlays:
@@ -61,18 +64,49 @@ mode_overlays:
     purpose: Feature-driven, low-token, daily delivery mode.
   goalspec:
     manifest_overlay: .agents/modes/goalspec/manifest.overlay.yaml
-    purpose: Workflow-driven mode built around the six-step goal loop (prd, prd-to-spec, to-issues, goal, review-it, ship-it).
+    purpose: Workflow-driven mode where an approved Feature Spec branches into implementation Issues and version-bound Test Spec verification before review and ship.
   enterprisespec:
     manifest_overlay: .agents/modes/enterprisespec/manifest.overlay.yaml
     purpose: Governed delivery mode with stronger QA, release, and audit evidence requirements.
+
+coordinator:
+  name: pola
+  tier: coordinator
+  purpose: Classify the request, route it to one of the four main agents, merge specialist reports, and keep the final answer as one consolidated recommendation.
+  routes_to:
+    - architecture-agent
+    - implementation-agent
+    - testing-agent
+    - qa-agent
+  owns:
+    - request intake and classification
+    - routing preview and dispatch boundaries
+    - report merge and final synthesis
+  constraints:
+    - pola is not a dispatchable execution role.
+    - Cross-main handoffs go through pola, not direct main-to-main delegation.
 
 roles:
   architecture-agent:
     role_prompt: roles/architecture-agent.md
     canonical: ai/agents/architecture-agent.md
+    tier: main
     skill_mode: scoped_only
-    skills: []
+    skills:
+      - name: codebase-design
+        path: skills/developer/codebase-design/SKILL.md
+        required: false
+        purpose: Deep-module boundaries, interfaces, seams, and architecture vocabulary.
+      - name: design-an-interface
+        path: skills/developer/design-an-interface/SKILL.md
+        required: false
+        purpose: Compare radically different module and API interface designs.
+      - name: domain-modeling
+        path: skills/developer/domain-modeling/SKILL.md
+        required: false
+        purpose: Domain terminology, boundaries, invariants, and ADR support.
     delegates_to:
+      - product-architect-agent
       - spec-editor
       - ddd-domain-agent
       - openapi-agent
@@ -106,9 +140,30 @@ roles:
   implementation-agent:
     role_prompt: roles/implementation-agent.md
     canonical: ai/agents/implementation-agent.md
+    tier: main
     skill_mode: scoped_only
-    skills: []
+    skills:
+      - name: karpathy-guidelines
+        path: skills/developer/karpathy-guidelines/SKILL.md
+        required: false
+        purpose: Keep implementation changes small, explicit, and verifiable.
+      - name: diagnosing-bugs
+        path: skills/developer/diagnosing-bugs/SKILL.md
+        required: false
+        purpose: Root-cause diagnosis for failures and performance regressions.
+      - name: tdd
+        path: skills/developer/tdd/SKILL.md
+        required: false
+        purpose: Implementation-coupled test-first delivery at agreed seams.
+      - name: refactor
+        path: skills/developer/refactor/SKILL.md
+        required: false
+        purpose: Behavior-preserving code restructuring.
     delegates_to:
+      - frontend-agent
+      - backend-agent
+      - implementation-editor
+      - execution-editor
       - ui-design-agent
       - cli-gui-agent
       - openapi-agent
@@ -135,46 +190,16 @@ roles:
       - changed surface summary
       - validation notes
 
-  deployment-agent:
-    role_prompt: roles/deployment-agent.md
-    canonical: ai/agents/deployment-agent.md
-    skill_mode: scoped_only
-    skills:
-      - name: team-ci-agent
-        path: .skills/team-ci-agent/SKILL.md
-        required: false
-        purpose: Git action readiness, staged scope validation, commit/PR/merge gates, and CI Record output.
-    delegates_to:
-      - ci-editor
-      - execution-editor
-      - qa-agent
-      - reviewer
-    context_includes:
-      - .rules/project.md
-      - docs/spec-modes/
-      - current/
-      - rules/ci/spec-release-gates.md
-      - rules/testing/production-test-standards.md
-      - scripts/checks/README.md
-      - scripts/orchestration/README.md
-      - specs/roadmap.md
-      - specs/
-      - implementation/
-      - reviews/
-    owns:
-      - release and deployment readiness
-      - CI and gate execution plan
-      - delivery evidence handoff
-    outputs:
-      - release gate checklist
-      - validation command notes
-      - deployment readiness risks
-
   testing-agent:
     role_prompt: roles/testing-agent.md
     canonical: ai/agents/testing-agent.md
+    tier: main
     skill_mode: scoped_only
-    skills: []
+    skills:
+      - name: spec-to-test
+        path: skills/developer/spec-to-test/SKILL.md
+        required: false
+        purpose: Derive an independent versioned Test Spec from an approved Feature Spec.
     delegates_to:
       - test-editor
       - unit-test-agent
@@ -183,7 +208,6 @@ roles:
       - performance-test-agent
       - concurrency-test-agent
       - specialized-check-agent
-      - qa-agent
     context_includes:
       - .rules/project.md
       - docs/spec-modes/
@@ -210,11 +234,100 @@ roles:
       - evidence gap summary
       - acceptance readiness recommendation
 
+  qa-agent:
+    role_prompt: roles/qa-agent.md
+    canonical: ai/agents/qa-agent.md
+    tier: main
+    skill_mode: scoped_only
+    skills: []
+    delegates_to:
+      - reviewer
+      - ci-editor
+      - deployment-agent
+    context_includes:
+      - .rules/project.md
+      - docs/spec-modes/
+      - current/
+      - rules/testing/production-test-standards.md
+      - rules/ci/spec-release-gates.md
+      - design/
+      - specs/roadmap.md
+      - specs/
+      - implementation/
+      - tests/plans/
+      - tests/results/
+      - reviews/
+    owns:
+      - QA acceptance report
+      - final quality decision
+      - release and deployment readiness decision
+      - residual risk and waiver summary
+    outputs:
+      - QA acceptance report
+      - promotion recommendation
+      - release blockers
+
+  product-architect-agent:
+    role_prompt: roles/product-architect-agent.md
+    canonical: ai/agents/product-architect-agent.md
+    tier: specialist
+    managed_by: architecture-agent
+    skill_mode: scoped_only
+    skills:
+      - name: prd
+        path: skills/developer/prd/SKILL.md
+        required: false
+        purpose: Compile raw ideas into accepted PRDs with stable requirement identifiers and scope classification.
+      - name: product-architect
+        path: assets/skills/product-architect/SKILL.md
+        required: false
+        purpose: Structure product intent across Product, Architecture, Database, API, and UI branches during PRD intake.
+    delegates_to:
+      - spec-editor
+    context_includes:
+      - .rules/project.md
+      - docs/spec-modes/
+      - current/
+      - ai/workflows/README.md
+      - spec-draft/
+      - design/
+      - specs/roadmap.md
+      - specs/
+    owns:
+      - idea intake and PRD compilation
+      - PRD scope classification and open questions
+    outputs:
+      - accepted PRD
+      - spec-editor handoff note
+      - assumptions and open questions
+
   spec-editor:
     role_prompt: roles/spec-editor.md
     canonical: ai/agents/spec-editor.md
+    tier: specialist
+    managed_by: architecture-agent
     skill_mode: scoped_only
-    skills: []
+    skills:
+      - name: prd
+        path: skills/developer/prd/SKILL.md
+        required: false
+        purpose: Produce accepted PRDs with stable requirements and scope classification.
+      - name: prd-to-spec
+        path: skills/developer/prd-to-spec/SKILL.md
+        required: false
+        purpose: Produce one or more modular Feature Specs from an accepted PRD.
+      - name: spec-to-test
+        path: skills/developer/spec-to-test/SKILL.md
+        required: false
+        purpose: Hand approved Feature Specs into independent verification design.
+      - name: to-issues
+        path: skills/developer/to-issues/SKILL.md
+        required: false
+        purpose: Create separate implementation or verification Issues from approved Specs.
+      - name: code-to-spec
+        path: skills/developer/code-to-spec/SKILL.md
+        required: false
+        purpose: Establish a reviewable Spec baseline for legacy codebases.
     context_includes:
       - .rules/project.md
       - docs/spec-modes/
@@ -242,12 +355,10 @@ roles:
   ui-design-agent:
     role_prompt: roles/ui-design-agent.md
     canonical: ai/agents/ui-design-agent.md
+    tier: specialist
+    managed_by: implementation-agent
     skill_mode: scoped_only
     skills:
-      - name: tool-config-ui
-        path: .skills/tool-config-ui/SKILL.md
-        required: false
-        purpose: Tool-style configuration pages, policy editors, switchboards, tables, and dangerous operations.
       - name: specos-ui-design
         path: .codex/skills/specos-ui-design/SKILL.md
         required: false
@@ -273,6 +384,8 @@ roles:
   cli-gui-agent:
     role_prompt: roles/cli-gui-agent.md
     canonical: ai/agents/cli-gui-agent.md
+    tier: specialist
+    managed_by: implementation-agent
     skill_mode: scoped_only
     skills: []
     context_includes:
@@ -280,16 +393,20 @@ roles:
       - docs/spec-modes/
       - rules/frontend/react-workbench-delivery.md
       - rules/ui/design-governance.md
-      - doc/todo/gui/AGENTS.md
-      - doc/todo/gui/cli-gui-agent.md
-      - doc/todo/gui/cli-gui.md
-      - doc/todo/gui/todo.md
+      - cli-gui/AGENTS.md
+      - cli-gui/DESIGN.md
+      - cli-gui/doc/AGENTS.md
+      - cli-gui/doc/README.md
+      - cli-gui/doc/mvp01/Agent_Console_MVP01_PRD.md
+      - cli-gui/doc/mvp01/cli-gui.md
       - cli-gui/README.md
+      - cli-gui/client/components/ui/index.ts
+      - cli-gui/client/components/patterns/index.ts
       - cli-gui/client/
       - cli-gui/shared/types.ts
     owns:
       - cli-gui/
-      - doc/todo/gui/
+      - cli-gui/doc/
       - CLI GUI frontend copy and i18n requirements
       - CLI GUI layout, terminal workspace, and session/profile/workspace UX
     outputs:
@@ -298,11 +415,98 @@ roles:
       - browser verification checklist
       - assumptions and unresolved questions
 
+  frontend-agent:
+    role_prompt: roles/frontend-agent.md
+    canonical: ai/agents/frontend-agent.md
+    tier: specialist
+    managed_by: implementation-agent
+    skill_mode: scoped_only
+    skills: []
+    delegates_to:
+      - ui-design-agent
+      - playwright-test-agent
+      - unit-test-agent
+    context_includes:
+      - .rules/project.md
+      - docs/spec-modes/
+      - current/
+      - rules/frontend/react-workbench-delivery.md
+      - rules/ui/design-governance.md
+      - design/
+      - specs/
+    owns:
+      - frontend delivery orchestration for the UI branch of a change package
+      - UI state coverage handoffs
+    outputs:
+      - frontend implementation plan
+      - specialist handoff list
+      - UX and contract risks
+
+  backend-agent:
+    role_prompt: roles/backend-agent.md
+    canonical: ai/agents/backend-agent.md
+    tier: specialist
+    managed_by: implementation-agent
+    skill_mode: scoped_only
+    skills: []
+    delegates_to:
+      - ddd-domain-agent
+      - openapi-agent
+      - db-migration-agent
+      - unit-test-agent
+    context_includes:
+      - .rules/project.md
+      - docs/spec-modes/
+      - current/
+      - rules/backend/go-backend-governance.md
+      - rules/shared/error-code-governance.md
+      - design/
+      - specs/
+    owns:
+      - backend delivery orchestration for Architecture, Database, and API branches
+      - backend specialist routing
+    outputs:
+      - backend implementation plan
+      - specialist handoff list
+      - migration and compatibility risks
+
+  implementation-editor:
+    role_prompt: roles/implementation-editor.md
+    canonical: ai/agents/implementation-editor.md
+    tier: specialist
+    managed_by: implementation-agent
+    skill_mode: scoped_only
+    skills:
+      - name: karpathy-guidelines
+        path: skills/developer/karpathy-guidelines/SKILL.md
+        required: false
+        purpose: Keep applied changes small, explicit, and verifiable.
+    context_includes:
+      - .rules/project.md
+      - docs/spec-modes/
+      - current/
+      - rules/
+      - specs/
+      - implementation/
+    owns:
+      - focused code and artifact edits from approved specs
+      - implementation-coupled unit tests near changed modules
+    outputs:
+      - focused change set
+      - validation evidence
+      - remaining risks and next steps
+
   ddd-domain-agent:
     role_prompt: roles/ddd-domain-agent.md
     canonical: ai/agents/ddd-domain-agent.md
+    tier: specialist
+    managed_by: architecture-agent
     skill_mode: scoped_only
-    skills: []
+    skills:
+      - name: domain-modeling
+        path: skills/developer/domain-modeling/SKILL.md
+        required: false
+        purpose: Build and maintain domain language, boundaries, and invariants.
     context_includes:
       - .rules/project.md
       - docs/spec-modes/
@@ -326,6 +530,8 @@ roles:
   openapi-agent:
     role_prompt: roles/openapi-agent.md
     canonical: ai/agents/openapi-agent.md
+    tier: specialist
+    managed_by: architecture-agent
     skill_mode: scoped_only
     skills: []
     context_includes:
@@ -347,6 +553,8 @@ roles:
   db-migration-agent:
     role_prompt: roles/db-migration-agent.md
     canonical: ai/agents/db-migration-agent.md
+    tier: specialist
+    managed_by: architecture-agent
     skill_mode: scoped_only
     skills: []
     context_includes:
@@ -367,6 +575,8 @@ roles:
   e2e-test-agent:
     role_prompt: roles/e2e-test-agent.md
     canonical: ai/agents/e2e-test-agent.md
+    tier: specialist
+    managed_by: testing-agent
     skill_mode: scoped_only
     skills: []
     context_includes:
@@ -393,6 +603,8 @@ roles:
   playwright-test-agent:
     role_prompt: roles/playwright-test-agent.md
     canonical: ai/agents/playwright-test-agent.md
+    tier: specialist
+    managed_by: testing-agent
     skill_mode: scoped_only
     skills: []
     context_includes:
@@ -414,8 +626,14 @@ roles:
   unit-test-agent:
     role_prompt: roles/unit-test-agent.md
     canonical: ai/agents/unit-test-agent.md
+    tier: specialist
+    managed_by: testing-agent
     skill_mode: scoped_only
-    skills: []
+    skills:
+      - name: tdd
+        path: skills/developer/tdd/SKILL.md
+        required: false
+        purpose: Design implementation-coupled tests around public seams.
     context_includes:
       - .rules/project.md
       - docs/spec-modes/
@@ -432,6 +650,8 @@ roles:
   specialized-check-agent:
     role_prompt: roles/specialized-check-agent.md
     canonical: ai/agents/specialized-check-agent.md
+    tier: specialist
+    managed_by: testing-agent
     skill_mode: scoped_only
     skills: []
     context_includes:
@@ -450,6 +670,8 @@ roles:
   performance-test-agent:
     role_prompt: roles/performance-test-agent.md
     canonical: ai/agents/performance-test-agent.md
+    tier: specialist
+    managed_by: testing-agent
     skill_mode: scoped_only
     skills: []
     context_includes:
@@ -476,6 +698,8 @@ roles:
   concurrency-test-agent:
     role_prompt: roles/concurrency-test-agent.md
     canonical: ai/agents/concurrency-test-agent.md
+    tier: specialist
+    managed_by: testing-agent
     skill_mode: scoped_only
     skills: []
     context_includes:
@@ -499,15 +723,57 @@ roles:
       - normalized concurrency results
       - invariant failure report
 
+  deployment-agent:
+    role_prompt: roles/deployment-agent.md
+    canonical: ai/agents/deployment-agent.md
+    tier: specialist
+    managed_by: qa-agent
+    skill_mode: scoped_only
+    skills:
+      - name: review-it
+        path: skills/developer/review-it/SKILL.md
+        required: false
+        purpose: Validate review and test evidence before Git actions.
+      - name: ship-it
+        path: skills/developer/ship-it/SKILL.md
+        required: false
+        purpose: Enforce Spec-driven commit, PR, merge, and issue closure gates.
+    context_includes:
+      - .rules/project.md
+      - docs/spec-modes/
+      - current/
+      - rules/ci/spec-release-gates.md
+      - rules/testing/production-test-standards.md
+      - scripts/checks/README.md
+      - scripts/orchestration/README.md
+      - specs/roadmap.md
+      - specs/
+      - implementation/
+      - reviews/
+    owns:
+      - release and deployment readiness evidence
+      - CI and gate execution plan
+      - delivery evidence handoff
+    outputs:
+      - release gate checklist
+      - validation command notes
+      - deployment readiness risks
+
   ci-editor:
     role_prompt: roles/ci-editor.md
     canonical: ai/agents/ci-editor.md
+    tier: specialist
+    managed_by: qa-agent
     skill_mode: scoped_only
     skills:
-      - name: team-ci-agent
-        path: .skills/team-ci-agent/SKILL.md
+      - name: review-it
+        path: skills/developer/review-it/SKILL.md
         required: false
-        purpose: Git action readiness, staged scope validation, commit/PR/merge gates, and CI Record output.
+        purpose: Validate review and test evidence before Git actions.
+      - name: ship-it
+        path: skills/developer/ship-it/SKILL.md
+        required: false
+        purpose: Enforce Spec-driven commit, PR, merge, and issue closure gates.
     context_includes:
       - .rules/project.md
       - docs/spec-modes/
@@ -524,8 +790,18 @@ roles:
   execution-editor:
     role_prompt: roles/execution-editor.md
     canonical: ai/agents/execution-editor.md
+    tier: specialist
+    managed_by: implementation-agent
     skill_mode: scoped_only
-    skills: []
+    skills:
+      - name: loop-it
+        path: skills/developer/loop-it/SKILL.md
+        required: false
+        purpose: Run dependency-aware implementation and verification Issue loops.
+      - name: note-it
+        path: skills/developer/note-it/SKILL.md
+        required: false
+        purpose: Capture implementation decisions, deviations, and open questions.
     context_includes:
       - .rules/project.md
       - docs/spec-modes/
@@ -544,8 +820,14 @@ roles:
   test-editor:
     role_prompt: roles/test-editor.md
     canonical: ai/agents/test-editor.md
+    tier: specialist
+    managed_by: testing-agent
     skill_mode: scoped_only
-    skills: []
+    skills:
+      - name: spec-to-test
+        path: skills/developer/spec-to-test/SKILL.md
+        required: false
+        purpose: Generate independent Test Specs and coverage from approved Feature Specs.
     context_includes:
       - .rules/project.md
       - docs/spec-modes/
@@ -558,38 +840,21 @@ roles:
       - scenario coverage
       - test gaps
 
-  qa-agent:
-    role_prompt: roles/qa-agent.md
-    canonical: ai/agents/qa-agent.md
-    skill_mode: scoped_only
-    skills: []
-    context_includes:
-      - .rules/project.md
-      - docs/spec-modes/
-      - current/
-      - rules/testing/production-test-standards.md
-      - rules/ci/spec-release-gates.md
-      - design/
-      - specs/roadmap.md
-      - specs/
-      - implementation/
-      - tests/plans/
-      - tests/results/
-      - reviews/
-    owns:
-      - QA acceptance report
-      - final quality decision
-      - residual risk and waiver summary
-    outputs:
-      - QA acceptance report
-      - promotion recommendation
-      - release blockers
-
   reviewer:
     role_prompt: roles/reviewer.md
     canonical: ai/agents/reviewer.md
+    tier: specialist
+    managed_by: qa-agent
     skill_mode: scoped_only
-    skills: []
+    skills:
+      - name: review-it
+        path: skills/developer/review-it/SKILL.md
+        required: false
+        purpose: Review implementation changes and delivery evidence.
+      - name: smell
+        path: skills/developer/smell/SKILL.md
+        required: false
+        purpose: Detect architecture smells, anti-patterns, and complexity hotspots.
     context_includes:
       - .rules/project.md
       - docs/spec-modes/

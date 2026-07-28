@@ -3,7 +3,7 @@
 SpecOS supports three official project authoring modes:
 
 - `LiteSpec`: Feature Driven, optimized for agent development efficiency
-- `GoalSpec`: Workflow Driven, optimized for a repeatable six-step goal loop (prd -> prd-to-spec -> to-issues -> goal -> review-it -> ship-it)
+- `GoalSpec`: Workflow Driven, optimized for a repeatable dual-track loop (prd -> prd-to-spec -> spec approval -> implementation + independent test specification -> review -> ship)
 - `EnterpriseSpec`: Delivery Driven, optimized for QA, audit, release, and governance quality
 
 Use these modes as project templates and operating conventions.
@@ -36,7 +36,7 @@ Use these modes as project templates and operating conventions.
 
 Default to `LiteSpec`.
 
-Upgrade to `GoalSpec` when the team wants a standing issue-driven loop (`/to-issues` -> `/goal` -> `/review-it` -> `/ship-it`) with review and ship gates, but doesn't yet need categorized QA/audit evidence.
+Upgrade to `GoalSpec` when the team wants a standing issue-driven loop with versioned Feature Specs, independent Test Specs, review, and ship gates, but doesn't yet need the full EnterpriseSpec audit apparatus.
 
 Upgrade to `EnterpriseSpec` when any of the following is true:
 
@@ -57,7 +57,7 @@ Upgrade to `EnterpriseSpec` when any of the following is true:
 
 Use `specos init --mode litespec` for the default project shape.
 
-Use `specos init --mode goalspec` when the scaffold should start with the six-step goal loop's issue index and workflow doc.
+Use `specos init --mode goalspec` when the scaffold should start with the dual-track implementation and independent verification workflow.
 
 Use `specos init --mode enterprisespec` when the scaffold should start with the governed delivery skeleton.
 
@@ -71,6 +71,14 @@ All three modes should keep these conventions consistent:
 - agent loading from `README.md` first, then current state, then design, then feature-specific content
 - stable feature ownership and traceability by `Spec ID`
 
+## Modes And The Layered Agent Model
+
+All three modes run on the same layered agent registry in `.agents/manifest.yaml`: `pola` coordinates, the four main agents (`architecture-agent`, `implementation-agent`, `testing-agent`, `qa-agent`) are the only routable entrypoints, and every other role is a specialist opened on demand by its `managed_by` main agent. A mode never changes who routes or who manages whom; it only overlays role behavior for its governance level:
+
+- `LiteSpec` overlays the implementation and testing chains plus `reviewer` for a single-pass, feature-local review. The QA family mostly runs on base prompts; `qa-agent` still owns acceptance, but the evidence stays feature-local.
+- `GoalSpec` overlays the dual-track loop end to end. `qa-agent` carries a mode overlay that owns the Review and Ship gates, opening `reviewer`, `ci-editor`, and `deployment-agent` on demand.
+- `EnterpriseSpec` overlays all four stages plus the full QA family (`qa-agent`, `reviewer`, `ci-editor`, `deployment-agent`) for categorized evidence, release gates, and explicit waivers.
+
 ## Mode Selection Principle
 
 - `LiteSpec`: choose when feature delivery speed and low-token context matter most
@@ -81,7 +89,7 @@ All three modes should keep these conventions consistent:
 
 | Dimension | LiteSpec | GoalSpec | EnterpriseSpec |
 | --- | --- | --- | --- |
-| Goal | agent development efficiency | repeatable six-step goal loop | enterprise delivery quality |
+| Goal | agent development efficiency | repeatable Spec-driven dual-track loop | enterprise delivery quality |
 | Feature isolation | very strong | strong, indexed by issue | moderate |
 | Token cost | low | low-to-moderate | high |
 | QA model | simplified | review/ship gate, no categorized evidence | full process |

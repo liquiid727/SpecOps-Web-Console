@@ -33,7 +33,7 @@
 
   <rect x="790" y="224" width="330" height="90" rx="8" fill="#17222e" stroke="#e8a94c" stroke-width="1.3"/>
   <text x="955" y="252" fill="#e8a94c" font-size="14" text-anchor="middle" font-weight="700">技能目录</text>
-  <text x="955" y="272" fill="#cfd8de" font-size="12" text-anchor="middle">.skills/*/SKILL.md</text>
+  <text x="955" y="272" fill="#cfd8de" font-size="12" text-anchor="middle">skills/developer/*/SKILL.md</text>
   <text x="955" y="290" fill="#cfd8de" font-size="12" text-anchor="middle">～19 个技能折叠进对应 agent</text>
 
   <line x1="285" y1="314" x2="285" y2="350" stroke="#7c8a97" stroke-width="1.5" marker-end="url(#arrow)"/>

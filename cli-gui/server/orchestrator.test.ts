@@ -4,7 +4,8 @@ import path from "node:path";
 import type { Readable } from "node:stream";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createRuntimeOrchestrator } from "./orchestrator.js";
-import type { AppendEventInput, ParsedTurnEvent, PtyProcess, TurnInput, TurnParseResult } from "./ports.js";
+import { PersistentRuntimeUnavailableError } from "./ports.js";
+import type { AppendEventInput, ParsedTurnEvent, PersistentTurnHandle, PersistentTurnHandlers, PtyProcess, TurnInput, TurnParseResult } from "./ports.js";
 
 // —— fake CLI 脚本（test-spec §3.6：server 集成，假 CLI 驱动，不依赖真实 codex）——
 let fixtureDir = "";
@@ -54,6 +55,7 @@ function createHarness(options?: { turnTimeoutMs?: number; approvalTimeoutMs?: n
   const events: RecordedEvent[] = [];
   const statusCalls: RecordedStatus[] = [];
   const turnStatuses: { sessionId: string; turnId: string; status: string }[] = [];
+  const turnDeltas: { sessionId: string; turnId: string; delta: string }[] = [];
   const orchestrator = createRuntimeOrchestrator({
     ptyRuntime: {
       spawn() {
@@ -79,10 +81,13 @@ function createHarness(options?: { turnTimeoutMs?: number; approvalTimeoutMs?: n
       hasSession: () => true,
       onTurnStatus(sessionId, turnId, status) {
         turnStatuses.push({ sessionId, turnId, status });
+      },
+      onTurnDelta(sessionId, turnId, delta) {
+        turnDeltas.push({ sessionId, turnId, delta });
       }
     }
   });
-  return { orchestrator, events, statusCalls, turnStatuses };
+  return { orchestrator, events, statusCalls, turnStatuses, turnDeltas };
 }
 
 // 行协议：普通行 → assistant_message；"token:x" 行 → resumeToken（多次取最后）
@@ -268,6 +273,79 @@ describe("runtime orchestrator chat turns", () => {
   });
 });
 
+// issue-018：终端会话进程异常退出 → 会话失败态（而非被误判为「已停止」），并捕获崩溃信息（runtime-orchestrator-spec §5）
+describe("terminal session crash reporting", () => {
+  function createTerminalHarness() {
+    const events: RecordedEvent[] = [];
+    const statusCalls: RecordedStatus[] = [];
+    const orchestrator = createRuntimeOrchestrator({
+      ptyRuntime: {
+        spawn(options) {
+          const { spawn } = require("node:child_process") as typeof import("node:child_process");
+          const child = spawn(options.command, options.args, { cwd: options.cwd, env: options.env });
+          let dataListener: ((data: string) => void) | undefined;
+          let exitListener: ((event: { exitCode: number }) => void) | undefined;
+          child.stdout.on("data", (chunk) => dataListener?.(chunk.toString("utf8")));
+          child.stderr.on("data", (chunk) => dataListener?.(chunk.toString("utf8")));
+          child.on("close", (code) => exitListener?.({ exitCode: code ?? -1 }));
+          return {
+            write: (data: string) => child.stdin.write(data),
+            resize: () => undefined,
+            kill: () => { try { child.kill(); } catch { /* already exited */ } },
+            onData: (listener) => { dataListener = listener; },
+            onExit: (listener) => { exitListener = listener; }
+          } satisfies PtyProcess;
+        },
+        async shutdown() {}
+      },
+      clock: { now: () => new Date().toISOString() },
+      logger: { info() {}, warn() {}, error() {} },
+      callbacks: {
+        async appendEvent(sessionId, input) {
+          events.push({ sessionId, ...input });
+          return { id: `event-${events.length}`, sessionId, sequence: events.length, occurredAt: input.occurredAt, kind: input.kind, source: input.source, raw: input.raw, rawBytes: Buffer.byteLength(input.raw, "utf8"), truncated: false, metadata: input.metadata, clientMessageId: input.clientMessageId };
+        },
+        async onRuntimeStatus(sessionId, status, extra) {
+          statusCalls.push({ sessionId, status, extra });
+        },
+        onActivity() {},
+        hasSession: () => true
+      }
+    });
+    return { orchestrator, events, statusCalls };
+  }
+
+  it("reports an error status (not stopped) when the CLI process exits non-zero, and captures the stderr", async () => {
+    const { orchestrator, events, statusCalls } = createTerminalHarness();
+    await orchestrator.start("crash-1", async () => ({ command: process.execPath, args: [crashScript], cwd: fixtureDir, env: { PATH: process.env.PATH ?? "" } }));
+    await waitFor(() => statusCalls.some((call) => call.status === "error" || call.status === "stopped"));
+
+    // 异常退出不应被误判为「已停止」
+    expect(statusCalls).toContainEqual({ sessionId: "crash-1", status: "error", extra: expect.objectContaining({ exitCode: 3 }) });
+    expect(statusCalls.some((call) => call.status === "stopped")).toBe(false);
+    // 崩溃信息被捕获为 error 事件，便于前端直接报错
+    const errorEvent = events.find((event) => event.kind === "error" && event.metadata?.code === "SESSION_START_FAILED");
+    expect(errorEvent).toBeDefined();
+    expect(errorEvent!.raw).toContain("boom: fake cli exploded");
+    expect(errorEvent!.raw).toContain("exited with code 3");
+  });
+
+  it("reports stopped (not error) on a clean zero exit and never flags a process we terminated as error", async () => {
+    const { orchestrator, statusCalls } = createTerminalHarness();
+    await orchestrator.start("clean-1", async () => ({ command: process.execPath, args: [echoScript], cwd: fixtureDir, env: { PATH: process.env.PATH ?? "" } }));
+    await waitFor(() => statusCalls.some((call) => call.status === "stopped"));
+    expect(statusCalls.some((call) => call.status === "error")).toBe(false);
+
+    // 主动 stop 标记 terminatedByUs：即使进程随后以非 0 退出，也不应误判为 error（崩溃诊断仅限非我们终止）
+    await orchestrator.start("clean-2", async () => ({ command: process.execPath, args: [sleepScript, "30000"], cwd: fixtureDir, env: { PATH: process.env.PATH ?? "" } }));
+    await waitFor(() => statusCalls.some((call) => call.status === "running" && call.sessionId === "clean-2"));
+    await orchestrator.stop("clean-2");
+    // 等待潜在退出事件收敛后，确认 clean-2 未被标为 error
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(statusCalls.filter((call) => call.sessionId === "clean-2").some((call) => call.status === "error")).toBe(false);
+  });
+});
+
 // issue-012：审批挂起/应答/超时/取消（runtime-orchestrator-spec §3.4，test-spec §3.6）
 describe("runtime orchestrator approvals", () => {
   const approvalRequested = (events: RecordedEvent[]) =>
@@ -348,5 +426,136 @@ describe("runtime orchestrator approvals", () => {
     expect(turnStatuses.some((item) => item.status === "waiting_approval")).toBe(false);
     expect(events.some((event) => event.kind === "assistant_message" && event.raw === "no approval channel")).toBe(true);
     expect(events.some((event) => event.metadata?.status === "turn-completed" && event.metadata?.turnId === "turn-1")).toBe(true);
+  });
+});
+
+// streaming-spec §3.4：常驻运行时优先路径、回落、取消/超时、resumeToken 回写
+describe("runtime orchestrator persistent turns", () => {
+  type PersistentScript = (handlers: PersistentTurnHandlers) => Promise<TurnParseResult>;
+
+  function makePersistentTurn(turnId: string, prompt: string, script: PersistentScript, options?: { onKill?: () => void }): TurnInput & { kills: number[] } {
+    const kills: number[] = [];
+    return {
+      ...makeTurn(turnId, prompt, echoScript, ["spawn-fallback-token"]),
+      kills,
+      runPersistent(handlers): PersistentTurnHandle {
+        let rejectResult: ((error: Error) => void) | undefined;
+        const result = new Promise<TurnParseResult>((resolve, reject) => {
+          rejectResult = reject;
+          script(handlers).then(resolve, reject);
+        });
+        return {
+          result,
+          kill() {
+            kills.push(Date.now());
+            options?.onKill?.();
+            rejectResult?.(new Error("codex mcp-server exited before the turn completed."));
+          }
+        };
+      }
+    };
+  }
+
+  it("streams deltas and events through the persistent handle without spawning a child process", async () => {
+    const { orchestrator, events, statusCalls, turnStatuses, turnDeltas } = createHarness();
+    const turn = makePersistentTurn("turn-1", "stream it", async (handlers) => {
+      handlers.onDelta("Hel");
+      handlers.onDelta("lo!");
+      await handlers.onEvent({ kind: "assistant_message", source: "profile-adapter", raw: "Hello!" });
+      return { resumeToken: "thread-live", usage: { inputTokens: 10, outputTokens: 2 } };
+    });
+    await orchestrator.submitTurn("p1", turn);
+    await waitFor(() => turnEnded(events, "turn-1"));
+
+    expect(turnDeltas.map((item) => item.delta)).toEqual(["Hel", "lo!"]);
+    expect(turnDeltas.every((item) => item.turnId === "turn-1")).toBe(true);
+    const assistant = events.find((event) => event.kind === "assistant_message")!;
+    // 常驻路径不走 spawn：回落 token 不得出现，resumeToken 来自 handle 结果
+    expect(assistant.raw).toBe("Hello!");
+    expect(assistant.metadata?.turnId).toBe("turn-1");
+    expect(events.some((event) => event.raw === "assistant says hi")).toBe(false);
+    expect(statusCalls).toContainEqual({ sessionId: "p1", status: "running", extra: { resumeToken: "thread-live" } });
+    expect(events.some((event) => event.metadata?.status === "turn-completed" && event.metadata?.turnId === "turn-1")).toBe(true);
+    expect(turnStatuses.filter((item) => item.turnId === "turn-1").map((item) => item.status)).toEqual(["running", "completed"]);
+  });
+
+  it("falls back to the spawn path within the same turn when the runtime is unavailable", async () => {
+    const { orchestrator, events, statusCalls } = createHarness();
+    const turn: TurnInput = {
+      ...makeTurn("turn-1", "fall back", echoScript, ["spawn-fallback-token"]),
+      runPersistent() {
+        throw new PersistentRuntimeUnavailableError("Thread is not resumable in a fresh mcp-server process.");
+      }
+    };
+    await orchestrator.submitTurn("p2", turn);
+    await waitFor(() => turnEnded(events, "turn-1"));
+
+    // 同轮回落：echo 脚本经 spawn 路径产出事件与 resumeToken
+    expect(events.some((event) => event.kind === "assistant_message" && event.raw === "assistant says hi")).toBe(true);
+    expect(statusCalls).toContainEqual({ sessionId: "p2", status: "running", extra: { resumeToken: "spawn-fallback-token" } });
+    expect(events.some((event) => event.metadata?.status === "turn-completed" && event.metadata?.turnId === "turn-1")).toBe(true);
+  });
+
+  it("fails the turn without fallback when runPersistent throws a non-availability error", async () => {
+    const { orchestrator, events } = createHarness();
+    const turn: TurnInput = {
+      ...makeTurn("turn-1", "boom", echoScript),
+      runPersistent() {
+        throw new Error("unexpected wiring bug");
+      }
+    };
+    await orchestrator.submitTurn("p3", turn);
+    await waitFor(() => turnEnded(events, "turn-1"));
+
+    expect(events.some((event) => event.kind === "error" && event.metadata?.code === "TURN_SPAWN_FAILED")).toBe(true);
+    expect(events.some((event) => event.kind === "assistant_message")).toBe(false);
+  });
+
+  it("marks a rejected persistent turn as TURN_FAILED and keeps the session usable", async () => {
+    const { orchestrator, events, statusCalls } = createHarness();
+    const turn = makePersistentTurn("turn-1", "crash", async () => {
+      throw new Error("codex mcp-server exited before the turn completed.");
+    });
+    await orchestrator.submitTurn("p4", turn);
+    await waitFor(() => turnEnded(events, "turn-1"));
+
+    expect(events.some((event) => event.kind === "error" && event.metadata?.code === "TURN_FAILED")).toBe(true);
+    expect(statusCalls.every((call) => call.extra?.resumeToken === undefined)).toBe(true);
+    // 会话保持可用，下一轮可回落 spawn 路径
+    expect(orchestrator.isRunning("p4")).toBe(true);
+    await orchestrator.submitTurn("p4", makeTurn("turn-2", "retry", echoScript));
+    await waitFor(() => turnEnded(events, "turn-2"));
+    expect(events.some((event) => event.metadata?.status === "turn-completed" && event.metadata?.turnId === "turn-2")).toBe(true);
+  });
+
+  it("cancels a persistent turn through handle.kill and suppresses post-termination deltas", async () => {
+    const { orchestrator, events, turnDeltas } = createHarness();
+    let capturedHandlers: PersistentTurnHandlers | undefined;
+    const turn = makePersistentTurn("turn-1", "cancel me", (handlers) => {
+      capturedHandlers = handlers;
+      handlers.onDelta("before-cancel");
+      return new Promise<TurnParseResult>(() => {});
+    });
+    await orchestrator.submitTurn("p5", turn);
+    await waitFor(() => turnDeltas.length > 0);
+
+    await orchestrator.cancelTurn("p5", "turn-1");
+    // 终态后的迟到增量被丢弃（turn-delta 临时帧语义）
+    capturedHandlers?.onDelta("after-cancel");
+    expect(turn.kills).toHaveLength(1);
+    expect(turnDeltas.map((item) => item.delta)).toEqual(["before-cancel"]);
+    expect(events.some((event) => event.metadata?.status === "turn-cancelled" && event.metadata?.turnId === "turn-1")).toBe(true);
+    expect(events.some((event) => event.kind === "error" && event.metadata?.code === "TURN_CANCELLED")).toBe(true);
+  });
+
+  it("times out a hanging persistent turn with TURN_TIMEOUT", async () => {
+    const { orchestrator, events } = createHarness({ turnTimeoutMs: 150 });
+    const turn = makePersistentTurn("turn-1", "hang", () => new Promise<TurnParseResult>(() => {}));
+    await orchestrator.submitTurn("p6", turn);
+    await waitFor(() => turnEnded(events, "turn-1"));
+
+    expect(turn.kills).toHaveLength(1);
+    expect(events.some((event) => event.kind === "error" && event.metadata?.code === "TURN_TIMEOUT" && event.metadata?.turnId === "turn-1")).toBe(true);
+    expect(events.some((event) => event.metadata?.status === "turn-failed" && event.metadata?.turnId === "turn-1")).toBe(true);
   });
 });

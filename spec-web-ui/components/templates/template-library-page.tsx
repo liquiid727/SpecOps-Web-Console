@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { CatalogAssetSummary } from "@/components/catalog/asset-summary";
 import { WindowSection } from "@/components/ui/window-section";
-import { filterCatalogAssets, loadCatalogAssets } from "@/lib/catalog";
+import { filterCatalogAssets, loadCatalogAssets } from "@/features/catalog/server";
 import { buildShellCommandTitle } from "@/lib/shell";
 import { buildNeoSurfaceClassName } from "@/lib/theme";
 import type { CatalogAsset, CatalogCategory, CatalogAssetType } from "@/lib/types";
@@ -50,6 +50,11 @@ function TemplateCard({ asset }: { asset: CatalogAsset }) {
       className={`${buildNeoSurfaceClassName("row")} block min-w-0 overflow-hidden px-4 py-4 transition hover:border-slate-400/40`}
     >
       <div className="flex flex-wrap items-center gap-2">
+        {asset.tier ? (
+          <span className="rounded-md border border-line px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-slate-400">
+            {asset.tier === "main" ? "main agent" : "specialist"}
+          </span>
+        ) : null}
         <span className="rounded-md border border-line px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-slate-500">
           {asset.direction}
         </span>
@@ -82,7 +87,10 @@ function TemplateCard({ asset }: { asset: CatalogAsset }) {
           </span>
         ))}
       </div>
-      <p className="mt-3 truncate font-mono text-[10px] text-slate-600">{asset.sourcePath}</p>
+      <p className="mt-3 truncate font-mono text-[10px] text-slate-600">
+        {asset.managedBy ? `managed by ${asset.managedBy} · ` : ""}
+        {asset.sourcePath}
+      </p>
     </Link>
   );
 }

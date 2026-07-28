@@ -37,21 +37,35 @@ This repository currently contains three main product surfaces:
 It also includes reusable project assets:
 
 - `rules/`: engineering and delivery governance
-- `skills/` and `.skills/`: reusable skill packs and local skill assets
+- `skills/`: reusable developer, content-creator, education, and Codex-customization skill packs
 - `ai/agents/`: canonical agent role definitions
-- `agent-teams/`: reusable agent team packs
+- `assets/`: Catalog-ready role, team, skill, and template sources
+- `packages/catalog/`: Catalog values, queries, and registry configuration
+- `packages/bundler/`: bundle planning and install-target configuration
+- `packages/installer/`: validated bundle installation
 - `docs/spec-modes/` and `current/`: project operating mode guidance and active delivery context
 - `design/`, `spec-draft/`, `specs/`, `implementation/`, `reviews/`, `tests/`: the spec delivery backbone
+
+## Agent Model
+
+SpecOS routes all agent work through a five-category layered model:
+
+- `pola` is the coordinator. It classifies requests and routes them, but does not execute delivery work itself.
+- Four main agents are the only user-facing entrypoints: `architecture-agent`, `implementation-agent`, `testing-agent`, and `qa-agent`.
+- Every other registered role is a specialist with a `managed_by` owner; main agents open specialists as on-demand subagents.
+- `qa-agent` owns final acceptance and release readiness, including `reviewer`, `ci-editor`, and `deployment-agent` work.
+
+The role registry lives in `.agents/manifest.yaml`. Project modes overlay role behavior on top of this hierarchy without changing it.
 
 ## Project Modes
 
 SpecOS now documents three official project authoring modes:
 
 - [LiteSpec](docs/spec-modes/LiteSpec/README.md): feature-driven, low-token, default for daily agent development
-- [GoalSpec](docs/spec-modes/GoalSpec/README.md): workflow-driven, built around the six-step goal loop (prd -> prd-to-spec -> to-issues -> goal -> review-it -> ship-it)
+- [GoalSpec](docs/spec-modes/GoalSpec/README.md): workflow-driven, with approved Feature Specs branching into implementation Issues and version-bound Test Specs before review and ship
 - [EnterpriseSpec](docs/spec-modes/EnterpriseSpec/README.md): delivery-driven, high-governance, for QA-heavy and audited environments
 
-Mode selection guidance lives in [docs/spec-modes/README.md](docs/spec-modes/README.md).
+Mode selection guidance lives in [docs/spec-modes/README.md](docs/spec-modes/README.md). All three modes share the same layered agent registry; a mode overlay adjusts role behavior for its governance level, not the routing hierarchy.
 
 ## Current Status
 
@@ -112,11 +126,14 @@ Then open [http://localhost:3000](http://localhost:3000).
 
 ```text
 packages/cli/        CLI entry points
+packages/catalog/    catalog values, queries, and registry configuration
+packages/bundler/    bundle planning and install-target configuration
+packages/installer/  validated bundle installation
 packages/templates/  bootstrap template source of truth
 spec-web-ui/         asset workbench, export preview, bundle composer
 test-console/        normalized test-plan and result console
 rules/               reusable engineering governance
-agent-teams/         reusable agent team packs
+assets/              reusable role, team, skill, and template sources
 ai/agents/           agent role definitions
 docs/spec-modes/     mode playbooks for LiteSpec, GoalSpec, and EnterpriseSpec
 current/             active project status and handoff context

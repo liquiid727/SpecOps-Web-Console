@@ -20,6 +20,7 @@ export type EventServerFrame =
   | { type: "session-updated"; session: Session }
   | { type: "recording-warning"; code: string }
   | { type: "turn-status"; turnId: string; status: TurnStatus }
+  | { type: "turn-delta"; turnId: string; delta: string }
   | { type: "protocol-error"; error: ApiError };
 
 export type LegacyTerminalClientFrame =

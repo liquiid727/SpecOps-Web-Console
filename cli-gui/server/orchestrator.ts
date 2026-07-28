@@ -1,7 +1,8 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { WebSocket } from "ws";
 import { ApiHttpError } from "./api-errors.js";
-import type { Clock, Logger, OrchestratorCallbacks, PreparedLaunch, PtyProcess, PtyRuntime, RuntimeOrchestrator, TurnInput, TurnParseResult } from "./ports.js";
+import { PersistentRuntimeUnavailableError } from "./ports.js";
+import type { Clock, Logger, OrchestratorCallbacks, PersistentTurnHandle, PreparedLaunch, PtyProcess, PtyRuntime, RuntimeOrchestrator, TurnInput, TurnParseResult } from "./ports.js";
 import type { TranscriptEvent } from "../shared/types.js";
 
 export const MAX_TERMINAL_COLS = 500;
@@ -9,6 +10,8 @@ export const MAX_TERMINAL_ROWS = 200;
 const PTY_TRANSCRIPT_FLUSH_MS = 75;
 const MAX_PTY_TRANSCRIPT_BYTES = 64 * 1024;
 const MAX_TERMINAL_BUFFERED_BYTES = 1 * 1024 * 1024;
+/** 崩溃诊断用：保留最近若干字符的 PTY 输出，作为进程异常退出时的错误信息（runtime-orchestrator-spec §5 失败透传） */
+const MAX_RECENT_OUTPUT_CHARS = 8_000;
 const DEFAULT_TURN_TIMEOUT_MS = 600_000;
 const DEFAULT_APPROVAL_TIMEOUT_MS = 300_000;
 const DEFAULT_CANCEL_GRACE_MS = 2_000;
@@ -20,6 +23,9 @@ type TerminalWorker = {
   clients: Set<WebSocket>;
   generation: number;
   pendingTranscript: string;
+  /** 最近 PTY 输出环形缓冲（崩溃诊断）；仅保留末尾，避免内存无限增长 */
+  recentOutput: string;
+  terminatedByUs: boolean;
   transcriptTimer?: ReturnType<typeof setTimeout>;
   transcriptFlush: Promise<void>;
 };
@@ -28,6 +34,8 @@ type TerminalWorker = {
 type ActiveTurn = {
   turnId: string;
   child?: ChildProcess;
+  /** 常驻运行时轮次句柄（streaming-spec §3.4）；存在时 kill 路径优先作用于它 */
+  persistentHandle?: PersistentTurnHandle;
   terminationReason?: "cancelled" | "timeout";
   timeoutTimer?: ReturnType<typeof setTimeout>;
   killTimer?: ReturnType<typeof setTimeout>;
@@ -80,6 +88,10 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
 
   function queuePtyTranscript(sessionId: string, worker: TerminalWorker, data: string) {
     worker.pendingTranscript += data;
+    worker.recentOutput += data;
+    if (Buffer.byteLength(worker.recentOutput, "utf8") > MAX_RECENT_OUTPUT_CHARS) {
+      worker.recentOutput = worker.recentOutput.slice(-MAX_RECENT_OUTPUT_CHARS);
+    }
     if (Buffer.byteLength(worker.pendingTranscript, "utf8") >= MAX_PTY_TRANSCRIPT_BYTES) {
       if (worker.transcriptTimer !== undefined) clearTimeout(worker.transcriptTimer);
       worker.transcriptTimer = undefined;
@@ -133,15 +145,37 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
       return;
     }
     await flushPtyTranscript(sessionId, worker);
-    broadcastTerminal(sessionId, { type: "runtime-status", status: "stopped", exitCode });
+    // 进程异常退出（非 0 且非我们主动终止）→ 会话失败态 + 错误事件，避免被误判为「已停止」（runtime-orchestrator-spec §5）
+    const crashed = typeof exitCode === "number" && exitCode !== 0 && !worker.terminatedByUs;
+    const recentOutput = worker.recentOutput.trim();
+    const crashMessage = crashed
+      ? `CLI process exited with code ${exitCode}.${recentOutput ? `\n\n${recentOutput}` : ""}`
+      : undefined;
+    broadcastTerminal(sessionId, crashed
+      ? { type: "runtime-status", status: "error", exitCode }
+      : { type: "runtime-status", status: "stopped", exitCode });
     workers.delete(sessionId);
-    await callbacks.onRuntimeStatus(sessionId, "stopped", { exitCode });
+    if (crashed) {
+      await callbacks.appendEvent(sessionId, {
+        occurredAt: clock.now(),
+        kind: "error",
+        source: "session-manager",
+        raw: crashMessage ?? "Failed to start the session.",
+        metadata: { code: "SESSION_START_FAILED", exitCode }
+      });
+    }
+    await callbacks.onRuntimeStatus(sessionId, crashed ? "error" : "stopped", { exitCode, errorMessage: crashMessage });
   }
 
   /** 取消/超时共用 kill 路径：SIGTERM → 宽限期 → SIGKILL；首个终态请求胜出（竞态单终态） */
   function requestTurnKill(turn: ActiveTurn, reason: "cancelled" | "timeout") {
     if (turn.terminationReason) return;
     turn.terminationReason = reason;
+    if (turn.persistentHandle) {
+      // 常驻路径：运行时负责终止进程，进程 close → result reject 收敛（streaming-spec §4）
+      try { turn.persistentHandle.kill(); } catch { /* process already exited */ }
+      return;
+    }
     const child = turn.child;
     if (!child) return;
     try { child.kill("SIGTERM"); } catch { /* process already exited */ }
@@ -227,6 +261,59 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
       return;
     }
 
+    // 常驻运行时优先（streaming-spec §3.4）：启动前不可用 → 同轮回落下方 spawn 路径
+    if (input.runPersistent) {
+      let handle: PersistentTurnHandle | undefined;
+      try {
+        handle = input.runPersistent({
+          async onEvent(event) {
+            if (closing || turn.terminationReason !== undefined) return;
+            await callbacks.appendEvent(sessionId, { occurredAt: clock.now(), kind: event.kind, source: event.source, raw: event.raw, metadata: { ...event.metadata, turnId: turn.turnId } });
+            callbacks.onActivity(sessionId);
+          },
+          onDelta(delta) {
+            if (closing || turn.terminationReason !== undefined) return;
+            callbacks.onTurnDelta?.(sessionId, turn.turnId, delta);
+          }
+        });
+      } catch (error) {
+        if (!(error instanceof PersistentRuntimeUnavailableError)) {
+          await finishTurn({ status: "failed", code: "TURN_SPAWN_FAILED", message: error instanceof Error ? error.message : String(error), exitCode: -1 });
+          return;
+        }
+        logger.info("Persistent runtime unavailable; falling back to spawn path", { sessionId, turnId: turn.turnId, reason: error.message });
+      }
+      if (handle) {
+        turn.persistentHandle = handle;
+        turn.timeoutTimer = undefined;
+        armTurnTimeout(turn, turnTimeoutMs);
+        let persistentResult: TurnParseResult | undefined;
+        let failureMessage: string | undefined;
+        try {
+          persistentResult = await handle.result;
+        } catch (error) {
+          failureMessage = error instanceof Error ? error.message : String(error);
+        }
+        if (turn.terminationReason === "cancelled") {
+          await finishTurn({ status: "cancelled", exitCode: -1 });
+          return;
+        }
+        if (turn.terminationReason === "timeout") {
+          await finishTurn({ status: "failed", code: "TURN_TIMEOUT", message: `Turn timed out after ${turnTimeoutMs}ms.`, exitCode: -1 });
+          return;
+        }
+        if (failureMessage !== undefined) {
+          await finishTurn({ status: "failed", code: "TURN_FAILED", message: failureMessage, exitCode: -1 });
+          return;
+        }
+        await finishTurn({ status: "completed", exitCode: 0 });
+        if (persistentResult?.resumeToken && !closing && callbacks.hasSession(sessionId)) {
+          await callbacks.onRuntimeStatus(sessionId, "running", { resumeToken: persistentResult.resumeToken });
+        }
+        return;
+      }
+    }
+
     const child = spawn(plan.command, plan.args, { cwd: plan.cwd, env: plan.env, stdio: ["pipe", "pipe", "pipe"] });
     turn.approvalResponder = input.buildApprovalResponse;
     // headless 轮次的 prompt 完全经 argv 传递；无审批应答通道时立即关闭 stdin（EOF），避免 CLI 等待额外 stdin 输入而挂起；
@@ -250,7 +337,12 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
 
     let parseResult: TurnParseResult = {};
     try {
-      const iterator = input.parseOutput(child.stdout!);
+      const iterator = input.parseOutput(child.stdout!, {
+        onDelta(delta) {
+          if (closing || turn.terminationReason !== undefined) return;
+          callbacks.onTurnDelta?.(sessionId, turn.turnId, delta);
+        }
+      });
       let next = await iterator.next();
       while (!next.done) {
         if (!closing && turn.terminationReason === undefined) {
@@ -317,7 +409,7 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
           });
           const generation = (workerGenerations.get(sessionId) ?? 0) + 1;
           workerGenerations.set(sessionId, generation);
-          const worker: TerminalWorker = { kind: "terminal", process, clients: new Set<WebSocket>(), generation, pendingTranscript: "", transcriptFlush: Promise.resolve() };
+          const worker: TerminalWorker = { kind: "terminal", process, clients: new Set<WebSocket>(), generation, pendingTranscript: "", recentOutput: "", terminatedByUs: false, transcriptFlush: Promise.resolve() };
           workers.set(sessionId, worker);
           process.onData((data) => {
             const current = workers.get(sessionId);
@@ -371,6 +463,7 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
       }
       if (callbacks.hasSession(sessionId)) await flushPtyTranscript(sessionId, worker);
       workers.delete(sessionId);
+      worker.terminatedByUs = true;
       broadcastTerminal(sessionId, { type: "runtime-status", status: "stopped" });
       try { worker.process.kill(); } catch (error) { logger.warn("PTY stop failed", { sessionId, error: String(error) }); }
       return true;

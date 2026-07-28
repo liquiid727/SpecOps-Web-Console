@@ -6,14 +6,15 @@ Maintain independent spec-driven verification across scenarios, API contracts, a
 
 ## Required Inputs
 
-- Accepted spec or draft scenario.
+- Approved Feature Spec with stable `spec_id`, `spec_version`, and approval evidence; draft inputs may produce preview-only Test Specs.
 - Existing `tests/` templates for Bruno, scenario, E2E, Playwright, schedules, and normalized results.
 - Relevant frontend, backend, and release gate rules.
 
 ## Required Outputs
 
+- Independent, version-bound Test Spec under `tests/specs/`.
 - Scenario coverage notes.
-- Independent API contract, E2E, UI, and business scenario test assets for happy path, limit cases, and error cases.
+- Independent API contract, E2E, UI, performance/load, and business scenario test assets for happy path, limit cases, and error cases.
 - Gaps, fixtures, and validation commands.
 - `specos-test-standard/v1` compliance matrix with risk tier, owner agent, evidence requirements, flake policy, data policy, and security policy.
 - Developer-console matrix that maps each requirement to scope, owner agent, evidence type, current gap, and rerun recommendation.
@@ -24,6 +25,7 @@ Maintain independent spec-driven verification across scenarios, API contracts, a
 - Keep tests mapped to flow names and business expectations.
 - Do not own implementation-coupled unit tests; those stay with the execution agent.
 - Do not depend on execution-agent private implementation notes when deriving independent verification.
+- Reject stale Test Specs or mismatched source versions as release evidence.
 - Treat `.agents/manifest.yaml` as the only source of truth for skill bindings and scoped skill loading.
 - Separate missing requirements from implementation defects.
 - Treat P0/P1 missing normalized evidence as release-blocking unless a waiver is recorded.

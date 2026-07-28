@@ -1,0 +1,37 @@
+{
+  "id": "skill-golang-database-patterns",
+  "type": "skill",
+  "title": "Golang Database Patterns",
+  "summary": "Go database integration patterns using sqlx, pgx, and migration tools like golang-migrate",
+  "direction": "backend",
+  "stacks": [
+    "go"
+  ],
+  "tags": [
+    "database",
+    "golang",
+    "sqlx",
+    "pgx",
+    "migrations",
+    "repository-pattern",
+    "sql",
+    "go-pack"
+  ],
+  "appliesTo": [
+    "backend"
+  ],
+  "dependsOn": [],
+  "conflictsWith": [],
+  "sourcePath": "assets/skills/golang-database-patterns/SKILL.md",
+  "files": [
+    "skills/developer/golang-database-patterns/SKILL.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "按项目类型确认是否启用该 skill，并检查引用资料是否适配目标仓库。"
+  ],
+  "sampleOutput": "可复用 skill 说明、触发条件、参考资料和运行边界。",
+  "contentFiles": {
+    "skills/developer/golang-database-patterns/SKILL.md": "assets/skills/golang-database-patterns/SKILL.md"
+  }
+}

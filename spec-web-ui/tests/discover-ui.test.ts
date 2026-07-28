@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildDiscoverSectionToolClassName,
   getCatalogRowTagPreview
-} from "@/lib/discover-ui";
+} from "@/features/catalog/ui";
 
 describe("buildDiscoverSectionToolClassName", () => {
   it("returns compact monochrome tool controls for rail actions", () => {

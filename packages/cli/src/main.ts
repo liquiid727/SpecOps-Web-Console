@@ -38,6 +38,7 @@ import {
   type SpecosTestSchedule,
   type SpecosWorkflow,
 } from "@specos/core";
+import { installBundle } from "@specos/installer";
 import { parse, stringify } from "yaml";
 
 export interface RunCliOptions {
@@ -117,8 +118,8 @@ const agentKitSources: AgentKitSource[] = [
   { source: ".rules", target: ".rules" },
   { source: "rules", target: "rules" },
   { source: ".codex/instructions.md", target: ".codex/instructions.md" },
-  { source: ".skills/ui-design-handoff/SKILL.md", target: ".codex/skills/specos-ui-design/SKILL.md" },
-  { source: ".skills", target: ".skills" },
+  { source: ".codex/skills", target: ".codex/skills" },
+  { source: "skills/developer", target: "skills/developer" },
   { source: "current", target: "current" },
   { source: "docs/spec-modes", target: "docs/spec-modes" },
   { source: "design", target: "design" },
@@ -146,7 +147,7 @@ const agentKitInstalls: SpecosBundleManifest["installs"] = [
   { target: "rules/", from: "files/rules/" },
   { target: ".codex/instructions.md", from: "files/.codex/instructions.md" },
   { target: ".codex/skills/", from: "files/.codex/skills/" },
-  { target: ".skills/", from: "files/.skills/" },
+  { target: "skills/developer/", from: "files/skills/developer/" },
   { target: "current/", from: "files/current/" },
   { target: "docs/spec-modes/", from: "files/docs/spec-modes/" },
   { target: "spec-draft/", from: "files/spec-draft/" },
@@ -1023,29 +1024,15 @@ async function installBundleCommand(cwd: string, bundlePathArg: string | undefin
   }
 
   const validBundle = bundle as unknown as SpecosBundleManifest;
-  let installedFiles = 0;
-
-  for (const install of validBundle.installs) {
-    installedFiles += await copyInstallSource(join(bundleLocation.rootDir, install.from), join(cwd, install.target));
-  }
-
-  const installedRecordPath = join(cwd, ".specos", "bundles", "installed", `${validBundle.id}.yaml`);
-  await mkdir(dirname(installedRecordPath), { recursive: true });
-  await writeFile(
-    installedRecordPath,
-    [
-      `id: ${validBundle.id}`,
-      `version: ${validBundle.version}`,
-      `installedAt: ${new Date().toISOString()}`,
-      `defaultWorkflow: ${validBundle.workflow.default}`,
-      "",
-    ].join("\n"),
-    "utf8",
-  );
+  const installation = await installBundle({
+    bundleRoot: bundleLocation.rootDir,
+    targetRoot: cwd,
+    manifest: validBundle,
+  });
 
   return {
     exitCode: 0,
-    stdout: `SPECOS_BUNDLE_INSTALL_OK ${validBundle.id} files ${installedFiles}\n`,
+    stdout: `SPECOS_BUNDLE_INSTALL_OK ${validBundle.id} files ${installation.installedFiles}\n`,
     stderr: "",
   };
 }
@@ -1881,26 +1868,6 @@ async function resolveBundleLocation(cwd: string, bundlePathArg: string): Promis
   return undefined;
 }
 
-async function copyInstallSource(sourcePath: string, targetPath: string): Promise<number> {
-  const sourceStat = await stat(sourcePath);
-
-  if (sourceStat.isDirectory()) {
-    await mkdir(targetPath, { recursive: true });
-    const entries = await readdir(sourcePath, { withFileTypes: true });
-    let written = 0;
-
-    for (const entry of entries) {
-      written += await copyInstallSource(join(sourcePath, entry.name), join(targetPath, entry.name));
-    }
-
-    return written;
-  }
-
-  await mkdir(dirname(targetPath), { recursive: true });
-  await copyFile(sourcePath, targetPath);
-  return 1;
-}
-
 function isStableId(value: string): boolean {
   return /^[a-z0-9][a-z0-9-]*$/.test(value);
 }
@@ -1994,7 +1961,16 @@ function buildAgentKitProjectManifest(): string {
       resultsDir: "tests/results",
     },
     rulePacks: ["spec-driven-delivery"],
-    agentTemplates: ["fullstack-agent"],
+    agentTemplates: [
+      "product-architect-agent",
+      "spec-editor",
+      "frontend-agent",
+      "backend-agent",
+      "testing-agent",
+      "qa-agent",
+      "ci-editor",
+      "reviewer",
+    ],
     workflows: [agentKitWorkflowId],
     ci: {
       checkCommand: "npx specos check",

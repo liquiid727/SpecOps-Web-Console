@@ -1,0 +1,38 @@
+{
+  "id": "skill-golang-concurrency-patterns",
+  "type": "skill",
+  "title": "Golang Concurrency Patterns",
+  "summary": "Go concurrency patterns for production services: context cancellation, errgroup, worker pools, bounded parallelism, fan-in/fan-out, and common race/deadlock pitfalls",
+  "direction": "backend",
+  "stacks": [
+    "go"
+  ],
+  "tags": [
+    "golang",
+    "concurrency",
+    "context",
+    "errgroup",
+    "channels",
+    "mutex",
+    "race-detector",
+    "worker-pool",
+    "go-pack"
+  ],
+  "appliesTo": [
+    "backend"
+  ],
+  "dependsOn": [],
+  "conflictsWith": [],
+  "sourcePath": "assets/skills/golang-concurrency-patterns/SKILL.md",
+  "files": [
+    "skills/developer/golang-concurrency-patterns/SKILL.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "按项目类型确认是否启用该 skill，并检查引用资料是否适配目标仓库。"
+  ],
+  "sampleOutput": "可复用 skill 说明、触发条件、参考资料和运行边界。",
+  "contentFiles": {
+    "skills/developer/golang-concurrency-patterns/SKILL.md": "assets/skills/golang-concurrency-patterns/SKILL.md"
+  }
+}

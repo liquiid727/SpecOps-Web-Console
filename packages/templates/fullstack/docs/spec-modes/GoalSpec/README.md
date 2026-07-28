@@ -4,8 +4,8 @@
 
 Use it when:
 
-- the team wants a repeatable plan/design/split/implement/review/ship loop
-- issues should stay small enough for a single `/goal` run
+- the team wants repeatable, modular requirement/design/implementation/verification handoffs
+- implementation and verification Issues should stay small and independently reviewable
 - review and ship gates matter, but full role-separated QA/audit governance does not (yet)
 
 Core shape:
@@ -28,13 +28,18 @@ project/
       review.md
       changelog.md
   implementation/
+  tests/
+    specs/
   .agents/
 ```
 
-Six-step loop:
+Dual-track delivery loop:
 
 ```
-/prd -> /prd-to-spec -> /to-issues -> /goal -> /review-it -> /ship-it
+/prd -> /prd-to-spec -> approved Feature Spec
+  ├── /to-issues -> implementation
+  └── /spec-to-test -> approved Test Spec -> /to-issues -> verification
+      -> /review-it -> /ship-it
 ```
 
 Recommended agent loading order:

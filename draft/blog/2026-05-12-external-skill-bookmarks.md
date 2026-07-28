@@ -8,7 +8,7 @@ This note records a small convention for collecting external Codex skills withou
 
 Use `skills/README.md` as the lightweight bookmark index for external skills. It is easy to find from the repository root and already describes repository-local reusable agent skills and capability notes.
 
-Use `.skills/` only for skills that have been adapted for this repository. Those skills should be stable enough to be referenced by local agent routing or project workflows.
+Use `skills/developer/` only for skills that have been adapted for this repository. Those skills should be stable enough to be referenced by local agent routing or project workflows.
 
 Use `~/.codex/skills/` for skills that should be loaded by Codex as active user-level skills. Installing there is appropriate when the skill is used often enough to justify making it part of the local Codex runtime.
 

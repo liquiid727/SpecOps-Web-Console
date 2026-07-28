@@ -1,0 +1,36 @@
+{
+  "id": "agent-go-pack-test-e2e-scenario",
+  "type": "agent_role",
+  "title": "Test E2E Scenario Agent",
+  "summary": "Reusable Test E2E Scenario Agent role template extracted for Go backend and SpecOS team workflows.",
+  "direction": "fullstack",
+  "stacks": [
+    "go",
+    "react"
+  ],
+  "tags": [
+    "agent",
+    "go-pack",
+    "test",
+    "e2e",
+    "scenario"
+  ],
+  "appliesTo": [
+    "backend",
+    "frontend"
+  ],
+  "dependsOn": [],
+  "conflictsWith": [],
+  "sourcePath": "assets/agents/roles/agent-go-pack-test-e2e-scenario/test-e2e-scenario.md",
+  "files": [
+    "ai/agents/test-e2e-scenario.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "启用前确认该 Agent 的上下文边界、交付物和目标仓库职责划分。"
+  ],
+  "sampleOutput": "Agent 职责、上下文边界、交付步骤和审查责任。",
+  "contentFiles": {
+    "ai/agents/test-e2e-scenario.md": "assets/agents/roles/agent-go-pack-test-e2e-scenario/test-e2e-scenario.md"
+  }
+}

@@ -3,7 +3,7 @@ import { PassThrough } from "node:stream";
 import { describe, expect, it } from "vitest";
 import type { CliProfileV2 } from "../shared/types.js";
 import type { ParsedTurnEvent, TurnParseResult } from "./ports.js";
-import { createProfileAdapterRegistry, HeadlessTurnUnsupportedError, UnsupportedCliOptionError } from "./profile-adapters.js";
+import { createProfileAdapterRegistry, EnhanceUnsupportedError, HeadlessTurnUnsupportedError, sanitizeCliEnvironment, UnsupportedCliOptionError } from "./profile-adapters.js";
 
 const base = (adapterId: CliProfileV2["adapterId"], command: string): CliProfileV2 => ({ id: `${adapterId}-1`, name: adapterId, command, args: [], adapterId, createdAt: "2026-01-01T00:00:00Z" });
 // process.execPath 报告的 node 版本落在宽范围内 → headless 开启（不依赖真实 codex）
@@ -21,6 +21,14 @@ async function collect(iterator: AsyncGenerator<ParsedTurnEvent, TurnParseResult
 }
 
 describe("profile adapters", () => {
+  // npm run 会把各级祖先目录的 node_modules/.bin 前置到 PATH，陈旧本地包会遮蔽全局 CLI
+  it("strips npm-injected node_modules/.bin entries from PATH", () => {
+    const sanitized = sanitizeCliEnvironment({ PATH: ["/Users/dev/node_modules/.bin", "/repo/node_modules/.bin", "/usr/lib/node_modules/npm/node_modules/@npmcli/run-script/lib/node-gyp-bin", "/opt/homebrew/bin", "/usr/bin"].join(":"), HOME: "/Users/dev" });
+    expect(sanitized.PATH).toBe("/opt/homebrew/bin:/usr/bin");
+    expect(sanitized.HOME).toBe("/Users/dev");
+    expect(sanitizeCliEnvironment({ HOME: "/Users/dev" })).toEqual({ HOME: "/Users/dev" });
+  });
+
   it("exposes a neutral generic capability contract", async () => {
     const registry = createProfileAdapterRegistry();
     const capabilities = await registry.capabilities!(base("generic", "anything"));
@@ -181,13 +189,13 @@ describe("claude buildTurn argv snapshots (adapter-spec §3.2)", () => {
     const prompt = 'fix the "auth" bug\nthen run tests';
     const spec = await registry.buildTurn!(headlessClaude(), { workspacePath: "/tmp/ws", prompt, permission: "acceptEdits", mode: null, model: "sonnet", resumeToken: "sess-42" });
     expect(spec.command).toBe(process.execPath);
-    expect(spec.args).toEqual(["-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "acceptEdits", "--model", "sonnet", "--resume", "sess-42", prompt]);
+    expect(spec.args).toEqual(["-p", "--output-format", "stream-json", "--verbose", "--include-partial-messages", "--permission-mode", "acceptEdits", "--model", "sonnet", "--resume", "sess-42", prompt]);
   });
 
   it("omits default options and resume on the first turn", async () => {
     const registry = createProfileAdapterRegistry();
     const spec = await registry.buildTurn!(headlessClaude(), { workspacePath: "/tmp/ws", prompt: "hello", permission: "default", mode: null, model: null });
-    expect(spec.args).toEqual(["-p", "--output-format", "stream-json", "--verbose", "hello"]);
+    expect(spec.args).toEqual(["-p", "--output-format", "stream-json", "--verbose", "--include-partial-messages", "hello"]);
   });
 
   it("rejects unsupported modes and non-headless claude profiles", async () => {
@@ -240,5 +248,148 @@ describe("claude parseEvents (adapter-spec §3.2/§4)", () => {
     const done = await iterator.next();
     expect(done.done).toBe(true);
     expect((done.value as TurnParseResult)).toMatchObject({ resumeToken: "sess-9", usage: { inputTokens: 1, outputTokens: 2 } });
+  });
+
+  // streaming-spec FR-8：--include-partial-messages 的 stream_event 帧 → text_delta 进 hooks，其余子型静默忽略不降级
+  it("routes text_delta stream_events to hooks.onDelta and ignores other stream_event subtypes silently", async () => {
+    const registry = createProfileAdapterRegistry();
+    const stream = new PassThrough();
+    stream.end([
+      '{"type":"stream_event","event":{"type":"message_start","message":{"id":"m1"}},"session_id":"sess-d"}',
+      '{"type":"stream_event","event":{"type":"content_block_start","index":0},"session_id":"sess-d"}',
+      '{"type":"stream_event","event":{"type":"content_block_delta","delta":{"type":"text_delta","text":"Hel"}},"session_id":"sess-d"}',
+      '{"type":"stream_event","event":{"type":"content_block_delta","delta":{"type":"text_delta","text":"lo!"}},"session_id":"sess-d"}',
+      '{"type":"stream_event","event":{"type":"content_block_delta","delta":{"type":"input_json_delta","partial_json":"{\\"co"}},"session_id":"sess-d"}',
+      '{"type":"stream_event","event":{"type":"content_block_stop","index":0},"session_id":"sess-d"}',
+      '{"type":"assistant","message":{"content":[{"type":"text","text":"Hello!"}]},"session_id":"sess-d"}',
+      '{"type":"result","session_id":"sess-d","usage":{"input_tokens":4,"output_tokens":2}}'
+    ].join("\n") + "\n");
+    const deltas: string[] = [];
+    const { events, result } = await collect(registry.parseEvents!(headlessClaude(), stream, { turnId: "turn-c3" }, { onDelta: (delta) => deltas.push(delta) }));
+    expect(deltas).toEqual(["Hel", "lo!"]);
+    // stream_event 帧不产出 transcript 事件；终帧 assistant_message 照常落盘
+    expect(events.map((event) => event.kind)).toEqual(["assistant_message"]);
+    expect(events[0].raw).toBe("Hello!");
+    expect(result.resumeToken).toBe("sess-d");
+  });
+
+  it("parses stream_event frames without hooks and without emitting events", async () => {
+    const registry = createProfileAdapterRegistry();
+    const stream = new PassThrough();
+    stream.end('{"type":"stream_event","event":{"type":"content_block_delta","delta":{"type":"text_delta","text":"hi"}},"session_id":"sess-e"}\n');
+    const { events, result } = await collect(registry.parseEvents!(headlessClaude(), stream, { turnId: "turn-c4" }));
+    expect(events).toEqual([]);
+    expect(result.resumeToken).toBe("sess-e");
+  });
+});
+
+// kimi/glm 为 Claude Code 兼容 fork：复用 stream-json / --resume 链路，无默认版本区间（探测到版本即开启 headless）
+describe("claude-compatible adapters (kimi/glm)", () => {
+  it("enables headless turns and resume without a default version range", async () => {
+    const registry = createProfileAdapterRegistry();
+    for (const adapterId of ["kimi", "glm"] as const) {
+      const capabilities = await registry.capabilities!(base(adapterId, process.execPath));
+      expect(capabilities.compatibility).toBe("supported");
+      expect(capabilities).toMatchObject({ adapterId, supportsHeadlessTurns: true, supportsResume: true, supportsApproval: false });
+      // 不硬塞 claude 型号：模型仅 default，权限旗同 claude
+      expect(capabilities.models.map((model) => model.id)).toEqual(["default"]);
+      expect(capabilities.permissions.some((item) => item.id === "acceptEdits")).toBe(true);
+    }
+  });
+
+  it("assembles kimi headless turns through the claude stream-json protocol with resume", async () => {
+    const registry = createProfileAdapterRegistry();
+    const spec = await registry.buildTurn!(base("kimi", process.execPath), { workspacePath: "/tmp/ws", prompt: "hello", permission: "acceptEdits", mode: null, model: null, resumeToken: "sess-7" });
+    expect(spec.args).toEqual(["-p", "--output-format", "stream-json", "--verbose", "--include-partial-messages", "--permission-mode", "acceptEdits", "--resume", "sess-7", "hello"]);
+  });
+
+  it("parses glm stream-json output through the claude event parser", async () => {
+    const registry = createProfileAdapterRegistry();
+    const stream = new PassThrough();
+    stream.end('{"type":"assistant","message":{"content":[{"type":"text","text":"pong"}]},"session_id":"sess-g"}\n{"type":"result","session_id":"sess-g","usage":{"input_tokens":1,"output_tokens":1}}\n');
+    const { events, result } = await collect(registry.parseEvents!(base("glm", process.execPath), stream, { turnId: "turn-g1" }));
+    expect(events.map((event) => event.kind)).toEqual(["assistant_message"]);
+    expect(result.resumeToken).toBe("sess-g");
+  });
+});
+
+// terminal 模式原生 resume：resolveLaunch 翻译 resumeToken（codex 子命令前置 / claude 家族旗追加 / generic 忽略）
+describe("resolveLaunch native resume translation", () => {
+  it("prefixes codex resume subcommand before option flags", async () => {
+    const registry = createProfileAdapterRegistry();
+    const launch = await registry.resolveLaunch!(headlessCodex(), { permission: "never", mode: "workspace-write", model: null, resumeToken: "thread-9" });
+    expect(launch.args).toEqual(["resume", "thread-9", "--ask-for-approval", "never", "--sandbox", "workspace-write"]);
+  });
+
+  it("appends --resume for the claude family and keeps first launches untouched", async () => {
+    const registry = createProfileAdapterRegistry();
+    const resumed = await registry.resolveLaunch!(headlessClaude(), { permission: "acceptEdits", mode: null, model: null, resumeToken: "sess-9" });
+    expect(resumed.args).toEqual(["--permission-mode", "acceptEdits", "--resume", "sess-9"]);
+    const fresh = await registry.resolveLaunch!(headlessClaude(), { permission: null, mode: null, model: null });
+    expect(fresh.args).toEqual([]);
+  });
+
+  it("ignores resume tokens when the adapter does not support resume", async () => {
+    const registry = createProfileAdapterRegistry();
+    const generic = await registry.resolveLaunch!(base("generic", "anything"), { permission: null, mode: null, model: null, resumeToken: "tok" });
+    expect(generic.args).toEqual([]);
+    // 版本区间外：supportsResume=false，token 不翻译
+    const outOfRange = await registry.resolveLaunch!(base("codex", process.execPath), { permission: null, mode: null, model: null, resumeToken: "tok" });
+    expect(outOfRange.args).toEqual([]);
+  });
+});
+
+// 模型目录三层合并（console-gaps SPEC §2）：builtin ∩ synced ∩ custom 进入 capabilities.models，并参与 launch 校验
+describe("model catalog merge in capabilities", () => {
+  it("merges synced and custom models into capabilities and invalidates the cache on change", async () => {
+    const registry = createProfileAdapterRegistry();
+    const plain = await registry.capabilities!(headlessCodex());
+    const plainIds = plain.models.map((model) => model.id);
+    expect(plainIds).toContain("gpt-5");
+    expect(plainIds).not.toContain("my-model");
+
+    // 同 profile id，仅 customModels/syncedModels 变化 → 缓存键变化，合并结果立即反映
+    const enriched = await registry.capabilities!({ ...headlessCodex(), syncedModels: ["o4-mini"], customModels: ["my-model"] });
+    const enrichedIds = enriched.models.map((model) => model.id);
+    expect(enrichedIds).toContain("o4-mini");
+    expect(enrichedIds).toContain("my-model");
+    expect(enrichedIds[0]).toBe("default");
+  });
+
+  it("accepts imported custom models in launch option validation", async () => {
+    const registry = createProfileAdapterRegistry();
+    const profile = { ...headlessCodex(), customModels: ["my-model"] };
+    const launch = await registry.resolveLaunch!(profile, { permission: null, mode: null, model: "my-model" });
+    expect(launch.args).toEqual(["--model", "my-model"]);
+    await expect(registry.resolveLaunch!(headlessCodex(), { permission: null, mode: null, model: "my-model" })).rejects.toBeInstanceOf(UnsupportedCliOptionError);
+  });
+});
+
+// 润色/压缩 argv 组装与 capability 门槛（project-quest SPEC §5.7）
+describe("prompt enhancement (project-quest SPEC §5.7)", () => {
+  it("gates supportsPromptEnhancement on the headless threshold", async () => {
+    const registry = createProfileAdapterRegistry();
+    expect((await registry.capabilities!(headlessCodex())).supportsPromptEnhancement).toBe(true);
+    expect((await registry.capabilities!(headlessClaude())).supportsPromptEnhancement).toBe(true);
+    expect((await registry.capabilities!(base("generic", "anything"))).supportsPromptEnhancement).toBe(false);
+    expect((await registry.capabilities!(base("codex", "/path/that/does/not/exist"))).supportsPromptEnhancement).toBe(false);
+  });
+
+  it("builds codex enhance argv with exec --skip-git-repo-check", async () => {
+    const registry = createProfileAdapterRegistry();
+    const spec = await registry.buildEnhance!(headlessCodex(), { prompt: "Rewrite this." });
+    expect(spec.command).toBe(process.execPath);
+    expect(spec.args).toEqual(["exec", "--skip-git-repo-check", "Rewrite this."]);
+  });
+
+  it("builds claude enhance argv with -p", async () => {
+    const registry = createProfileAdapterRegistry();
+    const spec = await registry.buildEnhance!(headlessClaude(), { prompt: "Compress this." });
+    expect(spec.args).toEqual(["-p", "Compress this."]);
+  });
+
+  it("rejects enhance for adapters without the capability", async () => {
+    const registry = createProfileAdapterRegistry();
+    await expect(registry.buildEnhance!(base("generic", "anything"), { prompt: "x" })).rejects.toBeInstanceOf(EnhanceUnsupportedError);
   });
 });

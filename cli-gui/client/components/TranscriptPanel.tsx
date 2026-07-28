@@ -8,7 +8,7 @@ import { toFeedbackError, toFeedbackWarning } from "../feedback-errors";
 import { useI18n } from "../i18n";
 import { Icon } from "./ui/Icon";
 import { useFeedback } from "./ui/Feedback";
-import { isNearBottom, projectTranscriptEvents, buildTurnPrompts, buildApprovalStates, deriveActiveTurnId, type ApprovalDisplayState, type TranscriptDisplayItem } from "../transcript-display";
+import { isNearBottom, projectTranscriptEvents, buildTurnPrompts, buildApprovalStates, deriveActiveTurnId, deriveSessionLifecycleStatus, INTERRUPTED_LIFECYCLE_STATUSES, type ApprovalDisplayState, type SessionLifecycleStatus, type TranscriptDisplayItem } from "../transcript-display";
 import type { TurnStatus } from "../../shared/websocket";
 import { AsyncState } from "./patterns";
 import { Button } from "./ui";
@@ -28,9 +28,15 @@ interface TranscriptPanelProps {
   onApprove?: (approvalId: string, decision: "allow" | "deny") => Promise<void>;
   /** supportsApproval=false 兜底：失败轮次错误条目附权限指引文案（frontend-spec §5.4） */
   approvalFallback?: boolean;
+  /** chat 会话聊天化渲染：过滤终端噪音（常规 lifecycle / pty_output），保留中断态提示（frontend-spec §3.1） */
+  chatMode?: boolean;
+  /** 轮次进行中：消息流底部渲染生成中指示器（含耗时计时），填补无流式增量时的等待空白 */
+  turnPending?: boolean;
+  /** 会话运行态（顶部 SessionLifecycleStatusBar 数据源） */
+  onSessionLifecycle?: (status: SessionLifecycleStatus) => void;
 }
 
-export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerivedTurn, onRetry, onApprove, approvalFallback }: TranscriptPanelProps) {
+export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerivedTurn, onRetry, onApprove, approvalFallback, chatMode, turnPending, onSessionLifecycle }: TranscriptPanelProps) {
   const { t } = useI18n();
   const feedback = useFeedback();
   const [events, setEvents] = useState<TranscriptEvent[]>([]);
@@ -41,6 +47,8 @@ export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerive
   const [error, setError] = useState(false);
   const [connectionState, setConnectionState] = useState<"connecting" | "connected" | "reconnecting" | "offline">("connecting");
   const [retryKey, setRetryKey] = useState(0);
+  // 流式气泡（streaming-spec FR-5）：turn-delta 累积临时文本，assistant_message 落盘或轮次终态后清除
+  const [stream, setStream] = useState<{ turnId: string; text: string }>();
   const reconnectTimer = useRef<number | undefined>(undefined);
   const latestSequenceRef = useRef(0);
   const generationRef = useRef(0);
@@ -68,13 +76,24 @@ export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerive
     latestSequenceRef.current = 0;
     setHasMore(false);
     setConnectionState("connecting");
+    setStream(undefined);
 
     const isCurrent = () => !cancelled && generationRef.current === generation;
     const acceptEvent = (event: TranscriptEvent) => {
-      if (event.sessionId === sessionId && isCurrent()) mergeEvent(event);
+      if (event.sessionId !== sessionId || !isCurrent()) return;
+      // 落盘去重：同轮 assistant_message 事件到达后流式气泡退场，避免双气泡
+      if (event.kind === "assistant_message") setStream((current) => current && current.turnId === event.metadata?.turnId ? undefined : current);
+      mergeEvent(event);
     };
     const acceptTurnStatus = (turnId: string, status: TurnStatus) => {
-      if (isCurrent()) onTurnStatus?.(turnId, status);
+      if (!isCurrent()) return;
+      // 终态兜底清除（失败/取消轮无 assistant_message 落盘）
+      if (status === "completed" || status === "failed" || status === "cancelled") setStream((current) => current && current.turnId === turnId ? undefined : current);
+      onTurnStatus?.(turnId, status);
+    };
+    const acceptTurnDelta = (turnId: string, delta: string) => {
+      if (!isCurrent()) return;
+      setStream((current) => current && current.turnId === turnId ? { turnId, text: current.text + delta } : { turnId, text: delta });
     };
 
     api.transcript(sessionId, 0, 200, controller.signal).then((page) => {
@@ -91,17 +110,21 @@ export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerive
         onReady: () => { if (isCurrent()) setConnectionState("connected"); },
         onEvent: acceptEvent,
         onTurnStatus: acceptTurnStatus,
+        onTurnDelta: acceptTurnDelta,
         onWarning: () => { if (isCurrent()) feedback.warning(toFeedbackWarning(undefined, t, "recordingWarning", `transcript-warning:${sessionId}`)); },
         onError: () => { if (isCurrent()) { setConnectionState("reconnecting"); feedback.error(toFeedbackError(undefined, t, "transcriptConnectionFailed", `transcript-connection:${sessionId}`)); } },
         onClose: () => {
           if (!isCurrent()) return;
           setConnectionState("reconnecting");
+          // 断线后增量不补发：丢弃未完成的流式文本，等 assistant_message 回放（streaming-spec FR-2）
+          setStream(undefined);
           reconnectTimer.current = window.setTimeout(() => {
             if (isCurrent()) {
               closeSubscription();
               closeSubscription = openTranscriptSubscription(sessionId, latestSequenceRef.current, {
                 onEvent: acceptEvent,
                 onTurnStatus: acceptTurnStatus,
+                onTurnDelta: acceptTurnDelta,
                 onReady: () => { if (isCurrent()) setConnectionState("connected"); },
                 onWarning: () => { if (isCurrent()) feedback.warning(toFeedbackWarning(undefined, t, "recordingWarning", `transcript-warning:${sessionId}`)); },
                 onError: () => { if (isCurrent()) { setConnectionState("reconnecting"); feedback.error(toFeedbackError(undefined, t, "transcriptConnectionFailed", `transcript-connection:${sessionId}`)); } },
@@ -133,6 +156,12 @@ export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerive
     for (const event of localEvents ?? []) if (event.sessionId === sessionId) mergeEvent(event);
   }, [localEvents, mergeEvent, sessionId]);
 
+  // 顶部 SessionLifecycleStatusBar 数据源：从 events 派生 session-* 状态
+  useEffect(() => {
+    const fallback: SessionLifecycleStatus = events.length === 0 ? "idle" : "stopped";
+    onSessionLifecycle?.(deriveSessionLifecycleStatus(events, fallback));
+  }, [events, onSessionLifecycle]);
+
   async function loadMore() {
     if (loadingMore || !hasMore) return;
     const generation = generationRef.current;
@@ -151,7 +180,7 @@ export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerive
     }
   }
 
-  const displayEvents = useMemo(() => projectTranscriptEvents(events), [events]);
+  const displayEvents = useMemo(() => projectTranscriptEvents(events, { chatMode }), [chatMode, events]);
   const turnPrompts = useMemo(() => buildTurnPrompts(events), [events]);
   const approvalStates = useMemo(() => buildApprovalStates(events), [events]);
   useEffect(() => { onDerivedTurn?.(deriveActiveTurnId(events)); }, [events, onDerivedTurn]);
@@ -164,7 +193,7 @@ export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerive
   useEffect(() => {
     const element = listRef.current;
     if (element && followRef.current) element.scrollTop = element.scrollHeight;
-  }, [displayEvents]);
+  }, [displayEvents, turnPending, stream]);
 
   const handleScroll = () => {
     const element = listRef.current;
@@ -180,9 +209,9 @@ export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerive
 
   if (loading) return <AsyncState className="transcript-state" state="loading" title={t("loadingTranscript")} />;
   if (error) return <AsyncState className="transcript-state error" state="error" title={t("transcriptFailed")} actions={<Button variant="secondary" className="secondary-button" onClick={() => setRetryKey((value) => value + 1)}>{t("retry")}</Button>} />;
-  if (!displayEvents.length) return <AsyncState className="transcript-state" state="empty" icon={<Icon name="terminal" />} title={t("emptyTranscript")} description={t("emptyTranscriptDescription")} />;
+  if (!displayEvents.length && !turnPending && !stream) return <AsyncState className="transcript-state" state="empty" icon={<Icon name="terminal" />} title={t("emptyTranscript")} description={t("emptyTranscriptDescription")} />;
 
-  return <div className="transcript-list" aria-label={t("transcript")} ref={listRef} onScroll={handleScroll}>
+  return <div className={`transcript-list${chatMode ? " chat-mode" : ""}`} aria-label={t("transcript")} ref={listRef} onScroll={handleScroll}>
     <div className="transcript-status" aria-live="polite">
       {hasMore && <Button variant="secondary" className="secondary-button" onClick={() => void loadMore()} loading={loadingMore} loadingLabel={t("loading")}>{t("loadMore")}</Button>}
       {connectionState === "reconnecting" && <span>{t("reconnecting")}</span>}
@@ -195,20 +224,44 @@ export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerive
       return <TranscriptMessage
         item={item}
         key={item.id}
+        chatMode={chatMode}
         onRetry={onRetry && prompt ? () => onRetry(prompt) : undefined}
         approval={approvalId ? approvalStates.get(approvalId) : undefined}
         onRespondApproval={onApprove && approvalId ? (decision) => onApprove(approvalId, decision) : undefined}
         fallbackHint={approvalFallback && item.event.kind === "error" && Boolean(turnId)}
       />;
     })}
+    {stream && <StreamingMessage text={stream.text} chatMode={chatMode} />}
+    {turnPending && !stream && <TurnPendingIndicator chatMode={chatMode} />}
     {!following && <Button variant="secondary" className="secondary-button back-to-latest" onClick={backToLatest}>{t("backToLatest")}</Button>}
   </div>;
 }
 
-const INTERRUPTED_LIFECYCLE = new Set(["turn-failed", "turn-cancelled"]);
+/** 流式气泡（streaming-spec FR-5）：turn-delta 累积文本 + 光标，落盘 assistant_message 到达后退场；不显示名称 */
+export function StreamingMessage({ text }: { text: string; chatMode?: boolean }) {
+  return <article className="transcript-event assistant_message streaming" aria-live="polite">
+    <MarkdownLite source={text} />
+    <span className="streaming-cursor" aria-hidden="true" />
+  </article>;
+}
 
-/** kind → 渲染全表（frontend-spec §3.1）；未知 kind 中性兜底，前向兼容不报错 */
-export function TranscriptMessage({ item, onRetry, approval, onRespondApproval, fallbackHint }: { item: TranscriptDisplayItem; onRetry?: () => void; approval?: ApprovalDisplayState; onRespondApproval?: (decision: "allow" | "deny") => Promise<void>; fallbackHint?: boolean }) {
+/** 生成中指示器：每轮 spawn CLI + 模型推理无流式增量，用计时气泡填补等待空白；仅保留耗时小字 */
+export function TurnPendingIndicator(_props: { chatMode?: boolean } = {}) {
+  const { t } = useI18n();
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    const startedAt = Date.now();
+    const timer = window.setInterval(() => setSeconds(Math.floor((Date.now() - startedAt) / 1000)), 1_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  return <article className="transcript-event turn-pending" aria-live="polite">
+    <header><time>{t("turnElapsed", { seconds })}</time></header>
+    <p className="turn-pending-text"><span className="turn-pending-dots" aria-hidden="true"><i /><i /><i /></span>{t("turnThinking")}</p>
+  </article>;
+}
+
+/** kind → 渲染全表（frontend-spec §3.1）；未知 kind 中性兜底，前向兼容不报错；user/assistant 不显示名称（类终端直显输入输出） */
+export function TranscriptMessage({ item, onRetry, approval, onRespondApproval, fallbackHint, chatMode = false }: { item: TranscriptDisplayItem; onRetry?: () => void; approval?: ApprovalDisplayState; onRespondApproval?: (decision: "allow" | "deny") => Promise<void>; fallbackHint?: boolean; chatMode?: boolean }) {
   const { t } = useI18n();
   const { event } = item;
   const kind = event.kind as string;
@@ -218,18 +271,16 @@ export function TranscriptMessage({ item, onRetry, approval, onRespondApproval, 
   const [locallyExpired, setLocallyExpired] = useState(false);
 
   if (kind === "user_message") {
-    // 右对齐纯文本气泡，不渲染 Markdown
+    // 右对齐纯文本气泡，不渲染 Markdown；不带名称/时间
     return <article className="transcript-event user_message">
-      <header><span>{t("you")}</span>{time}</header>
       <pre className="transcript-plain">{item.content}</pre>
     </article>;
   }
   if (kind === "assistant_message") {
     return <article className="transcript-event assistant_message">
-      <header><span>{t("assistantMessage")}</span>{time}</header>
       <MarkdownLite source={item.content} truncated={item.truncated} />
-      <details className="transcript-output raw-source"><summary>{t("viewRawSource")}</summary><pre className="transcript-plain">{item.raw}</pre></details>
-      <Button variant="ghost" className="copy-button" onClick={() => void navigator.clipboard?.writeText(item.raw)}>{t("copy")}</Button>
+      {!chatMode && <details className="transcript-output raw-source"><summary>{t("viewRawSource")}</summary><pre className="transcript-plain">{item.raw}</pre></details>}
+      {!chatMode && <Button variant="ghost" className="copy-button" onClick={() => void navigator.clipboard?.writeText(item.content)}>{t("copy")}</Button>}
     </article>;
   }
   if (kind === "tool_activity") {
@@ -250,12 +301,12 @@ export function TranscriptMessage({ item, onRetry, approval, onRespondApproval, 
     return <article className="transcript-event pty_output">
       <header><span>{t("cliOutput")}</span>{time}</header>
       <details className="transcript-output"><summary>{summarizeCliOutput(item.content)}</summary><pre className="transcript-plain">{item.content}</pre></details>
-      <Button variant="ghost" className="copy-button" onClick={() => void navigator.clipboard?.writeText(item.raw)}>{t("copy")}</Button>
+      <Button variant="ghost" className="copy-button" onClick={() => void navigator.clipboard?.writeText(item.content)}>{t("copy")}</Button>
     </article>;
   }
   if (kind === "lifecycle") {
     const status = typeof event.metadata?.status === "string" ? event.metadata.status : "";
-    const interrupted = INTERRUPTED_LIFECYCLE.has(status);
+    const interrupted = INTERRUPTED_LIFECYCLE_STATUSES.has(status);
     return <article className={`transcript-event lifecycle${interrupted ? " interrupted" : ""}`}>
       <header><span>{interrupted ? t("turnInterrupted") : t("lifecycleEvent")}</span>{time}</header>
       <p className="lifecycle-text">{item.content}{status && <code className="lifecycle-status">{status}</code>}</p>

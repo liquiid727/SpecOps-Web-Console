@@ -14,7 +14,7 @@ import {
   filterExportReviewGroups,
   parseReviewNoteMarkdown,
   summarizeExportReviewNotes
-} from "@/lib/export-client";
+} from "@/features/exports/client";
 import { buildShellCommandTitle } from "@/lib/shell";
 import { buildNeoSurfaceClassName } from "@/lib/theme";
 import type { ExportReviewDecision, ExportReviewGroup, ExportTreeNode } from "@/lib/types";

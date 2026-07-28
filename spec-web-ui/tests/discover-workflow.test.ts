@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import * as discover from "@/lib/discover";
+import * as discover from "@/features/catalog/preferences";
 import type { CatalogAsset, DiscoverPreferences, PresetBundle } from "@/lib/types";
 
 const catalog: CatalogAsset[] = [
@@ -50,18 +50,18 @@ const catalog: CatalogAsset[] = [
     version: "1.0.0"
   },
   {
-    id: "skill-tool-config-ui",
+    id: "skill-spec-to-test",
     type: "skill",
-    title: "Tool Config UI Skill",
-    summary: "Patterns for safe agent configuration interfaces.",
+    title: "Spec to Test Skill",
+    summary: "Independent Test Specs from approved Feature Specs.",
     direction: "frontend",
     stacks: ["react"],
     tags: ["skill", "config"],
     appliesTo: ["frontend"],
     dependsOn: [],
     conflictsWith: [],
-    sourcePath: ".skills/tool-config-ui/SKILL.md",
-    files: [".skills/tool-config-ui/SKILL.md"],
+    sourcePath: "skills/developer/spec-to-test/SKILL.md",
+    files: ["skills/developer/spec-to-test/SKILL.md"],
     version: "1.0.0"
   },
   {

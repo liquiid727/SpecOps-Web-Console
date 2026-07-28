@@ -1,114 +1,114 @@
 # GoalSpec
 
-`GoalSpec` is the workflow-driven SpecOS project mode.
+`GoalSpec` is the workflow-driven SpecOS project mode. It sits between `LiteSpec` and `EnterpriseSpec`: stronger than a feature-local flow, lighter than full role-separated audit governance.
 
-It sits between `LiteSpec` and `EnterpriseSpec`: heavier than a single-feature-directory flow, lighter than a fully role-separated governance model.
+It is optimized for:
 
-It is `Workflow Driven` and optimized for:
-
-- small teams that already work issue by issue
-- projects that want explicit review and ship gates without a full QA/audit apparatus
-- delivery through a single standing six-step loop instead of ad-hoc feature work
+- small teams that work Issue by Issue
+- modular Feature Specs derived from small or complex PRDs
+- implementation and independent verification running as separate tracks
+- explicit review and ship gates
 
 ## Core Principle
 
-Use the six-step goal loop as the unit of delivery:
+Use an approved, versioned Feature Spec as the split point:
 
-```
-/prd -> /prd-to-spec -> /to-issues -> /goal -> /review-it -> /ship-it
+```text
+/prd -> /prd-to-spec -> Feature Spec approval
+  ├── /to-issues (implementation) -> implementation
+  └── /spec-to-test -> Test Spec approval
+      -> /to-issues (verification) -> independent verification
+  -> /review-it -> /ship-it
 ```
 
-Every feature enters through `/prd`, gets split into small issues by `/to-issues`, and each issue runs the same implement/review/ship chain before the next one starts.
+Complex PRDs first become a roadmap and multiple small, end-to-end Feature Specs. Each approved Feature Spec produces one independent Test Spec bound to its exact version.
+
+Implementation and test-asset preparation may run concurrently. Live API, scenario, UI/E2E, performance, load, stress, concurrency, and security execution waits for a deployable target. Both tracks converge at evidence, review, and ship gates.
 
 ## Directory Structure
 
 ```text
 project/
 ├── README.md
-│
 ├── design/
-│   ├── architecture.md
-│   ├── domain.md
-│   ├── database.md
-│   ├── api-guidelines.md
-│   ├── deployment.md
-│   └── coding-guidelines.md
-│
 ├── current/
-│   ├── project-status.md
-│   ├── sprint-status.md          # loop status: open / in-progress / in-review / shipped
-│   ├── active-context.md
-│   └── handoff.md
-│
+├── spec-draft/
 ├── specs/
 │   ├── roadmap.md
 │   ├── issues/
-│   │   └── README.md             # issue index produced by /to-issues
+│   │   └── README.md
 │   └── RP-001-feature/
 │       ├── spec.md
 │       ├── tasks.md
-│       ├── tests.md
-│       ├── review.md             # /review-it output
-│       └── changelog.md          # /ship-it output
-│
+│       ├── review.md
+│       └── changelog.md
 ├── implementation/
-│   └── RP-001/                   # changed-surface summary per /goal run
-│
+│   └── RP-001/
+├── tests/
+│   ├── specs/
+│   │   └── RP-001.test-spec.md
+│   ├── plans/
+│   ├── schedules/
+│   └── results/
 ├── docs/
-│   └── workflow.md                # the six-step loop, written out for this project
-│
+│   └── workflow.md
 └── .agents/
-    ├── project-context.md
-    ├── workflow.md
-    ├── backend.skill.md
-    ├── frontend.skill.md
-    ├── testing.skill.md
-    ├── review.skill.md
-    └── prompt.skill.md
 ```
 
-## Six-Step Loop → Directory Map
+## Delivery Loop
 
-| Step | Command | Output | Agent role |
+| Stage | Command or gate | Output | Owner |
 | --- | --- | --- | --- |
-| Plan | `/prd` | `spec-draft/` | spec-editor |
-| Design (optional) | `/prd-to-spec` | `design/` | spec-editor |
-| Split | `/to-issues` | `specs/issues/README.md`, `specs/RP-xxx/tasks.md` | spec-editor |
-| Implement | `/goal` | `specs/RP-xxx/`, `implementation/RP-xxx/` | implementation-agent |
-| Review | `/review-it` | `specs/RP-xxx/review.md` | testing-agent, reviewer |
-| Ship | `/ship-it` | commit/PR/merge, `specs/RP-xxx/changelog.md` | ci-editor, deployment-agent |
+| PRD | `/prd` | classified PRD under `spec-draft/` | spec-editor |
+| Feature Spec | `/prd-to-spec` | one or more `specs/RP-xxx/spec.md` files and roadmap updates | spec-editor |
+| Spec approval | human or authorized automated review | approved Feature Spec version | spec-editor, reviewer |
+| Implementation split | `/to-issues` | implementation Issues | spec-editor |
+| Test Spec | `/spec-to-test` | `tests/specs/RP-xxx.test-spec.md` | test-editor |
+| Test approval | independent review | approved Test Spec version | test-editor, reviewer |
+| Verification split | `/to-issues` | verification Issues, plans, and schedules | test-editor, testing-agent |
+| Execute | implementation and testing tracks | code, unit checks, independent normalized results | implementation-agent, testing-agent |
+| Review | `/review-it` | review findings and evidence decision | qa-agent, reviewer |
+| Ship | `/ship-it` | commit, PR, merge, Issue closure, changelog | qa-agent, ci-editor, deployment-agent |
+
+## Version Contract
+
+- Every Feature Spec has a stable `spec_id` and `spec_version`.
+- Every Test Spec records the exact source Spec version and hash or immutable revision when available.
+- A changed source version marks the existing Test Spec `stale`.
+- Stale Test Specs and version-mismatched results cannot satisfy review or ship gates.
+- Historical implementation, test, and review evidence remains bound to the version it verified.
 
 ## Agent Loading Order
 
 1. `README.md`
 2. `current/`
 3. `design/`
-4. `specs/issues/` (which issue is active)
-5. `specs/RP-xxx/`
+4. `specs/issues/`
+5. the active Feature Spec
+6. the matching Test Spec for verification work
 
-Expected context size: similar to `LiteSpec`, plus the issue index.
-
-## Why GoalSpec Exists
-
-`LiteSpec` has no standing shape for splitting work into issues or gating review/ship; `EnterpriseSpec` requires more governance structure than most small teams need day to day. `GoalSpec` gives a fixed six-step chain — plan, design, split, implement, review, ship — with one file per step's evidence, so delivery is repeatable without adopting full delivery-evidence governance.
+Implementation agents must not load private test-agent notes. Independent test agents derive expected behavior from approved requirements and public contracts, not implementation internals.
 
 ## Strengths
 
-- repeatable, named steps for every change (no ad-hoc process)
-- explicit issue index keeps parallel work visible without full role separation
-- review and ship gates exist by default, unlike `LiteSpec`
-- low token cost compared to `EnterpriseSpec`'s role-sliced loading
+- repeatable workflow for every change
+- modular decomposition for complex PRDs
+- explicit source-version binding between Feature Spec and Test Spec
+- implementation and test preparation can proceed in parallel
+- stale or missing verification evidence blocks shipping
+- lower governance overhead than EnterpriseSpec
 
 ## Tradeoffs
 
-- no categorized test evidence (unit/e2e/performance/security) — escalate to `EnterpriseSpec` if that's required
-- review stays a single file per feature, not a multi-stage `reviews/` tree
-- less suited to multi-team parallel work than `EnterpriseSpec`
+- more artifacts than LiteSpec
+- Feature Spec and Test Spec approvals add deliberate gates
+- complete multi-team audit, release, rollback, and compliance evidence still belongs to EnterpriseSpec
 
 ## Use GoalSpec When
 
 Choose `GoalSpec` when:
 
-- the team already thinks in issues and wants `/to-issues` -> `/goal` -> `/review-it` -> `/ship-it` as the default loop
-- `LiteSpec`'s single-file-per-feature flow doesn't provide enough structure for review and delivery tracking
-- the project doesn't yet need `EnterpriseSpec`'s categorized QA, audit, and release-evidence apparatus
+- the team wants a stable PRD-to-Spec-to-Issue workflow
+- independent API, scenario, UI/E2E, or performance verification matters
+- implementation and testing need separate contexts
+- full EnterpriseSpec governance would be unnecessarily heavy

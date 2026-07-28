@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TranscriptEvent } from "../../shared/types";
 import { I18nProvider } from "../i18n";
 import { isNearBottom, projectTranscriptEvents, sanitizePtyOutput, buildTurnPrompts, buildApprovalStates, deriveActiveTurnId } from "../transcript-display";
-import { MarkdownLite, TranscriptMessage } from "./TranscriptPanel";
+import { MarkdownLite, StreamingMessage, TranscriptMessage, TurnPendingIndicator } from "./TranscriptPanel";
 
 describe("Markdown transcript rendering", () => {
   let container: HTMLDivElement;
@@ -109,7 +109,8 @@ describe("ChatView structured rendering (kind → render table)", () => {
       makeEvent({ id: "e3", kind: "tool_activity", raw: "go test ./... output", metadata: { tool: "bash: go test" } }),
       makeEvent({ id: "e4", kind: "file_change", raw: "payment.go", metadata: { path: "src/payment.go" } }),
       makeEvent({ id: "e5", kind: "pty_output", source: "pty", raw: "raw bytes\r\n" }),
-      makeEvent({ id: "e6", kind: "lifecycle", source: "session-manager", raw: "Session running.", metadata: { status: "running" } }),
+      // 中断态 lifecycle 仍入消息流（带 .interrupted），便于重试；常规 lifecycle 走顶部状态条
+      makeEvent({ id: "e6", kind: "lifecycle", source: "session-manager", raw: "Turn cancelled.", metadata: { status: "turn-cancelled", turnId: "turn-1" } }),
       makeEvent({ id: "e7", kind: "error", source: "session-manager", raw: "spawn failed", metadata: { code: "SESSION_START_FAILED" } }),
       makeEvent({ id: "e8", kind: "approval_request", raw: "command: npm install", metadata: { approvalId: "a1" } }),
       makeEvent({ id: "e9", kind: "approval_response", raw: "decision recorded", metadata: { approvalId: "a1", decision: "allow" } }),
@@ -126,7 +127,7 @@ describe("ChatView structured rendering (kind → render table)", () => {
     expect(tool?.querySelector("pre")?.textContent).toContain("go test ./... output");
     expect(container.querySelector(".transcript-event.file_change code")?.textContent).toBe("src/payment.go");
     expect(container.querySelector(".transcript-event.pty_output details")).not.toBeNull();
-    expect(container.querySelector(".transcript-event.lifecycle .lifecycle-status")?.textContent).toBe("running");
+    expect(container.querySelector(".transcript-event.lifecycle .lifecycle-status")?.textContent).toBe("turn-cancelled");
     expect(container.querySelector(".transcript-event.error .error-code")?.textContent).toBe("SESSION_START_FAILED");
     expect(container.querySelector(".transcript-event.approval_request")).not.toBeNull();
     expect(container.querySelector(".transcript-event.approval_response .lifecycle-status")?.textContent).toBe("allow");
@@ -158,6 +159,26 @@ describe("ChatView structured rendering (kind → render table)", () => {
     expect(lifecycle?.classList.contains("interrupted")).toBe(true);
     expect(lifecycle?.querySelector(".lifecycle-status")?.textContent).toBe("turn-cancelled");
     expect(container.querySelector(".transcript-event.error .error-code")?.textContent).toBe("TURN_TIMEOUT");
+  });
+
+  // —— chat 模式类终端直显：无名称/时间/raw（Qoder 对话布局）——
+  it("drops headers, timestamps and raw source for chat mode messages", () => {
+    const items = projectTranscriptEvents([
+      makeEvent({ id: "e1", kind: "user_message", source: "composer", raw: "do the thing" }),
+      makeEvent({ id: "e2", kind: "assistant_message", raw: "**done**", metadata: { turnId: "turn-1" } })
+    ], { chatMode: true });
+    act(() => root.render(<I18nProvider>{items.map((item) => <TranscriptMessage item={item} key={item.id} chatMode />)}</I18nProvider>));
+    expect(container.querySelector(".transcript-event.user_message header")).toBeNull();
+    expect(container.querySelector(".transcript-event.assistant_message header")).toBeNull();
+    expect(container.querySelector(".raw-source")).toBeNull();
+    expect(container.querySelector(".transcript-event.user_message pre")?.textContent).toBe("do the thing");
+    expect(container.querySelector(".transcript-event.assistant_message .markdown-lite strong")?.textContent).toBe("done");
+  });
+
+  it("hides the assistant label on the streaming bubble in chat mode", () => {
+    act(() => root.render(<I18nProvider><StreamingMessage text="partial reply" chatMode /></I18nProvider>));
+    expect(container.querySelector(".transcript-event.streaming header")).toBeNull();
+    expect(container.textContent).toContain("partial reply");
   });
 });
 
@@ -259,6 +280,73 @@ describe("scroll follow policy", () => {
     expect(isNearBottom(700, 1000, 300)).toBe(true);
     expect(isNearBottom(600, 1000, 300)).toBe(false);
     expect(isNearBottom(0, 200, 200)).toBe(true);
+  });
+});
+
+// —— chat 模式聊天化投影：过滤终端噪音，保留中断态（frontend-spec §3.1）——
+describe("chat mode projection", () => {
+  it("drops routine lifecycle and pty output while keeping the conversation flow", () => {
+    const items = projectTranscriptEvents([
+      makeEvent({ id: "e1", kind: "lifecycle", source: "session-manager", raw: "Session running.", metadata: { status: "running" } }),
+      makeEvent({ id: "e2", kind: "user_message", source: "composer", raw: "hello", metadata: { turnId: "turn-1" } }),
+      makeEvent({ id: "e3", kind: "pty_output", source: "pty", raw: "(node:1) Warning: stderr noise\r\n" }),
+      makeEvent({ id: "e4", kind: "assistant_message", raw: "hi there", metadata: { turnId: "turn-1" } }),
+      makeEvent({ id: "e5", kind: "lifecycle", source: "session-manager", raw: "Turn completed.", metadata: { turnId: "turn-1", status: "turn-completed" } })
+    ], { chatMode: true });
+    expect(items.map((item) => item.event.kind)).toEqual(["user_message", "assistant_message"]);
+  });
+
+  it("keeps interrupted lifecycle, errors and approvals in chat mode", () => {
+    const items = projectTranscriptEvents([
+      makeEvent({ id: "e1", kind: "user_message", source: "composer", raw: "do it", metadata: { turnId: "turn-1" } }),
+      makeEvent({ id: "e2", kind: "approval_request", raw: "command: npm install", metadata: { approvalId: "app-1", turnId: "turn-1" } }),
+      makeEvent({ id: "e3", kind: "lifecycle", source: "session-manager", raw: "Turn cancelled.", metadata: { turnId: "turn-1", status: "turn-cancelled" } }),
+      makeEvent({ id: "e4", kind: "error", source: "session-manager", raw: "spawn failed", metadata: { code: "SESSION_START_FAILED" } })
+    ], { chatMode: true });
+    expect(items.map((item) => item.event.kind)).toEqual(["user_message", "approval_request", "lifecycle", "error"]);
+  });
+
+  it("drops non-interrupted lifecycle events but keeps pty_output in non-chat mode", () => {
+    // 常规 lifecycle（Session starting/running/stopped 等）现在统一走顶部 SessionLifecycleStatusBar，
+    // 不再当作消息条目渲染；PTY 输出仍是终端模式可见内容。
+    const items = projectTranscriptEvents([
+      makeEvent({ id: "e1", kind: "lifecycle", source: "session-manager", raw: "Session running.", metadata: { status: "running" } }),
+      makeEvent({ id: "e2", kind: "pty_output", source: "pty", raw: "raw bytes\r\n" })
+    ]);
+    expect(items.map((item) => item.event.kind)).toEqual(["pty_output"]);
+  });
+});
+
+// —— 生成中指示器：无流式增量时填补等待空白，耗时每秒更新 ——
+describe("turn pending indicator", () => {
+  let container: HTMLDivElement;
+  let root: Root;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+  });
+
+  afterEach(() => {
+    act(() => root.unmount());
+    container.remove();
+    vi.useRealTimers();
+  });
+
+  it("shows the generating hint and ticks the elapsed seconds", () => {
+    act(() => root.render(<I18nProvider><TurnPendingIndicator /></I18nProvider>));
+    expect(container.querySelector(".turn-pending-text")?.textContent).toContain("Generating");
+    expect(container.querySelector(".transcript-event.turn-pending time")?.textContent).toBe("0s");
+    act(() => { vi.advanceTimersByTime(3_000); });
+    expect(container.querySelector(".transcript-event.turn-pending time")?.textContent).toBe("3s");
+  });
+
+  it("hides the assistant label in chat mode while keeping the elapsed time", () => {
+    act(() => root.render(<I18nProvider><TurnPendingIndicator chatMode /></I18nProvider>));
+    expect(container.querySelector(".transcript-event.turn-pending header span")).toBeNull();
+    expect(container.querySelector(".transcript-event.turn-pending time")?.textContent).toBe("0s");
   });
 });
 

@@ -1,5 +1,7 @@
 import {
   Archive,
+  ArrowUp,
+  AtSign,
   Bell,
   BookOpen,
   Bot,
@@ -19,6 +21,7 @@ import {
   Globe2,
   Grid2X2,
   Home,
+  Infinity as InfinityIcon,
   Languages,
   LayoutList,
   Menu,
@@ -35,6 +38,7 @@ import {
   Search,
   Send,
   Settings,
+  Shrink,
   ShieldCheck,
   ShoppingBag,
   Sparkles,
@@ -52,9 +56,9 @@ import {
 import type { SVGProps } from "react";
 
 export type IconName =
-  | "add" | "archive" | "bell" | "book" | "bot" | "check" | "chevron" | "chevron-down"
-  | "close" | "command" | "file" | "file-code" | "filter" | "folder" | "git" | "globe"
-  | "grid" | "help" | "home" | "info" | "languages" | "list" | "menu" | "message" | "mic"
+  | "add" | "archive" | "arrow-up" | "at" | "bell" | "book" | "bot" | "check" | "chevron" | "chevron-down"
+  | "close" | "command" | "compress" | "file" | "file-code" | "filter" | "folder" | "git" | "globe"
+  | "grid" | "help" | "home" | "infinity" | "info" | "languages" | "list" | "menu" | "message" | "mic"
   | "more" | "panel" | "panel-left" | "panel-left-close" | "panel-right" | "panel-right-close"
   | "play" | "refresh" | "search" | "send" | "settings" | "shield" | "shopping" | "sparkles"
   | "star" | "stop" | "target" | "terminal" | "trash" | "user" | "wand" | "warning" | "zap";
@@ -62,6 +66,8 @@ export type IconName =
 const icons: Record<IconName, LucideIcon> = {
   add: Plus,
   archive: Archive,
+  "arrow-up": ArrowUp,
+  at: AtSign,
   bell: Bell,
   book: BookOpen,
   bot: Bot,
@@ -70,6 +76,7 @@ const icons: Record<IconName, LucideIcon> = {
   "chevron-down": ChevronDown,
   close: X,
   command: Command,
+  compress: Shrink,
   file: File,
   "file-code": FileCode2,
   filter: Filter,
@@ -79,6 +86,7 @@ const icons: Record<IconName, LucideIcon> = {
   grid: Grid2X2,
   help: CircleHelp,
   home: Home,
+  infinity: InfinityIcon,
   info: CircleInfo,
   languages: Languages,
   list: LayoutList,

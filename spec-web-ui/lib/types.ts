@@ -1,28 +1,33 @@
-export type CatalogAssetType = "rule" | "spec_template" | "agent_role" | "agent_team" | "skill";
-export type CatalogDirection = "backend" | "frontend" | "ui" | "fullstack";
-export type CatalogCategory = "product" | "operations" | "testing" | "deployment" | "frontend" | "backend";
-export type ProjectType = "backend" | "frontend" | "mixed";
+import type {
+  BundlePlan,
+  ExportFile,
+  GeneratedExportFile,
+  SpecosBundleManifest
+} from "@specos/bundler";
+import type {
+  CatalogAsset,
+  CatalogCategory,
+  CatalogDirection,
+  CatalogFilterOptions,
+  CatalogFilters,
+  CatalogAssetType,
+  PresetBundle,
+  ProjectType
+} from "@specos/catalog";
 
-export interface CatalogAsset {
-  id: string;
-  type: CatalogAssetType;
-  title: string;
-  summary: string;
-  summaryZh?: string;
-  direction: CatalogDirection;
-  categories?: CatalogCategory[];
-  stacks: string[];
-  tags: string[];
-  appliesTo: string[];
-  dependsOn: string[];
-  conflictsWith: string[];
-  sourcePath: string;
-  files: string[];
-  contentFiles?: Record<string, string>;
-  version: string;
-  draftHints?: string[];
-  sampleOutput?: string;
-}
+export type {
+  CatalogAsset,
+  CatalogAssetType,
+  CatalogCategory,
+  CatalogDirection,
+  CatalogFilterOptions,
+  CatalogFilters,
+  ExportFile,
+  GeneratedExportFile,
+  PresetBundle,
+  ProjectType,
+  SpecosBundleManifest
+};
 
 export interface SavedCompareSet {
   id: string;
@@ -47,31 +52,6 @@ export interface DiscoverPreferences {
   favoriteEntries: FavoriteEntry[];
   compareSets: SavedCompareSet[];
   presetDisplays: PresetDisplayEntry[];
-}
-
-export interface PresetBundle {
-  id: string;
-  title: string;
-  summary: string;
-  assetIds: string[];
-  projectTypes: ProjectType[];
-  featured?: boolean;
-}
-
-export interface CatalogFilters {
-  query?: string;
-  categories?: CatalogCategory[];
-  types?: CatalogAssetType[];
-  directions?: CatalogDirection[];
-  stacks?: string[];
-  tags?: string[];
-}
-
-export interface CatalogFilterOptions {
-  directions: CatalogDirection[];
-  stacks: string[];
-  tags: string[];
-  types: CatalogAssetType[];
 }
 
 export interface ProjectAssetSelection {
@@ -112,49 +92,6 @@ export interface ProjectWorkspace {
 export interface DraftAdvice {
   missingSections: string[];
   ruleHints: string[];
-}
-
-export interface ExportFile {
-  sourcePath: string;
-  targetPath: string;
-}
-
-export type BundleProjectType = "backend" | "frontend" | "mixed" | "fullstack" | "spec-only";
-
-export interface SpecosBundleInstall {
-  target: string;
-  from: string;
-}
-
-export interface SpecosBundleManifest {
-  id: string;
-  name: string;
-  version: string;
-  specosVersion: string;
-  projectTypes: BundleProjectType[];
-  installs: SpecosBundleInstall[];
-  workflow: {
-    default: string;
-    available: string[];
-  };
-  entrypoints: {
-    draftTemplate: string;
-    designTemplate: string;
-    specTemplate: string;
-    workflowId: string;
-  };
-  capabilities: {
-    refineSpec: boolean;
-    generateTestPlan: boolean;
-    runApiTests: boolean;
-    runUiTests: boolean;
-    normalizeResults: boolean;
-  };
-}
-
-export interface GeneratedExportFile {
-  targetPath: string;
-  content: string;
 }
 
 export interface ExportFileGroup {
@@ -209,12 +146,4 @@ export interface ExportTreeNode {
   file?: ExportFile;
 }
 
-export interface ExportBundle {
-  generatedAt: string;
-  summary: string;
-  manifestYaml: string;
-  files: ExportFile[];
-  bundleManifest: SpecosBundleManifest;
-  bundleManifestYaml: string;
-  bundleFiles: GeneratedExportFile[];
-}
+export type ExportBundle = BundlePlan;

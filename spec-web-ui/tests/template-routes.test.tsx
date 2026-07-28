@@ -2,7 +2,7 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/catalog", () => ({
+vi.mock("@/features/catalog/server", () => ({
   filterCatalogAssets: (
     assets: Array<{ title: string; summary: string; summaryZh?: string; tags: string[]; categories?: string[] }>,
     filters: { query?: string; categories?: string[] }
@@ -66,10 +66,10 @@ vi.mock("@/lib/catalog", () => ({
       version: "1.0.0"
     },
     {
-      id: "skill-tool-config-ui",
+      id: "skill-spec-to-test",
       type: "skill",
-      title: "Tool Config UI Skill",
-      summary: "Patterns for building safe configuration surfaces.",
+      title: "Spec to Test Skill",
+      summary: "Independent Test Specs from approved Feature Specs.",
       summaryZh: "用于构建安全配置界面的交互模式。",
       direction: "frontend",
       categories: ["frontend", "operations"],
@@ -78,8 +78,8 @@ vi.mock("@/lib/catalog", () => ({
       appliesTo: ["frontend"],
       dependsOn: [],
       conflictsWith: [],
-      sourcePath: ".skills/tool-config-ui/SKILL.md",
-      files: [".skills/tool-config-ui/SKILL.md"],
+      sourcePath: "skills/developer/spec-to-test/SKILL.md",
+      files: ["skills/developer/spec-to-test/SKILL.md"],
       version: "1.0.0"
     },
     {
@@ -130,7 +130,7 @@ describe("template library routes", () => {
 
     expect(screen.getByRole("heading", { name: "Skill 技能" })).toBeInTheDocument();
     expect(screen.getByRole("searchbox", { name: "搜索 Skill 技能" })).toBeInTheDocument();
-    expect(screen.getByText("Tool Config UI Skill")).toBeInTheDocument();
+    expect(screen.getByText("Spec to Test Skill")).toBeInTheDocument();
     expect(screen.getByText("用于构建安全配置界面的交互模式。")).toBeInTheDocument();
     expect(screen.queryByText("Spec Editor Agent")).not.toBeInTheDocument();
   });
@@ -138,7 +138,7 @@ describe("template library routes", () => {
   it("filters skills by category on the dedicated route", async () => {
     render(await SkillTemplatesPage({ searchParams: Promise.resolve({ category: "operations" }) }));
 
-    expect(screen.getByText("Tool Config UI Skill")).toBeInTheDocument();
+    expect(screen.getByText("Spec to Test Skill")).toBeInTheDocument();
     expect(screen.queryByText("Governance Team Pack")).not.toBeInTheDocument();
   });
 

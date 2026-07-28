@@ -12,7 +12,8 @@ import type { AppStateV3, TranscriptEvent, TranscriptPage } from "../shared/type
 import { createApplication } from "./application.js";
 import { createServer } from "./http-server.js";
 import { createProfileAdapterRegistry } from "./profile-adapters.js";
-import type { ApplicationDependencies, ParsedTurnEvent, PtyProcess, PtyRuntime, TurnConfig, TurnParseResult } from "./ports.js";
+import { PersistentRuntimeUnavailableError } from "./ports.js";
+import type { ApplicationDependencies, ParsedTurnEvent, PersistentChatRuntime, PersistentChatTurnRequest, PtyProcess, PtyRuntime, TurnConfig, TurnParseResult } from "./ports.js";
 
 const emptyState: AppStateV3 = { workspaces: [], profiles: [], sessions: [] };
 
@@ -113,7 +114,8 @@ function createChatDependencies(overrides: Partial<ApplicationDependencies> = {}
     supportsStructuredRecognition: adapterId === "codex",
     supportsHeadlessTurns: adapterId === "codex",
     supportsResume: adapterId === "codex",
-    supportsApproval: false
+    supportsApproval: false,
+    supportsPromptEnhancement: adapterId === "codex"
   });
   const dependencies: ApplicationDependencies = {
     stateRepository: { load: vi.fn(async () => state), save: vi.fn(async () => undefined), drain: vi.fn(async () => undefined) },
@@ -384,6 +386,87 @@ describe("chat API wiring", () => {
     }
   });
 
+  // streaming-spec FR-1/FR-2/§3.5：常驻运行时接管轮次，turn-delta 帧经 events 通道广播，选项经 normalizeOption 翻译
+  it("routes codex turns through the persistent runtime and broadcasts turn-delta frames", async () => {
+    const runtimeTurns: { sessionId: string; turn: PersistentChatTurnRequest }[] = [];
+    const fakeRuntime: PersistentChatRuntime = {
+      runTurn(sessionId, turn, handlers) {
+        runtimeTurns.push({ sessionId, turn });
+        return {
+          result: (async () => {
+            handlers.onDelta("Hel");
+            handlers.onDelta("lo!");
+            await handlers.onEvent({ kind: "assistant_message", source: "profile-adapter", raw: "Hello!" });
+            return { resumeToken: "thread-live" };
+          })(),
+          kill() {}
+        };
+      },
+      release() {},
+      async shutdown() {}
+    };
+    const { dependencies, state, transcripts } = createChatDependencies({ persistentChatRuntime: fakeRuntime });
+    const { server, port } = await startServer(dependencies);
+    try {
+      const created = await post(port, "/api/sessions", { name: "Chat", workspaceId: "workspace-1", profileId: "profile-chat", launchConfig: { permission: "never", mode: "default", model: "model-a" } });
+      const sessionId = created.json.id as string;
+
+      const frames: any[] = [];
+      const socket = new WebSocket(`ws://127.0.0.1:${port}/ws?sessionId=${sessionId}&channel=events`);
+      socket.on("message", (data) => frames.push(JSON.parse(String(data))));
+      await new Promise<void>((resolve, reject) => { socket.once("open", () => resolve()); socket.once("error", reject); });
+      await waitFor(() => frames.some((frame) => frame.type === "subscription-ready"));
+
+      const sent = await post(port, `/api/sessions/${sessionId}/messages`, { clientMessageId: "client-1", content: "hello", startIfStopped: true, confirmedStart: true });
+      expect(sent.status).toBe(202);
+      await waitFor(() => turnEnded(transcripts.get(sessionId), sent.json.turnId));
+      await waitFor(() => frames.some((frame) => frame.type === "turn-status" && frame.status === "completed"));
+
+      // 选项翻译："default" → null，其余透传；cwd/command 来自 workspace/profile
+      expect(runtimeTurns).toHaveLength(1);
+      expect(runtimeTurns[0].sessionId).toBe(sessionId);
+      expect(runtimeTurns[0].turn).toMatchObject({ prompt: "hello", cwd: fixtureDir, command: "fake-chat", model: "model-a", sandboxMode: null, approvalPolicy: "never", resumeToken: undefined });
+
+      const deltas = frames.filter((frame) => frame.type === "turn-delta" && frame.turnId === sent.json.turnId);
+      expect(deltas.map((frame) => frame.delta)).toEqual(["Hel", "lo!"]);
+      // 常驻路径接管：不走 spawn 假 CLI，事件来自运行时回调
+      const events = transcripts.get(sessionId)!;
+      expect(events.some((event) => event.kind === "assistant_message" && event.raw === "Hello!")).toBe(true);
+      expect(events.some((event) => event.raw === "assistant says hi")).toBe(false);
+      expect(state.sessions.find((item) => item.id === sessionId)?.chatContext?.resumeToken).toBe("thread-live");
+      socket.close();
+    } finally {
+      await server.close();
+    }
+  });
+
+  // streaming-spec §3.4：常驻不可用 → 同轮回落 spawn 冷路径，对外行为不变
+  it("falls back to the spawn path in the same turn when the persistent runtime is unavailable", async () => {
+    const fakeRuntime: PersistentChatRuntime = {
+      runTurn() {
+        throw new PersistentRuntimeUnavailableError("spawn failed");
+      },
+      release() {},
+      async shutdown() {}
+    };
+    const { dependencies, state, transcripts } = createChatDependencies({ persistentChatRuntime: fakeRuntime });
+    const { server, port } = await startServer(dependencies);
+    try {
+      const created = await post(port, "/api/sessions", { name: "Chat", workspaceId: "workspace-1", profileId: "profile-chat" });
+      const sessionId = created.json.id as string;
+      const sent = await post(port, `/api/sessions/${sessionId}/messages`, { clientMessageId: "client-1", content: "hello", startIfStopped: true, confirmedStart: true });
+      expect(sent.status).toBe(202);
+      await waitFor(() => turnEnded(transcripts.get(sessionId), sent.json.turnId));
+
+      const events = transcripts.get(sessionId)!;
+      expect(events.some((event) => event.kind === "assistant_message" && event.raw === "assistant says hi")).toBe(true);
+      expect(events.find((event) => event.metadata?.status === "turn-completed")?.metadata?.turnId).toBe(sent.json.turnId);
+      expect(state.sessions.find((item) => item.id === sessionId)?.chatContext?.resumeToken).toBe("thread-1");
+    } finally {
+      await server.close();
+    }
+  });
+
   it("blocks turn cancellation in readonly mode", async () => {
     const { dependencies } = createChatDependencies();
     dependencies.policy = { readonly: true, processEnvironment: {} };
@@ -440,9 +523,38 @@ describe("chat API wiring", () => {
       expect(downgraded.status).toBe(201);
       expect(downgraded.json.interactionMode).toBe("terminal");
       expect(downgraded.json.interactionModeDowngraded).toBe(true);
+      expect(downgraded.json.downgradeReason).toBe("adapter-unsupported");
       expect(state.sessions.find((item) => item.id === downgraded.json.id)?.interactionMode).toBe("terminal");
     } finally {
       await server.close();
+    }
+  });
+
+  it("surfaces a precise downgradeReason for command-missing and version-out-of-range (issue-009 follow-up)", async () => {
+    // command-missing：PATH 上不存在的 CLI
+    const missing = createChatDependencies({ profileAdapters: createProfileAdapterRegistry() });
+    missing.state.profiles.push({ id: "profile-missing", name: "Missing CLI", command: "this-cli-does-not-exist-xyz", args: [], adapterId: "codex", createdAt: "2026-01-01T00:00:00Z" });
+    const missingServer = await startServer(missing.dependencies);
+    try {
+      const res = await post(missingServer.port, "/api/sessions", { name: "Missing", workspaceId: "workspace-1", profileId: "profile-missing", interactionMode: "chat" });
+      expect(res.status).toBe(201);
+      expect(res.json.interactionModeDowngraded).toBe(true);
+      expect(res.json.downgradeReason).toBe("command-missing");
+    } finally {
+      await missingServer.server.close();
+    }
+
+    // version-out-of-range：codex 探测版本 0.1.0，低于默认 >=0.145.0
+    const oor = createChatDependencies({ profileAdapters: createProfileAdapterRegistry() });
+    oor.state.profiles.push({ id: "profile-old-codex", name: "Old Codex", command: process.execPath, args: ["-e", "process.stdout.write('0.1.0')"], adapterId: "codex", createdAt: "2026-01-01T00:00:00Z" });
+    const oorServer = await startServer(oor.dependencies);
+    try {
+      const res = await post(oorServer.port, "/api/sessions", { name: "Old", workspaceId: "workspace-1", profileId: "profile-old-codex", interactionMode: "chat" });
+      expect(res.status).toBe(201);
+      expect(res.json.interactionModeDowngraded).toBe(true);
+      expect(res.json.downgradeReason).toBe("version-out-of-range");
+    } finally {
+      await oorServer.server.close();
     }
   });
 });
@@ -461,7 +573,8 @@ describe("approval endpoint (api-spec §2.5)", () => {
       supportsStructuredRecognition: true,
       supportsHeadlessTurns: true,
       supportsResume: false,
-      supportsApproval: true
+      supportsApproval: true,
+      supportsPromptEnhancement: true
     };
     base.dependencies.profileAdapters = {
       availableAdapterIds: ["codex", "generic"],
@@ -696,6 +809,83 @@ describe("global session concurrency limit (D-6)", () => {
       }
     } finally {
       for (const socket of sockets) socket.close();
+      await server.close();
+    }
+  });
+});
+
+// terminal 原生 resume 接线：stop 归因捕获 token → 再次 start 传给 resolveLaunch → resume 启动失败清除 token
+describe("terminal native resume wiring", () => {
+  // 可控假 PTY：stop → kill 以 exitCode 0 收尾；测试可主动以非 0 exitCode 触发 crash（error 态）
+  function createControllablePtyRuntime() {
+    const processes: Array<{ crash: (exitCode: number) => void }> = [];
+    const runtime: PtyRuntime = {
+      spawn: () => {
+        let exitListener: ((event: { exitCode: number }) => void) | undefined;
+        processes.push({ crash: (exitCode) => exitListener?.({ exitCode }) });
+        const process: PtyProcess = {
+          write: () => undefined,
+          resize: () => undefined,
+          kill: () => exitListener?.({ exitCode: 0 }),
+          onData: () => undefined,
+          onExit: (listener) => { exitListener = listener; }
+        };
+        return process;
+      },
+      shutdown: async () => undefined
+    };
+    return { runtime, processes };
+  }
+
+  it("captures the token on stop, resumes on the next start, and clears it after a failed resume", async () => {
+    const pty = createControllablePtyRuntime();
+    const discovery = vi.fn(async (_input: { adapterId: string; cwd: string; sinceMs: number; env?: Readonly<Record<string, string | undefined>> }): Promise<string | undefined> => "cli-thread-1");
+    const { dependencies, state, transcripts } = createChatDependencies({ ptyRuntime: pty.runtime, terminalResumeDiscovery: discovery });
+    // 记录 resolveLaunch 收到的 config（默认 fake 不透传第二参数），并把 resumeToken 翻译进 argv
+    const launchConfigs: Array<{ resumeToken?: string }> = [];
+    const baseResolveLaunch = dependencies.profileAdapters.resolveLaunch!;
+    dependencies.profileAdapters = {
+      ...dependencies.profileAdapters,
+      resolveLaunch: async (profile, config) => {
+        launchConfigs.push({ ...config });
+        const launch = await baseResolveLaunch(profile, config);
+        return config.resumeToken ? { ...launch, args: ["resume", config.resumeToken, ...launch.args] } : launch;
+      }
+    };
+    const { server, port } = await startServer(dependencies);
+    try {
+      const created = await post(port, "/api/sessions", { name: "Term Resume", workspaceId: "workspace-1", profileId: "profile-chat", interactionMode: "terminal" });
+      expect(created.status).toBe(201);
+      const sessionId = created.json.id as string;
+      const session = () => state.sessions.find((item) => item.id === sessionId)!;
+
+      // 创建 + 首次启动：resolveLaunch 均不带 resumeToken（创建时也会解析 launch 以获取 capabilities）
+      expect((await post(port, `/api/sessions/${sessionId}/start`, { confirmed: true })).status).toBe(200);
+      expect(launchConfigs.length).toBeGreaterThan(0);
+      expect(launchConfigs.every((config) => config.resumeToken === undefined)).toBe(true);
+
+      // stop → stopped 分支归因捕获：discovery 收到 adapterId/cwd/sinceMs，命中写 terminalContext
+      expect((await post(port, `/api/sessions/${sessionId}/stop`, {})).status).toBe(200);
+      await waitFor(() => session().terminalContext?.resumeToken === "cli-thread-1");
+      expect(discovery).toHaveBeenCalledTimes(1);
+      expect(discovery.mock.calls[0][0]).toMatchObject({ adapterId: "codex", cwd: fixtureDir });
+      expect(typeof discovery.mock.calls[0][0].sinceMs).toBe("number");
+      // API 层可见（serializeSession 透传 terminalContext）
+      const listed = await get(port, "/api/state");
+      expect(listed.json.sessions.find((item: any) => item.id === sessionId).terminalContext).toEqual({ resumeToken: "cli-thread-1" });
+
+      // 再次 start：resolveLaunch 收到 resumeToken 并翻译进 argv
+      expect((await post(port, `/api/sessions/${sessionId}/start`, { confirmed: true })).status).toBe(200);
+      await waitFor(() => session().runtimeStatus === "running");
+      expect(launchConfigs.at(-1)?.resumeToken).toBe("cli-thread-1");
+
+      // resume 启动 crash（非 0 退出且非主动终止）→ error 分支清除 token + lifecycle 事件
+      pty.processes.at(-1)!.crash(1);
+      await waitFor(() => session().runtimeStatus === "error");
+      expect(session().terminalContext?.resumeToken).toBeUndefined();
+      expect((transcripts.get(sessionId) ?? []).some((event) => event.kind === "lifecycle" && event.metadata?.resume === "cleared")).toBe(true);
+      expect(discovery).toHaveBeenCalledTimes(1);
+    } finally {
       await server.close();
     }
   });

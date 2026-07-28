@@ -194,8 +194,8 @@ export const localeCopy = {
               { text: "project/" },
               { text: "|-- README.md", note: "入口说明" },
               { text: "|-- design/", note: "稳定设计真相" },
-              { text: "|-- current/", note: "六步闭环进度" },
-              { text: "|-- docs/workflow.md", note: "六步命令链路" },
+              { text: "|-- current/", note: "双轨交付进度" },
+              { text: "|-- docs/workflow.md", note: "版本化交付链路" },
               { text: "|-- specs/", note: "issue 索引 + feature" },
               { text: "|   |-- issues/README.md", note: "/to-issues 产出" },
               { text: "|   `-- RP-001-feature/" },
@@ -204,18 +204,19 @@ export const localeCopy = {
               { text: "|       |-- review.md", note: "/review-it 产出" },
               { text: "|       `-- changelog.md", note: "/ship-it 产出" },
               { text: "|-- implementation/", note: "变更面记录" },
+              { text: "|-- tests/specs/", note: "/spec-to-test 产出" },
               { text: "`-- .agents/", note: "轻量 agent 上下文" }
             ],
             loadLabel: "加载顺序",
             loadPath: ["README", "current", "design", "specs/issues", "specs/RP-xxx"],
-            loadNote: "在 feature 加载顺序之外多一层 issue 索引，定位当前在六步闭环里的哪一步。",
+            loadNote: "在 feature 加载顺序之外增加 issue 与 Test Spec 索引，定位实现轨和验证轨的当前状态。",
             purposeLabel: "作用",
-            purposeValue: "把 /prd -> /prd-to-spec -> /to-issues -> /goal -> /review-it -> /ship-it 六步闭环当成标准交付链路，逐个 issue 推进。",
+            purposeValue: "先确认版本化 Feature Spec，再并行推进实现 Issue 与由 /spec-to-test 生成的独立验证 Issue，最后汇合到 review 和 ship。",
             structureLabel: "结构重点",
             structure: [
-              "specs/issues/ 维护 /to-issues 拆出的 issue 索引与依赖，每个 issue 控制在一次 /goal 能完成的范围。",
+              "specs/issues/ 分开维护实现与验证 issue 的索引和依赖，每个 issue 保持小而可独立审查。",
               "review、ship 环节仍是 feature 内单文件（review.md、changelog.md），不引入 EnterpriseSpec 的多阶段 reviews/ 目录。",
-              "docs/workflow.md 把六步命令链路写进项目内，作为团队协作的标准操作说明。"
+              "docs/workflow.md 把 Feature Spec 版本、Test Spec 版本和双轨汇合关卡写成团队标准操作说明。"
             ],
             fitLabel: "适用场景",
             fit: [
@@ -506,8 +507,8 @@ export const localeCopy = {
               { text: "project/" },
               { text: "|-- README.md", note: "entry context" },
               { text: "|-- design/", note: "stable system truth" },
-              { text: "|-- current/", note: "six-step loop status" },
-              { text: "|-- docs/workflow.md", note: "the six-step command chain" },
+              { text: "|-- current/", note: "dual-track delivery status" },
+              { text: "|-- docs/workflow.md", note: "versioned delivery chain" },
               { text: "|-- specs/", note: "issue index + feature" },
               { text: "|   |-- issues/README.md", note: "produced by /to-issues" },
               { text: "|   `-- RP-001-feature/" },
@@ -516,19 +517,20 @@ export const localeCopy = {
               { text: "|       |-- review.md", note: "produced by /review-it" },
               { text: "|       `-- changelog.md", note: "produced by /ship-it" },
               { text: "|-- implementation/", note: "changed-surface record" },
+              { text: "|-- tests/specs/", note: "produced by /spec-to-test" },
               { text: "`-- .agents/", note: "small shared agent context" }
             ],
             loadLabel: "Loading order",
             loadPath: ["README", "current", "design", "specs/issues", "specs/RP-xxx"],
-            loadNote: "Adds one issue-index layer on top of the feature track so an agent can tell which step of the loop it's on.",
+            loadNote: "Adds Issue and Test Spec indexes so an agent can resolve the current implementation and verification state.",
             purposeLabel: "Purpose",
             purposeValue:
-              "Treat the six-step loop (/prd -> /prd-to-spec -> /to-issues -> /goal -> /review-it -> /ship-it) as the standard delivery chain, one issue at a time.",
+              "Approve a versioned Feature Spec, advance implementation and independent verification in parallel, then converge at review and ship.",
             structureLabel: "Structure focus",
             structure: [
-              "specs/issues/ tracks the issue index and dependencies produced by /to-issues; each issue stays small enough for one /goal run.",
+              "specs/issues/ keeps implementation and verification issue indexes separate; each issue stays small and independently reviewable.",
               "Review and ship stay single-file per feature (review.md, changelog.md), without EnterpriseSpec's multi-stage reviews/ tree.",
-              "docs/workflow.md writes the six-step command chain into the project as a standing operating note."
+              "docs/workflow.md records Feature Spec versions, Test Spec versions, and the dual-track convergence gates."
             ],
             fitLabel: "Best for",
             fit: [

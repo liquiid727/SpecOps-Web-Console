@@ -8,7 +8,7 @@ vi.mock("next/headers", () => ({
   })
 }));
 
-vi.mock("@/lib/catalog", () => ({
+vi.mock("@/features/catalog/server", () => ({
   loadCatalogAssets: async () => [
     {
       id: "rule-backend-governance",

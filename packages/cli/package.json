@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@specos/core": "^0.1.0",
+    "@specos/installer": "^0.1.0",
     "@specos/templates": "^0.1.0",
     "yaml": "^2.8.1"
   },

@@ -1,18 +1,19 @@
 # Issues
 
-Index of issues produced by `/to-issues`, one entry per issue.
+Index of Issues produced by `/to-issues`, one entry per implementation or verification Issue.
 
-Each entry should stay small enough for a single `/goal` run to finish end to end: 1-3 files changed, explicit acceptance criteria.
+Each entry should stay small, explicit, and independently reviewable.
 
-| Issue | Spec ID | Status | Depends on |
-| --- | --- | --- | --- |
-| | | open / in-progress / in-review / shipped | |
+| Issue | Track | Source ID | Source Version | Status | Depends on |
+| --- | --- | --- | --- | --- | --- |
+| | implementation / verification | | | open / in-progress / in-review / shipped | |
 
-Status transitions map to the six-step loop:
+Status transitions map to the dual-track loop:
 
 1. `/prd` -> spec-draft accepted
-2. `/prd-to-spec` (optional) -> design updated
-3. `/to-issues` -> issue added to this table as `open`
-4. `/goal` -> issue moves to `in-progress`, then to `in-review`
-5. `/review-it` -> issue stays `in-review` until findings are resolved
-6. `/ship-it` -> issue moves to `shipped` and is closed
+2. `/prd-to-spec` -> versioned Feature Spec approved
+3. `/to-issues` -> implementation Issues added as `open`
+4. `/spec-to-test` -> version-bound Test Spec approved; `/to-issues` adds verification Issues
+5. The host agent or `/loop-it` executes both tracks and collects evidence
+6. `/review-it` -> Issue stays `in-review` until findings and blocking evidence gaps are resolved
+7. `/ship-it` -> Issue moves to `shipped` and is closed

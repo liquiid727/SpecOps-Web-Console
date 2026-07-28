@@ -8,13 +8,55 @@ export interface TranscriptDisplayItem {
   truncated: boolean;
 }
 
+/** 轮次中断态（turn-failed/turn-cancelled）：chat 模式下唯一保留的 lifecycle 状态 */
+export const INTERRUPTED_LIFECYCLE_STATUSES = new Set(["turn-failed", "turn-cancelled"]);
+
+/** 会话运行态（top-level session lifecycle，非 turn 级别）。orchestrator.ts 实际写入：starting / running / stopped */
+export const SESSION_LIFECYCLE_STATUSES = new Set(["starting", "running", "stopped", "turn-failed"]);
+
+/** 会话运行态归一化：用于顶部状态条显示 */
+export type SessionLifecycleStatus = "idle" | "starting" | "running" | "stopped" | "failed";
+
+export function lifecycleToSessionStatus(status: string | undefined, fallback: SessionLifecycleStatus): SessionLifecycleStatus {
+  switch (status) {
+    case "starting": return "starting";
+    case "running": return "running";
+    case "stopped": return "stopped";
+    case "turn-failed": return "failed";
+    default: return fallback;
+  }
+}
+
+/** 从事件流派生当前会话运行态（顶部状态条用）：取最新 session-* lifecycle，否则按 fallback（runtimeStatus） */
+export function deriveSessionLifecycleStatus(events: TranscriptEvent[], fallback: SessionLifecycleStatus): SessionLifecycleStatus {
+  let last: SessionLifecycleStatus = fallback;
+  let hasError = false;
+  for (const event of events) {
+    if (event.kind === "error") { hasError = true; continue; }
+    if (event.kind !== "lifecycle") continue;
+    const status = typeof event.metadata?.status === "string" ? event.metadata.status : "";
+    if (SESSION_LIFECYCLE_STATUSES.has(status)) last = lifecycleToSessionStatus(status, last);
+  }
+  // 事件流里存在 error 事件（CLI 崩溃/启动失败）→ 失败态优先（runtime-orchestrator-spec §5）
+  if (hasError) return "failed";
+  return last;
+}
+
+export interface ProjectTranscriptOptions {
+  /** chat 模式：过滤终端噪音——PTY 原始输出与所有 lifecycle 不入聊天流（lifecycle 走顶部状态条） */
+  chatMode?: boolean;
+}
+
 /**
  * Build the readable session projection without changing the raw transcript.
  * PTY chunks are transport data, so adjacent chunks are joined before escape
  * sequences are removed. This also handles an ANSI sequence split at a chunk
  * boundary.
+ *
+ * lifecycle 事件：chat 模式与非 chat 模式都不入消息流（非中断态），仅保留给顶部状态条读；
+ * 中断态（turn-failed/turn-cancelled）始终保留在消息流便于重试。
  */
-export function projectTranscriptEvents(events: TranscriptEvent[]): TranscriptDisplayItem[] {
+export function projectTranscriptEvents(events: TranscriptEvent[], options: ProjectTranscriptOptions = {}): TranscriptDisplayItem[] {
   const projected: TranscriptDisplayItem[] = [];
   let ptyGroup: TranscriptEvent[] = [];
 
@@ -30,6 +72,12 @@ export function projectTranscriptEvents(events: TranscriptEvent[]): TranscriptDi
   }
 
   for (const event of events) {
+    if (options.chatMode && isChatNoise(event)) continue;
+    // 非中断态 lifecycle 永远不入消息流——状态可视化走顶部 SessionLifecycleStatusBar
+    if (event.kind === "lifecycle") {
+      const status = typeof event.metadata?.status === "string" ? event.metadata.status : "";
+      if (!INTERRUPTED_LIFECYCLE_STATUSES.has(status)) continue;
+    }
     if (event.kind === "pty_output") {
       ptyGroup.push(event);
       continue;
@@ -47,6 +95,14 @@ export function projectTranscriptEvents(events: TranscriptEvent[]): TranscriptDi
   }
   flushPtyGroup();
   return projected;
+}
+
+/** chat 模式的终端噪音判定：PTY 原始输出与常规 lifecycle（Session starting/running/stopped、Turn completed 等） */
+function isChatNoise(event: TranscriptEvent) {
+  if (event.kind === "pty_output") return true;
+  if (event.kind !== "lifecycle") return false;
+  const status = typeof event.metadata?.status === "string" ? event.metadata.status : "";
+  return !INTERRUPTED_LIFECYCLE_STATUSES.has(status);
 }
 
 function sameTurn(left: TranscriptEvent, right: TranscriptEvent) {

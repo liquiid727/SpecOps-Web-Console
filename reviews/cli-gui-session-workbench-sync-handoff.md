@@ -1,21 +1,21 @@
 # CLI GUI Session Workbench Sync Handoff
 
 ## Sync Handoff
-source_spec_or_rule: cli-gui/doc/cli-gui-design.md
+source_spec_or_rule: cli-gui/doc/design/cli-gui-design.md
 changed_surface:
   - cli-gui/README.md
   - cli-gui/client/main.tsx
   - cli-gui/client/styles.css
   - cli-gui/client/main.test.tsx
   - cli-gui/vitest.config.ts
-  - cli-gui/doc/cli-gui-design.md
+  - cli-gui/doc/design/cli-gui-design.md
 neighbor_assets_checked:
   - ai/workflows/sync-handoff-gateway.md: design changes require neighbor asset checks.
   - cli-gui/README.md: updated public GUI URL language so 3000 is the only user-facing app URL.
   - cli-gui/client/main.test.tsx: added layout regression coverage for the three-column session workbench and for hiding the internal 3001 backend port.
   - cli-gui/package-lock.json: restored to HEAD to exclude dependency install noise.
 updated_assets:
-  - cli-gui/doc/cli-gui-design.md
+  - cli-gui/doc/design/cli-gui-design.md
   - cli-gui/README.md
   - cli-gui/client/main.test.tsx
 waived_assets:

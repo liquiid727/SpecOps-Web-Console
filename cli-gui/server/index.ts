@@ -2,6 +2,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createApplication } from "./application.js";
 import { createServer } from "./http-server.js";
+import { sanitizeCliEnvironment } from "./profile-adapters.js";
 import { createProductionDependencies } from "./production.js";
 
 export async function main() {
@@ -10,7 +11,8 @@ export async function main() {
   const dependencies = createProductionDependencies({
     dataDirectory: path.resolve(process.env.SPECOS_DATA_DIRECTORY ?? path.resolve(process.cwd(), "data")),
     readonly: process.env.SPECOS_RUNTIME_MODE === "readonly",
-    processEnvironment: process.env
+    // 剔除 npm run 注入的 node_modules/.bin PATH 项，避免陈旧本地包遮蔽全局 CLI
+    processEnvironment: sanitizeCliEnvironment(process.env)
   });
   const application = await createApplication(dependencies);
   const server = createServer(application, {

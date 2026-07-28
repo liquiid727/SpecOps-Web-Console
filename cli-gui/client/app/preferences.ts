@@ -6,6 +6,16 @@ export type InspectorPreferenceTab = "details" | "preview" | "files" | "language
 export type CenterView = "transcript" | "terminal";
 export type AppView = "quest-home" | "chat" | "knowledge" | "marketplace" | "settings";
 export type RightPanelTab = "summary" | "terminal" | "files" | "spec" | "review";
+/** composer 四态工作模式（console-gaps SPEC §3）：仅 UI 状态，不改变发送内容 */
+export type ComposerWorkMode = "default" | "spec" | "goal" | "plan";
+
+export const WORK_MODES: ComposerWorkMode[] = ["default", "spec", "goal", "plan"];
+
+/** Ctrl+Tab 正向 / Ctrl+Shift+Tab 反向循环 */
+export function cycleWorkMode(mode: ComposerWorkMode, delta: 1 | -1): ComposerWorkMode {
+  const index = WORK_MODES.indexOf(mode);
+  return WORK_MODES[(index + delta + WORK_MODES.length) % WORK_MODES.length];
+}
 
 export interface UiPreferencesV1 {
   version: 1;
@@ -17,18 +27,20 @@ export interface UiPreferencesV1 {
   centerViewBySession: Record<string, CenterView>;
   currentView: AppView;
   rightPanelTab: RightPanelTab;
+  composerWorkMode: ComposerWorkMode;
 }
 
 export const defaultPreferences: UiPreferencesV1 = {
   version: 1,
   navigatorOpen: true,
-  inspectorOpen: true,
+  inspectorOpen: false,
   sessionGrouping: "project",
   sessionFilter: "active",
   inspectorTab: "details",
   centerViewBySession: {},
   currentView: "quest-home",
-  rightPanelTab: "summary"
+  rightPanelTab: "summary",
+  composerWorkMode: "default"
 };
 
 export function parsePreferences(raw: string | null | undefined): UiPreferencesV1 {
@@ -45,7 +57,8 @@ export function parsePreferences(raw: string | null | undefined): UiPreferencesV
       inspectorTab: value.inspectorTab,
       centerViewBySession: { ...value.centerViewBySession },
       currentView: isAppView(value.currentView) ? value.currentView : "quest-home",
-      rightPanelTab: isRightPanelTab(value.rightPanelTab) ? value.rightPanelTab : "summary"
+      rightPanelTab: isRightPanelTab(value.rightPanelTab) ? value.rightPanelTab : "summary",
+      composerWorkMode: isWorkMode(value.composerWorkMode) ? value.composerWorkMode : "default"
     };
   } catch {
     return cloneDefaults();
@@ -98,4 +111,8 @@ function isAppView(value: unknown): value is AppView {
 
 function isRightPanelTab(value: unknown): value is RightPanelTab {
   return value === "summary" || value === "terminal" || value === "files" || value === "spec" || value === "review";
+}
+
+function isWorkMode(value: unknown): value is ComposerWorkMode {
+  return WORK_MODES.includes(value as ComposerWorkMode);
 }

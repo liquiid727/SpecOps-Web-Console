@@ -3,10 +3,18 @@
 ## Meta
 
 - Spec ID: `RP-002`
+- Spec Version: `1.0.0`
 - Title: `RP-002 Decision API`
 - Epic: `Risk Platform / Foundation`
 - Status: `draft`
 - Owner Agent: `implementation-agent`
+- Source PRD: `spec-draft/risk-decision-api.md`
+- Covered Requirements:
+  - `US-002`
+  - `FR-2`
+- Risk Tier: `P0`
+- Quality Profile: `backend-api`
+- Approval Evidence: `pending`
 - Depends On:
   - `RP-003`
   - `RP-004`

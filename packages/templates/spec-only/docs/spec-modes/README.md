@@ -6,4 +6,4 @@ This project supports three documented operating modes:
 - `GoalSpec`
 - `EnterpriseSpec`
 
-Default to `LiteSpec`. Move to `GoalSpec` for a standing six-step goal loop (prd -> prd-to-spec -> to-issues -> goal -> review-it -> ship-it). Upgrade to `EnterpriseSpec` only when governance needs become explicit.
+Default to `LiteSpec`. Move to `GoalSpec` for a standing dual-track loop where an approved Feature Spec drives implementation and a version-bound Test Spec drives independent verification. Upgrade to `EnterpriseSpec` only when governance needs become explicit.

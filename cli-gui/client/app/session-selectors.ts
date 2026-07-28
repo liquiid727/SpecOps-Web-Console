@@ -1,4 +1,4 @@
-import type { SessionV2, WorkspaceV2 } from "../../shared/types";
+import type { Session, WorkspaceV2 } from "../../shared/types";
 import type { SessionFilter, SessionGrouping } from "./preferences";
 
 export type TimeBucket = "today" | "yesterday" | "previous7Days" | "older";
@@ -7,33 +7,42 @@ export interface SessionGroup {
   id: string;
   labelKey: string;
   workspace?: WorkspaceV2;
-  sessions: SessionV2[];
+  sessions: Session[];
 }
 
-export function selectSessions(sessions: SessionV2[], filter: SessionFilter) {
+export function selectSessions(sessions: Session[], filter: SessionFilter) {
   return sessions.filter((session) => (session.organizationStatus ?? "active") === filter);
 }
 
-export function groupSessions(sessions: SessionV2[], workspaces: WorkspaceV2[], grouping: SessionGrouping, filter: SessionFilter, now = new Date()): SessionGroup[] {
+/** 按 interactionMode 过滤：未填 interactionMode 的旧会话按 terminal 处理（不变式 I-3） */
+export function filterByInteractionMode(sessions: Session[], mode: "chat" | "terminal") {
+  return sessions.filter((session) => {
+    const effective = session.interactionMode ?? "terminal";
+    return effective === mode;
+  });
+}
+
+export function groupSessions(sessions: Session[], workspaces: WorkspaceV2[], grouping: SessionGrouping, filter: SessionFilter, modeFilter?: "chat" | "terminal", now = new Date()): SessionGroup[] {
   const visible = selectSessions(sessions, filter);
+  const filtered = modeFilter ? filterByInteractionMode(visible, modeFilter) : visible;
   if (grouping === "project") {
-    return workspaces.map((workspace) => ({ id: `workspace:${workspace.id}`, labelKey: "project", workspace, sessions: sortSessions(visible.filter((session) => session.workspaceId === workspace.id), "manual") })).filter((group) => group.sessions.length > 0 || visible.some((session) => session.workspaceId === group.workspace?.id));
+    return workspaces.map((workspace) => ({ id: `workspace:${workspace.id}`, labelKey: "project", workspace, sessions: sortSessions(filtered.filter((session) => session.workspaceId === workspace.id), "manual") })).filter((group) => group.sessions.length > 0 || visible.some((session) => session.workspaceId === group.workspace?.id));
   }
   if (grouping === "time") {
-    const groups = new Map<TimeBucket, SessionV2[]>([["today", []], ["yesterday", []], ["previous7Days", []], ["older", []]]);
-    for (const session of visible) groups.get(timeBucket(session.lastActiveAt, now))?.push(session);
+    const groups = new Map<TimeBucket, Session[]>([["today", []], ["yesterday", []], ["previous7Days", []], ["older", []]]);
+    for (const session of filtered) groups.get(timeBucket(session.lastActiveAt, now))?.push(session);
     return [...groups.entries()].filter(([, items]) => items.length > 0).map(([bucket, items]) => ({ id: `time:${bucket}`, labelKey: bucket, sessions: sortSessions(items, "recent") }));
   }
-  if (grouping === "recent") return [{ id: "recent", labelKey: "recent", sessions: sortSessions(visible, "recent") }];
-  const pinned = sortSessions(visible.filter((session) => session.pinned), "manual");
-  const unpinned = sortSessions(visible.filter((session) => !session.pinned), "manual");
+  if (grouping === "recent") return [{ id: "recent", labelKey: "recent", sessions: sortSessions(filtered, "recent") }];
+  const pinned = sortSessions(filtered.filter((session) => session.pinned), "manual");
+  const unpinned = sortSessions(filtered.filter((session) => !session.pinned), "manual");
   return [
     ...(pinned.length ? [{ id: "manual:pinned", labelKey: "pinned", sessions: pinned }] : []),
     ...(unpinned.length ? [{ id: "manual:unpinned", labelKey: "unpinned", sessions: unpinned }] : [])
   ];
 }
 
-export function sortSessions(sessions: SessionV2[], mode: "manual" | "recent") {
+export function sortSessions(sessions: Session[], mode: "manual" | "recent") {
   return [...sessions].sort((a, b) => {
     if (mode === "recent") return b.lastActiveAt.localeCompare(a.lastActiveAt) || a.id.localeCompare(b.id);
     return (a.manualOrder ?? 0) - (b.manualOrder ?? 0) || b.lastActiveAt.localeCompare(a.lastActiveAt) || a.id.localeCompare(b.id);

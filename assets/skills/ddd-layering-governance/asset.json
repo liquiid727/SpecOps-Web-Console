@@ -1,0 +1,50 @@
+{
+  "id": "skill-ddd-layering-governance",
+  "type": "skill",
+  "title": "Ddd Layering Governance",
+  "summary": "Use when a backend task needs DDD layering guidance, thin application orchestration, domain-owned validation, VO or entity or domain service modeling, or enum and value-object refactors that remove magic values from business flows.",
+  "summaryZh": "适用于后端 DDD 分层与领域建模治理，包括 application 瘦编排、domain 校验归属、VO/entity/domain service 建模和去魔法值重构。",
+  "direction": "backend",
+  "categories": [
+    "backend"
+  ],
+  "stacks": [
+    "go",
+    "specos"
+  ],
+  "tags": [
+    "ddd",
+    "layering",
+    "domain-modeling",
+    "governance",
+    "reusable",
+    "go-pack"
+  ],
+  "appliesTo": [
+    "backend"
+  ],
+  "dependsOn": [],
+  "conflictsWith": [],
+  "sourcePath": "assets/skills/ddd-layering-governance/SKILL.md",
+  "files": [
+    "skills/developer/ddd-layering-governance/SKILL.md",
+    "skills/developer/ddd-layering-governance/agents/openai.yaml",
+    "skills/developer/ddd-layering-governance/references/anti-patterns.md",
+    "skills/developer/ddd-layering-governance/references/domain-modeling-rules.md",
+    "skills/developer/ddd-layering-governance/references/layering-rules.md",
+    "skills/developer/ddd-layering-governance/references/review-checklist.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "按项目类型确认是否启用该 skill，并检查引用资料是否适配目标仓库。"
+  ],
+  "sampleOutput": "可复用 skill 说明、触发条件、参考资料和运行边界。",
+  "contentFiles": {
+    "skills/developer/ddd-layering-governance/SKILL.md": "assets/skills/ddd-layering-governance/SKILL.md",
+    "skills/developer/ddd-layering-governance/agents/openai.yaml": "assets/skills/ddd-layering-governance/agents/openai.yaml",
+    "skills/developer/ddd-layering-governance/references/anti-patterns.md": "assets/skills/ddd-layering-governance/references/anti-patterns.md",
+    "skills/developer/ddd-layering-governance/references/domain-modeling-rules.md": "assets/skills/ddd-layering-governance/references/domain-modeling-rules.md",
+    "skills/developer/ddd-layering-governance/references/layering-rules.md": "assets/skills/ddd-layering-governance/references/layering-rules.md",
+    "skills/developer/ddd-layering-governance/references/review-checklist.md": "assets/skills/ddd-layering-governance/references/review-checklist.md"
+  }
+}

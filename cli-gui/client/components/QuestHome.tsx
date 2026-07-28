@@ -87,6 +87,7 @@ export function QuestHome({ workspaces, profiles, onQuickCreate, onOpenSettings 
             <div className="quest-home-input">
               <PromptComposer
                 disabled={taskBusy}
+                profileId={profileId || undefined}
                 onSend={async (content) => {
                   await onQuickCreate({ content, workspaceId, profileId });
                 }}

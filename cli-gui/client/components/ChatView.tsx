@@ -1,17 +1,19 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CliProfile, CliProfileCapabilities, Session, SessionLaunchConfig, TranscriptEvent, Workspace } from "../../shared/types";
 import type { SendMessageResponse } from "../../shared/types";
 import type { TurnStatus } from "../../shared/websocket";
 import { api, ApiClientError } from "../api";
-import type { CenterView } from "../app/preferences";
+import { CHAT_INTERACTION_ENABLED } from "../app/feature-flags";
+import type { CenterView, ComposerWorkMode } from "../app/preferences";
 import { toFeedbackError, toFeedbackWarning } from "../feedback-errors";
 import { useI18n } from "../i18n";
 import { TerminalView } from "../terminal";
-import { ActionDialog } from "./ActionDialog";
 import { PromptComposer } from "./PromptComposer";
+import { SessionLifecycleStatusBar } from "./SessionLifecycleStatusBar";
 import { Icon } from "./ui/Icon";
 import { useFeedback } from "./ui/Feedback";
 import { Badge, Button, EmptyState, Tabs } from "./ui";
+import { deriveSessionLifecycleStatus, type SessionLifecycleStatus } from "../transcript-display";
 
 const TranscriptPanel = lazy(() => import("./TranscriptPanel").then((module) => ({ default: module.TranscriptPanel })));
 const ChatTerminalReplay = lazy(() => import("./ChatTerminalReplay").then((module) => ({ default: module.ChatTerminalReplay })));
@@ -30,18 +32,20 @@ interface ChatViewProps {
   onStop?: (id: string) => void;
   /** 会话列表的轮次进行中指示（frontend-spec §6）：turnId 为空表示无进行中轮次 */
   onTurnActivity?: (sessionId: string, turnId?: string) => void;
+  /** 四态工作模式：App 层持久化状态下发至 composer（console-gaps SPEC §3） */
+  workMode: ComposerWorkMode;
+  onWorkModeChange: (mode: ComposerWorkMode) => void;
 }
 
-export function ChatView({ session, workspace, profile, readonly, centerView, onCenterViewChange, onLaunchConfigChange, onSend, onStatus, onResume, onStop, onTurnActivity }: ChatViewProps) {
-  const { t } = useI18n();
+export function ChatView({ session, workspace, profile, readonly, centerView, onCenterViewChange, onLaunchConfigChange, onSend, onStatus, onResume, onStop, onTurnActivity, workMode, onWorkModeChange }: ChatViewProps) {
+  const { t, statusLabel } = useI18n();
   const feedback = useFeedback();
   const [capabilities, setCapabilities] = useState<CliProfileCapabilities>();
   // 轮次状态双通道：turn-status 帧（实时）+ 事件流推导（重连/回放兜底，api-spec §4.2）
   const [frameTurn, setFrameTurn] = useState<{ turnId: string; status: TurnStatus }>();
   const [derivedTurnId, setDerivedTurnId] = useState<string>();
   const [echoEvents, setEchoEvents] = useState<TranscriptEvent[]>([]);
-  const [startConfirmOpen, setStartConfirmOpen] = useState(false);
-  const startConfirmRef = useRef<((confirmed: boolean) => void) | undefined>(undefined);
+  const [lifecycleStatus, setLifecycleStatus] = useState<SessionLifecycleStatus>("idle");
   const cancelledTurnsRef = useRef(new Set<string>());
 
   useEffect(() => {
@@ -59,13 +63,16 @@ export function ChatView({ session, workspace, profile, readonly, centerView, on
     setFrameTurn(undefined);
     setDerivedTurnId(undefined);
     setEchoEvents([]);
+    setLifecycleStatus("idle");
     cancelledTurnsRef.current = new Set();
   }, [session.id]);
 
   const status = session.runtimeStatus ?? session.status ?? "stopped";
   const running = status === "running" || status === "starting";
-  const composerDisabled = readonly || session.organizationStatus !== "active";
   const chatSession = session.interactionMode === "chat";
+  // chat 封闭期：存量 chat 会话 transcript 可查看，composer 禁用（console-gaps SPEC §1）
+  const chatFeatureOff = chatSession && !CHAT_INTERACTION_ENABLED;
+  const composerDisabled = readonly || session.organizationStatus !== "active" || chatFeatureOff;
 
   const handleTurnStatus = useCallback((turnId: string, turnStatus: TurnStatus) => {
     if (turnStatus === "running" || turnStatus === "waiting_approval") setFrameTurn({ turnId, status: turnStatus });
@@ -80,29 +87,8 @@ export function ChatView({ session, workspace, profile, readonly, centerView, on
   useEffect(() => { onTurnActivity?.(session.id, turnActive ? activeTurnId : undefined); }, [activeTurnId, onTurnActivity, session.id, turnActive]);
   useEffect(() => () => onTurnActivity?.(session.id, undefined), [onTurnActivity, session.id]);
 
-  function requestStartConfirm() {
-    return new Promise<boolean>((resolve) => {
-      startConfirmRef.current = resolve;
-      setStartConfirmOpen(true);
-    });
-  }
-
-  function resolveStartConfirm(confirmed: boolean) {
-    setStartConfirmOpen(false);
-    startConfirmRef.current?.(confirmed);
-    startConfirmRef.current = undefined;
-  }
-
-  // 发送：stopped 会话先弹启动确认（命令预览 + cwd，frontend-spec §5.1），确认后 start-and-send
+  // 发送：stopped 会话静默 start-and-send（startIfStopped + confirmedStart），成功不打断用户，失败才提示
   async function handleSend(content: string, clientMessageId: string) {
-    if (!running) {
-      const confirmed = await requestStartConfirm();
-      if (!confirmed) {
-        const cancelled = new Error("Start confirmation dismissed.");
-        cancelled.name = "ComposerCancelled";
-        throw cancelled;
-      }
-    }
     const result = await onSend(content, clientMessageId);
     if (result && typeof result === "object") {
       if (typeof result.turnId === "string") setFrameTurn({ turnId: result.turnId, status: "running" });
@@ -165,11 +151,13 @@ export function ChatView({ session, workspace, profile, readonly, centerView, on
     });
   }
 
-  const commandPreview = profile ? [profile.command, ...(profile.args ?? [])].join(" ") : "";
   // 审批能力分流：supportsApproval 才开审批气泡；明确不支持时失败轮次错误附指引文案（frontend-spec §5.4）
   const approvalEnabled = chatSession && !composerDisabled && capabilities?.supportsApproval === true;
   const approvalFallback = chatSession && capabilities?.supportsApproval === false;
   const waitingApproval = chatSession && frameTurn?.status === "waiting_approval";
+  // terminal 会话持有归因捕获的 resume 凭据时，恢复将续上上一次 CLI 会话而非全新启动
+  const resumeContinues = session.interactionMode === "terminal" && Boolean(session.terminalContext?.resumeToken);
+  const resumeTitle = resumeContinues ? t("resumeContinuesCli") : undefined;
 
   return (
     <div className="chat-view">
@@ -181,9 +169,9 @@ export function ChatView({ session, workspace, profile, readonly, centerView, on
         </div>
         <div className="chat-header-actions">
           <Tabs className="view-tabs" ariaLabel={t("centerView")} value={centerView} onChange={onCenterViewChange} items={[{ id: "transcript", label: <><Icon name="panel" />{t("transcript")}</> }, { id: "terminal", label: <><Icon name="terminal" />{t("terminal")}</> }]} />
-          <Badge className={`chat-status ${status}`}>{status}</Badge>
+          <Badge className={`chat-status ${status}`}>{statusLabel(status)}</Badge>
           {session.organizationStatus === "active" && !running && (
-            <Button variant="primary" className="primary-button" onClick={() => onResume?.(session.id)} disabled={readonly}>
+            <Button variant="primary" className="primary-button" onClick={() => onResume?.(session.id)} disabled={readonly} title={resumeTitle}>
               <Icon name="play" />{t("resume")}
             </Button>
           )}
@@ -195,9 +183,25 @@ export function ChatView({ session, workspace, profile, readonly, centerView, on
         </div>
       </div>
       <div className="chat-messages">
-        {centerView === "transcript" ? <Suspense fallback={<div className="transcript-state">{t("loadingTranscript")}</div>}><TranscriptPanel sessionId={session.id} localEvents={echoEvents} onTurnStatus={handleTurnStatus} onDerivedTurn={handleDerivedTurn} onRetry={composerDisabled ? undefined : retryTurn} onApprove={approvalEnabled ? respondApproval : undefined} approvalFallback={approvalFallback} /></Suspense> : chatSession ? <Suspense fallback={<div className="transcript-state">{t("loadingTranscript")}</div>}><ChatTerminalReplay sessionId={session.id} /></Suspense> : running ? <div className="chat-terminal"><TerminalView sessionId={session.id} onStatus={onStatus} /></div> : <EmptyState className="chat-empty" icon={<Icon name="terminal" />} description={t("terminalStopped")} />}
+        <SessionLifecycleStatusBar status={lifecycleStatus} interactionMode={session.interactionMode} />
+        {status === "error" && (
+          <div className="session-error-banner" role="alert">
+            <Icon name="warning" />
+            <div className="session-error-body">
+              <strong>{t("sessionStartFailedTitle")}</strong>
+              <p>{typeof session.error === "string" ? session.error : session.error?.message ?? t("sessionStartFailedDetail")}</p>
+            </div>
+            {session.organizationStatus === "active" && (
+              <Button variant="primary" className="primary-button" onClick={() => onResume?.(session.id)} disabled={readonly} title={resumeTitle}>
+                <Icon name="play" />{t("resume")}
+              </Button>
+            )}
+          </div>
+        )}
+        {centerView === "transcript" ? <Suspense fallback={<div className="transcript-state">{t("loadingTranscript")}</div>}><TranscriptPanel sessionId={session.id} chatMode={chatSession} turnPending={turnActive} localEvents={echoEvents} onTurnStatus={handleTurnStatus} onDerivedTurn={handleDerivedTurn} onRetry={composerDisabled ? undefined : retryTurn} onApprove={approvalEnabled ? respondApproval : undefined} approvalFallback={approvalFallback} onSessionLifecycle={setLifecycleStatus} /></Suspense> : chatSession ? <Suspense fallback={<div className="transcript-state">{t("loadingTranscript")}</div>}><ChatTerminalReplay sessionId={session.id} /></Suspense> : running ? <div className="chat-terminal"><TerminalView sessionId={session.id} onStatus={onStatus} /></div> : <EmptyState className="chat-empty" icon={<Icon name="terminal" />} description={t("terminalStopped")} />}
       </div>
       <div className="chat-composer">
+        {chatFeatureOff && <p className="composer-disabled-note" role="note">{t("chatComposerDisabled")}</p>}
         <PromptComposer
           disabled={composerDisabled}
           onSend={handleSend}
@@ -210,17 +214,12 @@ export function ChatView({ session, workspace, profile, readonly, centerView, on
           turnActive={turnActive}
           waitingApproval={waitingApproval}
           onCancelTurn={cancelActiveTurn}
+          workMode={workMode}
+          onWorkModeChange={onWorkModeChange}
+          profileId={session.profileId}
+          enhanceSupported={capabilities?.supportsPromptEnhancement}
         />
       </div>
-      {startConfirmOpen && (
-        <ActionDialog
-          title={t("startAndSendTitle")}
-          description={t("startAndSendDescription", { command: commandPreview || t("profileFallback"), cwd: workspace?.path ?? t("thisWorkspace") })}
-          confirmLabel={t("resumeSession")}
-          onClose={() => resolveStartConfirm(false)}
-          onConfirm={() => resolveStartConfirm(true)}
-        />
-      )}
     </div>
   );
 }

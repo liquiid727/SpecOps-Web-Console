@@ -35,19 +35,25 @@ Read context in this order before changing behavior:
 - `.agents/manifest.yaml` is the only source of truth for available agent roles, prompt assembly, scoped skills, context includes, ownership, and outputs.
 - `route-request` and `classify-request` are deterministic routing previews. They return `primaryAgent`, `supportingAgents`, rules, skills, and required context, but they do not execute agents by themselves.
 - Concrete multi-agent execution belongs to the host agent system or workflow runner. When the host supports subagents, `pola` may start 2 to 4 narrowly scoped specialist subagents and then judge which findings are actionable.
-- Nested dispatch is allowed only through registered roles. Main primary roles are `architecture-agent`, `implementation-agent`, `deployment-agent`, and `testing-agent`; they may propose bounded work for registered specialist roles such as spec, domain, API, migration, UI design, unit, browser, E2E, performance, concurrency, CI, review, or QA agents.
+- Nested dispatch is allowed only through registered roles. User-routable main roles (`tier: main`) are the four domain leads: `architecture-agent`, `implementation-agent`, `testing-agent`, and `qa-agent`; `pola` is the coordinator above them and is never a dispatch target.
+- Every other registered role is `tier: specialist` with a `managed_by` main agent. Specialists (product intake, spec, domain, API, migration, UI design, frontend/backend, focused editors, unit/browser/E2E/performance/concurrency tests, CI, deployment, review) are opened on demand as subagents by their managing main agent, never pre-dispatched as user entrypoints.
+- `deployment-agent` is a specialist managed by `qa-agent`; release and deployment readiness decisions belong to `qa-agent`.
 
 ## Repository Boundaries
 
+- Artifact locations are declared once in `.specos/manifest.yaml` `artifacts`; see `rules/shared/artifact-locations.md` for the resolution order and customization protocol.
+- `.prd/`: PRD intake documents (`artifacts.draftsDir`).
+- `.features/`: Feature Specs, Test Specs, and roadmap (`artifacts.specsDir`).
+- `.issues/`: local Markdown implementation and verification issues (`artifacts.issuesDir`).
 - `rules/`: canonical reusable rule documents.
 - `.rules/`: agent-facing rule index and execution policy.
 - `ai/`: prompt, workflow, agent, and reviewer assets for SpecOS orchestration.
 - `.agents/`: local agent manifests and role routing for coding assistants.
 - `.codex/`: Codex-specific local configuration and operating notes.
-- `spec-draft/`: intake drafts that may still be incomplete or exploratory.
+- `spec-draft/`: legacy intake drafts kept readable; new PRDs go to `.prd/`.
 - `current/`: active delivery workspace and handoff state for the current mode.
 - `design/`: stable platform and system design documents. One canonical design doc per platform or system.
-- `specs/`: roadmap, feature specs, spec rules, and spec templates.
+- `specs/`: legacy roadmap, feature specs, spec rules, and spec templates; new specs go to `.features/`.
 - `implementation/`: implementation handoff and status by spec id.
 - `reviews/`: structured review evidence by spec id.
 - `tests/`: spec-driven verification assets and scenario test templates.

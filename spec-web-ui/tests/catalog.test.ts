@@ -8,7 +8,7 @@ import {
   getMarketplaceRecommendations,
   loadCatalogAssets,
   sortCatalogAssetsForWorkspace
-} from "@/lib/catalog";
+} from "@/features/catalog/server";
 import { buildAssetCompositionPreview } from "@/lib/projects";
 import type { CatalogAsset } from "@/lib/types";
 
@@ -46,10 +46,10 @@ const assets: CatalogAsset[] = [
     version: "1.0.0"
   },
   {
-    id: "skill-tool-config-ui",
+    id: "skill-spec-to-test",
     type: "skill",
-    title: "Tool Config UI Skill",
-    summary: "Patterns for safe agent configuration interfaces.",
+    title: "Spec to Test Skill",
+    summary: "Independent Test Specs from approved Feature Specs.",
     direction: "frontend",
     categories: ["frontend", "operations"],
     stacks: ["react"],
@@ -57,8 +57,8 @@ const assets: CatalogAsset[] = [
     appliesTo: ["frontend"],
     dependsOn: [],
     conflictsWith: [],
-    sourcePath: ".skills/tool-config-ui/SKILL.md",
-    files: [".skills/tool-config-ui/SKILL.md"],
+    sourcePath: "skills/developer/spec-to-test/SKILL.md",
+    files: ["skills/developer/spec-to-test/SKILL.md"],
     version: "1.0.0"
   },
   {
@@ -104,10 +104,10 @@ const assets: CatalogAsset[] = [
     appliesTo: ["backend"],
     dependsOn: [],
     conflictsWith: [],
-    sourcePath: "spec-web-ui/catalog/skills/ddd-layering-governance/SKILL.md",
+    sourcePath: "assets/skills/ddd-layering-governance/SKILL.md",
     files: [
-      "spec-web-ui/catalog/skills/ddd-layering-governance/SKILL.md",
-      "spec-web-ui/catalog/skills/ddd-layering-governance/references/layering-rules.md"
+      "skills/developer/ddd-layering-governance/SKILL.md",
+      "skills/developer/ddd-layering-governance/references/layering-rules.md"
     ],
     version: "1.0.0"
   }
@@ -131,9 +131,9 @@ describe("filterCatalogAssets", () => {
   });
 
   it("matches source paths while searching catalog assets", () => {
-    const result = filterCatalogAssets(assets, { query: ".skills/tool-config-ui" });
+    const result = filterCatalogAssets(assets, { query: "skills/developer/spec-to-test" });
 
-    expect(result.map((asset) => asset.id)).toEqual(["skill-tool-config-ui"]);
+    expect(result.map((asset) => asset.id)).toEqual(["skill-spec-to-test"]);
   });
 
   it("matches localized summaries while searching catalog assets", () => {
@@ -151,8 +151,8 @@ describe("filterCatalogAssets", () => {
         appliesTo: ["backend"],
         dependsOn: [],
         conflictsWith: [],
-        sourcePath: "spec-web-ui/catalog/skills/go-backend-governance/SKILL.md",
-        files: ["spec-web-ui/catalog/skills/go-backend-governance/SKILL.md"],
+        sourcePath: "assets/skills/go-backend-governance/SKILL.md",
+        files: ["skills/developer/go-backend-governance/SKILL.md"],
         version: "1.0.0"
       }
     ];
@@ -165,7 +165,7 @@ describe("filterCatalogAssets", () => {
   it("filters catalog assets by shared business category", () => {
     const result = filterCatalogAssets(assets, { categories: ["operations"] });
 
-    expect(result.map((asset) => asset.id)).toEqual(["skill-tool-config-ui", "team-governance-pack"]);
+    expect(result.map((asset) => asset.id)).toEqual(["skill-spec-to-test", "team-governance-pack"]);
   });
 });
 
@@ -181,12 +181,12 @@ describe("getCatalogFilterOptions", () => {
 });
 
 describe("loadCatalogAssets", () => {
-  it("loads skill assets from the web-ui catalog directory", async () => {
+  it("loads skill assets from the shared asset directory", async () => {
     const catalog = await loadCatalogAssets();
     const skill = catalog.find((asset) => asset.id === "skill-ddd-layering-governance");
 
     expect(skill?.type).toBe("skill");
-    expect(skill?.sourcePath).toBe("spec-web-ui/catalog/skills/ddd-layering-governance/SKILL.md");
+    expect(skill?.sourcePath).toBe("assets/skills/ddd-layering-governance/SKILL.md");
   });
 
   it("loads spec and agent template assets from directory-backed manifests", async () => {
@@ -207,11 +207,11 @@ describe("loadCatalogAssets", () => {
     const productSpecTemplate = catalog.find((asset) => asset.id === "template-product-spec-yaml");
 
     expect(specTemplate?.sourcePath).toBe(
-      "spec-web-ui/catalog/spec-templates/template-feature-draft/product-ui.template.md"
+      "assets/templates/specs/template-feature-draft/product-ui.template.md"
     );
     expect(specTemplate?.files).toEqual(["spec-draft/_template/feature/product-ui.template.md"]);
     expect(specTemplate?.contentFiles?.["spec-draft/_template/feature/product-ui.template.md"]).toBe(
-      "spec-web-ui/catalog/spec-templates/template-feature-draft/product-ui.template.md"
+      "assets/templates/specs/template-feature-draft/product-ui.template.md"
     );
     expect(modesTemplate?.files).toEqual([
       "docs/spec-modes/README.md",
@@ -220,14 +220,14 @@ describe("loadCatalogAssets", () => {
       "docs/spec-modes/EnterpriseSpec/README.md"
     ]);
     expect(modesTemplate?.contentFiles?.["docs/spec-modes/LiteSpec/README.md"]).toBe(
-      "spec-web-ui/catalog/spec-templates/template-project-modes/LiteSpec.md"
+      "assets/templates/specs/template-project-modes/LiteSpec.md"
     );
     expect(currentTemplate?.files).toContain("current/project-status.md");
     expect(currentTemplate?.contentFiles?.["current/handoff.md"]).toBe(
-      "spec-web-ui/catalog/spec-templates/template-current-workspace/handoff.md"
+      "assets/templates/specs/template-current-workspace/handoff.md"
     );
     expect(agentTemplate?.sourcePath).toBe(
-      "spec-web-ui/catalog/agent-templates/agent-spec-editor/spec-editor.md"
+      "assets/agents/roles/agent-spec-editor/spec-editor.md"
     );
     expect(agentTemplate?.files).toEqual(["ai/agents/spec-editor.md"]);
 
@@ -246,7 +246,7 @@ describe("loadCatalogAssets", () => {
       ])
     );
     expect(productArchitectSkill?.sourcePath).toBe(
-      "spec-web-ui/catalog/skills/product-architect/SKILL.md"
+      "assets/skills/product-architect/SKILL.md"
     );
     expect(productArchitectSkill?.dependsOn).toEqual(
       expect.arrayContaining([
@@ -261,25 +261,25 @@ describe("loadCatalogAssets", () => {
       expect.arrayContaining(["template-feature-draft", "template-task-graph-yaml"])
     );
     expect(specBlueprintTemplate?.contentFiles?.["spec-draft/_template/product/spec-blueprint.template.yaml"]).toBe(
-      "spec-web-ui/catalog/spec-templates/template-spec-blueprint-yaml/spec-blueprint.template.yaml"
+      "assets/templates/specs/template-spec-blueprint-yaml/spec-blueprint.template.yaml"
     );
     expect(taskGraphTemplate?.contentFiles?.["tasks/task-graph.yaml"]).toBe(
-      "spec-web-ui/catalog/spec-templates/template-task-graph-yaml/task-graph.template.yaml"
+      "assets/templates/specs/template-task-graph-yaml/task-graph.template.yaml"
     );
     expect(prdTemplate?.contentFiles?.["spec-draft/_template/product/prd-draft.template.md"]).toBe(
-      "spec-web-ui/catalog/spec-templates/template-prd-draft/prd-draft.template.md"
+      "assets/templates/specs/template-prd-draft/prd-draft.template.md"
     );
     expect(productSpecTemplate?.contentFiles?.["spec-draft/_template/product/product-spec.template.yaml"]).toBe(
-      "spec-web-ui/catalog/spec-templates/template-product-spec-yaml/product-spec.template.yaml"
+      "assets/templates/specs/template-product-spec-yaml/product-spec.template.yaml"
     );
     expect(frontendAgent?.contentFiles?.["ai/agents/frontend-agent.md"]).toBe(
-      "spec-web-ui/catalog/agent-templates/agent-frontend/frontend-agent.md"
+      "assets/agents/roles/agent-frontend/frontend-agent.md"
     );
     expect(backendAgent?.contentFiles?.["ai/agents/backend-agent.md"]).toBe(
-      "spec-web-ui/catalog/agent-templates/agent-backend/backend-agent.md"
+      "assets/agents/roles/agent-backend/backend-agent.md"
     );
     expect(qaAgent?.contentFiles?.["ai/agents/qa-agent.md"]).toBe(
-      "spec-web-ui/catalog/agent-templates/agent-qa/qa-agent.md"
+      "assets/agents/roles/agent-qa/qa-agent.md"
     );
   });
 
@@ -319,26 +319,26 @@ describe("loadCatalogAssets", () => {
 
     expect(orchestratorAgent?.type).toBe("agent_role");
     expect(orchestratorAgent?.sourcePath).toBe(
-      "spec-web-ui/catalog/agent-templates/agent-go-pack-orchestrator/orchestrator.md"
+      "assets/agents/roles/agent-go-pack-orchestrator/orchestrator.md"
     );
     expect(orchestratorAgent?.files).toEqual(["ai/agents/orchestrator.md"]);
     expect(orchestratorAgent?.contentFiles?.["ai/agents/orchestrator.md"]).toBe(
-      "spec-web-ui/catalog/agent-templates/agent-go-pack-orchestrator/orchestrator.md"
+      "assets/agents/roles/agent-go-pack-orchestrator/orchestrator.md"
     );
 
     expect(apiGovernanceSkill?.type).toBe("skill");
     expect(apiGovernanceSkill?.sourcePath).toBe(
-      "spec-web-ui/catalog/skills/api-contract-governance/SKILL.md"
+      "assets/skills/api-contract-governance/SKILL.md"
     );
     expect(apiGovernanceSkill?.files).toContain(
-      "spec-web-ui/catalog/skills/api-contract-governance/references/api-contract-rules.md"
+      "skills/developer/api-contract-governance/references/api-contract-rules.md"
     );
     expect(apiGovernanceSkill?.categories).toEqual(["backend"]);
     expect(apiGovernanceSkill?.summaryZh).toContain("接口契约治理");
 
     expect(backendGovernanceSkill?.type).toBe("skill");
     expect(backendGovernanceSkill?.sourcePath).toBe(
-      "spec-web-ui/catalog/skills/go-backend-governance/SKILL.md"
+      "assets/skills/go-backend-governance/SKILL.md"
     );
     expect(backendGovernanceSkill?.dependsOn).toEqual([
       "skill-api-contract-governance",
@@ -351,17 +351,17 @@ describe("loadCatalogAssets", () => {
 
     expect(timeGovernanceSkill?.type).toBe("skill");
     expect(timeGovernanceSkill?.sourcePath).toBe(
-      "spec-web-ui/catalog/skills/go-time-governance/SKILL.md"
+      "assets/skills/go-time-governance/SKILL.md"
     );
     expect(timeGovernanceSkill?.files).toContain(
-      "spec-web-ui/catalog/skills/go-time-governance/references/clock-and-business-time.md"
+      "skills/developer/go-time-governance/references/clock-and-business-time.md"
     );
     expect(timeGovernanceSkill?.categories).toEqual(["backend"]);
     expect(timeGovernanceSkill?.summaryZh).toContain("时间治理");
 
     expect(routingTemplate?.type).toBe("spec_template");
     expect(routingTemplate?.sourcePath).toBe(
-      "spec-web-ui/catalog/spec-templates/template-go-pack-routing/routing.md"
+      "assets/templates/specs/template-go-pack-routing/routing.md"
     );
     expect(routingTemplate?.files).toEqual(["ai/templates/routing.md"]);
   });
@@ -382,7 +382,7 @@ describe("sortCatalogAssetsForWorkspace", () => {
       "template-react-feature",
       "skill-ddd-layering",
       "team-governance-pack",
-      "skill-tool-config-ui"
+      "skill-spec-to-test"
     ]);
   });
 });
@@ -440,7 +440,7 @@ describe("getFeaturedAssets", () => {
       preferredTags: ["openapi", "config"]
     });
 
-    expect(featured.map((asset) => asset.id)).toEqual(["agent-openapi", "skill-tool-config-ui"]);
+    expect(featured.map((asset) => asset.id)).toEqual(["agent-openapi", "skill-spec-to-test"]);
   });
 });
 

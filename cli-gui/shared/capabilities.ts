@@ -22,6 +22,48 @@ export interface CliProfileCapabilities {
   supportsResume: boolean;
   /** 是否支持 headless 审批协议（D-8；false 时权限不足→轮次失败+指引） */
   supportsApproval: boolean;
+  /** 是否支持提示词润色/压缩一次性调用（project-quest SPEC §5.7：codex/claude 家族 true、generic false） */
+  supportsPromptEnhancement: boolean;
+}
+
+/** 服务端创建会话时，若 chat 降级为 terminal，附带的公开降级原因（便于前端精准提示与排查） */
+export type DowngradeReason =
+  | "capability-detect-failed"
+  | "version-out-of-range"
+  | "command-missing"
+  | "unknown-version"
+  | "adapter-unsupported";
+
+/** CLI 能力探测诊断（内部；含 DowngradeReason 未覆盖的细节，主要用于日志） */
+export type CapabilityDetectionFailure =
+  | "command-missing"
+  | "version-unparseable"
+  | "version-out-of-range"
+  | "adapter-unsupported"
+  | "unknown";
+
+/** 探测结果：CliProfileCapabilities + 诊断字段（adapter-spec §5） */
+export interface CapabilityDetectionResult extends CliProfileCapabilities {
+  /** 探测失败原因（仅用于日志与 downgradeReason 透传） */
+  detectionFailure?: CapabilityDetectionFailure;
+  /** 探测到的 CLI 版本字符串（如 "0.145.0"） */
+  detectedVersion?: string;
+  /** 用于判定 headless 的版本范围（如 ">=0.145.0 <1.0.0"） */
+  versionRange?: string;
+}
+
+/** 合并模型列表的来源层（console-gaps SPEC §2）：内置目录 / 本机 CLI 配置同步 / 手动导入 */
+export type ProfileModelSource = "builtin" | "synced" | "custom";
+
+export interface ProfileModelEntry {
+  id: string;
+  source: ProfileModelSource;
+}
+
+/** `GET/POST /api/profiles/:id/models*` 响应：sync 额外回报本次同步发现的 id */
+export interface ProfileModelsResponse {
+  models: ProfileModelEntry[];
+  synced?: string[];
 }
 
 export type GitFileStatus = "unmodified" | "added" | "deleted" | "modified" | "renamed" | "copied" | "untracked" | "ignored" | "conflicted";

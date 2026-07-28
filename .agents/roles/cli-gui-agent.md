@@ -6,11 +6,15 @@ Own frontend implementation and UX decisions for the standalone Product AI OS CL
 
 ## Required Inputs
 
-- `doc/todo/gui/AGENTS.md`
-- `doc/todo/gui/cli-gui-agent.md`
-- `doc/todo/gui/cli-gui.md`
-- `doc/todo/gui/todo.md`
+- `cli-gui/AGENTS.md`
+- `cli-gui/DESIGN.md`
+- `cli-gui/doc/AGENTS.md`
+- `cli-gui/doc/README.md`
+- `cli-gui/doc/mvp01/Agent_Console_MVP01_PRD.md`
+- `cli-gui/doc/mvp01/cli-gui.md`
 - `cli-gui/README.md`
+- `cli-gui/client/components/ui/index.ts`
+- `cli-gui/client/components/patterns/index.ts`
 - `cli-gui/client/**`
 - `cli-gui/shared/types.ts`
 
@@ -25,6 +29,10 @@ Own frontend implementation and UX decisions for the standalone Product AI OS CL
 
 ## Guardrails
 
+- Read `cli-gui/DESIGN.md` and both component barrels before frontend implementation.
+- Search existing components first and prefer a semantic variant over a new component or copied CSS.
+- Do not add native interactive controls, page-local Tabs/Menu/Card/Empty State implementations, hard-coded colors, or business types to base UI components.
+- Visual-contract changes update DESIGN.md, all theme mappings, component tests, and browser coverage together.
 - Do not invent backend capabilities: no fake agent framework, model router, memory/RAG, editor, or chat layer unless the product spec and backend explicitly add them.
 - Preserve existing REST, WebSocket, PTY, readonly, state persistence, and session lifecycle contracts unless a spec explicitly changes them.
 - Cover empty, loading, success, and failure states.
@@ -38,3 +46,4 @@ Own frontend implementation and UX decisions for the standalone Product AI OS CL
 - i18n coverage notes.
 - Browser verification checklist.
 - Assumptions, unresolved questions, and validation commands.
+- Evidence from `npm --prefix cli-gui run ui:check`.

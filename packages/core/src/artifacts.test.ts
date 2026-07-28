@@ -94,12 +94,12 @@ describe("artifact validation", () => {
     );
   });
 
-  it("routes QA acceptance requests to the testing agent", () => {
+  it("routes QA acceptance requests to the qa agent", () => {
     const route = buildRequestRoute("请 QA agent 做最终质量验收，汇总 gate report 和 review findings");
 
     expect(route).toMatchObject({
       requestKind: "acceptance",
-      primaryAgent: "testing-agent",
+      primaryAgent: "qa-agent",
       needsChangePackage: true,
     });
     expect(route.workTypes).toEqual(expect.arrayContaining(["tests", "ci", "orchestration"]));
@@ -114,7 +114,7 @@ describe("artifact validation", () => {
     expect(route).toMatchObject({
       projectMode: "goalspec",
       requestKind: "acceptance",
-      primaryAgent: "testing-agent",
+      primaryAgent: "qa-agent",
       needsChangePackage: true,
     });
     expect(route.supportingAgents).toEqual(expect.arrayContaining(["test-editor", "ci-editor", "reviewer"]));
@@ -123,10 +123,12 @@ describe("artifact validation", () => {
     expect(route.promptAssembly.roles).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          role: "testing-agent",
+          role: "qa-agent",
           overlayApplied: true,
-          modeRolePrompt: ".agents/modes/goalspec/roles/testing-agent.md",
-          modeCanonicalPrompt: "ai/agents/modes/goalspec/testing-agent.md",
+          sharedRolePrompt: ".agents/roles/qa-agent.md",
+          sharedCanonicalPrompt: "ai/agents/qa-agent.md",
+          modeRolePrompt: ".agents/modes/goalspec/roles/qa-agent.md",
+          modeCanonicalPrompt: "ai/agents/modes/goalspec/qa-agent.md",
         }),
         expect.objectContaining({
           role: "reviewer",
@@ -380,10 +382,17 @@ describe("artifact validation", () => {
       ]),
     );
     expect(plan.specialistDispatchPlan.tasks).toHaveLength(4);
+    for (const task of plan.specialistDispatchPlan.tasks) {
+      expect(task.activation).toBe("on-demand");
+      expect(["architecture-agent", "implementation-agent", "testing-agent", "qa-agent"]).toContain(task.managedBy);
+      expect(task.dispatchPromptEnvelope.message).toContain("Activation: on-demand");
+    }
     expect(plan.specialistDispatchPlan.tasks).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           role: "openapi-agent",
+          managedBy: "architecture-agent",
+          activation: "on-demand",
           parallelizable: true,
           dispatchPromptEnvelope: expect.objectContaining({
             role: "openapi-agent",
@@ -1942,7 +1951,7 @@ describe("artifact validation", () => {
         { target: "rules/", from: "files/rules/" },
         { target: ".codex/instructions.md", from: "files/.codex/instructions.md" },
         { target: ".codex/skills/", from: "files/.codex/skills/" },
-        { target: ".skills/", from: "files/.skills/" },
+        { target: "skills/developer/", from: "files/skills/developer/" },
         { target: "spec-draft/", from: "files/spec-draft/" },
         { target: "specs/", from: "files/specs/" },
         { target: "tests/", from: "files/tests/" },

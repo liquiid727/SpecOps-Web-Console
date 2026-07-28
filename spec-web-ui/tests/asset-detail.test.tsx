@@ -10,7 +10,7 @@ vi.mock("@/app/actions", () => ({
   setProjectAssetSelectionAction: vi.fn()
 }));
 
-vi.mock("@/lib/catalog", () => ({
+vi.mock("@/features/catalog/server", () => ({
   loadAssetSourcePreview: async () => "# DDD Layering Governance\n\nUse this skill to guide design.",
   loadCatalogAsset: async () => ({
     id: "skill-ddd-layering-governance",
@@ -24,8 +24,8 @@ vi.mock("@/lib/catalog", () => ({
     appliesTo: ["backend"],
     dependsOn: [],
     conflictsWith: [],
-    sourcePath: "spec-web-ui/catalog/skills/ddd-layering-governance/SKILL.md",
-    files: ["spec-web-ui/catalog/skills/ddd-layering-governance/SKILL.md"],
+    sourcePath: "assets/skills/ddd-layering-governance/SKILL.md",
+    files: ["skills/developer/ddd-layering-governance/SKILL.md"],
     version: "1.0.0",
     sampleOutput: "DDD decisions"
   }),
@@ -51,7 +51,7 @@ vi.mock("@/lib/catalog", () => ({
 vi.mock("@/lib/projects", () => ({
   buildAssetCompositionPreview: () => ({
     selectedAssetCount: 2,
-    exportDirectories: ["spec-web-ui"],
+    exportDirectories: ["skills"],
     remainingMissingDependencies: [],
     introducedConflicts: []
   }),
@@ -96,7 +96,7 @@ describe("AssetDetailPage", () => {
 
     expect(screen.getByRole("heading", { name: "DDD Layering Governance" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Source preview" })).not.toBeInTheDocument();
-    expect(screen.getByText("$ cat spec-web-ui/catalog/skills/ddd-layering-governance/SKILL.md")).toBeInTheDocument();
+    expect(screen.getByText("$ cat assets/skills/ddd-layering-governance/SKILL.md")).toBeInTheDocument();
     expect(screen.getByText("用于指导 DDD 分层归属与领域建模边界。")).toBeInTheDocument();
     expect(
       screen.getByText((_, element) =>

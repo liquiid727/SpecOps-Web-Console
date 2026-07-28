@@ -1,0 +1,72 @@
+/*
+ * Qoder Dark Theme — baseline framework.
+ * Mirrors the token contract from qoder-light.css so components stay theme-agnostic.
+ * Colour direction references cli-gui/doc/qoder-ui/reference/workbuddy-ide.html.
+ */
+:root[data-theme="qoder-dark"],
+:root.theme-qoder-dark {
+  color-scheme: dark;
+
+  --bg-page: #17181c;
+  --bg-panel: #1e1f24;
+  --bg-sidebar: #1a1b1f;
+  --bg-hover: #26272d;
+  --bg-active: #2f3038;
+  --bg-info: #1e2436;
+  --border: #2c2d33;
+  --border-subtle: #24252b;
+  --border-strong: #3a3b43;
+  --text: #f2f3f5;
+  --text-secondary: #a8abb3;
+  --text-tertiary: #767a83;
+  --text-quaternary: #565962;
+  --accent: #f2f3f5;
+  --accent-hover: #d7d9dd;
+  --accent-contrast: #17181c;
+  --blue: #4f86ff;
+  --green: #34d17f;
+  --green-bg: #16281f;
+  --red: #f4626a;
+  --yellow: #f5b23d;
+  --running: #34d17f;
+  --starting: #f5b23d;
+  --stopped: #767a83;
+  --error: #f4626a;
+  --warning: #f5b23d;
+  --focus: #4f86ff;
+  --danger: #f4626a;
+  --danger-muted: rgba(244, 98, 106, .16);
+  --danger-border: rgba(244, 98, 106, .4);
+  --danger-text: #ff9096;
+  --success-muted: rgba(52, 209, 127, .16);
+  --success-border: rgba(52, 209, 127, .38);
+  --warning-muted: rgba(245, 178, 61, .16);
+  --warning-border: rgba(245, 178, 61, .38);
+  --info-muted: rgba(79, 134, 255, .16);
+  --info-border: rgba(79, 134, 255, .38);
+  --info-icon: #9bbce0;
+  --diff-add-bg: rgba(52, 209, 127, .13);
+  --diff-add-text: #7fe0a9;
+  --diff-del-bg: rgba(244, 98, 106, .14);
+  --diff-del-text: #ff9096;
+  --diff-header-bg: rgba(79, 134, 255, .16);
+  --diff-header-text: #9bbce0;
+  --bubble-user-bg: #1d2220;
+  --bubble-user-border: #2d4639;
+
+  --canvas: var(--bg-page);
+  --rail: var(--bg-panel);
+  --navigator: var(--bg-sidebar);
+  --surface: var(--bg-panel);
+  --surface-raised: var(--bg-hover);
+  --surface-hover: var(--bg-hover);
+  --surface-selected: var(--bg-active);
+  --terminal: #131418;
+  --overlay: var(--bg-panel);
+  --muted: var(--text-secondary);
+  --faint: var(--text-tertiary);
+  --neo-shadow: 0 4px 16px rgba(0, 0, 0, .5);
+  --shadow-lg: 0 16px 60px rgba(0, 0, 0, .5);
+  --shadow-pop: 0 16px 48px rgba(0, 0, 0, .55);
+  --shadow-drawer: 0 28px 100px rgba(0, 0, 0, .6);
+}

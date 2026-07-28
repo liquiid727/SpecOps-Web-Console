@@ -7,6 +7,9 @@
 * { box-sizing: border-box; }
 html, body, #root { width: 100%; min-width: 0; min-height: 100%; }
 html { background: var(--canvas); }
+/* Theme transition: animate color/background changes when switching themes. */
+body, .app-shell, .qoder-sidebar, .qoder-right-panel, .surface, .overlay-panel, .transcript-event { transition: background-color var(--duration-normal) var(--ease-out), border-color var(--duration-normal) var(--ease-out), color var(--duration-normal) var(--ease-out); }
+@media (prefers-reduced-motion: reduce) { body, .app-shell, .qoder-sidebar, .qoder-right-panel, .surface, .overlay-panel, .transcript-event { transition: none; } }
 body { margin: 0; min-height: 100vh; min-height: 100dvh; overflow: hidden; overscroll-behavior: none; background: var(--canvas); color: var(--text); font-family: var(--font-sans); font-size: var(--text-base); -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
 button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }

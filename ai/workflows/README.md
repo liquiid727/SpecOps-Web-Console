@@ -2,22 +2,23 @@
 
 Use this directory for documented orchestration flows that connect prompts, agent roles, review stages, and execution gates.
 
-## Idea To Spec Intake
+## PRD To Ship Main Chain
 
-Raw product ideas should enter the chain through an intent compiler before formal spec normalization:
+Raw product ideas enter the chain through PRD intake before formal spec decomposition. The canonical main chain is defined by `skills/developer/README.md`:
 
-`Idea -> Spec Draft -> Canonical Spec -> Task Graph IR -> Code -> Verified Release`
+`PRD -> prd-to-spec -> Approved Feature Spec -> (to-issues implementation track | spec-to-test -> Approved Test Spec -> to-issues verification track) -> loop-it -> review-it -> note-it -> ship-it`
 
-Product Architect output is draft-level evidence for the Spec branches. It may recommend `spec-draft/<stable-id>.md` and `specs/changes/<change-id>/`, but it must not promote accepted truth into `specs/current/`.
+PRD output is intake-level evidence. Artifact locations come from `.specos/manifest.yaml` `artifacts` (default PRD -> `.prd/`, Feature Spec and Test Spec -> `.features/`, local Issues -> `.issues/`; see `rules/shared/artifact-locations.md`). A PRD must not be promoted into an approved Feature Spec baseline without review.
 
-The main chain is an artifact chain, not an agent chain. Agents are stage implementations of compiler layers:
+The main chain is an artifact chain, not an agent chain. Agents are stage implementations of the chain:
 
-- `Idea -> Spec Draft`: `product-architect-agent` acts as the Intent Compiler.
-- `Spec Draft -> Canonical Spec + Task Graph IR`: `spec-editor` acts as the Spec Compiler.
-- `Task Graph IR -> Code`: execution runs contextual capability sets such as frontend or backend.
-- `Code -> Verified Release`: `qa-agent`, `ci-editor`, and `reviewer` act as verification and release compilers.
+- `Idea -> PRD`: `product-architect-agent` runs `/prd` intake and produces an accepted PRD.
+- `PRD -> Approved Feature Spec`: `spec-editor` runs `/prd-to-spec` and keeps design, roadmap, and feature specs consistent.
+- `Approved Feature Spec -> Issues`: `spec-editor` runs `/to-issues` for the implementation track and `/spec-to-test` plus `/to-issues` for the version-bound verification track.
+- `Issues -> Code`: execution runs contextual capability sets such as `frontend-agent` and `backend-agent`, optionally driven by `/loop-it`.
+- `Code -> Verified Release`: `qa-agent`, `ci-editor`, and `reviewer` close out through `/review-it`, `/note-it`, and `/ship-it` gates.
 
-Narrow specialists such as UI design, domain, OpenAPI, migration, Bruno, Playwright, performance, and concurrency agents are loaded as capability sets only when a Task Graph node needs their narrower context.
+Narrow specialists such as UI design, domain, OpenAPI, migration, Bruno, Playwright, performance, and concurrency agents are loaded as capability sets only when an Issue needs their narrower context.
 
 ## Test Console Workflow
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import * as discoverDnd from "@/lib/discover-dnd";
+import * as discoverDnd from "@/features/catalog/dnd";
 
 describe("getCollectionDropPlacement", () => {
   it("returns before in the upper half and after in the lower half", () => {

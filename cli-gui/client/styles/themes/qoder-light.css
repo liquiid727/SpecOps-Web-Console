@@ -40,6 +40,15 @@
   --warning-border: rgba(245, 158, 11, .3);
   --info-muted: rgba(37, 99, 235, .1);
   --info-border: rgba(37, 99, 235, .28);
+  --info-icon: #2563eb;
+  --diff-add-bg: rgba(34, 197, 94, .12);
+  --diff-add-text: #15803d;
+  --diff-del-bg: rgba(239, 68, 68, .12);
+  --diff-del-text: #b91c1c;
+  --diff-header-bg: rgba(37, 99, 235, .1);
+  --diff-header-text: #2563eb;
+  --bubble-user-bg: #eafbf3;
+  --bubble-user-border: rgba(34, 197, 94, .3);
 
   --canvas: var(--bg-page);
   --rail: var(--bg-panel);

@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { loadCatalogAssets } from "@/lib/catalog";
+import { loadCatalogAssets } from "@/features/catalog/server";
 import type {
   CatalogAsset,
   ConflictIssue,

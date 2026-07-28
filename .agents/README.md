@@ -17,32 +17,41 @@ Mode-specific differences live under `.agents/modes/<mode>/roles/`.
 
 ## Main Agent Selection
 
-Use main agents for phase ownership and user-facing routing:
+SpecOS uses a five-tier top structure: one coordinator plus four user-routable main agents (`tier: main`). All other roles are `tier: specialist` and are opened on demand as subagents by their `managed_by` main agent.
 
+- Coordinator (not dispatchable): `pola` — request intake, routing preview, report merge
 - Architecture and spec impact: `architecture-agent`
 - Implementation execution: `implementation-agent`
-- Deployment, CI, and release readiness: `deployment-agent`
-- Independent verification and acceptance: `testing-agent`
+- Independent verification: `testing-agent`
+- QA acceptance, release, and deployment readiness: `qa-agent`
 
-Specialist agents remain registered roles, but they should normally be delegated by a main agent instead of becoming the default user-facing entrypoint:
+Specialist agents grouped by their managing main agent:
 
-- Spec normalization: `spec-editor`
-- Domain boundaries and invariants: `ddd-domain-agent`
-- API contract generation: `openapi-agent`
-- Database and migration planning: `db-migration-agent`
-- Product UI design: `ui-design-agent`
-- Standalone Product AI OS CLI GUI: `cli-gui-agent`
-- Test structure and coverage: `test-editor`
-- Unit coverage analysis: `unit-test-agent`
-- API scenario tests and Bruno assets: `test-editor`
-- Browser behavior and UI state verification: `playwright-test-agent`
-- End-to-end business journeys: `e2e-test-agent`
-- Performance and latency evidence: `performance-test-agent`
-- Concurrency and invariant evidence: `concurrency-test-agent`
-- CI checks and release gates: `ci-editor`
-- Local scripts and workflow wiring: `execution-editor`
-- Final quality acceptance: `qa-agent`
-- Cross-rule review: `reviewer`
+- `architecture-agent` manages:
+  - Idea intake and accepted PRDs: `product-architect-agent`
+  - Spec normalization: `spec-editor`
+  - Domain boundaries and invariants: `ddd-domain-agent`
+  - API contract generation: `openapi-agent`
+  - Database and migration planning: `db-migration-agent`
+- `implementation-agent` manages:
+  - Frontend delivery orchestration: `frontend-agent`
+  - Backend delivery orchestration: `backend-agent`
+  - Focused spec-driven code edits: `implementation-editor`
+  - Standalone Product AI OS CLI GUI: `cli-gui-agent`
+  - Product UI design: `ui-design-agent`
+  - Local scripts and workflow wiring: `execution-editor`
+- `testing-agent` manages:
+  - Test structure, coverage, API scenario tests, and Bruno assets: `test-editor`
+  - Unit coverage analysis: `unit-test-agent`
+  - Browser behavior and UI state verification: `playwright-test-agent`
+  - End-to-end business journeys: `e2e-test-agent`
+  - Performance and latency evidence: `performance-test-agent`
+  - Concurrency and invariant evidence: `concurrency-test-agent`
+  - Specialized checks: `specialized-check-agent`
+- `qa-agent` manages:
+  - Cross-rule review: `reviewer`
+  - CI checks and release gates: `ci-editor`
+  - Deployment readiness evidence: `deployment-agent`
 
 ## Dispatch Flow
 
@@ -110,10 +119,11 @@ Nested dispatch follows this contract:
 - The primary agent receives only its declared role prompt, canonical prompt, skills, and context includes.
 - The primary agent may propose bounded specialist-agent tasks when the work crosses ownership boundaries.
 - Supporting agents must also be registered in `.agents/manifest.yaml`; do not invent ad-hoc roles inside a task.
-- For architecture, domain-boundary, and cross-surface risk work, use `architecture-agent` as the primary role. It may ask for focused input from `spec-editor`, `ddd-domain-agent`, `openapi-agent`, `db-migration-agent`, `ui-design-agent`, `test-editor`, `performance-test-agent`, `concurrency-test-agent`, `ci-editor`, `reviewer`, or `qa-agent` when those surfaces are involved.
-- For implementation work, use `implementation-agent` as the primary role. It may delegate to existing specialists such as `ui-design-agent`, `openapi-agent`, `db-migration-agent`, `unit-test-agent`, or `specialized-check-agent`. Future frontend implementation specialists for state management, component rendering, interactions, styling, and API integration must be added to `.agents/manifest.yaml` before use.
-- For deployment and release work, use `deployment-agent` as the primary role. It may delegate to `ci-editor`, `execution-editor`, `qa-agent`, or `reviewer`.
-- For independent verification, use `testing-agent` as the primary role. `playwright-test-agent` belongs here as a browser/UI verification specialist, not under frontend implementation.
+- For architecture, domain-boundary, and cross-surface risk work, use `architecture-agent` as the primary role. It manages `product-architect-agent`, `spec-editor`, `ddd-domain-agent`, `openapi-agent`, and `db-migration-agent`, and may ask for focused input from other domains through `pola`.
+- For implementation work, use `implementation-agent` as the primary role. It manages `frontend-agent`, `backend-agent`, `implementation-editor`, `cli-gui-agent`, `ui-design-agent`, and `execution-editor`.
+- For independent verification, use `testing-agent` as the primary role. It manages `test-editor`, `unit-test-agent`, `playwright-test-agent`, `e2e-test-agent`, `performance-test-agent`, `concurrency-test-agent`, and `specialized-check-agent`. `playwright-test-agent` belongs here as a browser/UI verification specialist, not under frontend implementation.
+- For QA acceptance, release, and deployment readiness, use `qa-agent` as the primary role. It manages `reviewer`, `ci-editor`, and `deployment-agent`.
+- Specialist tasks carry `managedBy` and `activation: "on-demand"`: the managing main agent opens a specialist subagent only when the bounded question requires it, instead of pre-dispatching every registered specialist.
 - Runtime execution is outside this directory. Host systems may run 2 to 4 subagents in parallel, but this repository only defines the routing contract, prompt assembly, and expected outputs.
 - The final output should be one actionable synthesis from `pola`, not a concatenation of every subagent report.
 
@@ -154,13 +164,13 @@ flowchart TD
 
   D -->|Architecture / spec impact| E["architecture-agent"]
   D -->|Implementation| F["implementation-agent"]
-  D -->|Deployment / release| G["deployment-agent"]
-  D -->|Testing / acceptance| H["testing-agent"]
+  D -->|Testing / verification| H["testing-agent"]
+  D -->|QA / release readiness| G["qa-agent"]
 
-  E --> E1["spec-editor / ddd-domain-agent / openapi-agent / db-migration-agent / reviewer"]
-  F --> F1["ui-design-agent / openapi-agent / db-migration-agent / unit-test-agent / specialized-check-agent"]
-  G --> G1["ci-editor / execution-editor / qa-agent / reviewer"]
-  H --> H1["test-editor / unit-test-agent / playwright-test-agent / e2e-test-agent / performance-test-agent / concurrency-test-agent / qa-agent"]
+  E --> E1["product-architect-agent / spec-editor / ddd-domain-agent / openapi-agent / db-migration-agent"]
+  F --> F1["frontend-agent / backend-agent / implementation-editor / cli-gui-agent / ui-design-agent / execution-editor"]
+  H --> H1["test-editor / unit-test-agent / playwright-test-agent / e2e-test-agent / performance-test-agent / concurrency-test-agent / specialized-check-agent"]
+  G --> G1["reviewer / ci-editor / deployment-agent"]
 
   E1 --> Q{"Output target"}
   F1 --> Q
@@ -188,7 +198,7 @@ flowchart TD
   C --> D["Main primary agent from manifest"]
   D --> E{"Need bounded support?"}
   E -->|No| F["Primary role output"]
-  E -->|Yes| G["2-4 specialist agents from manifest"]
+  E -->|Yes| G["2-4 on-demand specialist subagents opened by the managing main agent"]
   G --> H["Short scoped findings"]
   F --> I["pola synthesis"]
   H --> I

@@ -4,6 +4,10 @@ Owns the standalone Product AI OS CLI GUI under `cli-gui/` and its planning know
 
 ## Responsibilities
 
+- Read `cli-gui/DESIGN.md`, `client/components/ui/index.ts`, and `client/components/patterns/index.ts` before frontend work.
+- Search the internal library first; add a semantic variant instead of duplicating component markup or CSS.
+- Keep native controls inside the base UI library, component styles in `components.css`, and page/domain layout in `qoder.css`; use semantic tokens throughout.
+- Update DESIGN.md, every theme mapping, component tests, and browser coverage together when the visual contract changes.
 - Keep the CLI GUI aligned with MVP scope: a polished local GUI management layer over official CLI tools such as Claude Code, Codex, Gemini, and other extensible profiles.
 - Design and implement workspace, session, profile, terminal, settings, inspector, and responsive layout flows without inventing unsupported backend/product capabilities.
 - Preserve REST, WebSocket, PTY, readonly mode, state persistence, and session lifecycle semantics.
@@ -22,8 +26,10 @@ Owns the standalone Product AI OS CLI GUI under `cli-gui/` and its planning know
 
 ## Validation
 
+- Governance: `npm --prefix cli-gui run ui:check`
 - Build: `npm --prefix cli-gui run build`
 - Tests: `npm --prefix cli-gui run test`
+- E2E: `npm --prefix cli-gui run test:e2e`
 - Runtime: `npm --prefix cli-gui run dev`, then open `http://127.0.0.1:3000/` in Google Chrome and verify both `EN` and `中文` modes.
 
 ## Fixed Output

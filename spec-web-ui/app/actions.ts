@@ -8,8 +8,8 @@ import {
   updateExportReviewDecision,
   updateExportReviewNote,
   updateExportReviewTodo
-} from "@/lib/export";
-import { loadCatalogAssets } from "@/lib/catalog";
+} from "@/features/exports/server";
+import { loadCatalogAssets } from "@/features/catalog/server";
 import {
   buildDiscoverReorderFeedback,
   loadPresetBundles,
@@ -34,7 +34,7 @@ import {
   setPresetDisplayHidden,
   toggleFavoriteAsset,
   updateDiscoverPreferences
-} from "@/lib/discover";
+} from "@/features/catalog/preferences";
 import {
   addProjectAssets,
   createProject,

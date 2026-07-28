@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "../components/ui/Icon";
-import type { CliProfile, SessionLaunchConfig, WorkspaceV2 } from "../../shared/types";
+import type { CliProfile, DowngradeReason, SessionLaunchConfig, WorkspaceV2 } from "../../shared/types";
 import { api, type ClientAppState, mergeState } from "../api";
 import { useI18n, type TranslationKey } from "../i18n";
 import { toFeedbackError } from "../feedback-errors";
@@ -12,13 +12,23 @@ import { MainArea } from "../components/MainArea";
 import { RightPanel } from "../components/RightPanel";
 import { WorkspaceProfileManager } from "../components/WorkspaceProfileManager";
 import { useFeedback } from "../components/ui/Feedback";
-import { readPreferences, writePreferences, type UiPreferencesV1 } from "./preferences";
+import { readPreferences, writePreferences, cycleWorkMode, type UiPreferencesV1 } from "./preferences";
+import { CHAT_INTERACTION_ENABLED } from "./feature-flags";
+import { matchesShortcut } from "./shortcuts";
 import { groupSessions } from "./session-selectors";
 import { usePlatform } from "../lib/platform";
 import { Button } from "../components/ui";
 
 const emptyState: ClientAppState = { workspaces: [], profiles: [], sessions: [] };
-const viewShortcuts: Record<string, UiPreferencesV1["currentView"]> = { "1": "quest-home", "2": "chat", "3": "knowledge", "4": "marketplace", "5": "settings" };
+const DOWNGRADE_REASON_KEY: Record<DowngradeReason, TranslationKey> = {
+  "command-missing": "sessionDowngradeReasonCommandMissing",
+  "version-out-of-range": "sessionDowngradeReasonVersionOutOfRange",
+  "unknown-version": "sessionDowngradeReasonUnknownVersion",
+  "adapter-unsupported": "sessionDowngradeReasonAdapterUnsupported",
+  "capability-detect-failed": "sessionDowngradeReasonCapabilityDetectFailed"
+};
+// 视图切换快捷键：定义源在 app/shortcuts.ts，此处仅映射 shortcut id → 视图（console-gaps SPEC §4）
+const SHORTCUT_VIEWS: Record<string, UiPreferencesV1["currentView"]> = { "view-quest-home": "quest-home", "view-chat": "chat", "view-knowledge": "knowledge", "view-marketplace": "marketplace", "view-settings": "settings" };
 type OverlayState = "new-session" | "settings" | "resume" | "rename" | "delete-session" | "archive-session" | "complete-session" | "fork-session" | undefined;
 type PendingDelete = { type: "workspace"; item: WorkspaceV2 } | { type: "profile"; item: CliProfile } | undefined;
 
@@ -35,6 +45,7 @@ export function App() {
   const [pendingDelete, setPendingDelete] = useState<PendingDelete>();
   const [pickerBusy, setPickerBusy] = useState(false);
   const [activeTurns, setActiveTurns] = useState<Record<string, string>>({});
+  const [newSessionDefaultMode, setNewSessionDefaultMode] = useState<"chat" | "terminal">("chat");
   const pickerBusyRef = useRef(false);
   const platform = usePlatform();
   const refreshRequestRef = useRef(0);
@@ -73,15 +84,20 @@ export function App() {
   useEffect(() => {
     function onShortcut(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null;
+      // Ctrl+Tab / Ctrl+Shift+Tab 循环工作模式：输入框聚焦时同样生效，仅终端内保留原按键（console-gaps SPEC §3）
+      if (!target?.closest(".xterm") && (matchesShortcut(event, "work-mode-next") || matchesShortcut(event, "work-mode-previous"))) {
+        event.preventDefault();
+        updatePreferences({ composerWorkMode: cycleWorkMode(preferences.composerWorkMode, matchesShortcut(event, "work-mode-previous") ? -1 : 1) });
+        return;
+      }
       if (target?.closest("input, select, textarea, [role='dialog'], .xterm")) return;
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "b") { event.preventDefault(); updatePreferences({ navigatorOpen: !preferences.navigatorOpen }); }
-      if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === "i" && activeSessionId) { event.preventDefault(); updatePreferences({ inspectorOpen: !preferences.inspectorOpen }); }
-      // ⌘J 切换右栏 Runtime Monitor drawer（frontend-spec §2：⌘B/⌘J/⌘N B 段验收）
-      if ((event.metaKey || event.ctrlKey) && !event.shiftKey && event.key.toLowerCase() === "j" && activeSessionId) { event.preventDefault(); updatePreferences({ inspectorOpen: !preferences.inspectorOpen }); }
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "n") { event.preventDefault(); setOverlay("new-session"); }
+      if (matchesShortcut(event, "toggle-navigator")) { event.preventDefault(); updatePreferences({ navigatorOpen: !preferences.navigatorOpen }); }
+      // ⌘J / ⌘⇧I 切换右栏 Runtime Monitor drawer（frontend-spec §2：⌘B/⌘J/⌘N B 段验收）
+      if ((matchesShortcut(event, "toggle-inspector") || matchesShortcut(event, "toggle-inspector-alt")) && activeSessionId) { event.preventDefault(); updatePreferences({ inspectorOpen: !preferences.inspectorOpen }); }
+      if (matchesShortcut(event, "new-session")) { event.preventDefault(); setOverlay("new-session"); }
       // ⌘/Ctrl + 1..5 switch the primary view (Quest Home, Chat, Knowledge, Marketplace, Settings).
-      if ((event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey && viewShortcuts[event.key]) {
-        const view = viewShortcuts[event.key];
+      for (const [id, view] of Object.entries(SHORTCUT_VIEWS)) {
+        if (!matchesShortcut(event, id)) continue;
         if (view === "chat" && !activeSessionId) return;
         event.preventDefault();
         handleViewChange(view);
@@ -89,12 +105,13 @@ export function App() {
     }
     window.addEventListener("keydown", onShortcut);
     return () => window.removeEventListener("keydown", onShortcut);
-  }, [activeSessionId, handleViewChange, preferences.inspectorOpen, preferences.navigatorOpen, updatePreferences]);
+  }, [activeSessionId, handleViewChange, preferences.composerWorkMode, preferences.inspectorOpen, preferences.navigatorOpen, updatePreferences]);
 
   const activeSession = state.sessions.find((session) => session.id === activeSessionId);
   const activeWorkspace = state.workspaces.find((workspace) => workspace.id === activeSession?.workspaceId);
   const activeProfile = state.profiles.find((profile) => profile.id === activeSession?.profileId);
-  const groupedSessions = useMemo(() => groupSessions(state.sessions, state.workspaces, preferences.sessionGrouping, preferences.sessionFilter), [preferences.sessionFilter, preferences.sessionGrouping, state.sessions, state.workspaces]);
+  const questGroups = useMemo(() => groupSessions(state.sessions, state.workspaces, preferences.sessionGrouping, preferences.sessionFilter, "terminal"), [preferences.sessionFilter, preferences.sessionGrouping, state.sessions, state.workspaces]);
+  const chatGroups = useMemo(() => groupSessions(state.sessions, state.workspaces, preferences.sessionGrouping, preferences.sessionFilter, "chat"), [preferences.sessionFilter, preferences.sessionGrouping, state.sessions, state.workspaces]);
 
   async function runAction(action: () => Promise<unknown>, closeOverlay = true, success: TranslationKey | false = "operationCompleted", closeOverlayOnError = closeOverlay) {
     try {
@@ -111,20 +128,21 @@ export function App() {
 
   async function createSession(input: { name: string; workspaceId: string; profileId: string; interactionMode?: "chat" | "terminal" }) {
     await runAction(async () => {
-      const result = await api.createSession({ ...input, start: true, confirmed: true });
+      // chat 功能开关关闭：无论入口传入什么，一律降级 terminal（console-gaps SPEC §1）
+      const result = await api.createSession({ ...input, interactionMode: CHAT_INTERACTION_ENABLED ? input.interactionMode : "terminal", start: true, confirmed: true });
       // profile 不支持 headless → 服务端降级 terminal，一次性说明（api-spec §2.6 / frontend-spec 降级说明）
-      if (result.interactionModeDowngraded) feedback.warning({ title: t("sessionDowngradedToTerminal") });
+      if (result.interactionModeDowngraded) feedback.warning({ title: t("sessionDowngradedToTerminal"), description: result.downgradeReason ? t(DOWNGRADE_REASON_KEY[result.downgradeReason]) : undefined });
       setActiveSessionId(result.session?.id ?? result.id);
       updatePreferences({ currentView: "chat" });
-    }, true, "sessionCreated");
+    }, true, false);
   }
 
-  // Quest Home 一次提交创建流：创建 chat 会话（服务端按 capability 降级）+ 首条消息 start-and-send 首轮（frontend-spec §2、§6）
+  // Quest Home 一次提交创建流：创建会话（chat 封闭期降级 terminal，console-gaps SPEC §1）+ 首条消息 start-and-send 首轮（frontend-spec §2、§6）
   // 创建失败直接 reject：composer 保留输入并提示错误码文案；创建成功但首轮失败仍进入会话（可在会话内重发）
   const quickCreateSession = useCallback(async (input: { content: string; workspaceId: string; profileId: string }) => {
     const name = input.content.replace(/\s+/g, " ").trim().slice(0, 48) || t("newCliSession");
-    const result = await api.createSession({ name, workspaceId: input.workspaceId, profileId: input.profileId, interactionMode: "chat", start: true, confirmed: true });
-    if (result.interactionModeDowngraded) feedback.warning({ title: t("sessionDowngradedToTerminal") });
+    const result = await api.createSession({ name, workspaceId: input.workspaceId, profileId: input.profileId, interactionMode: CHAT_INTERACTION_ENABLED ? "chat" : "terminal", start: true, confirmed: true });
+    if (result.interactionModeDowngraded) feedback.warning({ title: t("sessionDowngradedToTerminal"), description: result.downgradeReason ? t(DOWNGRADE_REASON_KEY[result.downgradeReason]) : undefined });
     const sessionId = result.session?.id ?? result.id;
     try {
       await api.sendMessage(sessionId, { clientMessageId: crypto.randomUUID(), content: input.content, startIfStopped: true, confirmedStart: true });
@@ -213,14 +231,14 @@ export function App() {
   return <div className="qoder-app">
     <TitleBar title={activeSession?.name} workspaceName={activeWorkspace?.name} sidebarOpen={preferences.navigatorOpen} rightPanelOpen={showRightPanel && preferences.inspectorOpen} onToggleSidebar={() => updatePreferences({ navigatorOpen: !preferences.navigatorOpen })} onToggleRightPanel={() => updatePreferences({ inspectorOpen: !preferences.inspectorOpen })} />
     <main className={`qoder-body ${preferences.navigatorOpen ? "sidebar-open" : ""} ${showRightPanel && preferences.inspectorOpen ? "right-open" : ""}`}>
-      {preferences.navigatorOpen && <Sidebar sessions={state.sessions} groups={groupedSessions} workspaces={state.workspaces} activeSessionId={activeSessionId} activeTurns={activeTurns} currentView={preferences.currentView} grouping={preferences.sessionGrouping} filter={preferences.sessionFilter} readonly={readonly} openFolderBusy={pickerBusy} onViewChange={handleViewChange} onNewQuest={() => { updatePreferences({ currentView: "quest-home" }); setOverlay("new-session"); }} onSelectSession={selectSession} onGroupingChange={(sessionGrouping) => updatePreferences({ sessionGrouping })} onFilterChange={(sessionFilter) => updatePreferences({ sessionFilter })} onReorder={reorderSessions} onOpenFolder={openFolder} onOpenSettings={() => setOverlay("settings")} onRename={(session) => { setActiveSessionId(session.id); setOverlay("rename"); }} onPin={(session) => void runAction(() => api.pinSession(session.id, !session.pinned, session.revision ?? 1), false)} onComplete={(session) => { setActiveSessionId(session.id); if (session.organizationStatus === "completed") void runAction(() => api.restoreSession(session.id, session.revision ?? 1), false); else setOverlay("complete-session"); }} onArchive={(session) => { setActiveSessionId(session.id); if (session.organizationStatus === "archived") void runAction(() => api.restoreSession(session.id, session.revision ?? 1), false); else setOverlay("archive-session"); }} onFork={(session) => { setActiveSessionId(session.id); setOverlay("fork-session"); }} onDelete={(session) => { setActiveSessionId(session.id); setOverlay("delete-session"); }} onClose={() => updatePreferences({ navigatorOpen: false })} />}
+      {preferences.navigatorOpen && <Sidebar questGroups={questGroups} chatGroups={chatGroups} workspaces={state.workspaces} activeSessionId={activeSessionId} activeTurns={activeTurns} currentView={preferences.currentView} grouping={preferences.sessionGrouping} filter={preferences.sessionFilter} readonly={readonly} openFolderBusy={pickerBusy} onViewChange={handleViewChange} onNewQuest={() => { setNewSessionDefaultMode("chat"); updatePreferences({ currentView: "quest-home" }); setOverlay("new-session"); }} onSelectSession={selectSession} onGroupingChange={(sessionGrouping) => updatePreferences({ sessionGrouping })} onFilterChange={(sessionFilter) => updatePreferences({ sessionFilter })} onReorder={reorderSessions} onOpenFolder={openFolder} onOpenSettings={() => setOverlay("settings")} onRename={(session) => { setActiveSessionId(session.id); setOverlay("rename"); }} onPin={(session) => void runAction(() => api.pinSession(session.id, !session.pinned, session.revision ?? 1), false)} onComplete={(session) => { setActiveSessionId(session.id); if (session.organizationStatus === "completed") void runAction(() => api.restoreSession(session.id, session.revision ?? 1), false); else setOverlay("complete-session"); }} onArchive={(session) => { setActiveSessionId(session.id); if (session.organizationStatus === "archived") void runAction(() => api.restoreSession(session.id, session.revision ?? 1), false); else setOverlay("archive-session"); }} onFork={(session) => { setActiveSessionId(session.id); setOverlay("fork-session"); }} onDelete={(session) => { setActiveSessionId(session.id); setOverlay("delete-session"); }} onClose={() => updatePreferences({ navigatorOpen: false })} />}
       {preferences.navigatorOpen && <Button unstyled className="drawer-backdrop navigator-backdrop" aria-label={t("closeSessionList")} onClick={() => updatePreferences({ navigatorOpen: false })} />}
       <div className="qoder-main-column">
-        <MainArea currentView={preferences.currentView} activeSession={activeSession} activeWorkspace={activeWorkspace} activeProfile={activeProfile} workspaces={state.workspaces} profiles={state.profiles} readonly={readonly} centerView={activeSession ? preferences.centerViewBySession[activeSession.id] ?? "transcript" : "transcript"} onCenterViewChange={(view) => activeSession && updatePreferences({ centerViewBySession: { ...preferences.centerViewBySession, [activeSession.id]: view } })} onLaunchConfigChange={updateLaunchConfig} onNewSession={() => setOverlay("new-session")} onSendPrompt={sendPrompt} onQuickCreate={quickCreateSession} onStatus={refreshStatus} onOpenSettings={() => handleViewChange("settings")} onResume={resumeSession} onStop={stopSession} onTurnActivity={reportTurnActivity} />
+        <MainArea currentView={preferences.currentView} activeSession={activeSession} activeWorkspace={activeWorkspace} activeProfile={activeProfile} workspaces={state.workspaces} profiles={state.profiles} readonly={readonly} centerView={activeSession ? preferences.centerViewBySession[activeSession.id] ?? "transcript" : "transcript"} onCenterViewChange={(view) => activeSession && updatePreferences({ centerViewBySession: { ...preferences.centerViewBySession, [activeSession.id]: view } })} onLaunchConfigChange={updateLaunchConfig} onNewSession={() => { setNewSessionDefaultMode("chat"); setOverlay("new-session"); }} onSendPrompt={sendPrompt} onQuickCreate={quickCreateSession} onStatus={refreshStatus} onOpenSettings={() => handleViewChange("settings")} onResume={resumeSession} onStop={stopSession} onTurnActivity={reportTurnActivity} workMode={preferences.composerWorkMode} onWorkModeChange={(mode) => updatePreferences({ composerWorkMode: mode })} />
       </div>
       {showRightPanel && preferences.inspectorOpen && activeSession && <RightPanel session={activeSession} workspace={activeWorkspace} profile={activeProfile} readonly={readonly} runningCount={state.sessions.filter((session) => session.runtimeStatus === "running" || session.runtimeStatus === "starting").length} runningLimit={state.maxRunningSessions} activeTab={preferences.rightPanelTab} onTabChange={(tab) => updatePreferences({ rightPanelTab: tab as UiPreferencesV1["rightPanelTab"] })} onClose={() => updatePreferences({ inspectorOpen: false })} />}
       {showRightPanel && preferences.inspectorOpen && activeSession && <Button unstyled className="drawer-backdrop inspector-backdrop" aria-label={t("closeSessionDetails")} onClick={() => updatePreferences({ inspectorOpen: false })} />}
-      {overlay === "new-session" && <NewSessionDialog workspaces={state.workspaces} profiles={state.profiles} readonly={readonly} onClose={() => setOverlay(undefined)} onCreate={createSession} onOpenSettings={() => setOverlay("settings")} />}
+      {overlay === "new-session" && <NewSessionDialog defaultMode={newSessionDefaultMode} workspaces={state.workspaces} profiles={state.profiles} readonly={readonly} onClose={() => setOverlay(undefined)} onCreate={createSession} onOpenSettings={() => setOverlay("settings")} />}
       {overlay === "settings" && <WorkspaceProfileManager workspaces={state.workspaces} profiles={state.profiles} sessions={state.sessions} readonly={readonly} onClose={() => setOverlay(undefined)} onOpenFolder={openFolder} onCreateWorkspace={async (input) => runAction(() => api.createWorkspace(input), false)} onCreateProfile={async (input) => runAction(() => api.createProfile(input), false)} onDeleteWorkspace={(item) => setPendingDelete({ type: "workspace", item })} onDeleteProfile={(item) => setPendingDelete({ type: "profile", item })} />}
       {overlay === "resume" && activeSession && <ActionDialog title={`${t("resume")} ${activeSession.name}?`} description={t("resumeDescription", { profile: activeProfile?.name ?? t("profileFallback"), workspace: activeWorkspace?.path ?? t("thisWorkspace") })} confirmLabel={t("resumeSession")} onClose={() => setOverlay(undefined)} onConfirm={() => runAction(() => api.startSession(activeSession.id))} />}
       {overlay === "archive-session" && activeSession && <ActionDialog danger title={t("archiveSessionTitle")} description={t("archiveSessionDescription", { name: activeSession.name })} confirmLabel={t("archive")} onClose={() => setOverlay(undefined)} onConfirm={() => runAction(() => api.archiveSession(activeSession.id, activeSession.revision ?? 1, true))} />}

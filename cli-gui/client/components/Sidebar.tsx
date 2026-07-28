@@ -1,10 +1,10 @@
 import { useRef, useState } from "react";
 import type { MouseEvent } from "react";
 import type { Session, Workspace } from "../../shared/types";
+import { CHAT_INTERACTION_ENABLED } from "../app/feature-flags";
 import type { AppView, SessionFilter, SessionGrouping } from "../app/preferences";
 import type { SessionGroup } from "../app/session-selectors";
 import { useI18n, type TranslationKey } from "../i18n";
-import { LanguageToggle } from "./LanguageToggle";
 import { Icon } from "./ui/Icon";
 import { Select } from "./ui/Select";
 import { useMobileDrawerFocus } from "./ui/useMobileDrawerFocus";
@@ -17,8 +17,8 @@ interface ReorderSection {
 }
 
 interface SidebarProps {
-  sessions: Session[];
-  groups: SessionGroup[];
+  questGroups: SessionGroup[];
+  chatGroups: SessionGroup[];
   workspaces: Workspace[];
   activeSessionId?: string;
   currentView: AppView;
@@ -47,7 +47,7 @@ interface SidebarProps {
 const timeLabelKeys = new Set(["today", "yesterday", "previous7Days", "older", "recent", "pinned", "unpinned", "project"]);
 
 export function Sidebar(props: SidebarProps) {
-  const { statusLabel, t } = useI18n();
+  const { t } = useI18n();
   const [menuSession, setMenuSession] = useState<Session>();
   const [controlsOpen, setControlsOpen] = useState(false);
   const [draggedSessionId, setDraggedSessionId] = useState<string>();
@@ -57,7 +57,7 @@ export function Sidebar(props: SidebarProps) {
   const controlsTriggerRef = useRef<HTMLButtonElement>(null);
   useMobileDrawerFocus(panelRef, props.onClose);
   const manual = props.grouping === "manual";
-  const totalSessions = props.groups.reduce((count, group) => count + group.sessions.length, 0);
+  const totalSessions = props.questGroups.reduce((count, group) => count + group.sessions.length, 0);
 
   function openMenu(session: Session, trigger: HTMLButtonElement) {
     menuTriggerRef.current = trigger;
@@ -116,7 +116,7 @@ export function Sidebar(props: SidebarProps) {
       </div>
       <div className="quest-list">
         {!totalSessions && <p className="sidebar-empty">{t("noSessionsForFilter")}</p>}
-        {props.groups.map((group) => <div className="quest-group" key={group.id}>
+        {props.questGroups.map((group) => <div className="quest-group" key={group.id}>
           <div className="quest-group-heading" id={`quest-group-${group.id}`}>{groupHeading(group)}</div>
           {group.sessions.map((session, sessionIndex) => <div
             className={`quest-row ${session.id === props.activeSessionId ? "active" : ""} ${manual ? "reorderable" : ""}`}
@@ -127,8 +127,8 @@ export function Sidebar(props: SidebarProps) {
             onDrop={(event) => { event.preventDefault(); if (manual && draggedSessionId) reorderGroup(group, draggedSessionId, sessionIndex); setDraggedSessionId(undefined); }}
           >
             <Button variant="ghost" className="quest-row-main" onClick={() => props.onSelectSession(session.id)} onContextMenu={(event: MouseEvent<HTMLButtonElement>) => { event.preventDefault(); openMenu(session, event.currentTarget); }} aria-current={session.id === props.activeSessionId ? "page" : undefined}>
-              {session.pinned ? <Icon name="star" className="quest-leading pinned" /> : <span className={`quest-dot ${runtimeStatus(session)}`} />}
-              <span className="quest-copy"><strong>{session.name}</strong><span className={`mode-badge ${session.interactionMode ?? "terminal"}`}>{session.interactionMode === "chat" ? t("sessionModeChat") : t("sessionModeTerminal")}</span><small>{props.activeTurns?.[session.id] ? t("turnInProgress") : statusLabel(runtimeStatus(session))}</small></span>
+              {session.pinned ? <Icon name="star" className="quest-leading pinned" /> : <span className="quest-dot" />}
+              <span className="quest-copy"><strong>{session.name}</strong>{props.activeTurns?.[session.id] && <small>{t("turnInProgress")}</small>}</span>
               <span className="quest-time">{relativeTime(session.lastActiveAt)}</span>
             </Button>
             {manual && <div className="quest-reorder" aria-label={t("sessionActions")}>
@@ -149,8 +149,9 @@ export function Sidebar(props: SidebarProps) {
       </div>
       <div className="sidebar-section-heading chats-heading"><strong>{t("qoderChats")}</strong></div>
       <div className="chat-list">
-        {!props.sessions.length && <p className="sidebar-empty">{t("qoderNoQuestYet")}</p>}
-        {props.sessions.slice(0, 5).map((session) => <Button variant="ghost" className={`chat-row ${session.id === props.activeSessionId && props.currentView === "chat" ? "active" : ""}`} key={session.id} onClick={() => props.onSelectSession(session.id)}><span className="chat-avatar">{session.name.slice(0, 1).toUpperCase()}</span><span><strong>{session.name}</strong><small>{statusLabel(runtimeStatus(session))}</small></span><time>{relativeTime(session.lastActiveAt)}</time></Button>)}
+        {/* chat 封闭期：无存量会话展示「暂未开放」空态；存量会话照常列出可查看（console-gaps SPEC §1） */}
+        {!props.chatGroups.some((group) => group.sessions.length > 0) && <p className="sidebar-empty">{t(CHAT_INTERACTION_ENABLED ? "qoderNoChatsYet" : "chatSectionDisabled")}</p>}
+        {props.chatGroups.flatMap((group) => group.sessions).map((session) => <Button variant="ghost" className={`chat-row ${session.id === props.activeSessionId ? "active" : ""}`} key={session.id} onClick={() => props.onSelectSession(session.id)}><span className="chat-avatar">{session.name.slice(0, 1).toUpperCase()}</span><span><strong>{session.name}</strong></span><time>{relativeTime(session.lastActiveAt)}</time></Button>)}
       </div>
     </div>
     <div className="sidebar-bottom-zone">
@@ -158,13 +159,13 @@ export function Sidebar(props: SidebarProps) {
       <Button variant="ghost" className={`sidebar-link ${props.currentView === "knowledge" ? "active" : ""}`} onClick={() => props.onViewChange("knowledge")}><span><Icon name="book" />{t("qoderKnowledge")}</span></Button>
       <Button variant="ghost" className={`sidebar-link ${props.currentView === "marketplace" ? "active" : ""}`} onClick={() => props.onViewChange("marketplace")}><span><Icon name="shopping" />{t("qoderMarketplace")}</span></Button>
       <Button variant="ghost" className="open-folder-sidebar" onClick={props.onOpenFolder} disabled={props.readonly || props.openFolderBusy}><Icon name="folder" />{props.openFolderBusy ? t("working") : t("openFolder")}</Button>
-      <div className="sidebar-user"><span className="chat-avatar">L</span><span className="user-copy"><strong>liquiid</strong><small>Local</small></span><LanguageToggle /><IconButton appearance="section" icon="settings" onClick={props.onOpenSettings} label={t("openSettings")} /></div>
+      {/* 语言切换收入设置 Appearance，左栏不再常驻（console-gaps SPEC §6） */}
+      <div className="sidebar-user"><span className="chat-avatar">L</span><span className="user-copy"><strong>liquiid</strong><small>Local</small></span><IconButton appearance="section" icon="settings" onClick={props.onOpenSettings} label={t("openSettings")} /></div>
     </div>
     <div className="navigator-live-region" aria-live="polite">{announcement}</div>
   </aside>;
 }
 
-function runtimeStatus(session: Session) { return session.runtimeStatus ?? session.status ?? "stopped"; }
 function relativeTime(value: string) {
   const timestamp = new Date(value).getTime();
   if (!Number.isFinite(timestamp)) return "";

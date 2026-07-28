@@ -1,0 +1,226 @@
+/* ─────────────────────────────────────────────────────────────────────
+ * Theme · stra-rail  （星穹轨道）
+ *   Deep starfield navy stage. Dual accent: pink (#F07CB8) + ice cyan
+ *   (#5BCAE8), with lavender (#9988E8) as a tertiary decorative tint.
+ *   Hero text: Noto Serif SC weight-900, no italic.
+ *   Progress bar: pink → light-pink → cyan gradient.
+ *   Decoration signature: floating ice-diamond particles + sparkle
+ *   crosses + petal shapes + ribbon SVGs — all animated with drift /
+ *   twinkle / floatUp loops at low opacity.
+ *   Background: 4-layer radial-gradient nebula (pink / blue / lavender
+ *   clouds) fixed behind the stage.
+ *
+ *   character knobs:
+ *     • hero numbers   — heavy Noto Serif SC, no italic
+ *     • rule           — 1px solid, cyan-tinted hairline
+ *     • card radius    — 12px refined
+ *     • surface deco   — 4-layer nebula radial gradient (vignette slot)
+ *     • motion         — smooth, mid-pace (not cinematic, not snappy)
+ *
+ *   Extension tokens (beyond standard contract):
+ *     --accent-2 / --accent-2-soft / --accent-2-glow  — ice cyan family
+ *     --accent-3                                        — lavender tint
+ *     --progress-gradient                               — progress bar
+ *     --rule-gradient                                   — section dividers
+ * ───────────────────────────────────────────────────────────────────── */
+
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700;900&family=Noto+Sans+SC:wght@300;400;700&display=swap');
+
+:root {
+  /* ─── surface palette ─── */
+  --shell:        #080d24;          /* letterbox — deeper than stage */
+  --surface:      #0E1438;          /* stage main background           */
+  --surface-2:    rgba(56, 88, 200, 0.10);   /* card / code block      */
+  --surface-3:    rgba(56, 88, 200, 0.06);   /* nested panel           */
+
+  /* ─── text ─── */
+  --text:         #E8F5FF;
+  --text-2:       rgba(232, 245, 255, 0.65);
+  --text-mute:    rgba(232, 245, 255, 0.35);
+  --text-faint:   rgba(232, 245, 255, 0.18);
+
+  /* ─── rule ─── */
+  --rule:         rgba(91, 202, 232, 0.12);  /* cyan hairline           */
+
+  /* ─── accent: pink (primary) ─── */
+  --accent:       #F07CB8;
+  --accent-soft:  rgba(240, 124, 184, 0.12);
+  --accent-glow:  rgba(240, 124, 184, 0.45);
+
+  /* ─── accent-2: ice cyan (secondary — stra-rail extension) ─── */
+  --accent-2:       #5BCAE8;
+  --accent-2-soft:  rgba(91, 202, 232, 0.12);
+  --accent-2-glow:  rgba(91, 202, 232, 0.35);
+
+  /* ─── accent-3: lavender (tertiary tint, decoration only) ─── */
+  --accent-3:       #9988E8;
+
+  /* ─── fonts ─── */
+  --font-display-cn: "Noto Serif SC", "Source Han Serif SC", serif;
+  --font-display-en: "Playfair Display", Georgia, serif;
+  --font-body:       "Noto Sans SC", -apple-system, sans-serif;
+  --font-mono:       "JetBrains Mono", "SF Mono", ui-monospace, monospace;
+  --font-features:   "tnum", "ss01";
+
+  /* ─── hero number style ─── */
+  --hero-num-font:    var(--font-display-cn);
+  --hero-num-style:   normal;
+  --hero-num-weight:  900;
+  --hero-num-track:   -0.02em;
+
+  /* ─── stage geometry ─── */
+  --stage-pad-x:  160px;
+  --stage-pad-y:  80px;
+  --r-card:       12px;
+  --r-stage:      0;
+
+  /* ─── rule character ─── */
+  --rule-w:       1px;
+  --rule-style:   solid;
+
+  /* ─── card material ─── */
+  --card-glass-bg:     rgba(56, 88, 200, 0.10);
+  --card-glass-border: rgba(91, 202, 232, 0.12);
+  --card-shadow:       none;
+  --shadow-stage:      none;
+  --stage-border:      none;
+
+  /* ─── decoration: nebula radial gradient (vignette slot) ─── */
+  --surface-vignette:
+    radial-gradient(ellipse 60% 55% at 55% 60%, rgba(240, 124, 184, 0.14) 0%, transparent 65%),
+    radial-gradient(ellipse 45% 40% at 15% 75%, rgba(56,  88,  200, 0.25) 0%, transparent 55%),
+    radial-gradient(ellipse 30% 25% at 85% 20%, rgba(255, 184, 216, 0.10) 0%, transparent 50%),
+    radial-gradient(ellipse 35% 30% at 70% 80%, rgba(153, 136, 232, 0.12) 0%, transparent 50%);
+
+  /* ─── progress bar gradient (consumed by ProgressBar component) ─── */
+  --progress-gradient: linear-gradient(90deg, #F07CB8, #FFB8D8, #5BCAE8);
+
+  /* ─── section divider line gradient ─── */
+  --rule-gradient: linear-gradient(90deg, transparent, #F07CB8, #FFB8D8, transparent);
+
+  /* ─── text shadow: none (clean on dark surface) ─── */
+  --text-shadow: none;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+ * Particle field — floating decorative elements
+ *
+ * Usage in chapter HTML:
+ *   <div class="sr-ice" style="top:10%;left:8%;animation-delay:0s"></div>
+ *   <div class="sr-sparkle" style="top:15%;left:25%;opacity:.4"></div>
+ *   <div class="sr-petal" style="top:18%;left:92%;background:rgba(240,124,184,.08)"></div>
+ *   <!-- ribbon: use inline SVG with class sr-ribbon -->
+ *
+ * Recommended placement: 5–6 ice, 5–6 sparkles, 3–4 petals, 2–3 ribbons
+ * scattered around the stage edges. Keep them outside the content safe zone.
+ * ───────────────────────────────────────────────────────────────────── */
+
+/* ─── keyframes ─── */
+@keyframes sr-drift {
+  0%   { transform: translateY(0)    rotate(0deg); }
+  50%  { transform: translateY(-6px) rotate(8deg); }
+  100% { transform: translateY(0)    rotate(0deg); }
+}
+
+@keyframes sr-twinkle {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50%       { opacity: 1;   transform: scale(1.2); }
+}
+
+@keyframes sr-float-up {
+  0%   { opacity: 0;   transform: translateY(20px)  scale(0.5); }
+  50%  { opacity: 1; }
+  100% { opacity: 0;   transform: translateY(-60px) scale(1.2); }
+}
+
+/* ─── ice diamond particle ─── */
+.sr-ice {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid rgba(91, 202, 232, 0.4);
+  transform: rotate(45deg);
+  z-index: 0;
+  pointer-events: none;
+  animation: sr-drift 11.5s ease infinite;
+}
+
+/* ─── sparkle cross ─── */
+.sr-sparkle {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+}
+.sr-sparkle::before,
+.sr-sparkle::after {
+  content: '';
+  position: absolute;
+  background: #E8F5FF;
+  border-radius: 1px;
+}
+.sr-sparkle::before { width: 2px;  height: 12px; left: 5px; top: 0;  }
+.sr-sparkle::after  { width: 12px; height: 2px;  left: 0;   top: 5px; }
+
+/* ─── petal ─── */
+.sr-petal {
+  position: absolute;
+  width: 18px;
+  height: 22px;
+  border-radius: 50% 50% 50% 0;
+  z-index: 0;
+  pointer-events: none;
+  animation: sr-drift 14.4s ease infinite;
+}
+
+/* ─── ribbon (SVG wrapper) ─── */
+.sr-ribbon {
+  position: absolute;
+  z-index: 0;
+  opacity: 0.12;
+  pointer-events: none;
+}
+
+/*
+ * Ribbon SVG path (copy into inline SVG):
+ *   <path d="M30 8 Q20 0 10 8 Q0 16 10 20 L30 32 L50 20 Q60 16 50 8 Q40 0 30 8Z" fill="<color>"/>
+ * Suggested colors: #F07CB8 (pink) / #FFB8D8 (light pink) / #9988E8 (lavender)
+ * Suggested sizes: 60–80px wide, 0.06–0.12 opacity
+ */
+
+/* ─────────────────────────────────────────────────────────────────────
+ * Shared chapter animation primitives
+ *
+ * These mirror what was inline in 半年谈 HTML and are provided here so
+ * chapter agents can reference them by name instead of redefining them.
+ * ───────────────────────────────────────────────────────────────────── */
+
+@keyframes sr-fu  { from { opacity:0; transform:translateY(16px);              } to { opacity:1; transform:translateY(0);           } }
+@keyframes sr-si  { from { opacity:0; transform:scaleX(0);                     } to { opacity:1; transform:scaleX(1);               } }
+@keyframes sr-fl  { from { opacity:0; transform:translateX(-24px);             } to { opacity:1; transform:translateX(0);           } }
+@keyframes sr-fr  { from { opacity:0; transform:translateX(24px);              } to { opacity:1; transform:translateX(0);           } }
+@keyframes sr-pi  { from { opacity:0; transform:scale(0.3) rotate(-30deg);     } to { opacity:1; transform:scale(1) rotate(0deg);  } }
+
+/* ─────────────────────────────────────────────────────────────────────
+ * Rule / divider line helper
+ *
+ * Usage:
+ *   <div class="sr-rule"></div>
+ *   <div class="sr-rule" style="--rule-accent: var(--accent-2)"></div>
+ * ───────────────────────────────────────────────────────────────────── */
+.sr-rule {
+  width: 100%;
+  height: 1.5px;
+  background: var(--rule-gradient);
+  border: none;
+  border-radius: 1px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+ * Progress bar override
+ * If the scaffold's ProgressBar reads --progress-gradient, this is
+ * already picked up via the token above. If it uses a hardcoded color,
+ * override here:
+ * ───────────────────────────────────────────────────────────────────── */
+.progress-bar {
+  background: var(--progress-gradient) !important;
+}

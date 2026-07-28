@@ -1,5 +1,5 @@
-import type { ApiErrorCode, ApiErrorResponse, FilePreview, FileTreePage, GitDiffResponse, GitStatusResponse, LanguageSummaryResponse, PickWorkspaceResponse, SendMessageRequest, SendMessageResponse, SessionWithCompatibilityStatus, StateResponse, TranscriptPage } from "../shared/types";
-import type { AppStateV2, CliProfileV2, CliProfileCapabilities, WorkspaceV2 } from "../shared/types";
+import type { ApiErrorCode, ApiErrorResponse, DowngradeReason, FilePreview, FileTreePage, GitDiffResponse, GitStatusResponse, LanguageSummaryResponse, PickWorkspaceResponse, SendMessageRequest, SendMessageResponse, SessionWithCompatibilityStatus, StateResponse, TranscriptPage } from "../shared/types";
+import type { AppStateV2, CliProfileV2, CliProfileCapabilities, ProfileModelsResponse, PromptEnhanceRequest, PromptEnhanceResponse, SkillContentResponse, SkillListResponse, SkillScope, WorkspaceV2 } from "../shared/types";
 import type { EventServerFrame, TerminalServerFrame } from "../shared/websocket";
 
 export class ApiClientError extends Error {
@@ -34,6 +34,8 @@ export interface TranscriptSubscriptionHandlers {
   onEvent?: (event: import("../shared/types").TranscriptEvent) => void;
   onSession?: (session: import("../shared/types").SessionV2) => void;
   onTurnStatus?: (turnId: string, status: import("../shared/websocket").TurnStatus) => void;
+  /** 流式增量帧（streaming-spec FR-2）：临时帧、断线不补发 */
+  onTurnDelta?: (turnId: string, delta: string) => void;
   onWarning?: (code: string) => void;
   onError?: (message: string) => void;
   onClose?: () => void;
@@ -61,6 +63,7 @@ export function openTranscriptSubscription(sessionId: string, afterSequence: num
       else if (frame.type === "transcript-event") handlers.onEvent?.(frame.event);
       else if (frame.type === "session-updated") handlers.onSession?.(frame.session);
       else if (frame.type === "turn-status") handlers.onTurnStatus?.(frame.turnId, frame.status);
+      else if (frame.type === "turn-delta") handlers.onTurnDelta?.(frame.turnId, frame.delta);
       else if (frame.type === "recording-warning") handlers.onWarning?.(frame.code);
       else if (frame.type === "protocol-error") handlers.onError?.(frame.error.message);
     } catch {
@@ -117,7 +120,14 @@ export const api = {
   createWorkspace: (input: { name: string; path: string }) => request<WorkspaceV2>("/api/workspaces", { method: "POST", body: JSON.stringify(input) }),
   createProfile: (input: { name: string; command: string; args: string[]; adapterId?: string }) => request<CliProfileV2>("/api/profiles", { method: "POST", body: JSON.stringify(input) }),
   profileCapabilities: (id: string, signal?: AbortSignal) => request<CliProfileCapabilities>(`/api/profiles/${id}/capabilities`, { signal }),
-  createSession: (input: { name: string; workspaceId: string; profileId: string; confirmed: boolean; start?: boolean; interactionMode?: "chat" | "terminal"; terminal?: { cols: number; rows: number } }) => request<SessionWithCompatibilityStatus & { session?: SessionWithCompatibilityStatus; capabilities?: CliProfileCapabilities; interactionModeDowngraded?: boolean }>("/api/sessions", { method: "POST", body: JSON.stringify({ start: input.start ?? true, ...input }) }),
+  profileModels: (id: string, signal?: AbortSignal) => request<ProfileModelsResponse>(`/api/profiles/${id}/models`, { signal }),
+  syncProfileModels: (id: string) => request<ProfileModelsResponse>(`/api/profiles/${id}/models/sync`, { method: "POST", body: "{}" }),
+  addProfileModel: (id: string, model: string) => request<ProfileModelsResponse>(`/api/profiles/${id}/models/custom`, { method: "POST", body: JSON.stringify({ model }) }),
+  removeProfileModel: (id: string, model: string) => request<ProfileModelsResponse>(`/api/profiles/${id}/models/custom/${encodeURIComponent(model)}`, { method: "DELETE", body: "{}" }),
+  skills: (scope: SkillScope, workspaceId?: string, signal?: AbortSignal) => request<SkillListResponse>(`/api/skills?scope=${scope}${workspaceId ? `&workspaceId=${encodeURIComponent(workspaceId)}` : ""}`, { signal }),
+  skillContent: (scope: SkillScope, id: string, workspaceId?: string, signal?: AbortSignal) => request<SkillContentResponse>(`/api/skills/content?scope=${scope}&id=${encodeURIComponent(id)}${workspaceId ? `&workspaceId=${encodeURIComponent(workspaceId)}` : ""}`, { signal }),
+  enhancePrompt: (input: PromptEnhanceRequest, signal?: AbortSignal) => request<PromptEnhanceResponse>("/api/prompt/enhance", { method: "POST", body: JSON.stringify(input), signal }),
+  createSession: (input: { name: string; workspaceId: string; profileId: string; confirmed: boolean; start?: boolean; interactionMode?: "chat" | "terminal"; terminal?: { cols: number; rows: number } }) => request<SessionWithCompatibilityStatus & { session?: SessionWithCompatibilityStatus; capabilities?: CliProfileCapabilities; interactionModeDowngraded?: boolean; downgradeReason?: DowngradeReason }>("/api/sessions", { method: "POST", body: JSON.stringify({ start: input.start ?? true, ...input }) }),
   startSession: (id: string) => request<SessionWithCompatibilityStatus>(`/api/sessions/${id}/start`, { method: "POST", body: JSON.stringify({ confirmed: true }) }),
   stopSession: (id: string) => request<SessionWithCompatibilityStatus>(`/api/sessions/${id}/stop`, { method: "POST", body: "{}" }),
   renameSession: (id: string, name: string, expectedRevision: number) => request<SessionWithCompatibilityStatus>(`/api/sessions/${id}`, { method: "PATCH", body: JSON.stringify({ name, expectedRevision }) }),

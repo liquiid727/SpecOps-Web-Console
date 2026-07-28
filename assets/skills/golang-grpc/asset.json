@@ -1,0 +1,37 @@
+{
+  "id": "skill-golang-grpc",
+  "type": "skill",
+  "title": "Golang Grpc",
+  "summary": "Production gRPC in Go: protobuf layout, codegen, interceptors, deadlines, error codes, streaming, health checks, TLS, and testing with bufconn",
+  "direction": "backend",
+  "stacks": [
+    "go"
+  ],
+  "tags": [
+    "golang",
+    "grpc",
+    "protobuf",
+    "microservices",
+    "streaming",
+    "interceptors",
+    "observability",
+    "go-pack"
+  ],
+  "appliesTo": [
+    "backend"
+  ],
+  "dependsOn": [],
+  "conflictsWith": [],
+  "sourcePath": "assets/skills/golang-grpc/SKILL.md",
+  "files": [
+    "skills/developer/golang-grpc/SKILL.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "按项目类型确认是否启用该 skill，并检查引用资料是否适配目标仓库。"
+  ],
+  "sampleOutput": "可复用 skill 说明、触发条件、参考资料和运行边界。",
+  "contentFiles": {
+    "skills/developer/golang-grpc/SKILL.md": "assets/skills/golang-grpc/SKILL.md"
+  }
+}

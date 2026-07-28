@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import { CatalogAssetSummary } from "@/components/catalog/asset-summary";
 import { Badge } from "@/components/ui/badge";
-import { getCatalogRowTagPreview } from "@/lib/discover-ui";
+import { getCatalogRowTagPreview } from "@/features/catalog/ui";
 import { buildNeoSurfaceClassName, type NeoSurfaceTint } from "@/lib/theme";
 import type { CatalogAsset } from "@/lib/types";
 

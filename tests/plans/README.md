@@ -1,11 +1,12 @@
 # Test Plans
 
-This directory stores normalized `test-plan` artifacts derived from feature specs.
+This directory stores normalized `test-plan` artifacts derived from approved Test Specs, each bound to an approved Feature Spec version.
 
 Each plan should define:
 
 - `spec_id`
 - `spec_version`
+- source Test Spec path and version
 - feature name
 - design/roadmap/spec source
 - business `flows` with ordered `stages`

@@ -35,9 +35,10 @@ Use this order exactly:
 
 ## Field Rules
 
-- `Meta` must include `Spec ID`, `Title`, `Epic`, `Status`, `Owner Agent`, `Depends On`, and `Prerequisites`
+- `Meta` must include `Spec ID`, `Spec Version`, `Title`, `Epic`, `Status`, `Owner Agent`, `Source PRD`, `Covered Requirements`, `Depends On`, `Prerequisites`, `Risk Tier`, `Quality Profile`, and `Approval Evidence`
 - `Prerequisites` lists upstream identities, contracts, or registry data already provided
 - `Deliverables` must be explicit and concrete
 - `Database Impact` must say `none` when there is no schema or storage change
 - `Definition of Done` must be a checklist, not prose
 - `Out of Scope` must explicitly block nearby work that does not belong to the slice
+- Approved Feature Specs generate independent Test Specs downstream; do not embed executable test assets in `spec.md`

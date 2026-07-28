@@ -1,0 +1,35 @@
+{
+  "id": "skill-go-comment-requirements",
+  "type": "skill",
+  "title": "Go Comment Requirements",
+  "summary": "应用项目级 Go 注释规范，确保可读性、一致性与事故可追踪性。凡涉及 Go 文件新增或修改、导出符号、状态机、凭证逻辑、错误变量、数据库模型或 PR 注释检查时使用。",
+  "direction": "fullstack",
+  "stacks": [
+    "go",
+    "react"
+  ],
+  "tags": [
+    "skill",
+    "go-pack"
+  ],
+  "appliesTo": [
+    "backend",
+    "frontend"
+  ],
+  "dependsOn": [],
+  "conflictsWith": [],
+  "sourcePath": "assets/skills/go-comment-requirements/SKILL.md",
+  "files": [
+    "skills/developer/go-comment-requirements/SKILL.md",
+    "skills/developer/go-comment-requirements/references/注释规范要求.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "按项目类型确认是否启用该 skill，并检查引用资料是否适配目标仓库。"
+  ],
+  "sampleOutput": "可复用 skill 说明、触发条件、参考资料和运行边界。",
+  "contentFiles": {
+    "skills/developer/go-comment-requirements/SKILL.md": "assets/skills/go-comment-requirements/SKILL.md",
+    "skills/developer/go-comment-requirements/references/注释规范要求.md": "assets/skills/go-comment-requirements/references/注释规范要求.md"
+  }
+}

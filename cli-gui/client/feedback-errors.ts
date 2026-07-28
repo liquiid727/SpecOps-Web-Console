@@ -34,6 +34,9 @@ const errorMessageKeys: Partial<Record<ApiErrorCode, TranslationKey>> = {
   GIT_UNAVAILABLE: "gitUnavailable",
   NOT_A_GIT_REPOSITORY: "notGitRepository",
   GIT_TIMEOUT: "gitTimeout",
+  ENHANCE_UNAVAILABLE: "enhanceUnavailable",
+  ENHANCE_FAILED: "enhanceFailed",
+  ENHANCE_TIMEOUT: "enhanceTimeout",
   INTERNAL_ERROR: "operationFailed"
 };
 

@@ -9,7 +9,7 @@ const appRootCandidates = [
 
 export const appRoot =
   appRootCandidates.find((candidate) =>
-    existsSync(path.join(candidate, "catalog", "catalog-assets.json"))
+    existsSync(path.join(candidate, "app", "layout.tsx"))
   ) ?? process.cwd();
 
 const repoRootCandidates = [

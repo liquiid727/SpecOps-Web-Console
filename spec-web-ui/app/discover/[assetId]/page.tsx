@@ -4,8 +4,8 @@ import React from "react";
 import { setProjectAssetSelectionAction } from "@/app/actions";
 import { CatalogAssetSummary } from "@/components/catalog/asset-summary";
 import { Badge } from "@/components/ui/badge";
-import { loadAssetSourcePreview, loadCatalogAsset, loadCatalogAssets } from "@/lib/catalog";
-import { buildExportDiffPreview } from "@/lib/export";
+import { loadAssetSourcePreview, loadCatalogAsset, loadCatalogAssets } from "@/features/catalog/server";
+import { buildExportDiffPreview } from "@/features/exports/server";
 import { buildAssetCompositionPreview, listProjects, loadProjectWorkspace } from "@/lib/projects";
 import { isReadOnlyMode } from "@/lib/runtime";
 import { buildShellCommandTitle } from "@/lib/shell";
@@ -65,6 +65,8 @@ export default async function AssetDetailPage({
               <div className="flex flex-wrap gap-2">
                 <Badge>{asset.type.replace("_", " ")}</Badge>
                 <Badge>{asset.direction}</Badge>
+                {asset.tier ? <Badge>{asset.tier === "main" ? "main agent" : "specialist"}</Badge> : null}
+                {asset.managedBy ? <Badge>managed by {asset.managedBy}</Badge> : null}
               </div>
             </div>
           </div>

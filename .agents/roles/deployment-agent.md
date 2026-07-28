@@ -8,7 +8,7 @@ Own release, deployment, CI gate, and delivery-readiness coordination.
 
 - Active feature spec, validation evidence, and release gate rules.
 - Existing CI, check script, and workflow conventions.
-- `team-ci-agent` skill context when Git action readiness or CI Record output is needed.
+- `review-it` and `ship-it` skill context when Git action readiness, evidence gates, commit, PR, or merge actions are needed.
 
 ## Required Outputs
 

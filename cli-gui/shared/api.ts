@@ -42,6 +42,9 @@ export type ApiErrorCode =
   | "GIT_UNAVAILABLE"
   | "NOT_A_GIT_REPOSITORY"
   | "GIT_TIMEOUT"
+  | "ENHANCE_UNAVAILABLE"
+  | "ENHANCE_FAILED"
+  | "ENHANCE_TIMEOUT"
   | "ROUTE_NOT_FOUND"
   | "INTERNAL_ERROR";
 
@@ -125,3 +128,45 @@ export interface PickWorkspaceRequest {
 }
 
 export type PickWorkspaceResponse = { cancelled: true; pickerIntentToken?: string } | { cancelled: false; workspace: Workspace; duplicate?: boolean; pickerIntentToken?: string };
+
+/** Skills 只读管理（console-gaps SPEC §7）：system = ~/.claude|~/.codex，workspace = <workspace>/.claude|.codex */
+export type SkillScope = "system" | "workspace";
+export type SkillSource = "claude" | "codex";
+
+export interface SkillSummary {
+  /** `${source}:${目录名}`，content 接口以此命中服务端重扫结果（无客户端路径输入） */
+  id: string;
+  name: string;
+  description: string;
+  source: SkillSource;
+  scope: SkillScope;
+  /** 展示用缩略路径（如 `~/.claude/skills/foo`） */
+  path: string;
+}
+
+export interface SkillListResponse {
+  skills: SkillSummary[];
+}
+
+export interface SkillContentResponse {
+  content: string;
+  /** 正文超 256KiB 时截断 */
+  truncated: boolean;
+}
+
+export type PromptEnhanceAction = "polish" | "compress";
+
+/** POST /api/prompt/enhance 请求体（project-quest SPEC §5.7）：content 上限 32KiB */
+export interface PromptEnhanceRequest {
+  profileId: string;
+  action: PromptEnhanceAction;
+  content: string;
+  /** 润色指令模板语言（缺省 en） */
+  locale?: "en" | "zh";
+}
+
+export interface PromptEnhanceResponse {
+  content: string;
+  /** 输出超 64KiB 时截断 */
+  truncated: boolean;
+}

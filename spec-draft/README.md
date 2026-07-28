@@ -1,5 +1,7 @@
 # Draft Template / 草稿模板
 
+> Legacy location. New PRD/intake documents go to the directory declared by `.specos/manifest.yaml` `artifacts.draftsDir` (default `.prd/`); see `rules/shared/artifact-locations.md`.
+
 This directory contains reusable templates for engineering teams to draft feature requirements before they are converted into formal specs.  
 该目录包含可复用的模板，供研发团队在需求正式进入 spec 前编写功能草稿。
 

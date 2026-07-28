@@ -1,5 +1,7 @@
 # SpecOS Specs
 
+> Legacy location. New Feature Specs, Test Specs, and the roadmap go to the directory declared by `.specos/manifest.yaml` `artifacts.specsDir` (default `.features/`); see `rules/shared/artifact-locations.md`.
+
 `specs/` is the feature-spec layer of SpecOS.
 
 The canonical structure is:
@@ -25,16 +27,22 @@ specs/
 
 Epic grouping does not become a nested directory structure. Keep feature specs flat by spec id and use `roadmap.md` plus spec metadata to express epic membership and ordering.
 
+## Convention Mapping
+
+This repository uses the flat `specs/<SPEC-ID>-<slug>/` layout described above (`RP-xxx` in examples; any stable spec id prefix such as `SPECOS-001` follows the same rule). SpecOS engine templates under `packages/cli/templates/` express the same lifecycle with a different layout: `specs/current/` holds the accepted canonical baseline, `specs/changes/<change-id>/` holds in-flight change packages, and `tasks/task-graph.yaml` holds the derived Task Graph IR. Pick one layout per project and do not mix the two inside the same `specs/` tree.
+
 ## Lifecycle
 
 ```text
 spec-draft/
   -> design/<platform>-design.md
   -> specs/roadmap.md
-  -> specs/<SPEC-ID>-<slug>/spec.md
-  -> implementation/<SPEC-ID>-<slug>/
-  -> reviews/<SPEC-ID>-<slug>/
-  -> tests/
+  -> specs/<SPEC-ID>-<slug>/spec.md (approved, versioned)
+     ├── implementation/<SPEC-ID>-<slug>/
+     └── tests/specs/<SPEC-ID>.test-spec.md
+            -> tests/plans/ and tests/schedules/
+     -> reviews/<SPEC-ID>-<slug>/
+     -> ship
 ```
 
 ## Feature Spec Rules
@@ -44,3 +52,5 @@ spec-draft/
 - Dependencies must be listed by spec id
 - Prerequisites must list upstream identities or contracts already provided
 - Deliverables and definition of done must be explicit
+- Every approved spec must carry a stable `spec_id`, `spec_version`, covered requirement ids, quality profile, and approval evidence
+- Independent verification is derived from the approved Feature Spec by `spec-to-test`; a Test Spec for an older source version is stale

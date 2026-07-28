@@ -16,7 +16,7 @@ Require a `Sync Handoff` when a task changes meaning, behavior, ownership, routi
 - `spec-draft/`, `design/`, `specs/roadmap.md`, or `specs/<SPEC-ID>-<slug>/`
 - `.agents/manifest.yaml`
 - `.agents/roles/`, `.agents/modes/`, `ai/agents/`, or `ai/agents/modes/`
-- `.skills/`
+- `skills/developer/`
 - `rules/` or `.rules/`
 - `ai/workflows/`
 - `tests/`, `reviews/`, or `scripts/checks/`
@@ -37,7 +37,7 @@ Use this matrix to decide what must be checked before handoff.
 | `.agents/manifest.yaml` | `.agents/roles/*`, `.agents/modes/*`, `ai/agents/*`, `ai/agents/modes/*`, `.agents/README.md`, route preview expectations, scoped skills | `pola` with affected role owner |
 | `.agents/roles/*` or `.agents/modes/*` | matching `ai/agents/*` or `ai/agents/modes/*`, manifest metadata, context includes, role outputs | affected role owner |
 | `ai/agents/*` or `ai/agents/modes/*` | matching `.agents/roles/*` or `.agents/modes/*`, manifest outputs, workflow docs | affected role owner |
-| `.skills/*` | manifest skill binding, role prompt assumptions, skill references, CI evidence if delivery-related | skill owner role |
+| `skills/developer/*` | manifest skill binding, role prompt assumptions, skill references, CI evidence if delivery-related | skill owner role |
 | `rules/*` or `.rules/*` | affected specs, tests, role prompts, release gates, rule map | `reviewer` or domain owner |
 | `ai/workflows/*` | `.agents/README.md`, route preview docs, role contracts, CI/release handoff | `execution-editor` |
 | `tests/*` | spec ids, requirement ids, owner agents, result normalization, gate reports | `test-editor` |
@@ -72,7 +72,7 @@ next_gate: <review | test | ci | qa | merge | none>
 
 ## CI Gateway Rules
 
-- `team-ci-agent` reads the latest task-relevant `Sync Handoff` before Git actions.
+- `review-it` and `ship-it` read the latest task-relevant `Sync Handoff` before Git actions.
 - Missing sync evidence for semantic changes means `sync_handoff_status: partial` or `fail`, never `pass`.
 - A `pass` status requires either updated neighbor assets or explicit waivers for every relevant neighbor surface.
 - A `not_applicable` status is allowed only for non-semantic edits and must include the reason under skipped checks or sync evidence.
