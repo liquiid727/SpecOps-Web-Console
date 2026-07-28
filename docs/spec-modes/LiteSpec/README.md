@@ -44,17 +44,16 @@ project/
 │   ├── blockers.md
 │   └── handoff.md
 │
-├── specs/
+├── .prd/
+│   └── prd-<slug>.md
+│
+├── .features/
 │   ├── roadmap.md
-│   ├── _draft/
-│   │
 │   ├── RP-001-event-ingestion/
 │   │   ├── spec.md
-│   │   ├── tasks.md
-│   │   ├── tests.md
+│   │   ├── test-spec.md
 │   │   ├── review.md
 │   │   └── changelog.md
-│   │
 │   ├── RP-002-decision-api/
 │   └── RP-003-policy/
 │
@@ -75,7 +74,7 @@ Agents should load context in this order:
 1. `README.md`
 2. `current/`
 3. `design/`
-4. `specs/RP-xxx/`
+4. `.features/RP-xxx/`
 5. the relevant skill file such as `backend.skill.md`
 
 Expected context size:

@@ -1,12 +1,12 @@
+import net from "node:net";
 import { spawn, type ChildProcessByStdio } from "node:child_process";
 import path from "node:path";
 import type { Readable } from "node:stream";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-const GUI_URL = "http://127.0.0.1:3000";
-const API_URL = "http://127.0.0.1:3001";
-const HEALTH_URL = `${API_URL}/health`;
-const WEBSOCKET_URL = "ws://127.0.0.1:3001/ws";
+const LOOPBACK_HOST = "127.0.0.1";
+export const DEFAULT_GUI_PORT = 3000;
+export const DEFAULT_API_PORT = 3001;
 const DEFAULT_TIMEOUT_MS = 30_000;
 const DEFAULT_INTERVAL_MS = 500;
 const CHILD_SETTLE_MS = 1_000;
@@ -40,6 +40,20 @@ export interface BannerOptions {
   readonly?: boolean;
 }
 
+export interface DevPorts {
+  guiPort: number;
+  apiPort: number;
+}
+
+export interface DevUrls {
+  guiUrl: string;
+  apiUrl: string;
+  healthUrl: string;
+  websocketUrl: string;
+}
+
+export type PortAvailability = (port: number) => Promise<boolean>;
+
 export interface DevStatusOptions {
   cwd?: string;
   env?: NodeJS.ProcessEnv;
@@ -49,6 +63,7 @@ export interface DevStatusOptions {
   timeoutMs?: number;
   intervalMs?: number;
   spawnImpl?: typeof spawn;
+  isPortAvailableImpl?: PortAvailability;
 }
 
 interface ManagedChild {
@@ -110,7 +125,68 @@ export async function waitForEndpoint(options: {
   };
 }
 
+export async function isLoopbackPortAvailable(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+    const finish = (available: boolean) => {
+      server.removeAllListeners();
+      resolve(available);
+    };
+    server.once("error", () => finish(false));
+    server.listen(port, LOOPBACK_HOST, () => {
+      server.close(() => finish(true));
+    });
+  });
+}
+
+export async function findAvailablePort(preferredPort: number, occupiedPorts: readonly number[] = [], isPortAvailable: PortAvailability = isLoopbackPortAvailable) {
+  for (let port = preferredPort; port <= 65_535; port += 1) {
+    if (occupiedPorts.includes(port)) continue;
+    if (await isPortAvailable(port)) return port;
+  }
+  throw new Error(`No available loopback port found from ${preferredPort}.`);
+}
+
+export async function selectDevPorts(options: {
+  guiPort?: number;
+  apiPort?: number;
+  isPortAvailableImpl?: PortAvailability;
+} = {}): Promise<DevPorts> {
+  const isPortAvailable = options.isPortAvailableImpl ?? isLoopbackPortAvailable;
+  const guiPort = await findAvailablePort(options.guiPort ?? DEFAULT_GUI_PORT, [], isPortAvailable);
+  const apiPort = await findAvailablePort(options.apiPort ?? DEFAULT_API_PORT, [guiPort], isPortAvailable);
+  return { guiPort, apiPort };
+}
+
+export function resolvePreferredPorts(env: NodeJS.ProcessEnv = process.env) {
+  return {
+    guiPort: readPort(env.SPECOS_GUI_PORT, DEFAULT_GUI_PORT),
+    apiPort: readPort(env.SPECOS_API_PORT ?? env.PORT, DEFAULT_API_PORT)
+  };
+}
+
+export function buildDevUrls({ guiPort, apiPort }: DevPorts): DevUrls {
+  const guiUrl = `http://${LOOPBACK_HOST}:${guiPort}`;
+  const apiUrl = `http://${LOOPBACK_HOST}:${apiPort}`;
+  return {
+    guiUrl,
+    apiUrl,
+    healthUrl: `${apiUrl}/health`,
+    websocketUrl: `ws://${LOOPBACK_HOST}:${apiPort}/ws`
+  };
+}
+
+export function createChildEnvironment(env: NodeJS.ProcessEnv, ports: DevPorts): NodeJS.ProcessEnv {
+  return {
+    ...env,
+    SPECOS_GUI_PORT: String(ports.guiPort),
+    SPECOS_API_PORT: String(ports.apiPort),
+    PORT: String(ports.apiPort)
+  };
+}
+
 export function renderBanner(options: BannerOptions) {
+  const defaultUrls = buildDevUrls({ guiPort: DEFAULT_GUI_PORT, apiPort: DEFAULT_API_PORT });
   const frontend = formatStatus(options.frontend, "ready", "unavailable");
   const backend = formatStatus(options.backend, "healthy", "unhealthy");
   const mode = options.readonly ? "readonly" : "writable";
@@ -119,16 +195,16 @@ export function renderBanner(options: BannerOptions) {
     "🚀 SpecOS CLI GUI Dev",
     "",
     "🖥️  GUI",
-    `    URL:      ${options.guiUrl ?? GUI_URL}`,
+    `    URL:      ${options.guiUrl ?? defaultUrls.guiUrl}`,
     `    Status:   ${frontend}`,
     "",
     "🧠 Session Manager",
-    `    URL:      ${options.apiUrl ?? API_URL}`,
-    `    Health:   ${options.healthUrl ?? HEALTH_URL}`,
+    `    URL:      ${options.apiUrl ?? defaultUrls.apiUrl}`,
+    `    Health:   ${options.healthUrl ?? defaultUrls.healthUrl}`,
     `    Status:   ${backend}`,
     "",
     "🔌 WebSocket",
-    `    URL:      ${options.websocketUrl ?? WEBSOCKET_URL}`,
+    `    URL:      ${options.websocketUrl ?? defaultUrls.websocketUrl}`,
     "",
     "📁 Runtime",
     `    Mode:     ${mode}`,
@@ -150,9 +226,20 @@ export async function runDevStatus(options: DevStatusOptions = {}) {
   const output = options.stdout ?? process.stdout;
   const errorOutput = options.stderr ?? process.stderr;
   const env = { ...process.env, ...options.env };
+  const preferredPorts = resolvePreferredPorts(env);
+  let ports: DevPorts;
+  try {
+    ports = await selectDevPorts({ ...preferredPorts, isPortAvailableImpl: options.isPortAvailableImpl });
+  } catch (error) {
+    errorOutput.write(`❌ Unable to select development ports: ${error instanceof Error ? error.message : String(error)}\n`);
+    process.exitCode = 1;
+    return;
+  }
+  const urls = buildDevUrls(ports);
+  const childEnvironment = createChildEnvironment(env, ports);
   const children = [
-    startChild("Backend", "dev:server", cliGuiRoot, env, options.spawnImpl),
-    startChild("Frontend", "dev:client", cliGuiRoot, env, options.spawnImpl)
+    startChild("Backend", "dev:server", cliGuiRoot, childEnvironment, options.spawnImpl),
+    startChild("Frontend", "dev:client", cliGuiRoot, childEnvironment, options.spawnImpl)
   ];
   let stopping = false;
 
@@ -177,8 +264,8 @@ export async function runDevStatus(options: DevStatusOptions = {}) {
   try {
     const [frontend, backend] = await Promise.race([
       Promise.all([
-        waitForEndpoint({ name: "frontend", url: GUI_URL, fetchImpl: options.fetchImpl, timeoutMs: options.timeoutMs, intervalMs: options.intervalMs }),
-        waitForEndpoint({ name: "backend", url: HEALTH_URL, fetchImpl: options.fetchImpl, timeoutMs: options.timeoutMs, intervalMs: options.intervalMs, expectJsonStatus: true })
+        waitForEndpoint({ name: "frontend", url: urls.guiUrl, fetchImpl: options.fetchImpl, timeoutMs: options.timeoutMs, intervalMs: options.intervalMs }),
+        waitForEndpoint({ name: "backend", url: urls.healthUrl, fetchImpl: options.fetchImpl, timeoutMs: options.timeoutMs, intervalMs: options.intervalMs, expectJsonStatus: true })
       ]),
       childExit
     ]);
@@ -186,7 +273,7 @@ export async function runDevStatus(options: DevStatusOptions = {}) {
     await Promise.race([delay(CHILD_SETTLE_MS), childExit]);
 
     const readonly = isReadonlyHealth(backend.payload);
-    output.write(`${renderBanner({ frontend, backend, readonly })}\n`);
+    output.write(`${renderBanner({ ...urls, frontend, backend, readonly })}\n`);
     if (frontend.status !== "ready" || backend.status !== "ready") {
       errorOutput.write(`\n${renderFailureSummary(frontend, backend)}\n`);
       errorOutput.write(renderChildOutputs(children));
@@ -272,6 +359,11 @@ function isHealthyPayload(payload: unknown) {
 
 function isReadonlyHealth(payload: unknown) {
   return Boolean(payload && typeof payload === "object" && (payload as { readonly?: unknown }).readonly === true);
+}
+
+function readPort(value: string | undefined, fallback: number) {
+  const port = Number(value);
+  return Number.isInteger(port) && port > 0 && port <= 65_535 ? port : fallback;
 }
 
 function delay(ms: number) {

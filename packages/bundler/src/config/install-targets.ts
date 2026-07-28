@@ -10,9 +10,10 @@ export const INSTALL_TARGET_PRIORITY = [
   "implementation/",
   "reviews/",
   "rules/",
-  "spec-draft/_template/",
-  "specs/_rules/",
-  "specs/_template/",
+  ".prd/_template/",
+  ".features/_rules/",
+  ".features/_template/",
+  ".issues/_template/",
   ".specos/workflows/"
 ] as const;
 

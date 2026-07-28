@@ -7,10 +7,10 @@ Treat specs, rules, tests, and generated artifacts as one traceable delivery cha
 1. Read the project entry in `README.md`.
 2. Read the project mode in `docs/spec-modes/`.
 3. Read active delivery state in `current/`.
-4. Read human-authored drafts in `spec-draft/`.
+4. Read human-authored drafts in `.prd/`.
 5. Read stable platform and system design from `design/`.
-6. Read epic, release, and dependency planning from `specs/roadmap.md`.
-7. Implement from feature specs under `specs/<SPEC-ID>-<slug>/`.
+6. Read epic, release, and dependency planning from `.features/roadmap.md`.
+7. Implement from feature specs under `.features/<SPEC-ID>-<slug>/`.
 8. Keep review evidence in `reviews/` and test evidence in `tests/`.
 9. Keep rules in `rules/` and agent responsibilities in `ai/agents/`.
 

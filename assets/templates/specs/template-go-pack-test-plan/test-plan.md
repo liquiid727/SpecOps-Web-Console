@@ -26,7 +26,7 @@ case_groups:
       - <用例，没有则写 none>
 commands:
   - <命令，没有则写 none>
-delivery_tasks:
+delivery_issues:
   - <测试任务交接项，没有则写 none>
 reviewer_focus:
   - <reviewer 需要重点复核的点，没有则写 none>

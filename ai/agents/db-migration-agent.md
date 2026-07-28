@@ -4,7 +4,7 @@ Owns schema change planning, rollout sequencing, and migration compatibility not
 
 ## Responsibilities
 
-- Translate model changes into migration tasks.
+- Translate model changes into migration issues.
 - Call out rollout order, backfill, and rollback expectations.
 - Keep migration notes aligned with contract and application changes.
 - Raise operational risks for high-impact schema changes.

@@ -7,7 +7,7 @@
 - UI handoff rule: [rules/ui/pencil-prototype-ui.md](../../rules/ui/pencil-prototype-ui.md)
 - Shared UI role: [.agents/roles/ui-design-agent.md](../../.agents/roles/ui-design-agent.md)
 - Mode overlays: [LiteSpec](../../.agents/modes/litespec/roles/), [GoalSpec](../../.agents/modes/goalspec/roles/), and [EnterpriseSpec](../../.agents/modes/enterprisespec/roles/)
-- Requirement flow draft: [spec-draft/requirement-intake-flow.md](../../spec-draft/requirement-intake-flow.md)
+- Requirement flow: [.prd/prd-chat-streaming-and-persistent-runtime.md](../../.prd/prd-chat-streaming-and-persistent-runtime.md)
 
 This document is the working UX reference for `spec-web-ui`. It is draft-only until a feature spec accepts it.
 
@@ -25,7 +25,7 @@ It helps developers discover, select, and assemble the reusable assets needed to
 - test patterns
 - project conventions
 
-It is not the requirement intake surface for a target project. A concrete project's requirement lifecycle belongs in that target repository, usually through `spec-draft/`, `design/`, `specs/roadmap.md`, feature specs under `specs/`, `tests/`, and review notes. `spec-web-ui` may export assets into that repository, but it should not become the source of truth for `draft -> design -> roadmap -> feature spec -> test -> review`.
+It is not the requirement intake surface for a target project. A concrete project's requirement lifecycle belongs in that target repository, usually through `.prd/`, `design/`, `.features/roadmap.md`, Feature/Test Specs under `.features/`, `.issues/`, `tests/`, and review notes. `spec-web-ui` may export assets into that repository, but it should not become the source of truth for `PRD -> design -> roadmap -> Feature Spec/Test Spec -> Issues -> test -> review`.
 
 The product is not a general admin dashboard. It should not make users feel they are managing a large back office system. Its main job is to help a developer answer:
 

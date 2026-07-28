@@ -183,7 +183,7 @@ Fetch all open issues:
 gh issue list --state open --json number,title,labels,body --limit 100
 ```
 
-若项目使用本地 Markdown issue（目录由 `.specos/manifest.yaml` `artifacts.issuesDir` 声明，默认 `.issues/`，见 `rules/shared/artifact-locations.md`），则改为读取该目录下的 `issue-NNN-<slug>.md` 文件，以文件内 `Depends On` 与正文依赖声明构建同样的依赖图。
+若项目使用本地 Markdown issue，读取由 `.specos/manifest.yaml` `artifacts.issuesDir` 声明的目录（required; default `.issues/`; 这是唯一的本地 Issue 路径），以文件内 `Depends On` 与正文依赖声明构建同样的依赖图。
 
 ### Parse Dependencies
 
@@ -305,7 +305,7 @@ Update state: `pending` → `in_progress`, `phase: "implement"`, write checkpoin
 
 **由 agent 内联完成实现**（本环境无 `goal` 命令/skill 可调用，必须自己干）：
 
-1. 读取该 issue 的标题与正文，提取需求与全部验收条件（Acceptance Criteria）；若正文引用了 PRD/SPEC 文件（位于 `.specos/manifest.yaml` `artifacts.draftsDir`/`artifacts.specsDir` 声明的目录，默认 `.prd/`、`.features/`；遗留项目可能为 `spec-draft/`、`specs/` 或 `tasks/prd-*.md`），一并读取作为上下文
+1. 读取该 issue 的标题与正文，提取需求与全部验收条件（Acceptance Criteria）；若正文引用了 PRD/Feature Spec 文件，则从 `.specos/manifest.yaml` 声明的 canonical paths 读取：`artifacts.draftsDir`（required; default `.prd/`）与 `artifacts.specsDir`（required; default `.features/`），一并读取作为上下文。
 2. 阅读相关现有代码，遵循项目既有风格、命名与依赖约定
 3. 实现/修改代码以满足全部验收条件
 4. 跑项目的构建、测试与 lint（如 `go build ./...`、`go vet ./...`、`go test ./...`）

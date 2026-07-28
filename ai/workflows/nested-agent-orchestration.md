@@ -24,7 +24,7 @@ SpecOS uses a layered model: `pola` (coordinator) routes to one of four main age
 1. Run or mentally apply `route-request --request "<text>"`.
 2. Resolve `projectMode` from `.specos/manifest.yaml`, then load `.agents/modes/<projectMode>/manifest.overlay.yaml`.
 3. Load only the selected main primary role's manifest metadata, shared prompt pair, mode overlay prompt pair when present, declared skills, and context includes.
-4. If the main primary role needs help, create 2 to 4 specialist tasks with strict boundaries. `buildSpecialistDispatchPlan(...)` is the reusable host-side helper for this compression step.
+4. If the main primary role needs help, create 2 to 4 specialist issues with strict boundaries. `buildSpecialistDispatchPlan(...)` is the reusable host-side helper for this compression step.
 5. Each specialist task must name the manifest role, source spec or rule, inspectable surfaces, exact question, expected short output, and non-goals.
 6. Specialist agents return concise findings with preconditions, root cause or design risk, and recommended action.
 7. `pola` filters duplicated or local-only findings, identifies false positives, and emits one consolidated recommendation.
@@ -42,7 +42,7 @@ If a host persists the execution plan itself, it should validate that file befor
 Idea -> PRD (.prd/) -> Feature Spec (.features/) -> Test Spec (.features/) -> Issues (.issues/) -> implementation -> review-it -> note-it -> ship-it
 ```
 
-Stage ownership follows `ai/workflows/README.md` and `skills/developer/README.md`: `product-architect-agent` owns `Idea -> PRD`, and `spec-editor` owns `PRD -> Approved Feature Spec` plus Issue generation (`/prd-to-spec`, `/spec-to-test`, `/to-issues`). Artifact locations are declared by `.specos/manifest.yaml` `artifacts` and `rules/shared/artifact-locations.md`. This repository additionally keeps legacy governance directories (`spec-draft/`, `design/`, `specs/roadmap.md`, `specs/<SPEC-ID>-<slug>/`, `implementation/`, `reviews/`, `tests/`) for platform truth and delivery evidence; do not mix the engine-template `specs/current/` + `specs/changes/<change-id>/` layout with the flat `specs/<SPEC-ID>-<slug>/` layout inside one project.
+Stage ownership follows `ai/workflows/README.md` and `skills/developer/README.md`: `product-architect-agent` owns `Idea -> PRD`, and `spec-editor` owns `PRD -> Approved Feature Spec` plus Issue generation (`/prd-to-spec`, `/spec-to-test`, `/to-issues`). Artifact locations are declared by `.specos/manifest.yaml` `artifacts` and `rules/shared/artifact-locations.md`. This repository additionally keeps legacy governance directories (`.prd/`, `design/`, `.features/roadmap.md`, `.features/<SPEC-ID>-<slug>/`, `implementation/`, `reviews/`, `tests/`) for platform truth and delivery evidence; do not mix the engine-template `.features/current/` + `.features/changes/<change-id>/` layout with the flat `.features/<SPEC-ID>-<slug>/` layout inside one project.
 
 ## Architecture Requests
 

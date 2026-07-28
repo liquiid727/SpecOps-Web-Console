@@ -232,7 +232,7 @@ describe("artifact validation", () => {
             canonical: "ai/agents/test-editor.md",
             skill_mode: "scoped_only",
             skills: [],
-            context_includes: ["tests/README.md", "specs/"],
+            context_includes: ["tests/README.md", ".features/"],
             owns: ["tests/"],
             outputs: ["scenario coverage"],
           },
@@ -240,7 +240,7 @@ describe("artifact validation", () => {
             role_prompt: "roles/ddd-domain-agent.md",
             canonical: "ai/agents/ddd-domain-agent.md",
             skills: [],
-            context_includes: ["design/", "specs/"],
+            context_includes: ["design/", ".features/"],
             owns: ["domain boundaries"],
             outputs: ["domain risk review"],
           },
@@ -287,12 +287,12 @@ describe("artifact validation", () => {
       role: "test-editor",
       overlayApplied: true,
       modeRolePrompt: ".agents/modes/enterprisespec/roles/test-editor.md",
-      contextIncludes: ["tests/README.md", "specs/"],
+      contextIncludes: ["tests/README.md", ".features/"],
     });
     expect(domainAgent).toMatchObject({
       role: "ddd-domain-agent",
       overlayApplied: false,
-      contextIncludes: ["design/", "specs/"],
+      contextIncludes: ["design/", ".features/"],
     });
     expect(domainAgent?.modeRolePrompt).toBeUndefined();
   });
@@ -320,7 +320,7 @@ describe("artifact validation", () => {
               role_prompt: "roles/architecture-agent.md",
               canonical: "ai/agents/architecture-agent.md",
               skills: [],
-              context_includes: ["design/", "specs/roadmap.md"],
+              context_includes: ["design/", ".features/roadmap.md"],
               delegates_to: ["openapi-agent", "db-migration-agent", "reviewer"],
               owns: ["architecture decision synthesis"],
               outputs: ["architecture recommendation"],
@@ -329,14 +329,14 @@ describe("artifact validation", () => {
               role_prompt: "roles/openapi-agent.md",
               canonical: "ai/agents/openapi-agent.md",
               skills: [],
-              context_includes: ["specs/", "rules/shared/error-code-governance.md"],
+              context_includes: [".features/", "rules/shared/error-code-governance.md"],
               outputs: ["OpenAPI contract updates"],
             },
             "ddd-domain-agent": {
               role_prompt: "roles/ddd-domain-agent.md",
               canonical: "ai/agents/ddd-domain-agent.md",
               skills: [],
-              context_includes: ["design/", "specs/"],
+              context_includes: ["design/", ".features/"],
               outputs: ["domain risk review"],
             },
           },
@@ -364,7 +364,7 @@ describe("artifact validation", () => {
       sharedPromptStack: expect.arrayContaining(["AGENTS.md", ".codex/instructions.md"]),
     });
     expect(plan.primaryTask.requiredContext).toEqual(
-      expect.arrayContaining(["design/", "specs/roadmap.md", "ai/workflows/nested-agent-orchestration.md"]),
+      expect.arrayContaining(["design/", ".features/roadmap.md", "ai/workflows/nested-agent-orchestration.md"]),
     );
     expect(plan.supportingTasks).toEqual(
       expect.arrayContaining([
@@ -684,12 +684,12 @@ describe("artifact validation", () => {
         role: "openapi-agent",
         sharedPromptStack: ["AGENTS.md"],
         rolePromptStack: ["ai/agents/openapi-agent.md"],
-        contextPaths: ["specs/"],
+        contextPaths: [".features/"],
         requestedRuntimeSkills: [],
         taskBrief: {
           reason: "x",
           exactQuestion: "y",
-          inspectableSurfaces: ["specs/"],
+          inspectableSurfaces: [".features/"],
           expectedOutput: ["contract"],
           nonGoals: ["none"],
         },
@@ -752,7 +752,7 @@ describe("artifact validation", () => {
       needsChangePackage: true,
     });
     expect(route.workTypes).toContain("spec");
-    expect(route.nextStep).toContain("spec-draft");
+    expect(route.nextStep).toContain(".prd");
   });
 
   it("accepts a minimal fullstack manifest", () => {
@@ -761,8 +761,9 @@ describe("artifact validation", () => {
       projectMode: "litespec",
       stacks: { frontend: "next", backend: "node-api" },
       artifacts: {
-        draftsDir: "spec-draft",
-        specsDir: "specs",
+        draftsDir: ".prd",
+        specsDir: ".features",
+        issuesDir: ".issues",
         testsDir: "tests",
         resultsDir: "tests/results",
       },
@@ -781,8 +782,9 @@ describe("artifact validation", () => {
       projectMode: "enterprisespec",
       stacks: { frontend: "none", backend: "none" },
       artifacts: {
-        draftsDir: "spec-draft",
-        specsDir: "specs",
+        draftsDir: ".prd",
+        specsDir: ".features",
+        issuesDir: ".issues",
         testsDir: "tests",
         resultsDir: "tests/results",
       },
@@ -801,8 +803,9 @@ describe("artifact validation", () => {
       projectMode: "legacy",
       stacks: { frontend: "next", backend: "node-api" },
       artifacts: {
-        draftsDir: "spec-draft",
-        specsDir: "specs",
+        draftsDir: ".prd",
+        specsDir: ".features",
+        issuesDir: ".issues",
         testsDir: "tests",
         resultsDir: "tests/results",
       },
@@ -821,8 +824,9 @@ describe("artifact validation", () => {
       project: { name: "demo", type: "fullstack" },
       stacks: { frontend: "next", backend: "node-api" },
       artifacts: {
-        draftsDir: "spec-draft",
-        specsDir: "specs",
+        draftsDir: ".prd",
+        specsDir: ".features",
+        issuesDir: ".issues",
         testsDir: "tests",
         resultsDir: "tests/results",
       },
@@ -841,8 +845,9 @@ describe("artifact validation", () => {
       project: { name: "demo", type: "fullstack" },
       stacks: { frontend: "next", backend: "node-api" },
       artifacts: {
-        draftsDir: "spec-draft",
-        specsDir: "specs",
+        draftsDir: ".prd",
+        specsDir: ".features",
+        issuesDir: ".issues",
         testsDir: "tests",
         resultsDir: "tests/results",
       },
@@ -882,7 +887,7 @@ describe("artifact validation", () => {
       edgeCases: ["stock is zero"],
       observability: ["trace_id"],
       tests: { requiredBranches: ["happy"] },
-      traceability: { draft: "spec-draft/reward-order.md" },
+      traceability: { prd: ".prd/reward-order.md" },
     });
 
     expect(result.ok).toBe(false);
@@ -905,10 +910,18 @@ describe("artifact validation", () => {
       ui: [{ name: "Reward page", route: "/rewards" }],
       observability: ["trace_id"],
       tests: { requiredBranches: ["happy", "limit", "error", "flow"] },
-      traceability: { draft: "spec-draft/reward-order.md" },
+      traceability: { prd: ".prd/reward-order.md" },
     };
 
-    const plan = buildDeterministicTestPlan(spec);
+    const plan = buildDeterministicTestPlan(spec, {
+      testSpecPath: ".features/RP-002-reward-order-create/test-spec.md",
+      testSpecId: "reward-order.test",
+      testSpecVersion: "1.0.0",
+      testSpecHash: "test-spec-hash",
+      testSpecStatus: "approved",
+      testSpecApprovalEvidence: "review-001",
+      sourceFeatureSpecHash: "feature-spec-hash",
+    });
     const validation = validateTestPlan(plan);
 
     expect(validation.ok).toBe(true);
@@ -946,10 +959,18 @@ describe("artifact validation", () => {
       ui: [{ name: "Reward page", route: "/rewards" }],
       observability: ["trace_id"],
       tests: { requiredBranches: ["happy", "limit", "error", "flow"] },
-      traceability: { draft: "spec-draft/reward-order.md" },
+      traceability: { prd: ".prd/reward-order.md" },
     };
 
-    const plan = buildDeterministicTestPlan(spec);
+    const plan = buildDeterministicTestPlan(spec, {
+      testSpecPath: ".features/RP-002-reward-order-create/test-spec.md",
+      testSpecId: "reward-order.test",
+      testSpecVersion: "1.0.0",
+      testSpecHash: "test-spec-hash",
+      testSpecStatus: "approved",
+      testSpecApprovalEvidence: "review-001",
+      sourceFeatureSpecHash: "feature-spec-hash",
+    });
 
     expect(validateTestPlan(plan).ok).toBe(true);
     expect(plan).toMatchObject({
@@ -1103,7 +1124,7 @@ describe("artifact validation", () => {
     const schedule = buildSpecChangeTestSchedule(plan, {
       changeId: "RP-002",
       executionMode: "parallel",
-      specPath: "specs/RP-002-reward-order-create/spec.md",
+      specPath: ".features/RP-002-reward-order-create/spec.md",
     });
     const validation = validateTestSchedule(schedule);
 
@@ -1129,6 +1150,7 @@ describe("artifact validation", () => {
     expect(schedule.tasks.find((task) => task.id === "implement-reward-order")?.outputs).toEqual([
       "implementation/RP-002-reward-order-create/implementation-report.md",
       "tests/unit/reward-order/",
+      ".issues/reward-order/",
     ]);
     expect(schedule.tasks.find((task) => task.id === "ui-gap-Happy")).toMatchObject({
       status: "blocked",
@@ -1148,7 +1170,7 @@ describe("artifact validation", () => {
           id: "execution",
           agentRole: "execution-editor",
           isolation: "implementation-only",
-          allowedInputs: ["specs/RP-002-reward-order-create/spec.md"],
+          allowedInputs: [".features/RP-002-reward-order-create/spec.md"],
           forbiddenInputs: ["tests/results/", "tests/bruno/", "tests/scenarios/"],
         },
         {
@@ -1166,7 +1188,7 @@ describe("artifact validation", () => {
           agentRole: "execution-editor",
           type: "implementation",
           status: "ready",
-          inputs: ["specs/RP-002-reward-order-create/spec.md"],
+          inputs: [".features/RP-002-reward-order-create/spec.md"],
           outputs: ["src/reward.ts", "tests/unit/reward-order/"],
           dependsOn: [],
           traceability: { scenarios: ["Happy"], endpoints: ["POST /api/reward-orders"] },
@@ -1200,7 +1222,7 @@ describe("artifact validation", () => {
           id: "execution",
           agentRole: "execution-editor",
           isolation: "implementation-only",
-          allowedInputs: ["specs/RP-002-reward-order-create/spec.md"],
+          allowedInputs: [".features/RP-002-reward-order-create/spec.md"],
           forbiddenInputs: ["tests/results/"],
         },
       ],
@@ -1211,7 +1233,7 @@ describe("artifact validation", () => {
           agentRole: "execution-editor",
           type: "implementation",
           status: "ready",
-          inputs: ["specs/RP-002-reward-order-create/spec.md"],
+          inputs: [".features/RP-002-reward-order-create/spec.md"],
           outputs: ["src/reward.ts", "tests/bruno/reward-order/"],
           dependsOn: [],
           traceability: { scenarios: ["Happy"], endpoints: ["POST /api/reward-orders"] },
@@ -1726,7 +1748,7 @@ describe("artifact validation", () => {
     const schedule = buildSpecChangeTestSchedule(plan, {
       changeId: "RP-002",
       executionMode: "parallel",
-      specPath: "specs/RP-002-reward-order-create/spec.md",
+      specPath: ".features/RP-002-reward-order-create/spec.md",
     });
 
     const result = buildBlockedApiScenarioResult(plan, schedule, {
@@ -1853,7 +1875,7 @@ describe("artifact validation", () => {
     const schedule = buildSpecChangeTestSchedule(plan, {
       changeId: "RP-002",
       executionMode: "parallel",
-      specPath: "specs/RP-002-reward-order-create/spec.md",
+      specPath: ".features/RP-002-reward-order-create/spec.md",
     });
 
     const result = buildExecutedApiScenarioResult(plan, schedule, {
@@ -1918,9 +1940,10 @@ describe("artifact validation", () => {
         available: ["spec-driven-default"],
       },
       entrypoints: {
-        draftTemplate: "template-feature-draft",
+        prdTemplate: "template-feature-draft",
         designTemplate: "template-platform-design",
-        specTemplate: "template-feature-spec",
+        featureTemplate: "template-feature-spec",
+        issueTemplate: "template-issue",
         workflowId: "spec-driven-default",
       },
       capabilities: {
@@ -1952,8 +1975,8 @@ describe("artifact validation", () => {
         { target: ".codex/instructions.md", from: "files/.codex/instructions.md" },
         { target: ".codex/skills/", from: "files/.codex/skills/" },
         { target: "skills/developer/", from: "files/skills/developer/" },
-        { target: "spec-draft/", from: "files/spec-draft/" },
-        { target: "specs/", from: "files/specs/" },
+        { target: ".prd/", from: "files/.prd/" },
+        { target: ".features/", from: "files/.features/" },
         { target: "tests/", from: "files/tests/" },
         { target: "scripts/README.md", from: "files/scripts/README.md" },
         { target: "scripts/orchestration/README.md", from: "files/scripts/orchestration/README.md" },
@@ -1966,9 +1989,10 @@ describe("artifact validation", () => {
         available: ["spec-driven-default"],
       },
       entrypoints: {
-        draftTemplate: "spec-draft/_template/feature/product-ui.template.md",
+        prdTemplate: ".prd/_template/feature/product-ui.template.md",
         designTemplate: "design/_template/platform-design.template.md",
-        specTemplate: "specs/_template/feature/spec.example.md",
+        featureTemplate: ".features/_template/feature/spec.example.md",
+        issueTemplate: ".issues/_template/issue.md",
         workflowId: "spec-driven-default",
       },
       capabilities: {
@@ -1996,9 +2020,10 @@ describe("artifact validation", () => {
         available: ["spec-driven-default"],
       },
       entrypoints: {
-        draftTemplate: "template-feature-draft",
+        prdTemplate: "template-feature-draft",
         designTemplate: "template-platform-design",
-        specTemplate: "template-feature-spec",
+        featureTemplate: "template-feature-spec",
+        issueTemplate: "template-issue",
         workflowId: "missing-workflow",
       },
       capabilities: {
@@ -2029,9 +2054,10 @@ describe("artifact validation", () => {
         available: ["spec-driven-default"],
       },
       entrypoints: {
-        draftTemplate: "template-feature-draft",
+        prdTemplate: "template-feature-draft",
         designTemplate: "template-platform-design",
-        specTemplate: "template-feature-spec",
+        featureTemplate: "template-feature-spec",
+        issueTemplate: "template-issue",
         workflowId: "spec-driven-default",
       },
       capabilities: {

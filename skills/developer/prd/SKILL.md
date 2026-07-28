@@ -64,14 +64,14 @@ This lets users respond with "1A, 2C, 3B" for quick iteration. Remember to inden
 
 ---
 
-## Edge Cases & Fallback
+## Edge Cases
 
 | Scenario | Handling |
 |----------|----------|
 | User skips clarifying questions (e.g., replies "whatever", "just write it") | Fill with reasonable defaults, mark with `[Assumption]` in PRD, prompt user to confirm during review |
 | User input is too vague (e.g., "add a feature") | Ask once for specifics; if still vague, infer from project context and mark assumptions |
-| Repository declares `.specos/manifest.yaml` `artifacts.draftsDir` | Save the PRD there; this manifest value always wins over legacy conventions |
-| No manifest, but legacy `spec-draft/` exists with content | Save the PRD there as the project intake source |
+| Repository declares `.specos/manifest.yaml` `artifacts.draftsDir` | Save the PRD there; this manifest value is required and canonical |
+| Repository does not declare `artifacts.draftsDir` | Use the built-in default `.prd/`; stop with a configuration error rather than inspect legacy directories |
 | No project intake convention exists | Save to `.prd/prd-[feature-name].md` |
 | User asks for a custom PRD location | Save there, write the directory back to `artifacts.draftsDir` in `.specos/manifest.yaml`, and record a project configuration memory so later sessions reuse it |
 | feature-name is hard to extract from input | Ask the user directly: "Suggested PRD filename is prd-XXX.md, please confirm or modify" |
@@ -164,7 +164,7 @@ List the evidence for the classification. Do not split solely because the docume
 ## Output
 
 - **Format:** Markdown (`.md`)
-- **Location:** resolve in order — explicit user request > `.specos/manifest.yaml` `artifacts.draftsDir` > legacy populated `spec-draft/` (or `tasks/`) > default `.prd/` (see `rules/shared/artifact-locations.md`)
+- **Location:** use `.specos/manifest.yaml` `artifacts.draftsDir` (required; default `.prd/`; see `rules/shared/artifact-locations.md`)
 - **Filename:** stable kebab-case name (`prd-<slug>.md`)
 
 ---

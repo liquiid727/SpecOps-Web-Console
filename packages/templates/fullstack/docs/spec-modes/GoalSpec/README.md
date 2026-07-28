@@ -17,19 +17,19 @@ project/
   docs/workflow.md
   current/
   design/
-  specs/
+  .features/
     roadmap.md
     issues/
       README.md
     RP-001-example/
       spec.md
-      tasks.md
+      issues.md
       tests.md
       review.md
       changelog.md
   implementation/
   tests/
-    specs/
+    .features/
   .agents/
 ```
 
@@ -47,5 +47,5 @@ Recommended agent loading order:
 1. `README.md`
 2. `current/`
 3. `design/`
-4. `specs/issues/`
-5. `specs/RP-xxx/`
+4. `.features/issues/`
+5. `.features/RP-xxx/`

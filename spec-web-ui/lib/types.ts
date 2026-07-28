@@ -66,8 +66,8 @@ export interface ProjectManifest {
   architecture: string;
   stacks: string[];
   selectedAssets: ProjectAssetSelection[];
-  draftTemplateId: string;
-  draftPath: string;
+  prdTemplateId: string;
+  prdPath: string;
   exportTargets: string[];
 }
 

@@ -55,7 +55,7 @@ Specialist agents grouped by their managing main agent:
 
 ## Dispatch Flow
 
-The default entry agent receives the user request, classifies the work, then routes bounded tasks to the narrowest matching role from `manifest.yaml`. This is a routing contract for agent teams; the current repository stores the contract and role prompts, while concrete runtime dispatch is implemented by the host agent system or future workflow runner.
+The default entry agent receives the user request, classifies the work, then routes bounded issues to the narrowest matching role from `manifest.yaml`. This is a routing contract for agent teams; the current repository stores the contract and role prompts, while concrete runtime dispatch is implemented by the host agent system or future workflow runner.
 
 For a deterministic local route preview, run:
 
@@ -71,7 +71,7 @@ For host runtimes that only need subagent dispatch payloads, use:
 node packages/cli/dist/main.js route-request --request "<需求文本>" --format dispatch-json
 ```
 
-That mode returns only `specialistDispatchPlan.tasks[*].dispatchPromptEnvelope`.
+That mode returns only `specialistDispatchPlan.issues[*].dispatchPromptEnvelope`.
 
 For host runtimes that only need the main agent payload, use:
 
@@ -107,7 +107,7 @@ This reuses `validateExecutionPlanOutput(...)` from `@specos/core`.
 
 If another host surface needs the same projections without shelling out to the CLI, use `buildValidatedRouteRequestOutput(...)` from `@specos/core` when you want a preview payload that has already passed the same projection checks as the CLI. For stable consumer-side validation, use `buildRouteRequestOutputSchema(...)`, `buildHostPromptAssemblySchema(...)`, `buildDispatchPromptEnvelopeSchema(...)`, `buildPrimaryDispatchPromptEnvelopeSchema(...)`, `buildSpecialistDispatchPromptEnvelopeSchema(...)`, `buildExecutionPlanOutputSchema(...)`, `validateRouteRequestOutput(...)`, `validateExecutionPlanOutput(...)`, `validateHostPromptAssembly(...)`, `validateAgentExecutionPlan(...)`, `validateDispatchPromptEnvelope(...)`, `validatePrimaryDispatchPromptEnvelope(...)`, or `validateSpecialistDispatchPromptEnvelope(...)`. All schema helpers return the shared `ArtifactShapeSchema` shape, with an `artifact` discriminator and the relevant top-level field lists.
 
-For host runtimes that need a reusable execution object instead of a preview, use `buildValidatedAgentExecutionPlan(...)` from `@specos/core`. It wraps `buildAgentExecutionPlan(...)`, then validates the resulting route, prompt assembly, and dispatch envelopes before the host starts any agent. Use `buildSpecialistDispatchPlan(...)` when the host already has an execution plan and only needs 2 to 4 dispatchable specialist tasks. Each dispatch task now includes `dispatchPromptEnvelope`, which is the host-ready prompt payload for a subagent. Use `buildHostPromptAssembly(...)` as the lower-level helper when the host already has a selected role set and only needs prompt/context assembly.
+For host runtimes that need a reusable execution object instead of a preview, use `buildValidatedAgentExecutionPlan(...)` from `@specos/core`. It wraps `buildAgentExecutionPlan(...)`, then validates the resulting route, prompt assembly, and dispatch envelopes before the host starts any agent. Use `buildSpecialistDispatchPlan(...)` when the host already has an execution plan and only needs 2 to 4 dispatchable specialist issues. Each dispatch task now includes `dispatchPromptEnvelope`, which is the host-ready prompt payload for a subagent. Use `buildHostPromptAssembly(...)` as the lower-level helper when the host already has a selected role set and only needs prompt/context assembly.
 
 ## Nested Dispatch
 
@@ -117,13 +117,13 @@ Nested dispatch follows this contract:
 
 - The entry agent classifies the request and chooses a main `primaryAgent` from `.agents/manifest.yaml`.
 - The primary agent receives only its declared role prompt, canonical prompt, skills, and context includes.
-- The primary agent may propose bounded specialist-agent tasks when the work crosses ownership boundaries.
+- The primary agent may propose bounded specialist-agent issues when the work crosses ownership boundaries.
 - Supporting agents must also be registered in `.agents/manifest.yaml`; do not invent ad-hoc roles inside a task.
 - For architecture, domain-boundary, and cross-surface risk work, use `architecture-agent` as the primary role. It manages `product-architect-agent`, `spec-editor`, `ddd-domain-agent`, `openapi-agent`, and `db-migration-agent`, and may ask for focused input from other domains through `pola`.
 - For implementation work, use `implementation-agent` as the primary role. It manages `frontend-agent`, `backend-agent`, `implementation-editor`, `cli-gui-agent`, `ui-design-agent`, and `execution-editor`.
 - For independent verification, use `testing-agent` as the primary role. It manages `test-editor`, `unit-test-agent`, `playwright-test-agent`, `e2e-test-agent`, `performance-test-agent`, `concurrency-test-agent`, and `specialized-check-agent`. `playwright-test-agent` belongs here as a browser/UI verification specialist, not under frontend implementation.
 - For QA acceptance, release, and deployment readiness, use `qa-agent` as the primary role. It manages `reviewer`, `ci-editor`, and `deployment-agent`.
-- Specialist tasks carry `managedBy` and `activation: "on-demand"`: the managing main agent opens a specialist subagent only when the bounded question requires it, instead of pre-dispatching every registered specialist.
+- Specialist issues carry `managedBy` and `activation: "on-demand"`: the managing main agent opens a specialist subagent only when the bounded question requires it, instead of pre-dispatching every registered specialist.
 - Runtime execution is outside this directory. Host systems may run 2 to 4 subagents in parallel, but this repository only defines the routing contract, prompt assembly, and expected outputs.
 - The final output should be one actionable synthesis from `pola`, not a concatenation of every subagent report.
 
@@ -139,10 +139,10 @@ Canonical storage targets:
 
 - `docs/spec-modes/`: project operating mode guidance
 - `current/`: active delivery state and handoff context
-- `spec-draft/`: intake drafts
+- `.prd/`: intake drafts
 - `design/`: stable platform or system design
-- `specs/roadmap.md`: epic and release planning
-- `specs/<SPEC-ID>-<slug>/spec.md`: feature specs
+- `.features/roadmap.md`: epic and release planning
+- `.features/<SPEC-ID>-<slug>/spec.md`: feature specs
 - `implementation/`: implementation notes and handoff
 - `reviews/`: review evidence
 - `tests/`: shared verification assets
@@ -159,7 +159,7 @@ A useful subagent task should state:
 ```mermaid
 flowchart TD
   A["User request / business context"] --> B["Default entry agent"]
-  B --> C["Read context in order: readme, rules, docs/spec-modes, current, spec-draft, design, specs, evidence, agents"]
+  B --> C["Read context in order: readme, rules, docs/spec-modes, current, .prd, design, specs, evidence, agents"]
   C --> D{"Main track?"}
 
   D -->|Architecture / spec impact| E["architecture-agent"]
@@ -178,7 +178,7 @@ flowchart TD
   H1 --> Q
 
   Q -->|Design truth| R["design/"]
-  Q -->|Feature planning| S["specs/roadmap.md + specs/<SPEC-ID>-<slug>/"]
+  Q -->|Feature planning| S[".features/roadmap.md + .features/<SPEC-ID>-<slug>/"]
   Q -->|Implementation| T["implementation/"]
   Q -->|Tests and results| U["tests/"]
   Q -->|Review output| V["reviews/"]
@@ -234,7 +234,7 @@ Only keep differences in the mode overlay files. The shared files remain the def
 
 ## Project Context Placement
 
-Stable platform and system design belongs under `design/`. Epic ordering belongs in `specs/roadmap.md`. Implementation-ready feature slices belong under `specs/<SPEC-ID>-<slug>/`.
+Stable platform and system design belongs under `design/`. Epic ordering belongs in `.features/roadmap.md`. Implementation-ready feature slices belong under `.features/<SPEC-ID>-<slug>/`.
 
 Role prompts should reference those surfaces through `.agents/manifest.yaml` `context_includes` instead of duplicating accepted project facts inside `.agents/roles/` or `ai/agents/`.
 

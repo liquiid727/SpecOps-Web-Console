@@ -1,6 +1,6 @@
 # LiteSpec
 
-`LiteSpec` is the default operating mode for this project.
+`LiteSpec` is an optional low-token operating mode for this project.
 
 Use it when:
 
@@ -16,12 +16,11 @@ project/
   docs/spec-modes/
   current/
   design/
-  specs/
+  .features/
     roadmap.md
-    _draft/
     RP-001-example/
       spec.md
-      tasks.md
+      issues.md
       tests.md
       review.md
       changelog.md
@@ -33,5 +32,5 @@ Recommended agent loading order:
 1. `README.md`
 2. `current/`
 3. `design/`
-4. `specs/RP-xxx/`
+4. `.features/RP-xxx/`
 5. the relevant skill file

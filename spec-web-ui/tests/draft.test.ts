@@ -15,9 +15,9 @@ const project: ProjectManifest = {
   architecture: "spa",
   stacks: ["react"],
   selectedAssets: [{ assetId: "rule-frontend-react", enabled: true }],
-  draftTemplateId: "template-feature-draft",
-  draftPath: "spec-web-ui/workspace/projects/wallet-console/draft.md",
-  exportTargets: ["docs/", "current/", "rules/", "specs/_template/", "ai/agents/", "agent-teams/", "project-manifest.yaml"]
+  prdTemplateId: "template-feature-draft",
+  prdPath: "spec-web-ui/workspace/projects/wallet-console/prd.md",
+  exportTargets: ["docs/", "current/", "rules/", ".features/_template/", "ai/agents/", "agent-teams/", "project-manifest.yaml"]
 };
 
 const selectedAssets: CatalogAsset[] = [

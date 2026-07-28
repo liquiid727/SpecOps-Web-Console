@@ -7,21 +7,21 @@ SpecOS is a spec-driven AI workspace for software teams. It keeps product design
 The canonical lifecycle is:
 
 ```text
-Draft -> Design -> Roadmap/Epic -> Feature Spec -> Agent Implementation -> Review -> Merge
+PRD (.prd) -> Feature Specs and Test Specs (.features) -> Issues (.issues) -> Implementation -> Review -> Ship
 ```
 
 The canonical repository model is:
 
 ```text
-docs/spec-modes/  project operating modes: LiteSpec, GoalSpec, and EnterpriseSpec
+docs/spec-modes/  project operating modes: GoalSpec (default), LiteSpec, and EnterpriseSpec
 current/          active delivery workspace for the selected mode
-spec-draft/        intake-only requirement drafts
+.prd/             PRD intake documents
 design/            one canonical design doc per platform or system
-specs/roadmap.md   epic, release, order, and dependency planning
-specs/RP-001-.../  flat feature-spec directories
+.features/roadmap.md   epic, release, order, and dependency planning
+.features/RP-001-.../  flat feature-spec directories
 implementation/    implementation handoff and status by spec id
-reviews/           review findings and approval evidence by spec id
-tests/             shared verification assets keyed by spec_id
+reviews/             review findings and approval evidence by spec id
+tests/               executable verification assets; Test Specs live in .features/
 ```
 
 SpecOS favors one durable design document per system and many small feature specs. Feature specs stay narrow, explicit, and reviewable so agents can implement them end to end without inventing scope.
@@ -44,7 +44,7 @@ It also includes reusable project assets:
 - `packages/bundler/`: bundle planning and install-target configuration
 - `packages/installer/`: validated bundle installation
 - `docs/spec-modes/` and `current/`: project operating mode guidance and active delivery context
-- `design/`, `spec-draft/`, `specs/`, `implementation/`, `reviews/`, `tests/`: the spec delivery backbone
+- `design/`, `.prd/`, `.features/`, `implementation/`, `reviews/`, `tests/`: the spec delivery backbone
 
 ## Agent Model
 
@@ -61,8 +61,8 @@ The role registry lives in `.agents/manifest.yaml`. Project modes overlay role b
 
 SpecOS now documents three official project authoring modes:
 
-- [LiteSpec](docs/spec-modes/LiteSpec/README.md): feature-driven, low-token, default for daily agent development
-- [GoalSpec](docs/spec-modes/GoalSpec/README.md): workflow-driven, with approved Feature Specs branching into implementation Issues and version-bound Test Specs before review and ship
+- [GoalSpec](docs/spec-modes/GoalSpec/README.md): default workflow-driven mode using PRDs, Feature/Test Specs, Issues, review, and ship gates
+- [LiteSpec](docs/spec-modes/LiteSpec/README.md): optional low-token feature-driven mode
 - [EnterpriseSpec](docs/spec-modes/EnterpriseSpec/README.md): delivery-driven, high-governance, for QA-heavy and audited environments
 
 Mode selection guidance lives in [docs/spec-modes/README.md](docs/spec-modes/README.md). All three modes share the same layered agent registry; a mode overlay adjusts role behavior for its governance level, not the routing hierarchy.
@@ -76,12 +76,12 @@ Today the intended usage is:
 - initialize a project baseline with the CLI
 - choose the project mode from `docs/spec-modes/`
 - keep active delivery state in `current/`
-- write intake notes in `spec-draft/`
+- write intake notes in `.prd/`
 - keep stable platform decisions in `design/`
-- plan feature order and dependencies in `specs/roadmap.md`
-- author small feature specs under `specs/<SPEC-ID>-<slug>/`
+- plan feature order and dependencies in `.features/roadmap.md`
+- author small feature specs under `.features/<SPEC-ID>-<slug>/`
 - implement and review against those specs
-- keep tests traceable to `spec_id`
+- create implementation and verification Issues under `.issues/`, with tests traceable to the Feature/Test Spec version
 
 ## Quick Start
 
@@ -137,12 +137,12 @@ assets/              reusable role, team, skill, and template sources
 ai/agents/           agent role definitions
 docs/spec-modes/     mode playbooks for LiteSpec, GoalSpec, and EnterpriseSpec
 current/             active project status and handoff context
-spec-draft/          intake drafts
+.prd/          intake drafts
 design/              canonical platform design documents
-specs/               roadmap, feature specs, rules, templates
+.features/               roadmap, feature specs, rules, templates
 implementation/      implementation handoff by spec id
 reviews/             review outputs by spec id
-tests/               plans, schedules, and results
+tests/               executable plans, schedules, and results
 ```
 
 ## For Contributors
@@ -151,7 +151,7 @@ Start with:
 
 - [AGENTS.md](AGENTS.md)
 - [rules/README.md](rules/README.md)
-- [specs/README.md](specs/README.md)
+- [.features/roadmap.md](.features/roadmap.md)
 - [spec-web-ui/README.md](spec-web-ui/README.md)
 
 Keep changes traceable to a draft, design doc, feature spec, rule, review, or test artifact.

@@ -4,10 +4,10 @@ This project uses SpecOS as the delivery backbone for an eyewear fitting product
 
 ## Source Of Truth
 
-1. Start from `spec-draft/idea/lens-fitting-idea.md`.
-2. Read the accepted branch specs under `specs/current/`.
-3. Use `specs/changes/lens-fitting-mvp/` for the active MVP change package.
-4. Derive execution from `tasks/`, `code/`, `tests/`, and `deploy/`.
+1. Start from `.prd/idea/lens-fitting-idea.md`.
+2. Read the accepted branch specs under `.features/current/`.
+3. Use `.features/changes/lens-fitting-mvp/` for the active MVP change package.
+4. Derive execution from `.issues/`, `code/`, `tests/`, and `deploy/`.
 
 ## Delivery Chain
 
@@ -27,7 +27,7 @@ These compiler roles map onto the SpecOS layered agent model: `pola` coordinates
 
 ## Rules
 
-- Do not write accepted truth directly into `specs/current/` without review.
+- Do not write accepted truth directly into `.features/current/` without review.
 - Keep Product, Architecture, Database, API, and UI decisions traceable to the idea or active change.
 - Keep implementation notes under `code/`, verification under `tests/`, and rollout notes under `deploy/`.
 - Record assumptions instead of inventing optometry, payment, inventory, or compliance facts.

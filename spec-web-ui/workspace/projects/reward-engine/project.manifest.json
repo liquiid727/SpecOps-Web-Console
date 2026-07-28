@@ -22,7 +22,7 @@
       "enabled": true
     }
   ],
-  "draftTemplateId": "template-feature-draft",
-  "draftPath": "spec-web-ui/workspace/projects/reward-engine/draft.md",
-  "exportTargets": ["docs/", "current/", "rules/", "specs/_template/", "ai/agents/", "agent-teams/", "project-manifest.yaml"]
+  "prdTemplateId": "template-feature-draft",
+  "prdPath": "spec-web-ui/workspace/projects/reward-engine/prd.md",
+  "exportTargets": ["docs/", "current/", "rules/", ".prd/_template/", ".features/_template/", ".issues/_template/", "ai/agents/", "agent-teams/", "project-manifest.yaml"]
 }

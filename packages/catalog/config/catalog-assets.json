@@ -23,7 +23,7 @@
     "sourcePath": "rules/backend/go-backend-governance.md",
     "files": [
       "rules/backend/go-backend-governance.md",
-      "specs/_rules/README.md"
+      ".features/_rules/README.md"
     ],
     "version": "1.0.0",
     "draftHints": [
@@ -258,9 +258,9 @@
     ],
     "dependsOn": [],
     "conflictsWith": [],
-    "sourcePath": "spec-draft/_template/feature/product-ui.template.md",
+    "sourcePath": ".prd/_template/feature/product-ui.template.md",
     "files": [
-      "spec-draft/_template/feature/product-ui.template.md"
+      ".prd/_template/feature/product-ui.template.md"
     ],
     "version": "1.0.0",
     "draftHints": [
@@ -296,9 +296,9 @@
       "rule-backend-governance"
     ],
     "conflictsWith": [],
-    "sourcePath": "spec-draft/_template/feature/backend-domain.template.md",
+    "sourcePath": ".prd/_template/feature/backend-domain.template.md",
     "files": [
-      "spec-draft/_template/feature/backend-domain.template.md"
+      ".prd/_template/feature/backend-domain.template.md"
     ],
     "version": "1.0.0",
     "draftHints": [
@@ -336,9 +336,9 @@
       "rule-ui-pencil"
     ],
     "conflictsWith": [],
-    "sourcePath": "spec-draft/_template/feature/ui-handoff.template.md",
+    "sourcePath": ".prd/_template/feature/ui-handoff.template.md",
     "files": [
-      "spec-draft/_template/feature/ui-handoff.template.md"
+      ".prd/_template/feature/ui-handoff.template.md"
     ],
     "version": "1.0.0",
     "draftHints": [
@@ -377,11 +377,12 @@
       "template-feature-draft"
     ],
     "conflictsWith": [],
-    "sourcePath": "specs/_template/feature/spec.example.md",
+    "sourcePath": ".features/_template/feature/spec.example.md",
     "files": [
-      "specs/_template/feature/spec.example.md",
-      "specs/_template/feature/model.example.md",
-      "specs/_template/feature/changelog.example.md"
+      ".features/_template/feature/spec.example.md",
+      ".features/_template/feature/model.example.md",
+      ".features/_template/feature/changelog.example.md",
+      ".features/_template/feature/test-spec.example.md"
     ],
     "version": "1.0.0",
     "draftHints": [
@@ -389,6 +390,57 @@
       "确认 Data Model、Security 和 Observability 都已覆盖"
     ],
     "sampleOutput": "一套 Feature Spec、Task Plan、模型和变更记录模板。"
+  },
+  {
+    "id": "template-test-spec",
+    "type": "spec_template",
+    "title": "Independent Test Spec Template",
+    "summary": "Version-bound verification contract generated after Feature Spec approval.",
+    "direction": "fullstack",
+    "categories": [
+      "testing",
+      "backend",
+      "frontend",
+      "operations"
+    ],
+    "stacks": [
+      "go",
+      "react",
+      "python"
+    ],
+    "tags": [
+      "test-spec",
+      "verification",
+      "contract",
+      "scenario",
+      "performance",
+      "security",
+      "migration",
+      "compatibility"
+    ],
+    "appliesTo": [
+      "backend",
+      "frontend"
+    ],
+    "dependsOn": [
+      "template-feature-spec",
+      "skill-spec-to-test"
+    ],
+    "conflictsWith": [],
+    "sourcePath": "assets/templates/specs/template-test-spec/test-spec.md",
+    "files": [
+      ".features/_template/feature/test-spec.example.md"
+    ],
+    "version": "1.0.0",
+    "draftHints": [
+      "绑定 approved Feature Spec 的版本与哈希",
+      "逐项覆盖验收标准并明确 required、deferred 或 not-applicable",
+      "把业务负载、证据类型和 CI/CD gate 写成可执行契约"
+    ],
+    "sampleOutput": "独立 Test Spec、质量目标、测试矩阵、自动化计划和发布门禁。",
+    "contentFiles": {
+      ".features/_template/feature/test-spec.example.md": "assets/templates/specs/template-test-spec/test-spec.md"
+    }
   },
   {
     "id": "agent-spec-editor",
@@ -719,7 +771,9 @@
       "frontend"
     ],
     "dependsOn": [
-      "skill-prd-to-spec"
+      "skill-prd-to-spec",
+      "template-feature-spec",
+      "template-test-spec"
     ],
     "conflictsWith": [],
     "sourcePath": "skills/developer/spec-to-test/SKILL.md",
@@ -932,7 +986,7 @@
     "sourcePath": "ai/agents/openapi-agent.md",
     "files": [
       "ai/agents/openapi-agent.md",
-      "specs/_template/feature/openapi.example.yaml"
+      ".features/_template/feature/openapi.example.yaml"
     ],
     "version": "1.0.0",
     "draftHints": [

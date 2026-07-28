@@ -1,0 +1,27 @@
+[
+  {
+    "id": "approved-api-feature",
+    "prompt": "Generate a Test Spec for an approved login API Feature Spec with POST /sessions, password failure lockout, session expiry, tenant isolation, error codes, and a browser sign-in flow.",
+    "expected": "Produces a version-bound independent Test Spec with source approval/hash metadata, API contract coverage for schema/status/auth/error/idempotency/compatibility, BDD happy/error/limit scenarios, minimal UI/E2E coverage, quality and risk requirements, owners/evidence/gates, and explicit not-applicable or deferred decisions for k6 and Chaos rather than adding them unconditionally."
+  },
+  {
+    "id": "high-concurrency-workload",
+    "prompt": "Generate a Test Spec for an approved flash-sale order API. One inventory item may be claimed by many members at once; the service must sustain a campaign workload, preserve idempotency, recover from dependency timeouts, and meet p95 and error-rate SLOs.",
+    "expected": "Produces a business workload model with actor mix, arrival pattern, stages, data distribution, capacity assumptions, k6 adapter intent and measurable thresholds; covers API contract, concurrency/final-state invariants, load/stress/spike/soak applicability, reliability/recovery, observability, regression, and blocking release gates without claiming that execution occurred."
+  },
+  {
+    "id": "saas-risk-matrix",
+    "prompt": "Generate a Test Spec for an approved multi-tenant SaaS API that adds a database migration and dual-read compatibility window. It handles PII, OAuth tokens, tenant authorization, browser clients, audit logs, tracing, rollback, and support for old and new clients.",
+    "expected": "Produces explicit security, data/PII, migration/backfill/rollback, client/browser compatibility, observability, reliability, regression, test-data, and environment sections; maps acceptance criteria to evidence and CI/CD gates; identifies required, deferred, or not-applicable profiles and blocks release on P0/P1 gaps."
+  },
+  {
+    "id": "draft-is-not-release-baseline",
+    "prompt": "Create a release-ready Test Spec from an in-review Feature Spec whose OpenAPI error contract and approval evidence are still missing.",
+    "expected": "Refuses release-eligible generation, records the missing contract and approval as blocking gaps, and only offers an explicitly marked preview/draft if requested. It must not invent status codes, thresholds, or expected behavior."
+  },
+  {
+    "id": "stale-source-version",
+    "prompt": "Update an existing approved Test Spec after its Feature Spec changed from version 1.2.0 to 1.3.0 and the authentication acceptance criteria changed.",
+    "expected": "Marks the previous Test Spec stale, diffs affected requirements, increments the Test Spec version, preserves unaffected verification IDs, records new approval evidence, and prevents historical results from being rewritten to the new version."
+  }
+]

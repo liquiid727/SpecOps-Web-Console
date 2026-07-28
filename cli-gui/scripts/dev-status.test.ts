@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from "vitest";
-import { probeEndpoint, renderBanner, renderFailureSummary, waitForEndpoint, type WaitResult } from "./dev-status.js";
+import net from "node:net";
+import { buildDevUrls, createChildEnvironment, probeEndpoint, renderBanner, renderFailureSummary, resolvePreferredPorts, selectDevPorts, waitForEndpoint, type WaitResult } from "./dev-status.js";
 
 const readyFrontend: WaitResult = { name: "frontend", status: "ready", elapsedMs: 12 };
 const readyBackend: WaitResult = { name: "backend", status: "ready", elapsedMs: 18, payload: { status: "ok", readonly: false } };
@@ -28,6 +29,48 @@ describe("dev status probes", () => {
   });
 });
 
+describe("development port selection", () => {
+  it("moves past a port occupied on loopback", async () => {
+    const occupied = net.createServer();
+    await new Promise<void>((resolve) => occupied.listen(0, "127.0.0.1", () => resolve()));
+    const address = occupied.address();
+    if (!address || typeof address === "string") throw new Error("test server did not expose a port");
+
+    try {
+      const ports = await selectDevPorts({ guiPort: address.port, apiPort: address.port + 1 });
+      expect(ports.guiPort).toBeGreaterThan(address.port);
+      expect(ports.apiPort).not.toBe(ports.guiPort);
+    } finally {
+      await new Promise<void>((resolve, reject) => occupied.close((error) => error ? reject(error) : resolve()));
+    }
+  });
+
+  it("keeps GUI and API ports distinct when preferred values collide", async () => {
+    const isPortAvailable = vi.fn(async (port: number) => port !== 4100);
+
+    await expect(selectDevPorts({ guiPort: 4100, apiPort: 4100, isPortAvailableImpl: isPortAvailable })).resolves.toEqual({ guiPort: 4101, apiPort: 4102 });
+  });
+
+  it("builds dynamic URLs and one environment for both children", () => {
+    const ports = { guiPort: 4310, apiPort: 4311 };
+    const urls = buildDevUrls(ports);
+    const env = createChildEnvironment({ PATH: "/test", PORT: "9999" }, ports);
+
+    expect(urls).toEqual({
+      guiUrl: "http://127.0.0.1:4310",
+      apiUrl: "http://127.0.0.1:4311",
+      healthUrl: "http://127.0.0.1:4311/health",
+      websocketUrl: "ws://127.0.0.1:4311/ws"
+    });
+    expect(env).toMatchObject({ PATH: "/test", SPECOS_GUI_PORT: "4310", SPECOS_API_PORT: "4311", PORT: "4311" });
+  });
+
+  it("uses explicit API preference before the legacy PORT preference", () => {
+    expect(resolvePreferredPorts({ SPECOS_GUI_PORT: "4320", SPECOS_API_PORT: "4321", PORT: "4322" })).toEqual({ guiPort: 4320, apiPort: 4321 });
+    expect(resolvePreferredPorts({ PORT: "4322" })).toEqual({ guiPort: 3000, apiPort: 4322 });
+  });
+});
+
 describe("dev status banner", () => {
   it("includes service URLs, health states, runtime mode, and stop hint", () => {
     const banner = renderBanner({ frontend: readyFrontend, backend: readyBackend });
@@ -50,5 +93,20 @@ describe("dev status banner", () => {
     expect(renderBanner({ frontend, backend })).toContain("Status:   ⏳ timed out after 11s");
     expect(renderFailureSummary(frontend, backend)).toContain("❌ Frontend: unavailable");
     expect(renderFailureSummary(frontend, backend)).toContain("❌ Backend: timed out after 11s");
+  });
+
+  it("prints the selected GUI, API, health, and WebSocket addresses", () => {
+    const banner = renderBanner({
+      frontend: readyFrontend,
+      backend: readyBackend,
+      guiUrl: "http://127.0.0.1:4310",
+      apiUrl: "http://127.0.0.1:4311",
+      healthUrl: "http://127.0.0.1:4311/health",
+      websocketUrl: "ws://127.0.0.1:4311/ws"
+    });
+
+    expect(banner).toContain("http://127.0.0.1:4310");
+    expect(banner).toContain("http://127.0.0.1:4311/health");
+    expect(banner).toContain("ws://127.0.0.1:4311/ws");
   });
 });

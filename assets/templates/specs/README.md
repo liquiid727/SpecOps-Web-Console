@@ -6,8 +6,8 @@ Each template asset can provide an `asset.json` manifest so the tool site can re
 
 The primary template surfaces are:
 
-- intake drafts under `spec-draft/_template/`
+- intake drafts under `.prd/_template/`
 - platform design under `design/_template/`
-- feature specs under `specs/_template/`
+- feature specs under `.features/_template/`
 - project mode guidance under `docs/spec-modes/`
 - active delivery workspace seeds under `current/`

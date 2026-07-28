@@ -17,7 +17,7 @@ project/
   docs/spec-modes/
   current/
   design/
-  specs/
+  .features/
   implementation/
   tests/
   reviews/
@@ -27,8 +27,8 @@ project/
 
 Recommended role-based loading:
 
-- architecture: `design/`, `specs/`, `reviews/architecture/`
-- implementation: `current/`, `specs/`, `implementation/`
-- QA: `specs/`, `tests/`, `reviews/`
+- architecture: `design/`, `.features/`, `reviews/architecture/`
+- implementation: `current/`, `.features/`, `implementation/`
+- QA: `.features/`, `tests/`, `reviews/`
 - security: `design/security.md`, `tests/security/`, `reviews/security/`
 - release: `implementation/`, `reviews/release/`, `docs/runbook/`

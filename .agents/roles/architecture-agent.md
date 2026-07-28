@@ -7,7 +7,7 @@ Own the first-pass architecture judgment for a bounded request, then delegate sp
 ## Required Inputs
 
 - User request, draft, design doc, roadmap item, or feature spec.
-- Accepted platform, architecture, and domain context from `design/` and `specs/roadmap.md`.
+- Accepted platform, architecture, and domain context from `design/` and `.features/roadmap.md`.
 - Applicable governance from `.rules/project.md`, `rules/`, and `ai/workflows/nested-agent-orchestration.md`.
 
 ## Required Outputs

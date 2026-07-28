@@ -9,8 +9,9 @@ npm install
 npm run dev
 ```
 
-- GUI: http://127.0.0.1:3000
-- Internal Session Manager: http://127.0.0.1:3001 (backend only; do not open this as the GUI)
+开发监督器默认优先使用 GUI `3000`、Session Manager API `3001`。如果端口已被占用，会从各自的首选端口开始递增选择可用端口，并保证 GUI 与 API 不重复。
+
+也可以通过 `SPECOS_GUI_PORT`、`SPECOS_API_PORT`（或后端已有的 `PORT`）设置首选端口；冲突时仍会自动递增。启动完成后请使用最终 banner 中打印的 GUI URL，不要假设地址一定是 `http://127.0.0.1:3000`。浏览器仍通过 GUI 同源的 `/api` 和 `/ws` 路径访问后端。
 
 生产构建和启动：
 

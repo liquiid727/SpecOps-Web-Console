@@ -16,10 +16,10 @@ context_order:
   - rules/
   - docs/spec-modes/
   - current/
-  - spec-draft/
+  - .prd/
   - design/
-  - specs/roadmap.md
-  - specs/
+  - .features/roadmap.md
+  - .features/
   - implementation/
   - reviews/
   - tests/
@@ -47,7 +47,7 @@ calling_convention:
   routing_rules:
     - Only load the selected role's role_prompt, canonical, skills, and context_includes.
     - Do not preload repository or external skills unless they are declared on the selected role.
-    - Prefer switching agents or splitting tasks over broadening one agent's skill set.
+    - Prefer switching agents or splitting issues over broadening one agent's skill set.
     - Roles with empty skills run as role-and-rules-only agents.
     - Do not invent ad-hoc roles; main primary and specialist agents must be registered in this manifest.
     - "User-facing routing targets only tier: main agents: architecture-agent, implementation-agent, testing-agent, and qa-agent; pola coordinates across them."
@@ -122,10 +122,10 @@ roles:
       - docs/spec-modes/
       - current/
       - design/
-      - specs/roadmap.md
+      - .features/roadmap.md
       - ai/workflows/nested-agent-orchestration.md
-      - spec-draft/
-      - specs/
+      - .prd/
+      - .features/
       - implementation/
       - reviews/
     owns:
@@ -178,8 +178,8 @@ roles:
       - rules/backend/go-backend-governance.md
       - rules/shared/error-code-governance.md
       - design/
-      - specs/roadmap.md
-      - specs/
+      - .features/roadmap.md
+      - .features/
       - implementation/
     owns:
       - implementation execution plan
@@ -222,8 +222,8 @@ roles:
       - tests/concurrency/
       - tests/results/
       - design/
-      - specs/roadmap.md
-      - specs/
+      - .features/roadmap.md
+      - .features/
       - reviews/
     owns:
       - independent verification strategy
@@ -251,8 +251,8 @@ roles:
       - rules/testing/production-test-standards.md
       - rules/ci/spec-release-gates.md
       - design/
-      - specs/roadmap.md
-      - specs/
+      - .features/roadmap.md
+      - .features/
       - implementation/
       - tests/plans/
       - tests/results/
@@ -289,10 +289,10 @@ roles:
       - docs/spec-modes/
       - current/
       - ai/workflows/README.md
-      - spec-draft/
+      - .prd/
       - design/
-      - specs/roadmap.md
-      - specs/
+      - .features/roadmap.md
+      - .features/
     owns:
       - idea intake and PRD compilation
       - PRD scope classification and open questions
@@ -332,18 +332,18 @@ roles:
       - .rules/project.md
       - docs/spec-modes/
       - current/
-      - specs/_rules/README.md
-      - spec-draft/
+      - .features/_rules/README.md
+      - .prd/
       - design/
-      - specs/roadmap.md
-      - specs/
+      - .features/roadmap.md
+      - .features/
       - implementation/
       - reviews/
       - tests/
     owns:
-      - spec-draft/
+      - .prd/
       - design/
-      - specs/
+      - .features/
       - implementation/
       - reviews/
     outputs:
@@ -370,7 +370,7 @@ roles:
       - rules/ui/design-governance.md
       - rules/ui/pencil-prototype-ui.md
       - design/
-      - specs/
+      - .features/
       - spec-web-ui/
     owns:
       - spec-web-ui/
@@ -433,7 +433,7 @@ roles:
       - rules/frontend/react-workbench-delivery.md
       - rules/ui/design-governance.md
       - design/
-      - specs/
+      - .features/
     owns:
       - frontend delivery orchestration for the UI branch of a change package
       - UI state coverage handoffs
@@ -461,7 +461,7 @@ roles:
       - rules/backend/go-backend-governance.md
       - rules/shared/error-code-governance.md
       - design/
-      - specs/
+      - .features/
     owns:
       - backend delivery orchestration for Architecture, Database, and API branches
       - backend specialist routing
@@ -486,7 +486,7 @@ roles:
       - docs/spec-modes/
       - current/
       - rules/
-      - specs/
+      - .features/
       - implementation/
     owns:
       - focused code and artifact edits from approved specs
@@ -514,10 +514,10 @@ roles:
       - rules/backend/go-backend-governance.md
       - rules/shared/error-code-governance.md
       - design/
-      - specs/roadmap.md
+      - .features/roadmap.md
       - ai/workflows/nested-agent-orchestration.md
-      - spec-draft/
-      - specs/
+      - .prd/
+      - .features/
       - implementation/
       - reviews/
     owns:
@@ -541,7 +541,7 @@ roles:
       - rules/backend/go-backend-governance.md
       - rules/shared/error-code-governance.md
       - design/
-      - specs/
+      - .features/
       - tests/bruno/
     owns:
       - API contracts
@@ -564,7 +564,7 @@ roles:
       - rules/backend/go-backend-governance.md
       - rules/backend/goose-migration-standards.md
       - design/
-      - specs/
+      - .features/
     owns:
       - migration planning
       - rollout and rollback notes
@@ -590,7 +590,7 @@ roles:
       - tests/scenarios/
       - tests/results/
       - design/
-      - specs/
+      - .features/
     owns:
       - end-to-end business journey coverage
       - scenario fixtures and preconditions
@@ -615,7 +615,7 @@ roles:
       - tests/README.md
       - spec-web-ui/
       - design/
-      - specs/
+      - .features/
     owns:
       - browser scenario plans
       - UI state coverage
@@ -639,7 +639,7 @@ roles:
       - docs/spec-modes/
       - current/
       - tests/README.md
-      - specs/
+      - .features/
     owns:
       - unit test coverage notes
       - module risk summaries
@@ -659,7 +659,7 @@ roles:
       - docs/spec-modes/
       - current/
       - tests/README.md
-      - specs/
+      - .features/
     owns:
       - specialized verification notes
       - smoke and contract results
@@ -684,7 +684,7 @@ roles:
       - tests/performance/
       - tests/results/
       - design/
-      - specs/
+      - .features/
       - implementation/
     owns:
       - tests/performance/
@@ -712,7 +712,7 @@ roles:
       - tests/concurrency/
       - tests/results/
       - design/
-      - specs/
+      - .features/
       - implementation/
     owns:
       - tests/concurrency/
@@ -746,8 +746,8 @@ roles:
       - rules/testing/production-test-standards.md
       - scripts/checks/README.md
       - scripts/orchestration/README.md
-      - specs/roadmap.md
-      - specs/
+      - .features/roadmap.md
+      - .features/
       - implementation/
       - reviews/
     owns:
@@ -833,7 +833,7 @@ roles:
       - docs/spec-modes/
       - current/
       - tests/README.md
-      - specs/
+      - .features/
     owns:
       - tests/
     outputs:
@@ -860,10 +860,10 @@ roles:
       - docs/spec-modes/
       - current/
       - design/
-      - specs/roadmap.md
+      - .features/roadmap.md
       - rules/
       - tests/
-      - specs/
+      - .features/
     owns:
       - review findings
       - validation gaps

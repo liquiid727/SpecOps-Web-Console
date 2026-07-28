@@ -108,17 +108,17 @@ export const localeCopy = {
     },
     about: {
       agentFlow: {
-        eyebrow: "$ cat specs/RP-002-decision-api/spec.md",
+        eyebrow: "$ cat .features/RP-002-decision-api/spec.md",
         title: "Agent 工作方式与测试边界",
-        description: "从需求进入 spec-draft，到 design、roadmap 和 feature spec，执行和测试始终保持独立上下文。执行只管实现和单元测试，测试只管 test-plan、场景和真实执行。",
-        stages: ["需求", "spec-draft", "design", "roadmap", "feature spec", "执行 + 测试分轨", "review / merge"],
+        description: "从 PRD 进入 .prd，再到 design、roadmap、Feature Spec/Test Spec 和 Issues，执行与测试始终保持独立上下文。执行只管实现与实现耦合测试，测试只管测试计划、场景和真实执行。",
+        stages: ["需求", "PRD", "design", "roadmap", "Feature Spec/Test Spec", "Issues", "执行 + 测试分轨", "review / merge"],
         gate: "先确认 design 和 feature spec，再把执行与测试拆成两个互不污染的 agent track。",
         tracks: [
           {
             name: "Spec Agent",
             role: "维护 design / roadmap / spec 文档链路",
-            description: "把 draft 润色为可审查的 design、roadmap 和 feature spec，记录结论与边界。",
-            points: ["spec-draft -> feature spec", "design / roadmap 更新", "review handoff"]
+            description: "把 PRD 润色为可审查的 design、roadmap、Feature Spec/Test Spec 和 Issues，记录结论与边界。",
+            points: [".prd -> .features Feature Spec/Test Spec", "design / roadmap / .issues 更新", "review handoff"]
           },
           {
             name: "Execution Agent",
@@ -156,7 +156,7 @@ export const localeCopy = {
               { text: "|-- README.md", note: "入口说明" },
               { text: "|-- design/", note: "稳定设计真相" },
               { text: "|-- current/", note: "当前交付状态" },
-              { text: "|-- specs/", note: "feature 就地组织" },
+              { text: "|-- .features/", note: "feature 就地组织" },
               { text: "|   |-- roadmap.md" },
               { text: "|   `-- RP-001-feature/" },
               { text: "|       |-- spec.md" },
@@ -167,13 +167,13 @@ export const localeCopy = {
               { text: "`-- .agents/", note: "轻量 agent 上下文" }
             ],
             loadLabel: "加载顺序",
-            loadPath: ["README", "current", "design", "specs/RP-xxx", "相关 skill"],
+            loadPath: ["README", "current", "design", ".features/RP-xxx", "相关 skill"],
             loadNote: "按一条 feature 线加载，目标是让 agent 一次读完最小上下文。",
             purposeLabel: "作用",
             purposeValue: "把 feature 当成最小执行单元，优先保证 agent 上下文小、迭代快、目录容易一次读完。",
             structureLabel: "结构重点",
             structure: [
-              "specs/RP-xxx/ 下把 spec、tasks、tests、review、changelog 放在同一个 feature 目录里。",
+              ".features/RP-xxx/ 下把 spec、tasks、test-spec、review、changelog 放在同一个 feature 目录里。",
               "current/ 维护 active-feature、active-context、active-tasks 和 handoff，偏向单线推进。",
               ".agents/ 只保留少量通用 skill 文件，默认由一个工程师或一个 agent 端到端完成。"
             ],
@@ -196,25 +196,25 @@ export const localeCopy = {
               { text: "|-- design/", note: "稳定设计真相" },
               { text: "|-- current/", note: "双轨交付进度" },
               { text: "|-- docs/workflow.md", note: "版本化交付链路" },
-              { text: "|-- specs/", note: "issue 索引 + feature" },
-              { text: "|   |-- issues/README.md", note: "/to-issues 产出" },
+              { text: "|-- .features/", note: "issue 索引 + feature" },
+              { text: "|   |-- roadmap.md", note: "/to-issues 产出" },
               { text: "|   `-- RP-001-feature/" },
               { text: "|       |-- spec.md" },
               { text: "|       |-- tasks.md" },
               { text: "|       |-- review.md", note: "/review-it 产出" },
               { text: "|       `-- changelog.md", note: "/ship-it 产出" },
               { text: "|-- implementation/", note: "变更面记录" },
-              { text: "|-- tests/specs/", note: "/spec-to-test 产出" },
+              { text: "|-- .features/<feature>/test-spec.md", note: "/spec-to-test 产出" },
               { text: "`-- .agents/", note: "轻量 agent 上下文" }
             ],
             loadLabel: "加载顺序",
-            loadPath: ["README", "current", "design", "specs/issues", "specs/RP-xxx"],
+            loadPath: ["README", "current", "design", ".issues/", ".features/RP-xxx"],
             loadNote: "在 feature 加载顺序之外增加 issue 与 Test Spec 索引，定位实现轨和验证轨的当前状态。",
             purposeLabel: "作用",
             purposeValue: "先确认版本化 Feature Spec，再并行推进实现 Issue 与由 /spec-to-test 生成的独立验证 Issue，最后汇合到 review 和 ship。",
             structureLabel: "结构重点",
             structure: [
-              "specs/issues/ 分开维护实现与验证 issue 的索引和依赖，每个 issue 保持小而可独立审查。",
+              ".issues/ 分开维护实现与验证 issue 的索引和依赖，每个 issue 保持小而可独立审查。",
               "review、ship 环节仍是 feature 内单文件（review.md、changelog.md），不引入 EnterpriseSpec 的多阶段 reviews/ 目录。",
               "docs/workflow.md 把 Feature Spec 版本、Test Spec 版本和双轨汇合关卡写成团队标准操作说明。"
             ],
@@ -236,7 +236,7 @@ export const localeCopy = {
               { text: "|-- README.md", note: "入口说明" },
               { text: "|-- design/", note: "稳定设计真相" },
               { text: "|-- current/", note: "发布与阻塞状态" },
-              { text: "|-- specs/", note: "需求侧工件" },
+              { text: "|-- .features/", note: "需求侧工件" },
               { text: "|   `-- RP-001-feature/" },
               { text: "|-- implementation/", note: "实施与发布记录" },
               { text: "|   `-- RP-001/" },
@@ -255,7 +255,7 @@ export const localeCopy = {
             purposeValue: "把交付证据当成最小治理单元，优先保证 QA、审计、发布和回滚链路都能被单独证明。",
             structureLabel: "结构重点",
             structure: [
-              "specs/ 只保留 spec、task-plan、model、api、migration 等需求侧工件，implementation/tests/reviews 独立成目录。",
+              ".features/ 只保留 spec、task-plan、model、api、migration 等需求侧工件，implementation/tests/reviews 独立成目录。",
               "tests/ 按 unit、integration、e2e、performance、security、results 等测试类型拆开，适合多角色并行。",
               "reviews/、docs/runbook/、rollout/rollback 让发布治理、审计留痕和运维交接有固定落点。"
             ],
@@ -418,18 +418,18 @@ export const localeCopy = {
     },
     about: {
       agentFlow: {
-        eyebrow: "$ cat specs/RP-002-decision-api/spec.md",
+        eyebrow: "$ cat .features/RP-002-decision-api/spec.md",
         title: "Agent workflow and test boundaries",
         description:
-          "From draft intake to design, roadmap, and feature spec, execution and testing stay in separate contexts. Execution owns implementation and unit tests. Testing owns the test plan, scenarios, and real runs.",
-        stages: ["request", "spec-draft", "design", "roadmap", "feature spec", "split execution + testing", "review / merge"],
+          "From PRD intake through design, roadmap, Feature Spec/Test Spec, and Issues, execution and testing stay in separate contexts. Execution owns implementation and unit tests. Testing owns the test plan, scenarios, and real runs.",
+        stages: ["request", "PRD", "design", "roadmap", "Feature Spec/Test Spec", "Issues", "split execution + testing", "review / merge"],
         gate: "Confirm design and feature-spec boundaries first, then split execution and testing into two isolated agent tracks.",
         tracks: [
           {
             name: "Spec Agent",
             role: "Maintain the design and feature-spec chain",
             description: "Refine the draft into reviewable design and feature-spec artifacts and record the resulting decisions.",
-            points: ["spec-draft -> feature spec", "design / roadmap update", "review handoff"]
+            points: [".prd -> .features Feature Spec/Test Spec", "design / roadmap / .issues update", "review handoff"]
           },
           {
             name: "Execution Agent",
@@ -468,7 +468,7 @@ export const localeCopy = {
               { text: "|-- README.md", note: "entry context" },
               { text: "|-- design/", note: "stable system truth" },
               { text: "|-- current/", note: "active delivery state" },
-              { text: "|-- specs/", note: "feature-local artifacts" },
+              { text: "|-- .features/", note: "feature-local artifacts" },
               { text: "|   |-- roadmap.md" },
               { text: "|   `-- RP-001-feature/" },
               { text: "|       |-- spec.md" },
@@ -479,14 +479,14 @@ export const localeCopy = {
               { text: "`-- .agents/", note: "small shared agent context" }
             ],
             loadLabel: "Loading order",
-            loadPath: ["README", "current", "design", "specs/RP-xxx", "relevant skill"],
+            loadPath: ["README", "current", "design", ".features/RP-xxx", "relevant skill"],
             loadNote: "Load along one feature track so the agent can read the smallest useful context in one pass.",
             purposeLabel: "Purpose",
             purposeValue:
               "Treat the feature as the smallest execution unit so agent context stays small, iteration stays fast, and the directory can be loaded in one pass.",
             structureLabel: "Structure focus",
             structure: [
-              "Keep spec, tasks, tests, review, and changelog together under one feature directory in specs/RP-xxx/.",
+              "Keep spec, tasks, tests, review, and changelog together under one feature directory in .features/RP-xxx/.",
               "Use current/ for active-feature, active-context, active-tasks, and handoff so the project can move along a single active track.",
               "Keep .agents/ small, with a few shared skill files, because one engineer or one agent is expected to finish the feature end to end."
             ],
@@ -509,26 +509,26 @@ export const localeCopy = {
               { text: "|-- design/", note: "stable system truth" },
               { text: "|-- current/", note: "dual-track delivery status" },
               { text: "|-- docs/workflow.md", note: "versioned delivery chain" },
-              { text: "|-- specs/", note: "issue index + feature" },
-              { text: "|   |-- issues/README.md", note: "produced by /to-issues" },
+              { text: "|-- .features/", note: "issue index + feature" },
+              { text: "|   |-- roadmap.md", note: "produced by /to-issues" },
               { text: "|   `-- RP-001-feature/" },
               { text: "|       |-- spec.md" },
               { text: "|       |-- tasks.md" },
               { text: "|       |-- review.md", note: "produced by /review-it" },
               { text: "|       `-- changelog.md", note: "produced by /ship-it" },
               { text: "|-- implementation/", note: "changed-surface record" },
-              { text: "|-- tests/specs/", note: "produced by /spec-to-test" },
+              { text: "|-- .features/<feature>/test-spec.md", note: "produced by /spec-to-test" },
               { text: "`-- .agents/", note: "small shared agent context" }
             ],
             loadLabel: "Loading order",
-            loadPath: ["README", "current", "design", "specs/issues", "specs/RP-xxx"],
+            loadPath: ["README", "current", "design", ".issues/", ".features/RP-xxx"],
             loadNote: "Adds Issue and Test Spec indexes so an agent can resolve the current implementation and verification state.",
             purposeLabel: "Purpose",
             purposeValue:
               "Approve a versioned Feature Spec, advance implementation and independent verification in parallel, then converge at review and ship.",
             structureLabel: "Structure focus",
             structure: [
-              "specs/issues/ keeps implementation and verification issue indexes separate; each issue stays small and independently reviewable.",
+              ".issues/ keeps implementation and verification issue indexes separate; each issue stays small and independently reviewable.",
               "Review and ship stay single-file per feature (review.md, changelog.md), without EnterpriseSpec's multi-stage reviews/ tree.",
               "docs/workflow.md records Feature Spec versions, Test Spec versions, and the dual-track convergence gates."
             ],
@@ -550,7 +550,7 @@ export const localeCopy = {
               { text: "|-- README.md", note: "entry context" },
               { text: "|-- design/", note: "stable system truth" },
               { text: "|-- current/", note: "release and blocker state" },
-              { text: "|-- specs/", note: "demand-side artifacts" },
+              { text: "|-- .features/", note: "demand-side artifacts" },
               { text: "|   `-- RP-001-feature/" },
               { text: "|-- implementation/", note: "rollout and rollback evidence" },
               { text: "|   `-- RP-001/" },
@@ -571,7 +571,7 @@ export const localeCopy = {
               "Treat delivery evidence as the smallest governance unit so QA, audit, release, and rollback paths can each be proven independently.",
             structureLabel: "Structure focus",
             structure: [
-              "Keep demand-side artifacts such as spec, task-plan, model, api, and migration in specs/, while implementation, tests, and reviews live in separate top-level directories.",
+              "Keep demand-side artifacts such as spec, task-plan, model, api, and migration in .features/, while implementation, tests, and reviews live in separate top-level directories.",
               "Split tests/ by type, including unit, integration, e2e, performance, security, and results, so specialist roles can work in parallel.",
               "Use reviews/, docs/runbook/, and rollout or rollback records as fixed homes for release governance, audit evidence, and operations handoff."
             ],

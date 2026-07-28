@@ -39,7 +39,7 @@ __pycache__/
 venv/
 
 # --- Editor / CLI tool local state ---
-# Keep AGENTS.md, CLAUDE.md, .claude/, .codex/, specs/, and docs/ under version
+# Keep AGENTS.md, CLAUDE.md, .claude/, .codex/, .features/, and docs/ under version
 # control. Only ignore the cache/session subpaths these tools generate locally.
 .claude/settings.local.json
 .claude/todos/

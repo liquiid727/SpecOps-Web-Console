@@ -36,7 +36,7 @@ spec:
 task:
   epics: []
   stories: []
-  tasks: []
+  issues: []
 
 code:
   frontend: []

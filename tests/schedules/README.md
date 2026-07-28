@@ -10,7 +10,7 @@ Schedules are machine-readable task-layer artifacts. They split one approved Fea
 The schedule is generated from `spec.md` through:
 
 ```bash
-node packages/cli/dist/main.js generate-test-plan specs/RP-002-decision-api/spec.md --change RP-002
+node packages/cli/dist/main.js generate-test-plan .features/RP-002-decision-api/spec.md --change RP-002
 ```
 
 JSON companions may still exist for compatibility, but the preferred contract path is now the frontmatter inside `spec.md`.

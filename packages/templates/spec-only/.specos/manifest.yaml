@@ -1,13 +1,14 @@
 project:
   name: specos-spec-only
   type: spec-only
-projectMode: litespec
+projectMode: goalspec
 stacks:
   frontend: none
   backend: none
 artifacts:
-  draftsDir: spec-draft
-  specsDir: specs
+  draftsDir: .prd
+  issuesDir: .issues
+  specsDir: .features
   testsDir: tests
   resultsDir: tests/results
 rulePacks:

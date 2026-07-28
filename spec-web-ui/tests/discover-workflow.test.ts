@@ -30,8 +30,8 @@ const catalog: CatalogAsset[] = [
     appliesTo: ["frontend"],
     dependsOn: [],
     conflictsWith: [],
-    sourcePath: "spec-draft/_template/feature/product-ui.template.md",
-    files: ["spec-draft/_template/feature/product-ui.template.md"],
+      sourcePath: ".prd/_template/feature/product-ui.template.md",
+      files: [".prd/_template/feature/product-ui.template.md"],
     version: "1.0.0"
   },
   {
@@ -129,7 +129,7 @@ describe("buildPresetBundlePreview", () => {
       skill: 0,
       spec_template: 1
     });
-    expect(preview.exportDirectories).toEqual(["ai", "rules", "spec-draft"]);
+    expect(preview.exportDirectories).toEqual([".prd", "ai", "rules"]);
   });
 });
 

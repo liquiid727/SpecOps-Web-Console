@@ -34,9 +34,9 @@ Tests should trace back to:
 
 - the selected project mode under `docs/spec-modes/`
 - active delivery and handoff context under `current/`
-- a feature spec under `specs/<SPEC-ID>-<slug>/spec.md`
+- a feature spec under `.features/<SPEC-ID>-<slug>/spec.md`
 - optional platform design context under `design/`
-- roadmap ordering and dependency context from `specs/roadmap.md`
+- roadmap ordering and dependency context from `.features/roadmap.md`
 
 ## Mode Shape
 
@@ -45,10 +45,10 @@ Tests should trace back to:
 
 ## Agent Isolation
 
-For active feature specs, generate `task-plan`, `test-plan`, and `test-schedule` artifacts directly from `spec.md` before assigning implementation and testing tasks. JSON companions can still be consumed when a project emits them intentionally, but `spec.md` is the primary path.
+For active feature specs, generate `task-plan`, `test-plan`, and `test-schedule` artifacts directly from `spec.md` before assigning implementation and testing issues. JSON companions can still be consumed when a project emits them intentionally, but `spec.md` is the primary path.
 
 ```bash
-node packages/cli/dist/main.js generate-test-plan specs/RP-002-decision-api/spec.md --change RP-002
+node packages/cli/dist/main.js generate-test-plan .features/RP-002-decision-api/spec.md --change RP-002
 ```
 
 The generated schedule records two separate tracks:
@@ -56,7 +56,7 @@ The generated schedule records two separate tracks:
 - `execution`: implementation-only work, owned by the execution agent.
 - `testing`: spec-and-contract-only work, owned by test agents.
 
-Execution tasks may write implementation-coupled unit tests under `tests/unit/` or existing module-local test paths. Execution tasks must not write independent verification assets under `tests/bruno/`, `tests/scenarios/`, `tests/e2e/`, `tests/playwright/`, or `tests/results/`. Test tasks must not write implementation source paths or unit-test assets.
+Execution issues may write implementation-coupled unit tests under `tests/unit/` or existing module-local test paths. Execution issues must not write independent verification assets under `tests/bruno/`, `tests/scenarios/`, `tests/e2e/`, `tests/playwright/`, or `tests/results/`. Test issues must not write implementation source paths or unit-test assets.
 
 ## API Execution
 

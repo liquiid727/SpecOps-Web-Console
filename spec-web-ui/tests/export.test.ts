@@ -18,9 +18,9 @@ const project: ProjectManifest = {
     { assetId: "skill-spec-to-test", enabled: true },
     { assetId: "team-governance-pack", enabled: true }
   ],
-  draftTemplateId: "template-feature-draft",
-  draftPath: "spec-web-ui/workspace/projects/reward-center/draft.md",
-  exportTargets: ["docs/", "current/", "rules/", "specs/_template/", "ai/agents/", "agent-teams/", "project-manifest.yaml"]
+  prdTemplateId: "template-feature-draft",
+  prdPath: "spec-web-ui/workspace/projects/reward-center/prd.md",
+  exportTargets: ["docs/", "current/", "rules/", ".features/_template/", "ai/agents/", "agent-teams/", "project-manifest.yaml"]
 };
 
 const selectedAssets: CatalogAsset[] = [
@@ -52,13 +52,13 @@ const selectedAssets: CatalogAsset[] = [
     conflictsWith: [],
     sourcePath: "assets/templates/specs/template-feature-draft/product-ui.template.md",
     files: [
-      "spec-draft/_template/feature/product-ui.template.md",
-      "specs/_template/feature/spec.example.md"
+      ".prd/_template/feature/product-ui.template.md",
+      ".features/_template/feature/spec.example.md"
     ],
     contentFiles: {
-      "spec-draft/_template/feature/product-ui.template.md":
+      ".prd/_template/feature/product-ui.template.md":
         "assets/templates/specs/template-feature-draft/product-ui.template.md",
-      "specs/_template/feature/spec.example.md":
+      ".features/_template/feature/spec.example.md":
         "assets/templates/specs/template-feature-spec/spec.example.md"
     },
     version: "1.0.0"
@@ -163,11 +163,11 @@ describe("buildExportBundle", () => {
     });
 
     expect(bundle.manifestYaml).toContain("id: reward-center");
-    expect(bundle.manifestYaml).toContain("draftTemplateId: template-feature-draft");
+    expect(bundle.manifestYaml).toContain("prdTemplateId: template-feature-draft");
     expect(bundle.files.map((file) => file.targetPath)).toEqual([
       "rules/backend/go-backend-governance.md",
-      "spec-draft/_template/feature/product-ui.template.md",
-      "specs/_template/feature/spec.example.md",
+      ".prd/_template/feature/product-ui.template.md",
+      ".features/_template/feature/spec.example.md",
       "docs/spec-modes/README.md",
       "docs/spec-modes/LiteSpec/README.md",
       "docs/spec-modes/GoalSpec/README.md",
@@ -195,8 +195,8 @@ describe("buildExportBundle", () => {
       { target: "current/", from: "files/current/" },
       { target: "docs/", from: "files/docs/" },
       { target: "rules/", from: "files/rules/" },
-      { target: "spec-draft/_template/", from: "files/spec-draft/_template/" },
-      { target: "specs/_template/", from: "files/specs/_template/" },
+      { target: ".prd/_template/", from: "files/.prd/_template/" },
+      { target: ".features/_template/", from: "files/.features/_template/" },
       { target: ".specos/workflows/", from: "files/.specos/workflows/" }
     ]);
     expect(bundle.bundleFiles.map((file) => file.targetPath)).toEqual([
@@ -216,10 +216,14 @@ describe("groupExportFilesByDirectory", () => {
       { sourcePath: "agent-teams/governance-pack/README.md", targetPath: "agent-teams/governance-pack/README.md" },
       { sourcePath: "rules/backend/go-backend-governance.md", targetPath: "rules/backend/go-backend-governance.md" },
       { sourcePath: "ai/agents/spec-editor.md", targetPath: "ai/agents/spec-editor.md" },
-      { sourcePath: "specs/_template/feature/spec.example.md", targetPath: "specs/_template/feature/spec.example.md" }
+      { sourcePath: ".features/_template/feature/spec.example.md", targetPath: ".features/_template/feature/spec.example.md" }
     ]);
 
     expect(groups).toEqual([
+      {
+        directory: ".features",
+        files: [{ sourcePath: ".features/_template/feature/spec.example.md", targetPath: ".features/_template/feature/spec.example.md" }]
+      },
       {
         directory: "agent-teams",
         files: [{ sourcePath: "agent-teams/governance-pack/README.md", targetPath: "agent-teams/governance-pack/README.md" }]
@@ -231,10 +235,6 @@ describe("groupExportFilesByDirectory", () => {
       {
         directory: "rules",
         files: [{ sourcePath: "rules/backend/go-backend-governance.md", targetPath: "rules/backend/go-backend-governance.md" }]
-      },
-      {
-        directory: "specs",
-        files: [{ sourcePath: "specs/_template/feature/spec.example.md", targetPath: "specs/_template/feature/spec.example.md" }]
       }
     ]);
   });
@@ -369,7 +369,7 @@ describe("buildExportReviewFiles", () => {
       ],
       previousFiles: [
         { sourcePath: "ai/agents/spec-editor.md", targetPath: "ai/agents/spec-editor.md" },
-        { sourcePath: "specs/_template/feature/spec.example.md", targetPath: "specs/_template/feature/spec.example.md" }
+        { sourcePath: ".features/_template/feature/spec.example.md", targetPath: ".features/_template/feature/spec.example.md" }
       ],
       currentContents: {
         "rules/backend/go-backend-governance.md": "# New Rule\n",
@@ -377,7 +377,7 @@ describe("buildExportReviewFiles", () => {
       },
       previousContents: {
         "ai/agents/spec-editor.md": "# Spec Editor\n\nPrevious\n",
-        "specs/_template/feature/spec.example.md": "# Previous Spec\n"
+        ".features/_template/feature/spec.example.md": "# Previous Spec\n"
       }
     });
 
@@ -387,9 +387,9 @@ describe("buildExportReviewFiles", () => {
         status: file.diff.status
       }))
     ).toEqual([
+      { path: ".features/_template/feature/spec.example.md", status: "removed" },
       { path: "ai/agents/spec-editor.md", status: "changed" },
-      { path: "rules/backend/go-backend-governance.md", status: "new" },
-      { path: "specs/_template/feature/spec.example.md", status: "removed" }
+      { path: "rules/backend/go-backend-governance.md", status: "new" }
     ]);
   });
 });

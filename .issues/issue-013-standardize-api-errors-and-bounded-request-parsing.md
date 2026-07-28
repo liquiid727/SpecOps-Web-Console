@@ -24,5 +24,5 @@ high
 SPEC §4.1, §6
 
 ## Source
-- `tasks/prd-cli-gui-workbench.md`
-- `tasks/spec-cli-gui-workbench.md`
+
+- Traceability: legacy/unmapped

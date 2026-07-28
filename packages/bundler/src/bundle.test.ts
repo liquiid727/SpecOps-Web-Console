@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildBundlePlan, resolveInstallTarget } from "./index.js";
+import { buildBundlePlan, deriveInstallMappings, resolveInstallTarget } from "./index.js";
 
 describe("bundler interface", () => {
   it("keeps source and installation target paths separate", () => {
@@ -11,8 +11,8 @@ describe("bundler interface", () => {
         projectType: "mixed",
         architecture: "modular",
         stacks: ["react"],
-        draftTemplateId: "template-feature-draft",
-        draftPath: "spec-draft/example.md",
+        prdTemplateId: "template-feature-draft",
+        prdPath: ".prd/example.md",
         exportTargets: ["agent-teams/"]
       },
       [
@@ -36,13 +36,82 @@ describe("bundler interface", () => {
         targetPath: "agent-teams/example/README.md"
       }
     ]);
+    expect(plan.bundleManifest.entrypoints).toEqual({
+      prdTemplate: "template-feature-draft",
+      designTemplate: "template-platform-design",
+      featureTemplate: "template-feature-spec",
+      issueTemplate: "template-issue",
+      workflowId: "spec-driven-default"
+    });
+    expect(plan.manifestYaml).toContain("prdTemplateId: template-feature-draft");
+    expect(plan.manifestYaml).toContain("prdPath: .prd/example.md");
+    expect(plan.manifestYaml).not.toContain("draftTemplateId");
+    expect(plan.manifestYaml).not.toContain("draftPath");
+    expect(plan.bundleManifestYaml).toContain("prdTemplate: template-feature-draft");
+    expect(plan.bundleManifestYaml).toContain("featureTemplate: template-feature-spec");
+    expect(plan.bundleManifestYaml).toContain("issueTemplate: template-issue");
+    expect(plan.bundleManifestYaml).not.toContain("draftTemplate");
+    expect(plan.bundleManifestYaml).not.toContain("specTemplate");
+  });
+
+  it("exports the independent Test Spec template to the feature bundle", () => {
+    const plan = buildBundlePlan(
+      {
+        id: "test-spec",
+        name: "Test Spec",
+        projectType: "mixed",
+        architecture: "modular",
+        stacks: ["specos"],
+        prdTemplateId: "template-feature-draft",
+        prdPath: ".prd/test-spec.md",
+        exportTargets: [".features/_template/"]
+      },
+      [
+        {
+          id: "template-test-spec",
+          files: [".features/_template/feature/test-spec.example.md"],
+          contentFiles: {
+            ".features/_template/feature/test-spec.example.md": "assets/templates/specs/template-test-spec/test-spec.md"
+          }
+        }
+      ],
+      {
+        conflictCount: 0,
+        missingDependencyCount: 0
+      }
+    );
+
+    expect(plan.files).toEqual([
+      {
+        sourcePath: "assets/templates/specs/template-test-spec/test-spec.md",
+        targetPath: ".features/_template/feature/test-spec.example.md"
+      }
+    ]);
     expect(plan.bundleManifest.installs).toContainEqual({
-      target: "agent-teams/",
-      from: "files/agent-teams/"
+      target: ".features/_template/",
+      from: "files/.features/_template/"
     });
   });
 
-  it("resolves the most specific configured install target", () => {
-    expect(resolveInstallTarget("specs/_template/feature/spec.example.md")).toBe("specs/_template/");
+  it("resolves GoalSpec install targets in priority order", () => {
+    expect(resolveInstallTarget(".prd/_template/feature/product-ui.template.md")).toBe(".prd/_template/");
+    expect(resolveInstallTarget(".features/_rules/README.md")).toBe(".features/_rules/");
+    expect(resolveInstallTarget(".features/_template/feature/spec.example.md")).toBe(".features/_template/");
+    expect(resolveInstallTarget(".issues/_template/issue.md")).toBe(".issues/_template/");
+
+    expect(
+      deriveInstallMappings([
+        { sourcePath: "prd", targetPath: ".prd/_template/feature/product-ui.template.md" },
+        { sourcePath: "rules", targetPath: ".features/_rules/README.md" },
+        { sourcePath: "feature", targetPath: ".features/_template/feature/spec.example.md" },
+        { sourcePath: "issue", targetPath: ".issues/_template/issue.md" }
+      ])
+    ).toEqual([
+      { target: ".prd/_template/", from: "files/.prd/_template/" },
+      { target: ".features/_rules/", from: "files/.features/_rules/" },
+      { target: ".features/_template/", from: "files/.features/_template/" },
+      { target: ".issues/_template/", from: "files/.issues/_template/" },
+      { target: ".specos/workflows/", from: "files/.specos/workflows/" }
+    ]);
   });
 });

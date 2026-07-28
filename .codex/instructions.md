@@ -19,18 +19,18 @@
 - Implementation Issues and verification Issues may proceed as separate tracks after approval; review and ship must reject stale Test Specs or missing blocking evidence.
 - Prefer narrow changes that preserve traceability.
 - Prefer switching roles or splitting work over adding more skills to a single role context.
-- For architecture or cross-domain requests, route the primary work to `ddd-domain-agent` unless a narrower registered role is clearly better. Let that primary agent propose bounded supporting-agent tasks instead of broadening its own context.
+- For architecture or cross-domain requests, route the primary work to `ddd-domain-agent` unless a narrower registered role is clearly better. Let that primary agent propose bounded supporting-agent issues instead of broadening its own context.
 - Treat `route-request` and `classify-request` as routing previews only. Host-side subagent execution is responsible for actually starting agents and merging their reports.
 
 ## Requirement Intake
 
 - For non-trivial or ambiguous requests, prefer running or mentally applying `route-request --request "<text>"` before choosing role context.
-- For any new requirement, feature request, behavior change, UI flow, API change, test asset, workflow, or agent/rule change, use `spec-draft/requirement-intake-flow.md` as the default intake process.
+- For any new requirement, feature request, behavior change, UI flow, API change, test asset, workflow, or agent/rule change, use `.prd/requirement-intake-flow.md` as the default intake process.
 - Classify the request before editing as one of: raw requirement, draft-only, active change, implementation, test, review, acceptance, or tooling/configuration.
-- If the request is raw or draft-only, first preserve it under `spec-draft/` or explicitly state why the current work is only exploratory.
-- Do not implement against a raw requirement when a normalized change package is needed; first create or identify `specs/changes/<change-id>/` and use `specs/current/` as the accepted baseline.
-- For implementation and testing, work from `specs/current/` plus the active `specs/changes/<change-id>/` package, then keep generated artifacts traceable to that change.
-- Do not promote content into `specs/current/` until implementation, tests, review, and acceptance evidence exist.
+- If the request is raw or draft-only, first preserve it under `.prd/` or explicitly state why the current work is only exploratory.
+- Do not implement against a raw requirement when a normalized change package is needed; first create or identify `.features/changes/<change-id>/` and use `.features/current/` as the accepted baseline.
+- For implementation and testing, work from `.features/current/` plus the active `.features/changes/<change-id>/` package, then keep generated artifacts traceable to that change.
+- Do not promote content into `.features/current/` until implementation, tests, review, and acceptance evidence exist.
 - In final summaries for requirement work, name the draft or change id, impacted artifacts, validation evidence, assumptions, and any skipped link in the chain.
 
 ## Validation Hints

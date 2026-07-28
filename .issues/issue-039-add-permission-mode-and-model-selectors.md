@@ -26,5 +26,5 @@ high
 SPEC §3.3, §5.5
 
 ## Source
-- `tasks/prd-cli-gui-workbench.md`
-- `tasks/spec-cli-gui-workbench.md`
+
+- Traceability: .prd/prd-chat-streaming-and-persistent-runtime.md; .features/chat-streaming-and-persistent-runtime/spec.md

@@ -41,8 +41,8 @@ const assets: CatalogAsset[] = [
     appliesTo: ["frontend"],
     dependsOn: [],
     conflictsWith: [],
-    sourcePath: "spec-draft/_template/feature/product-ui.template.md",
-    files: ["spec-draft/_template/feature/product-ui.template.md"],
+    sourcePath: ".prd/_template/feature/product-ui.template.md",
+    files: [".prd/_template/feature/product-ui.template.md"],
     version: "1.0.0"
   },
   {
@@ -205,12 +205,23 @@ describe("loadCatalogAssets", () => {
     const taskGraphTemplate = catalog.find((asset) => asset.id === "template-task-graph-yaml");
     const prdTemplate = catalog.find((asset) => asset.id === "template-prd-draft");
     const productSpecTemplate = catalog.find((asset) => asset.id === "template-product-spec-yaml");
+    const testSpecTemplate = catalog.find((asset) => asset.id === "template-test-spec");
+
+    expect(testSpecTemplate?.type).toBe("spec_template");
+    expect(testSpecTemplate?.sourcePath).toBe("assets/templates/specs/template-test-spec/test-spec.md");
+    expect(testSpecTemplate?.files).toEqual([".features/_template/feature/test-spec.example.md"]);
+    expect(testSpecTemplate?.contentFiles?.[".features/_template/feature/test-spec.example.md"]).toBe(
+      "assets/templates/specs/template-test-spec/test-spec.md",
+    );
+    expect(testSpecTemplate?.dependsOn).toEqual(
+      expect.arrayContaining(["template-feature-spec", "skill-spec-to-test"]),
+    );
 
     expect(specTemplate?.sourcePath).toBe(
-      "assets/templates/specs/template-feature-draft/product-ui.template.md"
+      "assets/templates/specs/template-feature-draft/product-ui.template.md",
     );
-    expect(specTemplate?.files).toEqual(["spec-draft/_template/feature/product-ui.template.md"]);
-    expect(specTemplate?.contentFiles?.["spec-draft/_template/feature/product-ui.template.md"]).toBe(
+    expect(specTemplate?.files).toEqual([".prd/_template/feature/product-ui.template.md"]);
+    expect(specTemplate?.contentFiles?.[".prd/_template/feature/product-ui.template.md"]).toBe(
       "assets/templates/specs/template-feature-draft/product-ui.template.md"
     );
     expect(modesTemplate?.files).toEqual([
@@ -260,16 +271,16 @@ describe("loadCatalogAssets", () => {
     expect(specEditorAgent?.dependsOn).toEqual(
       expect.arrayContaining(["template-feature-draft", "template-task-graph-yaml"])
     );
-    expect(specBlueprintTemplate?.contentFiles?.["spec-draft/_template/product/spec-blueprint.template.yaml"]).toBe(
+    expect(specBlueprintTemplate?.contentFiles?.[".prd/_template/product/spec-blueprint.template.yaml"]).toBe(
       "assets/templates/specs/template-spec-blueprint-yaml/spec-blueprint.template.yaml"
     );
-    expect(taskGraphTemplate?.contentFiles?.["tasks/task-graph.yaml"]).toBe(
+    expect(taskGraphTemplate?.contentFiles?.[".issues/task-graph.yaml"]).toBe(
       "assets/templates/specs/template-task-graph-yaml/task-graph.template.yaml"
     );
-    expect(prdTemplate?.contentFiles?.["spec-draft/_template/product/prd-draft.template.md"]).toBe(
+    expect(prdTemplate?.contentFiles?.[".prd/_template/product/prd-draft.template.md"]).toBe(
       "assets/templates/specs/template-prd-draft/prd-draft.template.md"
     );
-    expect(productSpecTemplate?.contentFiles?.["spec-draft/_template/product/product-spec.template.yaml"]).toBe(
+    expect(productSpecTemplate?.contentFiles?.[".prd/_template/product/product-spec.template.yaml"]).toBe(
       "assets/templates/specs/template-product-spec-yaml/product-spec.template.yaml"
     );
     expect(frontendAgent?.contentFiles?.["ai/agents/frontend-agent.md"]).toBe(
@@ -413,9 +424,9 @@ describe("buildAssetCompositionPreview", () => {
             { assetId: "rule-go-backend", enabled: true },
             { assetId: "template-react-feature", enabled: true }
           ],
-          draftTemplateId: "template-react-feature",
-          draftPath: "spec-web-ui/workspace/projects/rewards-platform/draft.md",
-          exportTargets: ["docs/", "current/", "rules/", "specs/_template/", "ai/agents/", "agent-teams/", "project-manifest.yaml"]
+          prdTemplateId: "template-react-feature",
+          prdPath: "spec-web-ui/workspace/projects/rewards-platform/prd.md",
+          exportTargets: ["docs/", "current/", "rules/", ".features/_template/", "ai/agents/", "agent-teams/", "project-manifest.yaml"]
         },
         selectedAssets: assets.filter((asset) =>
           ["rule-go-backend", "template-react-feature"].includes(asset.id)

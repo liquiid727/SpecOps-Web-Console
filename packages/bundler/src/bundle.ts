@@ -60,8 +60,8 @@ export function buildBundlePlan(
     projectType: project.projectType,
     architecture: project.architecture,
     stacks: project.stacks,
-    draftTemplateId: project.draftTemplateId,
-    draftPath: project.draftPath,
+    prdTemplateId: project.prdTemplateId,
+    prdPath: project.prdPath,
     selectedAssetIds: selectedAssets.map((asset) => asset.id),
     exportTargets: project.exportTargets,
     checks: {
@@ -97,9 +97,10 @@ function buildSpecosBundleManifest(
       available: [DEFAULT_WORKFLOW_ID]
     },
     entrypoints: {
-      draftTemplate: project.draftTemplateId,
+      prdTemplate: project.prdTemplateId,
       designTemplate: "template-platform-design",
-      specTemplate: "template-feature-spec",
+      featureTemplate: "template-feature-spec",
+      issueTemplate: "template-issue",
       workflowId: DEFAULT_WORKFLOW_ID
     },
     capabilities: {

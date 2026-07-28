@@ -8,6 +8,7 @@ import { createProductionDependencies } from "./production.js";
 export async function main() {
   const host = "127.0.0.1";
   const port = Number(process.env.PORT ?? 3001);
+  const guiPort = readPort(process.env.SPECOS_GUI_PORT, 3000);
   const dependencies = createProductionDependencies({
     dataDirectory: path.resolve(process.env.SPECOS_DATA_DIRECTORY ?? path.resolve(process.cwd(), "data")),
     readonly: process.env.SPECOS_RUNTIME_MODE === "readonly",
@@ -25,8 +26,8 @@ export async function main() {
     allowedOrigins: [
       `http://${host}:${port}`,
       `http://localhost:${port}`,
-      "http://127.0.0.1:3000",
-      "http://localhost:3000"
+      `http://${host}:${guiPort}`,
+      `http://localhost:${guiPort}`
     ]
   });
   const address = await server.listen();
@@ -60,3 +61,8 @@ if (isDirectExecution(import.meta.url, process.argv[1])) {
 }
 
 export const modulePath = fileURLToPath(import.meta.url);
+
+function readPort(value: string | undefined, fallback: number) {
+  const port = Number(value);
+  return Number.isInteger(port) && port > 0 && port <= 65_535 ? port : fallback;
+}

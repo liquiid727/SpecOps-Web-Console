@@ -8,7 +8,7 @@ Keep feature context close together and keep the active workspace small:
 README.md
 current/
 design/
-specs/
+.features/
   roadmap.md
   _draft/
   RP-001-example/

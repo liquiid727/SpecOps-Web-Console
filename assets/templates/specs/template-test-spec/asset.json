@@ -1,0 +1,47 @@
+{
+  "id": "template-test-spec",
+  "type": "spec_template",
+  "title": "Independent Test Spec Template",
+  "summary": "Version-bound verification contract generated after Feature Spec approval.",
+  "direction": "fullstack",
+  "stacks": [
+    "go",
+    "react",
+    "python",
+    "specos"
+  ],
+  "tags": [
+    "template",
+    "test-spec",
+    "verification",
+    "contract",
+    "scenario",
+    "performance",
+    "security",
+    "migration",
+    "compatibility"
+  ],
+  "appliesTo": [
+    "backend",
+    "frontend"
+  ],
+  "dependsOn": [
+    "template-feature-spec",
+    "skill-spec-to-test"
+  ],
+  "conflictsWith": [],
+  "sourcePath": "assets/templates/specs/template-test-spec/test-spec.md",
+  "files": [
+    ".features/_template/feature/test-spec.example.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "绑定 approved Feature Spec 的版本与哈希",
+    "逐项覆盖验收标准并明确 required、deferred 或 not-applicable",
+    "把业务负载、证据类型和 CI/CD gate 写成可执行契约"
+  ],
+  "sampleOutput": "独立 Test Spec、质量目标、测试矩阵、自动化计划和发布门禁。",
+  "contentFiles": {
+    ".features/_template/feature/test-spec.example.md": "assets/templates/specs/template-test-spec/test-spec.md"
+  }
+}

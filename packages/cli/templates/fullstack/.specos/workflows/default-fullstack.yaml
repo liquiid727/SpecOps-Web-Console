@@ -1,19 +1,18 @@
 id: default-fullstack
 name: Default Fullstack
 inputs:
-  - spec-draft
+  - .prd
 outputs:
-  - design
-  - roadmap
-  - spec
+  - .features
+  - .issues
   - implementation
   - reviews
   - tests
 gates:
-  - draft accepted by human
+  - PRD accepted by human
   - design updated or confirmed
-  - roadmap updated
-  - feature spec normalized by agent
+  - Feature Spec and Test Spec recorded in .features
+  - implementation and verification Issues generated in .issues
   - implementation handoff prepared
   - test plan reviewed by human
   - tests generated

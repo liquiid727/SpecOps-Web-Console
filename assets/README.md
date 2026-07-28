@@ -10,7 +10,7 @@ assets/
     teams/       namespaced team packs
   skills/        reusable skill sources
   templates/
-    specs/       draft, spec, workflow, and handoff templates
+    specs/       reusable PRD, Feature Spec, workflow, and handoff templates
 ```
 
 Catalog manifests keep source paths separate from installation targets:

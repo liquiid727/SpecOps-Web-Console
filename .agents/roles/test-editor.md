@@ -12,7 +12,7 @@ Maintain independent spec-driven verification across scenarios, API contracts, a
 
 ## Required Outputs
 
-- Independent, version-bound Test Spec under `tests/specs/`.
+- Independent, version-bound Test Spec under `.features/`.
 - Scenario coverage notes.
 - Independent API contract, E2E, UI, performance/load, and business scenario test assets for happy path, limit cases, and error cases.
 - Gaps, fixtures, and validation commands.

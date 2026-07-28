@@ -11,9 +11,9 @@ Read context in this order before changing behavior:
 1. `README.md` or `readme.md` for product intent.
 2. `rules/` and `.rules/` for engineering governance.
 3. `docs/spec-modes/` and `current/` for active project mode and delivery state.
-4. `spec-draft/` for human-authored draft intent.
+4. `.prd/` for human-authored draft intent.
 5. `design/` for stable platform and system design truth.
-6. `specs/roadmap.md` and feature specs under `specs/`.
+6. `.features/roadmap.md` and feature specs under `.features/`.
 7. `implementation/`, `reviews/`, and `tests/` for delivery evidence.
 8. `ai/agents/` and `.agents/` for role-specific responsibilities.
 
@@ -50,10 +50,9 @@ Read context in this order before changing behavior:
 - `ai/`: prompt, workflow, agent, and reviewer assets for SpecOS orchestration.
 - `.agents/`: local agent manifests and role routing for coding assistants.
 - `.codex/`: Codex-specific local configuration and operating notes.
-- `spec-draft/`: legacy intake drafts kept readable; new PRDs go to `.prd/`.
 - `current/`: active delivery workspace and handoff state for the current mode.
 - `design/`: stable platform and system design documents. One canonical design doc per platform or system.
-- `specs/`: legacy roadmap, feature specs, spec rules, and spec templates; new specs go to `.features/`.
+- `.features/`: Feature Specs, Test Specs, roadmap, and their templates.
 - `implementation/`: implementation handoff and status by spec id.
 - `reviews/`: structured review evidence by spec id.
 - `tests/`: spec-driven verification assets and scenario test templates.

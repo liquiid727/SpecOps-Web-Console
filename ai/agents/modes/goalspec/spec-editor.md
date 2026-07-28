@@ -1,3 +1,3 @@
 # GoalSpec Canonical Overlay: Spec Editor
 
-- Drive `/prd` and optional `/prd-to-spec`, then `/to-issues` to produce small, single-`/goal`-sized issues in `specs/issues/`.
+- Drive `/prd` and optional `/prd-to-spec`, then `/to-issues` to produce small, single-`/goal`-sized issues in `.features/issues/`.

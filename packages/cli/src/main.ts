@@ -36,6 +36,7 @@ import {
   type SpecosSpec,
   type SpecosTestPlan,
   type SpecosTestSchedule,
+  type TestSpecBinding,
   type SpecosWorkflow,
 } from "@specos/core";
 import { installBundle } from "@specos/installer";
@@ -60,6 +61,10 @@ interface InitOptions {
 interface CliContext {
   cwd: string;
 }
+
+type CliManifest = SpecosManifest & {
+  artifacts: SpecosManifest["artifacts"] & { issuesDir: string };
+};
 
 interface TemplateDefinition {
   name: string;
@@ -118,13 +123,14 @@ const agentKitSources: AgentKitSource[] = [
   { source: ".rules", target: ".rules" },
   { source: "rules", target: "rules" },
   { source: ".codex/instructions.md", target: ".codex/instructions.md" },
-  { source: ".codex/skills", target: ".codex/skills" },
+  { source: "assets/skills", target: ".codex/skills" },
   { source: "skills/developer", target: "skills/developer" },
   { source: "current", target: "current" },
   { source: "docs/spec-modes", target: "docs/spec-modes" },
   { source: "design", target: "design" },
-  { source: "spec-draft", target: "spec-draft" },
-  { source: "specs", target: "specs" },
+  { source: ".prd", target: ".prd" },
+  { source: ".features", target: ".features" },
+  { source: ".issues", target: ".issues" },
   { source: "implementation", target: "implementation" },
   { source: "reviews", target: "reviews" },
   {
@@ -150,10 +156,11 @@ const agentKitInstalls: SpecosBundleManifest["installs"] = [
   { target: "skills/developer/", from: "files/skills/developer/" },
   { target: "current/", from: "files/current/" },
   { target: "docs/spec-modes/", from: "files/docs/spec-modes/" },
-  { target: "spec-draft/", from: "files/spec-draft/" },
+  { target: ".prd/", from: "files/.prd/" },
   { target: "design/", from: "files/design/" },
-  { target: "specs/", from: "files/specs/" },
+  { target: ".features/", from: "files/.features/" },
   { target: "implementation/", from: "files/implementation/" },
+  { target: ".issues/", from: "files/.issues/" },
   { target: "reviews/", from: "files/reviews/" },
   { target: "tests/", from: "files/tests/" },
   { target: "scripts/README.md", from: "files/scripts/README.md" },
@@ -280,7 +287,14 @@ async function initProject(context: CliContext, options: InitOptions): Promise<R
   await persistProjectMode(join(context.cwd, ".specos", "manifest.yaml"), options.mode);
   const gitignoreResult = await writeGitignoreFromTemplate(templateDir, context.cwd);
 
-  await mkdir(join(context.cwd, "tests/results"), { recursive: true });
+  const initializedManifest = await loadProjectManifest(context.cwd);
+  if (initializedManifest) {
+    await mkdir(join(context.cwd, initializedManifest.artifacts.draftsDir), { recursive: true });
+    await mkdir(join(context.cwd, initializedManifest.artifacts.specsDir), { recursive: true });
+    await mkdir(join(context.cwd, initializedManifest.artifacts.issuesDir), { recursive: true });
+    await mkdir(join(context.cwd, initializedManifest.artifacts.testsDir), { recursive: true });
+    await mkdir(join(context.cwd, initializedManifest.artifacts.resultsDir), { recursive: true });
+  }
 
   const lines = [
     "SPECOS_INIT_OK",
@@ -315,7 +329,7 @@ async function checkProject(cwd: string): Promise<RunCliResult> {
     );
   }
 
-  const validManifest = manifest as unknown as SpecosManifest;
+  const validManifest = manifest as unknown as CliManifest;
   const pathValidation = validateArtifactPaths(validManifest);
   if (pathValidation.length > 0) {
     return failure("SPECOS_MANIFEST_INVALID", `Invalid artifact paths: ${pathValidation.join(", ")}`);
@@ -333,11 +347,11 @@ async function checkProject(cwd: string): Promise<RunCliResult> {
     return failure("SPECOS_WORKFLOW_MISSING", `Missing required workflows: ${missingWorkflows.join(", ")}`);
   }
 
-  const specs = await discoverYamlFiles(join(cwd, validManifest.artifacts.specsDir));
+  const features = await discoverMarkdownFiles(join(cwd, validManifest.artifacts.specsDir));
 
   return {
     exitCode: 0,
-    stdout: `SPECOS_CHECK_OK manifest valid; directories valid; workflows valid; specs ${specs.length}\n`,
+    stdout: `SPECOS_CHECK_OK manifest valid; directories valid; workflows valid; features ${features.length}\n`,
     stderr: "",
   };
 }
@@ -366,6 +380,7 @@ async function missingRequiredDirs(cwd: string, manifest: SpecosManifest): Promi
   const dirs = [
     manifest.artifacts.draftsDir,
     manifest.artifacts.specsDir,
+    (manifest.artifacts as CliManifest["artifacts"]).issuesDir,
     manifest.artifacts.testsDir,
     manifest.artifacts.resultsDir,
   ];
@@ -392,6 +407,21 @@ async function missingRequiredWorkflowDefs(cwd: string, manifest: SpecosManifest
   }
 
   return missing;
+}
+
+async function discoverMarkdownFiles(root: string): Promise<string[]> {
+  if (!(await pathExists(root))) return [];
+  const files: string[] = [];
+  async function visit(current: string) {
+    const entries = await readdir(current, { withFileTypes: true });
+    for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
+      const absolutePath = join(current, entry.name);
+      if (entry.isDirectory()) { await visit(absolutePath); continue; }
+      if (entry.isFile() && entry.name.endsWith(".md")) files.push(toPosixPath(absolutePath.slice(root.length + 1)));
+    }
+  }
+  await visit(root);
+  return files;
 }
 
 async function discoverYamlFiles(root: string): Promise<string[]> {
@@ -454,7 +484,7 @@ function toPosixPath(path: string): string {
 
 function parseInitArgs(args: string[]): { ok: true; value: InitOptions } | { ok: false; error: RunCliResult } {
   let template = "fullstack";
-  let mode: ProjectMode = "litespec";
+  let mode: ProjectMode = "goalspec";
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
@@ -697,6 +727,26 @@ function resolveTemplateEntry(packageSubpath: string): string {
   return realpathSync(packageRequire.resolve(packageSubpath));
 }
 
+function loadProjectManifestSync(cwd: string): CliManifest | undefined {
+  try { return parseManifestYaml(readFileSync(join(cwd, ".specos", "manifest.yaml"), "utf8")) as unknown as CliManifest; } catch { return undefined; }
+}
+
+async function loadProjectManifest(cwd: string): Promise<CliManifest | undefined> {
+  try { return parseManifestYaml(await readFile(join(cwd, ".specos", "manifest.yaml"), "utf8")) as unknown as CliManifest; } catch { return undefined; }
+}
+
+function artifactRoot(manifest: CliManifest | undefined, key: "testsDir" | "resultsDir"): string {
+  return manifest?.artifacts[key] ?? (key === "testsDir" ? "tests" : "tests/results");
+}
+
+function testArtifactPath(cwd: string, manifest: CliManifest | undefined, ...segments: string[]): string {
+  return join(cwd, artifactRoot(manifest, "testsDir"), ...segments);
+}
+
+function resultArtifactPath(cwd: string, manifest: CliManifest | undefined, ...segments: string[]): string {
+  return join(cwd, artifactRoot(manifest, "resultsDir"), ...segments);
+}
+
 async function applyProjectModeOverlay(
   templatePackageRoot: string,
   templateName: string,
@@ -739,6 +789,11 @@ async function persistProjectMode(manifestPath: string, mode: ProjectMode) {
   const source = await readFile(manifestPath, "utf8");
   const manifest = parseManifestYaml(source);
   manifest.projectMode = mode;
+  const artifacts = typeof manifest.artifacts === "object" && manifest.artifacts !== null ? manifest.artifacts as Record<string, unknown> : {};
+  artifacts.draftsDir = ".prd";
+  artifacts.specsDir = ".features";
+  artifacts.issuesDir = ".issues";
+  manifest.artifacts = artifacts;
   await writeFile(manifestPath, stringify(manifest), "utf8");
 }
 
@@ -803,10 +858,12 @@ async function exportAgentKitCommand(cwd: string, options: ExportAgentKitOptions
 }
 
 async function intakeCommand(cwd: string, options: IntakeOptions): Promise<RunCliResult> {
-  const draftPath = join(cwd, "spec-draft", `${options.id}.md`);
-  await mkdir(dirname(draftPath), { recursive: true });
+  const manifest = await loadProjectManifest(cwd);
+  if (!manifest) return failure("SPECOS_MANIFEST_MISSING", ".specos/manifest.yaml is required");
+  const prdPath = join(cwd, manifest.artifacts.draftsDir, `${options.id}.md`);
+  await mkdir(dirname(prdPath), { recursive: true });
   await writeFile(
-    draftPath,
+    prdPath,
     [
       `# ${toTitle(options.id)} Draft`,
       "",
@@ -829,7 +886,7 @@ async function intakeCommand(cwd: string, options: IntakeOptions): Promise<RunCl
       "",
       "- Spec-draft agent owns requirement wording, assumptions, and open questions.",
       "- Architecture agent owns initial architecture impact and risk questions.",
-      "- Human confirmation is required before this draft updates `design/`, `specs/roadmap.md`, or a feature spec under `specs/`.",
+      "- Human confirmation is required before this PRD updates `design/`, `.features/roadmap.md`, or a Feature Spec/Test Spec under `.features/` and creates implementation/verification Issues under `.issues/`.",
       "",
     ].join("\n"),
     "utf8",
@@ -837,7 +894,7 @@ async function intakeCommand(cwd: string, options: IntakeOptions): Promise<RunCl
 
   return {
     exitCode: 0,
-    stdout: `SPECOS_INTAKE_OK ${options.id} ${toPosixPath(relative(cwd, draftPath))}\n`,
+    stdout: `SPECOS_INTAKE_OK ${options.id} ${toPosixPath(relative(cwd, prdPath))}\n`,
     stderr: "",
   };
 }
@@ -1067,56 +1124,48 @@ async function listWorkflowsCommand(cwd: string): Promise<RunCliResult> {
 }
 
 async function runWorkflowCommand(cwd: string, workflowId: string | undefined): Promise<RunCliResult> {
-  if (!workflowId) {
-    return failure("SPECOS_WORKFLOW_REQUIRED", "run-workflow requires a workflow id");
+  if (!workflowId) return failure("SPECOS_WORKFLOW_REQUIRED", "run-workflow requires a workflow id");
+  const workflow = await loadWorkflowById(cwd, workflowId);
+  if (!workflow) return failure("SPECOS_WORKFLOW_INVALID", `Workflow not found: ${workflowId}`);
+
+  const executable = Array.isArray(workflow.steps);
+  const declarative = Array.isArray(workflow.inputs) && Array.isArray(workflow.outputs) && Array.isArray(workflow.gates);
+  if (!executable && !declarative) {
+    return failure("SPECOS_WORKFLOW_INVALID", "Workflow must declare inputs, outputs, and gates or executable steps");
+  }
+  if (typeof workflow.id !== "string" || typeof workflow.name !== "string") {
+    return failure("SPECOS_WORKFLOW_INVALID", "Workflow id and name are required");
   }
 
-  const workflow = await loadWorkflowById(cwd, workflowId);
-  if (!workflow) {
-    return failure("SPECOS_WORKFLOW_INVALID", `Workflow not found: ${workflowId}`);
+  if (declarative && !executable) {
+    return {
+      exitCode: 0,
+      stdout: `SPECOS_WORKFLOW_RUN_OK ${workflow.id} inputs ${((workflow.inputs as unknown[]).length)} outputs ${((workflow.outputs as unknown[]).length)} gates ${((workflow.gates as unknown[]).length)}\n`,
+      stderr: "",
+    };
   }
 
   const validation = validateWorkflow(workflow);
   if (!validation.ok) {
-    return failure(
-      "SPECOS_WORKFLOW_INVALID",
-      validation.errors.map((error) => `${error.path ?? "workflow"} ${error.message}`).join("; "),
-    );
+    return failure("SPECOS_WORKFLOW_INVALID", validation.errors.map((error) => `${error.path ?? "workflow"} ${error.message}`).join("; "));
   }
-
   const validWorkflow = workflow as unknown as SpecosWorkflow;
   let stdout = "";
-
-  for (const step of validWorkflow.steps) {
+  for (const step of validWorkflow.steps ?? []) {
     try {
-      const result = await exec(step.run, {
-        cwd,
-        maxBuffer: 1024 * 1024,
-      });
+      const result = await exec(step.run, { cwd, maxBuffer: 1024 * 1024 });
       stdout += result.stdout;
-      if (result.stderr) {
-        stdout += result.stderr;
-      }
+      if (result.stderr) stdout += result.stderr;
     } catch (error) {
       if (error instanceof Error && "stdout" in error && "stderr" in error) {
         const failureStdout = typeof error.stdout === "string" ? error.stdout : "";
         const failureStderr = typeof error.stderr === "string" ? error.stderr : "";
-        return {
-          exitCode: 1,
-          stdout: failureStdout,
-          stderr: `SPECOS_WORKFLOW_STEP_FAILED ${step.id}\n${failureStderr}`,
-        };
+        return { exitCode: 1, stdout: failureStdout, stderr: `SPECOS_WORKFLOW_STEP_FAILED ${step.id}\n${failureStderr}` };
       }
-
       return failure("SPECOS_WORKFLOW_INVALID", `Workflow step failed: ${step.id}`);
     }
   }
-
-  return {
-    exitCode: 0,
-    stdout: `${stdout}SPECOS_WORKFLOW_RUN_OK ${validWorkflow.id} steps ${validWorkflow.steps.length}\n`,
-    stderr: "",
-  };
+  return { exitCode: 0, stdout: `${stdout}SPECOS_WORKFLOW_RUN_OK ${validWorkflow.id} steps ${(validWorkflow.steps ?? []).length}\n`, stderr: "" };
 }
 
 async function generateTestPlanCommand(cwd: string, args: string[]): Promise<RunCliResult> {
@@ -1125,6 +1174,8 @@ async function generateTestPlanCommand(cwd: string, args: string[]): Promise<Run
     return parsed.error;
   }
 
+  const projectManifest = await loadProjectManifest(cwd);
+  if (!projectManifest) return failure("SPECOS_MANIFEST_MISSING", ".specos/manifest.yaml is required");
   const specPath = resolve(cwd, parsed.value.specPath);
   if (!(await pathExists(specPath))) {
     return failure("SPECOS_SPEC_INVALID", `Spec file not found: ${parsed.value.specPath}`);
@@ -1142,7 +1193,11 @@ async function generateTestPlanCommand(cwd: string, args: string[]): Promise<Run
   }
 
   const validSpec = spec as unknown as SpecosSpec;
-  const testPlan = buildDeterministicTestPlan(validSpec);
+  const testSpecBinding = await loadTestSpecBinding(cwd, specPath, projectManifest);
+  if (!testSpecBinding.ok) {
+    return testSpecBinding.error;
+  }
+  const testPlan = buildDeterministicTestPlan(validSpec, testSpecBinding.value);
   const planValidation = validateTestPlan(testPlan);
 
   if (!planValidation.ok) {
@@ -1152,11 +1207,13 @@ async function generateTestPlanCommand(cwd: string, args: string[]): Promise<Run
     );
   }
 
-  const changeId = parsed.value.changeId ?? inferChangeIdFromSpecPath(cwd, specPath) ?? validSpec.id;
+  const changeId = parsed.value.changeId ?? inferChangeIdFromSpecPath(cwd, specPath, projectManifest) ?? validSpec.id;
   const schedule = buildSpecChangeTestSchedule(testPlan, {
     changeId,
     executionMode: parsed.value.executionMode,
     specPath: toPosixPath(relative(cwd, specPath)),
+    manifest: projectManifest,
+    testSpecBinding: testSpecBinding.value,
   });
   const scheduleValidation = validateTestSchedule(schedule);
 
@@ -1167,8 +1224,9 @@ async function generateTestPlanCommand(cwd: string, args: string[]): Promise<Run
     );
   }
 
-  const planPath = join(cwd, "tests", "plans", `${validSpec.id}.test-plan.json`);
-  const schedulePath = join(cwd, "tests", "schedules", `${validSpec.id}.test-schedule.json`);
+  const testsDir = artifactRoot(projectManifest, "testsDir");
+  const planPath = join(cwd, testsDir, "plans", `${validSpec.id}.test-plan.json`);
+  const schedulePath = join(cwd, testsDir, "schedules", `${validSpec.id}.test-schedule.json`);
   await mkdir(dirname(planPath), { recursive: true });
   await mkdir(dirname(schedulePath), { recursive: true });
   await writeFile(planPath, `${JSON.stringify(testPlan, null, 2)}\n`, "utf8");
@@ -1185,6 +1243,82 @@ async function generateTestPlanCommand(cwd: string, args: string[]): Promise<Run
   };
 }
 
+async function loadTestSpecBinding(
+  cwd: string,
+  specPath: string,
+  manifest: CliManifest,
+): Promise<{ ok: true; value: TestSpecBinding } | { ok: false; error: RunCliResult }> {
+  const specsRoot = manifest.artifacts.specsDir;
+  const relativeSpecPath = toPosixPath(relative(cwd, specPath));
+  const match = relativeSpecPath.match(new RegExp(`^${escapeRegExp(specsRoot.replace(/\\/g, "/"))}/([^/]+)/(?:spec\\.(?:md|json))$`));
+  if (!match) {
+    return { ok: false, error: failure("SPECOS_TEST_SPEC_INVALID", "Feature Spec must be inside the manifest specsDir feature directory") };
+  }
+
+  const featureDir = match[1];
+  const testSpecPath = join(cwd, specsRoot, featureDir, "test-spec.md");
+  if (!(await pathExists(testSpecPath))) {
+    return { ok: false, error: failure("SPECOS_TEST_SPEC_MISSING", `Test Spec not found: ${toPosixPath(relative(cwd, testSpecPath))}`) };
+  }
+
+  const source = await readFile(testSpecPath, "utf8");
+  const frontmatter = parseMarkdownFrontmatter(source);
+  const record = frontmatter ?? {};
+  const sourceSpecId = String(record.sourceSpecId ?? record.specId ?? "").trim();
+  const sourceSpecVersion = String(record.sourceSpecVersion ?? record.specVersion ?? "").trim();
+  const testSpecVersion = String(record.testSpecVersion ?? "").trim();
+  const status = String(record.status ?? "").trim();
+  const testSpecId = String(record.testSpecId ?? "").trim();
+  const declaredSourceSpec = String(record.sourceSpec ?? record.sourceSpecPath ?? "").trim();
+  const expectedSourceSpec = toPosixPath(relative(cwd, specPath));
+  const featureSpecSource = await readFile(specPath, "utf8");
+  const sourceFeatureSpecHash = createHash("sha256").update(featureSpecSource).digest("hex");
+  const declaredSourceSpecHash = String(record.sourceSpecHash ?? "").trim();
+  const sourceApprovalEvidence = String(record.sourceApprovalEvidence ?? "").trim();
+  const testSpecApprovalEvidence = String(record.testSpecApprovalEvidence ?? record.approvalEvidence ?? "").trim();
+
+  if (!testSpecVersion || !sourceSpecId || !sourceSpecVersion || !status || !testSpecId || !declaredSourceSpec) {
+    return { ok: false, error: failure("SPECOS_TEST_SPEC_INVALID", `Test Spec metadata is incomplete: ${toPosixPath(relative(cwd, testSpecPath))}`) };
+  }
+  if (declaredSourceSpec !== expectedSourceSpec) {
+    return { ok: false, error: failure("SPECOS_TEST_SPEC_STALE", "Test Spec source path does not match Feature Spec") };
+  }
+  if (!declaredSourceSpecHash) {
+    return { ok: false, error: failure("SPECOS_TEST_SPEC_INVALID", "Approved Test Spec requires sourceSpecHash") };
+  }
+  if (declaredSourceSpecHash !== sourceFeatureSpecHash) {
+    return { ok: false, error: failure("SPECOS_TEST_SPEC_STALE", "Test Spec source hash does not match Feature Spec") };
+  }
+  const expectedSpec = parseArtifactObject(featureSpecSource, specPath) as Record<string, unknown>;
+  if (sourceSpecId !== String(expectedSpec.id) || sourceSpecVersion !== String(expectedSpec.version)) {
+    return { ok: false, error: failure("SPECOS_TEST_SPEC_STALE", "Test Spec source Spec ID or version does not match Feature Spec") };
+  }
+  if (status !== "approved") {
+    return { ok: false, error: failure("SPECOS_TEST_SPEC_UNAPPROVED", `Test Spec status must be approved, received ${status}`) };
+  }
+  if (!sourceApprovalEvidence || !testSpecApprovalEvidence) {
+    return { ok: false, error: failure("SPECOS_TEST_SPEC_UNAPPROVED", "Approved Test Spec requires source and Test Spec approval evidence") };
+  }
+
+  return {
+    ok: true,
+    value: {
+      testSpecPath: toPosixPath(relative(cwd, testSpecPath)),
+      testSpecId,
+      testSpecVersion,
+      testSpecStatus: "approved",
+      testSpecHash: createHash("sha256").update(source).digest("hex"),
+      testSpecApprovalEvidence,
+      sourceFeatureSpecHash,
+    },
+  };
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\\]\\]/g, "\\\\$&");
+}
+
+
 async function runApiTestsCommand(cwd: string, args: string[]): Promise<RunCliResult> {
   const specId = args[0];
   if (!specId) {
@@ -1195,15 +1329,17 @@ async function runApiTestsCommand(cwd: string, args: string[]): Promise<RunCliRe
     return parsed.error;
   }
 
-  const planPath = join(cwd, "tests", "plans", `${specId}.test-plan.json`);
-  const schedulePath = join(cwd, "tests", "schedules", `${specId}.test-schedule.json`);
+  const projectManifest = await loadProjectManifest(cwd);
+  const testsDir = artifactRoot(projectManifest, "testsDir");
+  const planPath = join(cwd, testsDir, "plans", `${specId}.test-plan.json`);
+  const schedulePath = join(cwd, testsDir, "schedules", `${specId}.test-schedule.json`);
 
   if (!(await pathExists(planPath))) {
-    return failure("SPECOS_TEST_PLAN_INVALID", `Test plan not found: tests/plans/${specId}.test-plan.json`);
+    return failure("SPECOS_TEST_PLAN_INVALID", `Test plan not found: ${toPosixPath(relative(cwd, planPath))}`);
   }
 
   if (!(await pathExists(schedulePath))) {
-    return failure("SPECOS_TEST_SCHEDULE_INVALID", `Test schedule not found: tests/schedules/${specId}.test-schedule.json`);
+    return failure("SPECOS_TEST_SCHEDULE_INVALID", `Test schedule not found: ${toPosixPath(relative(cwd, schedulePath))}`);
   }
 
   const plan = parseArtifactObject(await readFile(planPath, "utf8"), planPath) as unknown as SpecosTestPlan;
@@ -1224,9 +1360,9 @@ async function runApiTestsCommand(cwd: string, args: string[]): Promise<RunCliRe
     );
   }
 
-  const brunoDir = join(cwd, "tests", "bruno", specId);
+  const brunoDir = join(cwd, testsDir, "bruno", specId);
   if (!(await pathExists(brunoDir))) {
-    return writeBlockedApiResult(cwd, plan, schedule, `Bruno collection not found at tests/bruno/${specId}`);
+    return writeBlockedApiResult(cwd, plan, schedule, `Bruno collection not found at ${toPosixPath(relative(cwd, brunoDir))}`);
   }
 
   if (parsed.value.command) {
@@ -1258,7 +1394,7 @@ async function runApiCommand(
     );
   }
 
-  const outputDir = join(cwd, "tests", "results");
+  const outputDir = resultArtifactPath(cwd, await loadProjectManifest(cwd));
   await mkdir(outputDir, { recursive: true });
   const outputPath = join(outputDir, `${plan.specId}.${result.runId}.json`);
   await writeFile(outputPath, `${JSON.stringify(result, null, 2)}\n`, "utf8");
@@ -1306,9 +1442,10 @@ async function generateBrunoTestsCommand(cwd: string, args: string[]): Promise<R
     return failure("SPECOS_TEST_PLAN_INVALID", "generate-bruno-tests requires a spec id");
   }
 
-  const planPath = join(cwd, "tests", "plans", `${specId}.test-plan.json`);
+  const projectManifest = await loadProjectManifest(cwd);
+  const planPath = testArtifactPath(cwd, projectManifest, "plans", `${specId}.test-plan.json`);
   if (!(await pathExists(planPath))) {
-    return failure("SPECOS_TEST_PLAN_INVALID", `Test plan not found: tests/plans/${specId}.test-plan.json`);
+    return failure("SPECOS_TEST_PLAN_INVALID", `Test plan not found: ${toPosixPath(relative(cwd, planPath))}`);
   }
 
   const plan = parseArtifactObject(await readFile(planPath, "utf8"), planPath) as unknown as SpecosTestPlan;
@@ -1322,7 +1459,7 @@ async function generateBrunoTestsCommand(cwd: string, args: string[]): Promise<R
   }
 
   const assets = buildBrunoCollectionAssets(plan);
-  const outputDir = join(cwd, "tests", "bruno", specId);
+  const outputDir = join(cwd, artifactRoot(projectManifest, "testsDir"), "bruno", specId);
   await mkdir(outputDir, { recursive: true });
 
   for (const asset of assets) {
@@ -1333,7 +1470,7 @@ async function generateBrunoTestsCommand(cwd: string, args: string[]): Promise<R
 
   return {
     exitCode: 0,
-    stdout: `SPECOS_BRUNO_TESTS_OK tests/bruno/${specId} files ${assets.length}\n`,
+    stdout: `SPECOS_BRUNO_TESTS_OK ${toPosixPath(relative(cwd, outputDir))} files ${assets.length}`,
     stderr: "",
   };
 }
@@ -1348,9 +1485,10 @@ async function validateTestGatesCommand(cwd: string, args: string[]): Promise<Ru
     return parsed.error;
   }
 
-  const planPath = join(cwd, "tests", "plans", `${specId}.test-plan.json`);
+  const projectManifest = await loadProjectManifest(cwd);
+  const planPath = testArtifactPath(cwd, projectManifest, "plans", `${specId}.test-plan.json`);
   if (!(await pathExists(planPath))) {
-    return failure("SPECOS_TEST_PLAN_INVALID", `Test plan not found: tests/plans/${specId}.test-plan.json`);
+    return failure("SPECOS_TEST_PLAN_INVALID", `Test plan not found: ${toPosixPath(relative(cwd, planPath))}`);
   }
 
   const plan = parseArtifactObject(await readFile(planPath, "utf8"), planPath) as unknown as SpecosTestPlan;
@@ -1362,11 +1500,12 @@ async function validateTestGatesCommand(cwd: string, args: string[]): Promise<Ru
     );
   }
 
-  const resultFiles = await discoverJsonFiles(join(cwd, "tests", "results"));
+  const resultsRoot = resultArtifactPath(cwd, projectManifest);
+  const resultFiles = await discoverJsonFiles(resultsRoot);
   const results: ScenarioResult[] = [];
   const invalidResultMessages: string[] = [];
   for (const file of resultFiles.filter((item) => !item.endsWith(".gate-report.json") && !item.endsWith(".session.json"))) {
-    const filePath = join(cwd, "tests", "results", file);
+    const filePath = join(resultsRoot, file);
     const result = parseArtifactObject(await readFile(filePath, "utf8"), filePath) as unknown as ScenarioResult;
     if (!isResultInGateScope(result, plan, parsed.value.changeId)) {
       continue;
@@ -1390,12 +1529,13 @@ async function validateTestGatesCommand(cwd: string, args: string[]): Promise<Ru
     report.blockers.push(...invalidResultMessages);
   }
   const reportName = `${specId}.${parsed.value.changeId ?? plan.changeId ?? "latest"}.gate-report`;
-  const jsonPath = join(cwd, "tests", "results", `${reportName}.json`);
+  const jsonPath = join(resultsRoot, `${reportName}.json`);
   await mkdir(dirname(jsonPath), { recursive: true });
   await writeFile(jsonPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
 
   if (parsed.value.changeId) {
-    const specDirectory = (await findFeatureSpecDirectoryById(cwd, parsed.value.changeId)) ?? parsed.value.changeId;
+    const projectManifest = await loadProjectManifest(cwd);
+    const specDirectory = (await findFeatureSpecDirectoryById(cwd, parsed.value.changeId, projectManifest?.artifacts.specsDir)) ?? parsed.value.changeId;
     const markdownPath = join(cwd, "reviews", specDirectory, "gate-report.md");
     await mkdir(dirname(markdownPath), { recursive: true });
     await writeFile(markdownPath, buildGateReportMarkdown(report), "utf8");
@@ -1448,9 +1588,10 @@ async function runAdapterTestsCommand(
     return parsed.error;
   }
 
-  const planPath = join(cwd, "tests", "plans", `${specId}.test-plan.json`);
+  const projectManifest = await loadProjectManifest(cwd);
+  const planPath = testArtifactPath(cwd, projectManifest, "plans", `${specId}.test-plan.json`);
   if (!(await pathExists(planPath))) {
-    return failure("SPECOS_TEST_PLAN_INVALID", `Test plan not found: tests/plans/${specId}.test-plan.json`);
+    return failure("SPECOS_TEST_PLAN_INVALID", `Test plan not found: ${toPosixPath(relative(cwd, planPath))}`);
   }
 
   const plan = parseArtifactObject(await readFile(planPath, "utf8"), planPath) as unknown as SpecosTestPlan;
@@ -1476,7 +1617,7 @@ async function runAdapterTestsCommand(
     stdout: execution.stdout,
     stderr: execution.stderr,
     durationMs: Date.now() - startedAt,
-  });
+  }, artifactRoot(projectManifest, "resultsDir"));
   const validation = validateScenarioResult(result);
   if (!validation.ok) {
     return failure(
@@ -1485,7 +1626,7 @@ async function runAdapterTestsCommand(
     );
   }
 
-  const outputDir = join(cwd, "tests", "results");
+  const outputDir = resultArtifactPath(cwd, await loadProjectManifest(cwd));
   await mkdir(outputDir, { recursive: true });
   const outputPath = join(outputDir, `${plan.specId}.${result.runId}.json`);
   await writeFile(outputPath, `${JSON.stringify(result, null, 2)}\n`, "utf8");
@@ -1522,7 +1663,7 @@ async function writeBlockedApiResult(
     );
   }
 
-  const outputDir = join(cwd, "tests", "results");
+  const outputDir = resultArtifactPath(cwd, await loadProjectManifest(cwd));
   await mkdir(outputDir, { recursive: true });
   const outputPath = join(outputDir, `${plan.specId}.${result.runId}.json`);
   await writeFile(outputPath, `${JSON.stringify(result, null, 2)}\n`, "utf8");
@@ -1667,10 +1808,12 @@ function buildAdapterScenarioResult(
     stderr: string;
     durationMs: number;
   },
+  resultsDir: string,
 ): ScenarioResult {
   const runId = `run-${execution.testType}-${new Date().toISOString().replace(/[:.]/g, "-")}`;
   const timestamp = new Date().toISOString();
   const passed = execution.exitCode === 0;
+  const rawReportPath = toPosixPath(join(resultsDir, `${plan.specId}.${runId}.json`));
   const targetItems =
     execution.testType === "performance"
       ? (plan.performanceTargets?.length ? plan.performanceTargets : plan.endpoints.map((endpoint) => ({
@@ -1695,7 +1838,7 @@ function buildAdapterScenarioResult(
           flakeClassification: "not-flaky" as const,
           gateImpact: target.gateImpact,
           slo: target.slo,
-          artifactRefs: [{ type: "raw-report" as const, path: `tests/results/${plan.specId}.${runId}.json` }],
+          artifactRefs: [{ type: "raw-report" as const, path: rawReportPath }],
         }))
       : (plan.concurrencyInvariants?.length ? plan.concurrencyInvariants : plan.scenarios.map((scenario) => ({
           scenario: scenario.name,
@@ -1726,13 +1869,20 @@ function buildAdapterScenarioResult(
             expectedFinalState: invariant.expectedFinalState,
             observedFinalState: execution.stdout.trim() || execution.stderr.trim() || undefined,
           },
-          artifactRefs: [{ type: "raw-report" as const, path: `tests/results/${plan.specId}.${runId}.json` }],
+          artifactRefs: [{ type: "raw-report" as const, path: rawReportPath }],
         }));
 
   return {
     runId,
     specId: plan.specId,
     specVersion: plan.specVersion,
+    testSpecPath: plan.testSpecPath,
+    testSpecId: plan.testSpecId,
+    testSpecVersion: plan.testSpecVersion,
+    testSpecHash: plan.testSpecHash,
+    testSpecStatus: plan.testSpecStatus,
+    testSpecApprovalEvidence: plan.testSpecApprovalEvidence,
+    sourceFeatureSpecHash: plan.sourceFeatureSpecHash,
     standardVersion: plan.standardVersion,
     qualityProfile: plan.qualityProfile,
     changeId: execution.changeId,
@@ -1820,33 +1970,27 @@ function buildGateReportMarkdown(report: ReturnType<typeof buildTestGateReport>)
   ].join("\n");
 }
 
-function inferChangeIdFromSpecPath(cwd: string, specPath: string): string | undefined {
+function inferChangeIdFromSpecPath(cwd: string, specPath: string, manifest?: CliManifest): string | undefined {
   const parts = toPosixPath(relative(cwd, specPath)).split("/");
-  const specsIndex = parts.indexOf("specs");
-  const featureDir = specsIndex >= 0 ? parts[specsIndex + 1] : undefined;
+  const featureRoot = manifest?.artifacts.specsDir ?? ".features";
+  const rootParts = featureRoot.split("/");
+  const rootIndex = parts.findIndex((part, index) => rootParts.every((item, offset) => parts[index + offset] === item));
+  const featureDir = rootIndex >= 0 ? parts[rootIndex + rootParts.length] : undefined;
   if (featureDir) {
     const featureMatch = featureDir.match(/^([A-Z]+-\d{3})-/u);
-    if (featureMatch) {
-      return featureMatch[1];
-    }
-  }
-  const changesIndex = parts.indexOf("changes");
-  if (changesIndex >= 0 && parts[changesIndex + 1]) {
-    return parts[changesIndex + 1];
+    if (featureMatch) return featureMatch[1];
   }
   return undefined;
 }
 
-async function findFeatureSpecDirectoryById(cwd: string, specId: string): Promise<string | undefined> {
-  const specsRoot = join(cwd, "specs");
-  if (!(await pathExists(specsRoot))) {
-    return undefined;
-  }
-
+async function findFeatureSpecDirectoryById(cwd: string, specId: string, specsDir = ".features"): Promise<string | undefined> {
+  const specsRoot = join(cwd, specsDir);
+  if (!(await pathExists(specsRoot))) return undefined;
   const entries = await readdir(specsRoot, { withFileTypes: true });
   const prefix = `${specId}-`;
   return entries.find((entry) => entry.isDirectory() && entry.name.startsWith(prefix))?.name;
 }
+
 
 async function resolveBundleLocation(cwd: string, bundlePathArg: string): Promise<{ rootDir: string; manifestPath: string } | undefined> {
   const absoluteInput = resolve(cwd, bundlePathArg);
@@ -1928,9 +2072,10 @@ function buildAgentKitBundleManifest(): SpecosBundleManifest {
       available: [agentKitWorkflowId],
     },
     entrypoints: {
-      draftTemplate: "spec-draft/_template/feature/product-ui.template.md",
+      prdTemplate: ".prd/_template/feature/product-ui.template.md",
       designTemplate: "design/_template/platform-design.template.md",
-      specTemplate: "specs/_template/feature/spec.example.md",
+      featureTemplate: ".features/_template/feature/spec.example.md",
+      issueTemplate: ".issues/_template/issue.md",
       workflowId: agentKitWorkflowId,
     },
     capabilities: {
@@ -1949,14 +2094,15 @@ function buildAgentKitProjectManifest(): string {
       name: "specos-agent-team-kit",
       type: "fullstack",
     },
-    projectMode: "litespec",
+    projectMode: "goalspec",
     stacks: {
       frontend: "next",
       backend: "node-api",
     },
     artifacts: {
-      draftsDir: "spec-draft",
-      specsDir: "specs",
+      draftsDir: ".prd",
+      specsDir: ".features",
+      issuesDir: ".issues",
       testsDir: "tests",
       resultsDir: "tests/results",
     },
@@ -1984,7 +2130,7 @@ function buildAgentKitWorkflow(): string {
     "name: Spec Driven Default",
     "steps:",
     "  - id: smoke-agent-kit",
-    `    run: "node -e \\"const fs=require('fs'); for (const p of ['.agents/manifest.yaml','ai/agents/spec-editor.md','rules/README.md','current/README.md','docs/spec-modes/README.md','design/README.md','specs/README.md','specs/roadmap.md','implementation/README.md','reviews/README.md','tests/README.md']) { if (!fs.existsSync(p)) throw new Error('Missing '+p); } console.log('agent-kit-smoke-ok');\\""`,
+    `    run: "node -e \\"const fs=require('fs'); for (const p of ['.agents/manifest.yaml','ai/agents/spec-editor.md','rules/README.md','current/README.md','docs/spec-modes/README.md','design/README.md','.prd','.features','.issues','implementation/README.md','reviews/README.md','tests/README.md']) { if (!fs.existsSync(p)) throw new Error('Missing '+p); } console.log('agent-kit-smoke-ok');\\""`,
     "",
   ].join("\n");
 }

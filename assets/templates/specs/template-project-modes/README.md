@@ -6,7 +6,7 @@ This project supports three operating modes:
 - `GoalSpec`
 - `EnterpriseSpec`
 
-Start from `LiteSpec`.
+Start from `GoalSpec`.
 
 Move to `GoalSpec` when the team wants an approved Feature Spec to branch into implementation Issues and an independent, version-bound Test Spec before explicit review and ship gates.
 

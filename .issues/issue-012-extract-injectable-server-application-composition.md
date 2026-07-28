@@ -24,5 +24,5 @@ high
 SPEC §2.2, §2.5, §10 Phase 1
 
 ## Source
-- `tasks/prd-cli-gui-workbench.md`
-- `tasks/spec-cli-gui-workbench.md`
+
+- Traceability: legacy/unmapped

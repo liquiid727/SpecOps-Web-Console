@@ -4,7 +4,8 @@ Spec-driven verification assets live here.
 
 ## Expected Layers
 
-- `tests/specs/`: legacy Test Spec location; new Test Spec documents live next to their Feature Spec under `artifacts.specsDir` (default `.features/<SPEC-ID>-<slug>/test-spec.md`, see `rules/shared/artifact-locations.md`).
+- Feature-local Test Specs live next to their Feature Spec under `.features/<SPEC-ID>-<slug>/test-spec.md`.
+- `tests/` contains downstream plans, execution assets, and normalized evidence for those contracts.
 - `tests/plans/`: spec-derived `test-plan` artifacts that define business flows, stages, endpoints, scenarios, branches, and preconditions.
 - `tests/schedules/`: generated agent routing schedules that split execution work, implementation-coupled unit tests, and independent testing work.
 - `tests/results/`: normalized `scenario-result` artifacts that the independent test console consumes.
@@ -35,10 +36,10 @@ Tests should trace back to:
 
 - the selected project mode under `docs/spec-modes/`
 - active delivery and handoff context under `current/`
-- a feature spec under `specs/<SPEC-ID>-<slug>/spec.md`
-- an approved Test Spec under `tests/specs/<SPEC-ID>.test-spec.md` for independent verification
+- a feature spec under `.features/<SPEC-ID>-<slug>/spec.md`
+- an approved Test Spec under `.features/<SPEC-ID>-<slug>/test-spec.md` for independent verification
 - optional platform design context under `design/`
-- roadmap ordering and dependency context from `specs/roadmap.md`
+- roadmap ordering and dependency context from `.features/roadmap.md`
 
 ## Mode Shape
 
@@ -50,7 +51,7 @@ Tests should trace back to:
 After a Feature Spec is approved, generate its independent Test Spec before release-eligible test plans and schedules. Implementation planning may begin from the approved Feature Spec in parallel; independent verification planning must bind to the approved Test Spec and exact source version.
 
 ```bash
-node packages/cli/dist/main.js generate-test-plan specs/RP-002-decision-api/spec.md --change RP-002
+node packages/cli/dist/main.js generate-test-plan .features/RP-002-decision-api/spec.md --change RP-002
 ```
 
 The generated schedule records two separate tracks:

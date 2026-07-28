@@ -9,7 +9,7 @@ Generate structured Product Requirements Documents (PRD) for new features. Focus
 - Enforces verifiable acceptance criteria (observable / testable / verifiable)
 - Supports user review and adjustment before saving
 - Classifies the PRD as `feature`, `epic`, or `system`
-- Saves to the directory declared by `.specos/manifest.yaml` `artifacts.draftsDir` (default `.prd/`), falling back to legacy `spec-draft/` or `tasks/` conventions
+- Saves to the directory declared by `.specos/manifest.yaml` `artifacts.draftsDir` (required; default `.prd/`); the manifest path is canonical
 - Bilingual (Chinese & English) edge case handling
 
 ## Workflow

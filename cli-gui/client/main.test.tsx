@@ -74,6 +74,24 @@ describe("CLI GUI workbench", () => {
     expect(element.textContent).not.toContain("3001");
   });
 
+  it("renders an accessible retry state when the initial workspace load fails", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("network down"); }));
+    const element = document.createElement("div");
+    document.body.appendChild(element);
+    root = createRoot(element);
+
+    await act(async () => {
+      root?.render(<I18nProvider><ThemeProvider><FeedbackProvider><App /></FeedbackProvider></ThemeProvider></I18nProvider>);
+    });
+
+    await vi.waitFor(() => expect(element.querySelector(".center-state")).toBeTruthy());
+    expect(element.textContent).toContain("failed to load projects");
+    const retry = element.querySelector<HTMLButtonElement>(".secondary-button");
+    expect(retry).toBeTruthy();
+    expect(retry?.textContent).toContain("Retry");
+    expect(element.querySelector("svg")).toBeTruthy();
+  });
+
   it("applies and persists the selected appearance theme", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(state), { status: 200 })));
     const element = document.createElement("div");

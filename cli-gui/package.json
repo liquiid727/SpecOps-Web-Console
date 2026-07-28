@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "postinstall": "node scripts/fix-node-pty-perms.mjs",
-    "dev": "concurrently -k \"npm:dev:server\" \"npm:dev:client\"",
+    "dev": "npm run dev:status",
     "dev:status": "tsx scripts/dev-status.ts",
     "dev:server": "tsx watch server/index.ts",
     "dev:client": "vite --host 127.0.0.1",

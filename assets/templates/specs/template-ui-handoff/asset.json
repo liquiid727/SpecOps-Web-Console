@@ -24,7 +24,7 @@
   "conflictsWith": [],
   "sourcePath": "assets/templates/specs/template-ui-handoff/ui-handoff.template.md",
   "files": [
-    "spec-draft/_template/feature/ui-handoff.template.md"
+    ".prd/_template/feature/ui-handoff.template.md"
   ],
   "version": "1.0.0",
   "draftHints": [
@@ -33,6 +33,6 @@
   ],
   "sampleOutput": "偏 UI handoff 的结构化 draft。",
   "contentFiles": {
-    "spec-draft/_template/feature/ui-handoff.template.md": "assets/templates/specs/template-ui-handoff/ui-handoff.template.md"
+    ".prd/_template/feature/ui-handoff.template.md": "assets/templates/specs/template-ui-handoff/ui-handoff.template.md"
   }
 }

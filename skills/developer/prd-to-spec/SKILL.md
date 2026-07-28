@@ -232,16 +232,16 @@ draft -> in-review -> approved -> superseded
 
 Only mark a Spec `approved` when human approval or repository-authorized automated review evidence is recorded. Approval freezes the source version used by downstream Test Specs.
 
-Resolve `<specsDir>` in order: explicit user request > `.specos/manifest.yaml` `artifacts.specsDir` > legacy populated `specs/` > default `.features/` (see `rules/shared/artifact-locations.md`). When the user picks a custom location, write it back to `artifacts.specsDir` and record a project configuration memory.
+Resolve `<featuresDir>` from `.specos/manifest.yaml` `artifacts.specsDir` (required; default `.features/`; see `rules/shared/artifact-locations.md`). Do not inspect or fall back to legacy directories. When the user picks a custom location, write it back to `artifacts.specsDir` and record a project configuration memory.
 
 Default paths:
 
 ```text
-<specsDir>/<SPEC-ID>-<slug>/spec.md
-<specsDir>/roadmap.md
+<featuresDir>/<SPEC-ID>-<slug>/spec.md
+<featuresDir>/roadmap.md
 ```
 
-Do not default to `tasks/spec-*.md` or invent directories outside the resolution order.
+Do not default to legacy paths or invent directories outside the canonical manifest path.
 
 ## Version Change Rules
 

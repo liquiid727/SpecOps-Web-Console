@@ -31,7 +31,7 @@
   "conflictsWith": [],
   "sourcePath": "assets/templates/specs/template-spec-blueprint-yaml/spec-blueprint.template.yaml",
   "files": [
-    "spec-draft/_template/product/spec-blueprint.template.yaml"
+    ".prd/_template/product/spec-blueprint.template.yaml"
   ],
   "version": "1.0.0",
   "draftHints": [
@@ -40,6 +40,6 @@
   ],
   "sampleOutput": "一份包含 Product、Architecture、Database、API、UI 和 Task Graph IR 编译线索的 Spec Blueprint YAML。",
   "contentFiles": {
-    "spec-draft/_template/product/spec-blueprint.template.yaml": "assets/templates/specs/template-spec-blueprint-yaml/spec-blueprint.template.yaml"
+    ".prd/_template/product/spec-blueprint.template.yaml": "assets/templates/specs/template-spec-blueprint-yaml/spec-blueprint.template.yaml"
   }
 }

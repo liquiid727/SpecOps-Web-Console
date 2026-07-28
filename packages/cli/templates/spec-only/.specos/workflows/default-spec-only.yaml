@@ -1,7 +1,7 @@
 id: default-spec-only
 name: Default Spec Only
 inputs:
-  - spec-draft
+  - .prd
 outputs:
   - spec
   - tests

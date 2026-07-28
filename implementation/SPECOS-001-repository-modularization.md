@@ -16,7 +16,7 @@ remains intentionally deferred.
 - Moved reusable role sources to `assets/agents/roles/`.
 - Moved reusable team packs to `assets/agents/teams/`.
 - Moved reusable Skill sources to `assets/skills/`.
-- Moved reusable template sources to `assets/templates/specs/`.
+- Moved reusable template asset catalog sources to `assets/templates/specs/`; project PRD and Feature Spec instances use `.prd/` and `.features/`.
 - Separated Catalog source paths from Bundle target paths through
   `contentFiles`.
 - Moved Web Catalog and Export adapters under `spec-web-ui/features/`.
@@ -52,11 +52,11 @@ requires that directory.
 
 ## Sync Handoff
 
-source_spec_or_rule: `specs/SPECOS-001-repository-modularization/spec.md`
+source_spec_or_rule: `.features/SPECOS-001-repository-modularization/spec.md`
 
 changed_surface:
 
-- `design/`, `specs/`, `implementation/`
+- `design/`, `.features/`, `implementation/`
 - `packages/catalog/`, `packages/bundler/`, `packages/installer/`
 - `assets/`
 - `spec-web-ui/features/`, Catalog configuration, and Bundle paths

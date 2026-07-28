@@ -1,6 +1,6 @@
 # Frontend Handoff
 
-Build UI from `specs/current/ui/ui.md`.
+Build UI from `.features/current/ui/ui.md`.
 
 Required MVP surfaces:
 

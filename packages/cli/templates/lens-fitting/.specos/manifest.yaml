@@ -1,12 +1,14 @@
 project:
   name: lens-fitting-specos
   type: fullstack
+projectMode: goalspec
 stacks:
   frontend: mini-program-next
   backend: node-api
 artifacts:
-  draftsDir: spec-draft
-  specsDir: specs/current
+  draftsDir: .prd
+  issuesDir: .issues
+  specsDir: .features
   testsDir: tests
   resultsDir: tests/results
 rulePacks:

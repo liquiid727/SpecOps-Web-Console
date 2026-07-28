@@ -1,13 +1,14 @@
 project:
   name: specos-fullstack
   type: fullstack
+projectMode: goalspec
 stacks:
   frontend: next
   backend: node-api
 artifacts:
   # Single source of truth for spec artifact locations.
   # Resolution order for skills: explicit user request > this manifest >
-  # legacy convention detection (spec-draft/, specs/) > built-in defaults.
+  # built-in defaults.
   draftsDir: .prd
   specsDir: .features
   issuesDir: .issues

@@ -1,12 +1,12 @@
 id: lens-fitting-spec-chain
 name: Lens Fitting Spec Chain
 inputs:
-  - spec-draft/idea/lens-fitting-idea.md
+  - .prd/idea/lens-fitting-idea.md
 outputs:
-  - specs/current/lens-fitting.spec.yaml
-  - specs/changes/lens-fitting-mvp/
-  - tasks/task-graph.yaml
-  - tasks/lens-fitting-mvp.tasks.md
+  - .features/current/lens-fitting.spec.yaml
+  - .features/changes/lens-fitting-mvp/
+  - .issues/task-graph.yaml
+  - .issues/lens-fitting-mvp.issues.md
   - tests/plans/lens-fitting-mvp.test-plan.json
   - deploy/environments.md
 gates:

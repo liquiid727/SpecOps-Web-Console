@@ -11,7 +11,11 @@ export type SpecosErrorCode =
   | "SPECOS_BUNDLE_INVALID"
   | "SPECOS_PROVIDER_MISSING"
   | "SPECOS_ARTIFACT_EXISTS"
-  | "SPECOS_ROUTE_OUTPUT_INVALID";
+  | "SPECOS_ROUTE_OUTPUT_INVALID"
+  | "SPECOS_TEST_SPEC_INVALID"
+  | "SPECOS_TEST_SPEC_MISSING"
+  | "SPECOS_TEST_SPEC_STALE"
+  | "SPECOS_TEST_SPEC_UNAPPROVED";
 
 export interface SpecosError {
   code: SpecosErrorCode;
@@ -37,6 +41,7 @@ export interface SpecosManifest {
   artifacts: {
     draftsDir: string;
     specsDir: string;
+    issuesDir: string;
     testsDir: string;
     resultsDir: string;
   };
@@ -70,9 +75,10 @@ export interface SpecosBundleManifest {
     available: string[];
   };
   entrypoints: {
-    draftTemplate: string;
+    prdTemplate: string;
     designTemplate: string;
-    specTemplate: string;
+    featureTemplate: string;
+    issueTemplate: string;
     workflowId: string;
   };
   capabilities: {
@@ -123,7 +129,7 @@ export interface SpecosSpec {
     requiredBranches: string[];
   };
   traceability: {
-    draft: string;
+    prd: string;
   };
 }
 
@@ -143,6 +149,29 @@ export type TestType =
   | "compatibility";
 export type GateImpact = "blocking" | "warning" | "informational";
 export type TestStandardVersion = "specos-test-standard/v1";
+export type TestSpecStatus = "preview" | "draft" | "in-review" | "approved" | "stale" | "superseded";
+
+export interface TestSpecMetadata {
+  testSpecId: string;
+  testSpecVersion: string;
+  status: TestSpecStatus;
+  sourceSpecId: string;
+  sourceSpecVersion: string;
+  sourceSpecPath: string;
+  sourceSpecHash?: string;
+  sourceApprovalEvidence?: string;
+  testSpecApprovalEvidence?: string;
+}
+
+export interface TestSpecBinding {
+  testSpecPath: string;
+  testSpecId: string;
+  testSpecVersion: string;
+  testSpecHash?: string;
+  testSpecStatus: TestSpecStatus;
+  testSpecApprovalEvidence?: string;
+  sourceFeatureSpecHash?: string;
+}
 export type QualityProfile = "backend-api" | "frontend-ui" | "fullstack-flow" | "data-migration" | "agent-workflow";
 export type TestLayer =
   | "unit"
@@ -385,6 +414,13 @@ export interface SpecosTestPlan {
   riskTier?: Priority;
   specId: string;
   specVersion: string;
+  testSpecPath?: string;
+  testSpecId?: string;
+  testSpecVersion?: string;
+  testSpecHash?: string;
+  testSpecStatus?: TestSpecStatus;
+  testSpecApprovalEvidence?: string;
+  sourceFeatureSpecHash?: string;
   changeId?: string;
   featureName: string;
   source: "accepted-spec" | "draft";
@@ -403,7 +439,23 @@ export interface SpecosTestPlan {
 export type TestScheduleExecutionMode = "parallel" | "test-after-execution";
 export type TestScheduleTrackId = "execution" | "testing";
 export type TestScheduleIsolation = "implementation-only" | "spec-and-contract-only";
-export type TestScheduleTaskType = "implementation" | "api-test" | "ui-test-gap";
+export type TestScheduleTaskType =
+  | "implementation"
+  | "api-test"
+  | "integration-test"
+  | "e2e-test"
+  | "performance-test"
+  | "load-test"
+  | "stress-test"
+  | "spike-test"
+  | "soak-test"
+  | "concurrency-test"
+  | "security-test"
+  | "migration-test"
+  | "compatibility-test"
+  | "observability-test"
+  | "chaos-test"
+  | "ui-test-gap";
 export type TestScheduleTaskStatus = "ready" | "blocked";
 
 export interface TestScheduleTrack {
@@ -433,6 +485,13 @@ export interface TestScheduleTask {
 export interface SpecosTestSchedule {
   specId: string;
   specVersion: string;
+  testSpecPath?: string;
+  testSpecId?: string;
+  testSpecVersion?: string;
+  testSpecHash?: string;
+  testSpecStatus?: TestSpecStatus;
+  testSpecApprovalEvidence?: string;
+  sourceFeatureSpecHash?: string;
   featureName: string;
   changeId: string;
   executionMode: TestScheduleExecutionMode;
@@ -450,6 +509,13 @@ export interface ScenarioResult {
   runId: string;
   specId: string;
   specVersion: string;
+  testSpecPath?: string;
+  testSpecId?: string;
+  testSpecVersion?: string;
+  testSpecHash?: string;
+  testSpecStatus?: TestSpecStatus;
+  testSpecApprovalEvidence?: string;
+  sourceFeatureSpecHash?: string;
   standardVersion?: TestStandardVersion;
   qualityProfile?: QualityProfile;
   changeId?: string;
@@ -486,6 +552,13 @@ export interface TestGateReportGate {
 export interface TestGateReport {
   specId: string;
   specVersion: string;
+  testSpecPath?: string;
+  testSpecId?: string;
+  testSpecVersion?: string;
+  testSpecHash?: string;
+  testSpecStatus?: TestSpecStatus;
+  testSpecApprovalEvidence?: string;
+  sourceFeatureSpecHash?: string;
   changeId?: string;
   decision: "ready" | "blocked" | "draft-only";
   requiredGates: TestGateReportGate[];
@@ -721,7 +794,10 @@ export interface SpecosWorkflowStep {
 export interface SpecosWorkflow {
   id: string;
   name: string;
-  steps: SpecosWorkflowStep[];
+  inputs?: string[];
+  outputs?: string[];
+  gates?: string[];
+  steps?: SpecosWorkflowStep[];
 }
 
 export interface FlowResult {
@@ -794,8 +870,8 @@ const requestRoutingRules: Record<RequestWorkType, string[]> = {
   architecture: [
     ".rules/project.md",
     "design/README.md",
-    "specs/roadmap.md",
-    "specs/_rules/README.md",
+    ".features/roadmap.md",
+    ".features/_rules/README.md",
     "rules/backend/go-backend-governance.md",
     "rules/shared/error-code-governance.md",
     "ai/workflows/nested-agent-orchestration.md",
@@ -807,7 +883,7 @@ const requestRoutingRules: Record<RequestWorkType, string[]> = {
   ],
   frontend: ["rules/frontend/react-workbench-delivery.md", "rules/shared/error-code-governance.md"],
   ui_prototype: ["rules/ui/pencil-prototype-ui.md", "rules/frontend/react-workbench-delivery.md"],
-  spec: ["specs/_rules/README.md", "rules/testing/production-test-standards.md", "rules/shared/error-code-governance.md"],
+  spec: [".features/_rules/README.md", "rules/testing/production-test-standards.md", "rules/shared/error-code-governance.md"],
   tests: ["tests/README.md", "rules/testing/production-test-standards.md", "rules/ci/spec-release-gates.md"],
   ci: ["rules/testing/production-test-standards.md", "rules/ci/spec-release-gates.md", "scripts/checks/README.md"],
   orchestration: ["ai/workflows/README.md", "scripts/orchestration/README.md", "rules/ci/spec-release-gates.md"],
@@ -1146,7 +1222,7 @@ export function buildRequestRoute(
   const hasDraftSignal = match("draft-only", ["draft", "草稿", "设计文档", "文档", "整理一下"]);
   const hasActiveChangeSignal = match("active-change", [
     "feature spec",
-    "specs/",
+    ".features/",
     "roadmap",
     "变更",
     "spec package",
@@ -1280,6 +1356,9 @@ export function buildRequestRoute(
       ".specos/manifest.yaml",
       modeReadme,
       "current/",
+      ".prd/",
+      ".features/",
+      ".issues/",
       ".rules/rule-map.yaml",
       ...[...workTypes].map((workType) => `.rules work_type: ${workType}`),
     ],
@@ -2468,10 +2547,10 @@ function primaryAgentForRequest(kind: RequestKind, workTypes: Set<RequestWorkTyp
 
 function nextStepForRequest(kind: RequestKind, needsDraft: boolean, needsChangePackage: boolean): string {
   if (needsDraft) {
-    return "Create or update spec-draft/<stable-id>.md with raw request, assumptions, and open questions.";
+    return "Create or update .prd/<stable-id>.md with raw request, assumptions, and open questions.";
   }
   if (needsChangePackage) {
-    return "Attach the request to design/, specs/roadmap.md, and specs/<SPEC-ID>-<slug>/spec.md before implementation, testing, or release gates.";
+    return "Attach the request to .prd/, design/, .features/roadmap.md, .features/<SPEC-ID>-<slug>/spec.md, and .issues/ before implementation, testing, or release gates.";
   }
   if (kind === "review") {
     return "Run the reviewer role against the active change, rules, tests, and validation evidence.";
@@ -2501,10 +2580,11 @@ export function validateManifest(value: unknown): ValidationResult {
       "projectMode",
     );
   }
-  requireString(state, manifest?.artifacts, "draftsDir", "SPECOS_MANIFEST_INVALID", "artifacts.draftsDir");
-  requireString(state, manifest?.artifacts, "specsDir", "SPECOS_MANIFEST_INVALID", "artifacts.specsDir");
-  requireString(state, manifest?.artifacts, "testsDir", "SPECOS_MANIFEST_INVALID", "artifacts.testsDir");
-  requireString(state, manifest?.artifacts, "resultsDir", "SPECOS_MANIFEST_INVALID", "artifacts.resultsDir");
+  requireArtifactDirectory(state, manifest?.artifacts, "draftsDir", "artifacts.draftsDir");
+  requireArtifactDirectory(state, manifest?.artifacts, "specsDir", "artifacts.specsDir");
+  requireArtifactDirectory(state, manifest?.artifacts, "issuesDir", "artifacts.issuesDir");
+  requireArtifactDirectory(state, manifest?.artifacts, "testsDir", "artifacts.testsDir");
+  requireArtifactDirectory(state, manifest?.artifacts, "resultsDir", "artifacts.resultsDir");
   requireStringArray(state, manifest?.rulePacks, "SPECOS_MANIFEST_INVALID", "rulePacks");
   requireStringArray(state, manifest?.agentTemplates, "SPECOS_MANIFEST_INVALID", "agentTemplates");
   requireStringArray(state, manifest?.workflows, "SPECOS_MANIFEST_INVALID", "workflows");
@@ -2535,8 +2615,8 @@ export function validateSpec(value: unknown): ValidationResult {
   requireStringArray(state, spec?.tests?.requiredBranches, "SPECOS_SPEC_INVALID", "tests.requiredBranches");
   requireRequiredBranches(state, spec?.tests?.requiredBranches, "SPECOS_SPEC_INVALID", "tests.requiredBranches");
 
-  if (!isNonEmptyString(spec?.traceability?.draft)) {
-    state.errors.push(makeError("SPECOS_TRACE_MISSING", "traceability.draft"));
+  if (!isNonEmptyString(spec?.traceability?.prd)) {
+    state.errors.push(makeError("SPECOS_TRACE_MISSING", "traceability.prd"));
   }
 
   if (spec?.api !== undefined) {
@@ -2550,7 +2630,10 @@ export function validateSpec(value: unknown): ValidationResult {
   return result(state.errors);
 }
 
-export function buildDeterministicTestPlan(spec: SpecosSpec): SpecosTestPlan {
+export function buildDeterministicTestPlan(
+  spec: SpecosSpec,
+  binding?: TestSpecBinding,
+): SpecosTestPlan {
   const api = spec.api ?? [];
   const branches = normalizeBranches(spec.tests.requiredBranches);
   const firstRule = spec.rules[0]?.id ?? "spec.rule";
@@ -2564,6 +2647,17 @@ export function buildDeterministicTestPlan(spec: SpecosSpec): SpecosTestPlan {
     riskTier: "P0",
     specId: spec.id,
     specVersion: spec.version,
+    ...(binding
+      ? {
+          testSpecPath: binding.testSpecPath,
+          testSpecId: binding.testSpecId,
+          testSpecVersion: binding.testSpecVersion,
+          testSpecHash: binding.testSpecHash,
+          testSpecStatus: binding.testSpecStatus,
+          testSpecApprovalEvidence: binding.testSpecApprovalEvidence,
+          sourceFeatureSpecHash: binding.sourceFeatureSpecHash,
+        }
+      : {}),
     featureName: spec.title,
     source: "accepted-spec",
     flows: [
@@ -2652,13 +2746,14 @@ function buildDefaultStandardRequirements(
   ];
 }
 
-function inferFeatureSpecDirectory(specPath: string | undefined): string | undefined {
+function inferFeatureSpecDirectory(specPath: string | undefined, specsDir = ".features"): string | undefined {
   if (!specPath) {
     return undefined;
   }
 
   const normalized = specPath.replace(/\\/g, "/");
-  const match = normalized.match(/(?:^|\/)specs\/([^/]+)\/spec\.md$/);
+  const normalizedRoot = trimPathSeparators(specsDir).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = normalized.match(new RegExp(`(?:^|/)${normalizedRoot}/([^/]+)/spec\\.md$`));
   return match?.[1];
 }
 
@@ -2671,19 +2766,52 @@ function buildFallbackFeatureSpecDirectory(specId: string, changeId: string): st
 
 export function buildSpecChangeTestSchedule(
   plan: SpecosTestPlan,
-  options: { changeId: string; executionMode?: TestScheduleExecutionMode; specPath?: string },
+  options: {
+    changeId: string;
+    executionMode?: TestScheduleExecutionMode;
+    specPath?: string;
+    manifest?: Pick<SpecosManifest, "artifacts">;
+    testSpecBinding?: TestSpecBinding;
+  },
 ): SpecosTestSchedule {
   const endpointTargets = plan.endpoints.map((endpoint) => `${endpoint.method.toUpperCase()} ${endpoint.path}`);
   const scenarioNames = plan.scenarios.map((scenario) => scenario.name);
   const executionMode = options.executionMode ?? "parallel";
-  const specDirectory = inferFeatureSpecDirectory(options.specPath) ?? buildFallbackFeatureSpecDirectory(plan.specId, options.changeId);
-  const specFile = `specs/${specDirectory}/spec.md`;
+  const specRoot = trimPathSeparators(options.manifest?.artifacts.specsDir ?? ".features");
+  const issuesRoot = trimPathSeparators(options.manifest?.artifacts.issuesDir ?? ".issues");
+  const testsRoot = trimPathSeparators(options.manifest?.artifacts.testsDir ?? "tests");
+  const resultsRoot = trimPathSeparators(options.manifest?.artifacts.resultsDir ?? `${testsRoot}/results`);
+  const specDirectory = inferFeatureSpecDirectory(options.specPath, specRoot) ?? buildFallbackFeatureSpecDirectory(plan.specId, options.changeId);
+  const specFile = `${specRoot}/${specDirectory}/spec.md`;
+  const testSpecPath =
+    options.testSpecBinding?.testSpecPath ??
+    plan.testSpecPath ??
+    `${specRoot}/${specDirectory}/test-spec.md`;
   const implementationDir = `implementation/${specDirectory}`;
   const reviewDir = `reviews/${specDirectory}`;
 
   return {
     specId: plan.specId,
     specVersion: plan.specVersion,
+    ...(options.testSpecBinding
+      ? {
+          testSpecPath: options.testSpecBinding.testSpecPath,
+          testSpecId: options.testSpecBinding.testSpecId,
+          testSpecVersion: options.testSpecBinding.testSpecVersion,
+          testSpecHash: options.testSpecBinding.testSpecHash,
+          testSpecStatus: options.testSpecBinding.testSpecStatus,
+          testSpecApprovalEvidence: options.testSpecBinding.testSpecApprovalEvidence,
+          sourceFeatureSpecHash: options.testSpecBinding.sourceFeatureSpecHash,
+        }
+      : {
+          testSpecPath: plan.testSpecPath,
+          testSpecId: plan.testSpecId,
+          testSpecVersion: plan.testSpecVersion,
+          testSpecHash: plan.testSpecHash,
+          testSpecStatus: plan.testSpecStatus,
+          testSpecApprovalEvidence: plan.testSpecApprovalEvidence,
+          sourceFeatureSpecHash: plan.sourceFeatureSpecHash,
+        }),
     featureName: plan.featureName,
     changeId: options.changeId,
     executionMode,
@@ -2697,9 +2825,9 @@ export function buildSpecChangeTestSchedule(
           `${reviewDir}/architecture-review.md`,
           `${reviewDir}/design-review.md`,
           "design/",
-          "specs/roadmap.md",
+          `${specRoot}/roadmap.md`,
         ],
-        forbiddenInputs: ["tests/results/", "tests/bruno/", "tests/scenarios/", "tests/e2e/", "tests/playwright/"],
+        forbiddenInputs: [`${resultsRoot}/`, `${testsRoot}/bruno/`, `${testsRoot}/scenarios/`, `${testsRoot}/e2e/`, `${testsRoot}/playwright/`],
       },
       {
         id: "testing",
@@ -2708,9 +2836,10 @@ export function buildSpecChangeTestSchedule(
         allowedInputs: [
           specFile,
           `${implementationDir}/openapi.yaml`,
-          `tests/plans/${plan.specId}.test-plan.json`,
+          `${testsRoot}/plans/${plan.specId}.test-plan.json`,
+          testSpecPath,
           "design/",
-          "specs/roadmap.md",
+          `${specRoot}/roadmap.md`,
         ],
         forbiddenInputs: ["implementation report", "source implementation notes"],
       },
@@ -2722,8 +2851,8 @@ export function buildSpecChangeTestSchedule(
         agentRole: "execution-editor",
         type: "implementation",
         status: "ready",
-        inputs: [specFile, "design/", "specs/roadmap.md"],
-        outputs: [`${implementationDir}/implementation-report.md`, `tests/unit/${plan.specId}/`],
+        inputs: [specFile, "design/", `${specRoot}/roadmap.md`],
+        outputs: [`${implementationDir}/implementation-report.md`, `${testsRoot}/unit/${plan.specId}/`, `${issuesRoot}/${plan.specId}/`],
         dependsOn: ["architecture_reviewed", "design_reviewed"],
         traceability: { scenarios: scenarioNames, endpoints: endpointTargets },
       },
@@ -2734,10 +2863,11 @@ export function buildSpecChangeTestSchedule(
         type: "api-test",
         status: "ready",
         inputs: [
-          `tests/plans/${plan.specId}.test-plan.json`,
+          testSpecPath,
+          `${testsRoot}/plans/${plan.specId}.test-plan.json`,
           `${implementationDir}/openapi.yaml`,
         ],
-        outputs: [`tests/bruno/${plan.specId}/`, `tests/results/${plan.specId}.*.json`],
+        outputs: [`${testsRoot}/bruno/${plan.specId}/`, `${resultsRoot}/${plan.specId}.*.json`],
         dependsOn: executionMode === "parallel" ? ["test_plan_ready"] : [`implement-${plan.specId}`],
         traceability: { scenarios: scenarioNames, endpoints: endpointTargets },
       },
@@ -2748,8 +2878,11 @@ export function buildSpecChangeTestSchedule(
         type: "ui-test-gap" as const,
         status: "blocked" as const,
         reason: "UI execution is scheduled as a gap until Playwright assets and selectors are available.",
-        inputs: [`tests/plans/${plan.specId}.test-plan.json`],
-        outputs: [`tests/scenarios/${plan.specId}/ui-gaps.md`],
+        inputs: [
+          testSpecPath,
+          `${testsRoot}/plans/${plan.specId}.test-plan.json`,
+        ],
+        outputs: [`${testsRoot}/scenarios/${plan.specId}/ui-gaps.md`],
         dependsOn: ["test_plan_ready"],
         traceability: { scenarios: [scenario.name], endpoints: endpointTargets },
       })),
@@ -2809,6 +2942,12 @@ export function buildBlockedApiScenarioResult(
     runId,
     specId: plan.specId,
     specVersion: plan.specVersion,
+    testSpecPath: plan.testSpecPath,
+    testSpecId: plan.testSpecId,
+    testSpecVersion: plan.testSpecVersion,
+    testSpecHash: plan.testSpecHash,
+    testSpecApprovalEvidence: plan.testSpecApprovalEvidence,
+    sourceFeatureSpecHash: plan.sourceFeatureSpecHash,
     standardVersion: plan.standardVersion,
     qualityProfile: plan.qualityProfile,
     featureName: plan.featureName,
@@ -2887,6 +3026,12 @@ export function buildExecutedApiScenarioResult(
     runId,
     specId: plan.specId,
     specVersion: plan.specVersion,
+    testSpecPath: plan.testSpecPath,
+    testSpecId: plan.testSpecId,
+    testSpecVersion: plan.testSpecVersion,
+    testSpecHash: plan.testSpecHash,
+    testSpecApprovalEvidence: plan.testSpecApprovalEvidence,
+    sourceFeatureSpecHash: plan.sourceFeatureSpecHash,
     standardVersion: plan.standardVersion,
     qualityProfile: plan.qualityProfile,
     featureName: plan.featureName,
@@ -2961,6 +3106,9 @@ export function buildTestGateReport(
   const scopedResults = results.filter((result) => {
     const changeId = options.changeId ?? plan.changeId;
     if (result.specId !== plan.specId || result.specVersion !== plan.specVersion) return false;
+    if (plan.testSpecId && result.testSpecId !== plan.testSpecId) return false;
+    if (plan.testSpecVersion && result.testSpecVersion !== plan.testSpecVersion) return false;
+    if (plan.testSpecHash && result.testSpecHash !== plan.testSpecHash) return false;
     if (!changeId) return true;
     return result.changeId === changeId || result.workflowId === changeId || result.items.some((item) => item.changeId === changeId);
   });
@@ -3083,6 +3231,12 @@ export function buildTestGateReport(
     }
   }
 
+  const bindingGap = plan.testSpecStatus && plan.testSpecStatus !== "approved";
+  if (bindingGap) {
+    blockers.push(`Test Spec ${plan.testSpecId ?? plan.specId} is ${plan.testSpecStatus}, not approved`);
+    failedGates.push("test-spec-approval");
+  }
+
   const sourceIsDraft = plan.source === "draft";
   const hasBlockingStandardGap = standardCompliance.some(
     (item) =>
@@ -3096,6 +3250,13 @@ export function buildTestGateReport(
   return {
     specId: plan.specId,
     specVersion: plan.specVersion,
+    testSpecPath: plan.testSpecPath,
+    testSpecId: plan.testSpecId,
+    testSpecVersion: plan.testSpecVersion,
+    testSpecHash: plan.testSpecHash,
+    testSpecStatus: plan.testSpecStatus,
+    testSpecApprovalEvidence: plan.testSpecApprovalEvidence,
+    sourceFeatureSpecHash: plan.sourceFeatureSpecHash,
     changeId: options.changeId ?? plan.changeId,
     decision: sourceIsDraft ? "draft-only" : failedGates.length > 0 || hasBlockingStandardGap ? "blocked" : "ready",
     requiredGates: gates.map((gate) => ({
@@ -3181,6 +3342,32 @@ function buildAgentEvidenceSummary(compliance: TestGateStandardCompliance[]): Te
   return [...byAgent.values()].sort((left, right) => left.ownerAgent.localeCompare(right.ownerAgent));
 }
 
+function requireTestSpecBinding(
+  state: MutableValidation,
+  artifact: Record<string, any> | undefined,
+  code: SpecosErrorCode,
+  options: { required: boolean; approved: boolean },
+): void {
+  const fields = ["testSpecPath", "testSpecId", "testSpecVersion", "testSpecHash", "testSpecStatus"] as const;
+  const present = fields.filter((field) => artifact?.[field] !== undefined);
+  if (!options.required && present.length === 0) return;
+
+  for (const field of fields) {
+    requireString(state, artifact, field, code, field);
+  }
+  requireOneOf(
+    state,
+    artifact?.testSpecStatus,
+    options.approved ? ["approved"] : ["preview", "draft", "in-review", "approved", "stale", "superseded"],
+    code,
+    "testSpecStatus",
+  );
+  requireString(state, artifact, "testSpecApprovalEvidence", code, "testSpecApprovalEvidence");
+  if (artifact?.sourceFeatureSpecHash !== undefined) {
+    requireString(state, artifact, "sourceFeatureSpecHash", code, "sourceFeatureSpecHash");
+  }
+}
+
 export function validateTestPlan(value: unknown): ValidationResult {
   const state: MutableValidation = { errors: [] };
   const plan = asRecord(value);
@@ -3207,8 +3394,22 @@ export function validateTestPlan(value: unknown): ValidationResult {
   if (plan?.changeId !== undefined) {
     requireString(state, plan, "changeId", "SPECOS_TEST_PLAN_INVALID", "changeId");
   }
-  requireString(state, plan, "featureName", "SPECOS_TEST_PLAN_INVALID", "featureName");
-  requireOneOf(state, plan?.source, ["accepted-spec", "draft"], "SPECOS_TEST_PLAN_INVALID", "source");
+  if (plan?.testSpecPath !== undefined) {
+    requireString(state, plan, "testSpecPath", "SPECOS_TEST_PLAN_INVALID", "testSpecPath");
+  }
+  if (plan?.testSpecId !== undefined) {
+    requireString(state, plan, "testSpecId", "SPECOS_TEST_PLAN_INVALID", "testSpecId");
+  }
+  if (plan?.testSpecVersion !== undefined) {
+    requireString(state, plan, "testSpecVersion", "SPECOS_TEST_PLAN_INVALID", "testSpecVersion");
+  }
+  if (plan?.testSpecHash !== undefined) {
+    requireString(state, plan, "testSpecHash", "SPECOS_TEST_PLAN_INVALID", "testSpecHash");
+  }
+  if (plan?.testSpecStatus !== undefined) {
+    requireOneOf(state, plan.testSpecStatus, ["preview", "draft", "in-review", "approved", "stale", "superseded"], "SPECOS_TEST_PLAN_INVALID", "testSpecStatus");
+  }
+
   requireFlowPlanArray(state, plan?.flows);
   requireEndpointPlanArray(state, plan?.endpoints);
 
@@ -3248,8 +3449,15 @@ export function validateTestPlan(value: unknown): ValidationResult {
     requireSecurityPolicy(state, plan.securityPolicy);
   }
   if (hasProductionStandard) {
-    requireQualityProfile(state, plan?.qualityProfile, "SPECOS_TEST_PLAN_INVALID", "qualityProfile");
     requireOneOf(state, plan?.riskTier, ["P0", "P1", "P2"], "SPECOS_TEST_PLAN_INVALID", "riskTier");
+    requireOneOf(
+      state,
+      plan?.qualityProfile,
+      ["backend-api", "frontend-ui", "fullstack-flow", "data-migration", "agent-workflow"],
+      "SPECOS_TEST_PLAN_INVALID",
+      "qualityProfile",
+    );
+    requireTestSpecBinding(state, plan, "SPECOS_TEST_PLAN_INVALID", { required: true, approved: true });
     if (!Array.isArray(plan?.standardRequirements) || plan.standardRequirements.length === 0) {
       state.errors.push(makeError("SPECOS_TEST_PLAN_INVALID", "standardRequirements"));
     }
@@ -3275,6 +3483,29 @@ export function validateTestSchedule(value: unknown): ValidationResult {
 
   requireString(state, schedule, "specId", "SPECOS_TEST_SCHEDULE_INVALID", "specId");
   requireString(state, schedule, "specVersion", "SPECOS_TEST_SCHEDULE_INVALID", "specVersion");
+  if (schedule?.testSpecPath !== undefined) {
+    requireString(state, schedule, "testSpecPath", "SPECOS_TEST_SCHEDULE_INVALID", "testSpecPath");
+  }
+  if (schedule?.testSpecId !== undefined) {
+    requireString(state, schedule, "testSpecId", "SPECOS_TEST_SCHEDULE_INVALID", "testSpecId");
+  }
+  if (schedule?.testSpecVersion !== undefined) {
+    requireString(state, schedule, "testSpecVersion", "SPECOS_TEST_SCHEDULE_INVALID", "testSpecVersion");
+  }
+  if (schedule?.testSpecStatus !== undefined) {
+    requireOneOf(state, schedule.testSpecStatus, ["preview", "draft", "in-review", "approved", "stale", "superseded"], "SPECOS_TEST_SCHEDULE_INVALID", "testSpecStatus");
+  }
+
+  if (schedule?.sourceFeatureSpecHash !== undefined) {
+    requireString(state, schedule, "sourceFeatureSpecHash", "SPECOS_TEST_SCHEDULE_INVALID", "sourceFeatureSpecHash");
+  }
+  if (schedule?.testSpecApprovalEvidence !== undefined) {
+    requireString(state, schedule, "testSpecApprovalEvidence", "SPECOS_TEST_SCHEDULE_INVALID", "testSpecApprovalEvidence");
+  }
+  if (schedule?.testSpecPath !== undefined || schedule?.testSpecId !== undefined || schedule?.testSpecVersion !== undefined || schedule?.testSpecStatus !== undefined) {
+    requireTestSpecBinding(state, schedule, "SPECOS_TEST_SCHEDULE_INVALID", { required: true, approved: false });
+  }
+
   requireString(state, schedule, "featureName", "SPECOS_TEST_SCHEDULE_INVALID", "featureName");
   requireString(state, schedule, "changeId", "SPECOS_TEST_SCHEDULE_INVALID", "changeId");
   requireOneOf(
@@ -3300,6 +3531,33 @@ export function validateScenarioResult(value: unknown): ValidationResult {
   requireString(state, scenario, "runId", "SPECOS_SCENARIO_RESULT_INVALID", "runId");
   requireString(state, scenario, "specId", "SPECOS_SCENARIO_RESULT_INVALID", "specId");
   requireString(state, scenario, "specVersion", "SPECOS_SCENARIO_RESULT_INVALID", "specVersion");
+  if (scenario?.testSpecPath !== undefined) {
+    requireString(state, scenario, "testSpecPath", "SPECOS_SCENARIO_RESULT_INVALID", "testSpecPath");
+  }
+  if (scenario?.testSpecId !== undefined) {
+    requireString(state, scenario, "testSpecId", "SPECOS_SCENARIO_RESULT_INVALID", "testSpecId");
+  }
+  if (scenario?.testSpecVersion !== undefined) {
+    requireString(state, scenario, "testSpecVersion", "SPECOS_SCENARIO_RESULT_INVALID", "testSpecVersion");
+  }
+  if (scenario?.testSpecStatus !== undefined) {
+    requireOneOf(state, scenario.testSpecStatus, ["preview", "draft", "in-review", "approved", "stale", "superseded"], "SPECOS_SCENARIO_RESULT_INVALID", "testSpecStatus");
+  }
+
+  if (scenario?.sourceFeatureSpecHash !== undefined) {
+    requireString(state, scenario, "sourceFeatureSpecHash", "SPECOS_SCENARIO_RESULT_INVALID", "sourceFeatureSpecHash");
+  }
+  if (scenario?.testSpecApprovalEvidence !== undefined) {
+    requireString(state, scenario, "testSpecApprovalEvidence", "SPECOS_SCENARIO_RESULT_INVALID", "testSpecApprovalEvidence");
+  }
+
+  if (hasProductionStandard) {
+    requireString(state, scenario, "testSpecPath", "SPECOS_SCENARIO_RESULT_INVALID", "testSpecPath");
+    requireString(state, scenario, "testSpecId", "SPECOS_SCENARIO_RESULT_INVALID", "testSpecId");
+    requireString(state, scenario, "testSpecVersion", "SPECOS_SCENARIO_RESULT_INVALID", "testSpecVersion");
+    requireOneOf(state, scenario?.testSpecStatus, ["approved"], "SPECOS_SCENARIO_RESULT_INVALID", "testSpecStatus");
+  }
+
   if (scenario?.standardVersion !== undefined) {
     requireOneOf(
       state,
@@ -3419,9 +3677,10 @@ export function validateBundle(value: unknown): ValidationResult {
 
   requireString(state, bundle?.workflow, "default", "SPECOS_BUNDLE_INVALID", "workflow.default");
   requireStringArray(state, bundle?.workflow?.available, "SPECOS_BUNDLE_INVALID", "workflow.available");
-  requireString(state, bundle?.entrypoints, "draftTemplate", "SPECOS_BUNDLE_INVALID", "entrypoints.draftTemplate");
+  requireString(state, bundle?.entrypoints, "prdTemplate", "SPECOS_BUNDLE_INVALID", "entrypoints.prdTemplate");
   requireString(state, bundle?.entrypoints, "designTemplate", "SPECOS_BUNDLE_INVALID", "entrypoints.designTemplate");
-  requireString(state, bundle?.entrypoints, "specTemplate", "SPECOS_BUNDLE_INVALID", "entrypoints.specTemplate");
+  requireString(state, bundle?.entrypoints, "featureTemplate", "SPECOS_BUNDLE_INVALID", "entrypoints.featureTemplate");
+  requireString(state, bundle?.entrypoints, "issueTemplate", "SPECOS_BUNDLE_INVALID", "entrypoints.issueTemplate");
   requireString(state, bundle?.entrypoints, "workflowId", "SPECOS_BUNDLE_INVALID", "entrypoints.workflowId");
   requireBoolean(state, bundle?.capabilities, "refineSpec", "SPECOS_BUNDLE_INVALID", "capabilities.refineSpec");
   requireBoolean(state, bundle?.capabilities, "generateTestPlan", "SPECOS_BUNDLE_INVALID", "capabilities.generateTestPlan");
@@ -3455,14 +3714,25 @@ export function validateWorkflow(value: unknown): ValidationResult {
   requireString(state, workflow, "id", "SPECOS_WORKFLOW_INVALID", "id");
   requireString(state, workflow, "name", "SPECOS_WORKFLOW_INVALID", "name");
 
-  if (!Array.isArray(workflow?.steps) || workflow.steps.length === 0) {
+  const isDeclarative = workflow?.inputs !== undefined || workflow?.outputs !== undefined || workflow?.gates !== undefined;
+  if (isDeclarative) {
+    requireStringArray(state, workflow?.inputs, "SPECOS_WORKFLOW_INVALID", "inputs");
+    requireStringArray(state, workflow?.outputs, "SPECOS_WORKFLOW_INVALID", "outputs");
+    requireStringArray(state, workflow?.gates, "SPECOS_WORKFLOW_INVALID", "gates");
+  }
+
+  if (workflow?.steps !== undefined) {
+    if (!Array.isArray(workflow.steps) || workflow.steps.length === 0) {
+      state.errors.push(makeError("SPECOS_WORKFLOW_INVALID", "steps"));
+    } else {
+      workflow.steps.forEach((step, index) => {
+        const path = `steps[${index}]`;
+        requireString(state, step, "id", "SPECOS_WORKFLOW_INVALID", `${path}.id`);
+        requireString(state, step, "run", "SPECOS_WORKFLOW_INVALID", `${path}.run`);
+      });
+    }
+  } else if (!isDeclarative) {
     state.errors.push(makeError("SPECOS_WORKFLOW_INVALID", "steps"));
-  } else {
-    workflow.steps.forEach((step, index) => {
-      const path = `steps[${index}]`;
-      requireString(state, step, "id", "SPECOS_WORKFLOW_INVALID", `${path}.id`);
-      requireString(state, step, "run", "SPECOS_WORKFLOW_INVALID", `${path}.run`);
-    });
   }
 
   return result(state.errors);
@@ -3487,6 +3757,18 @@ function makeError(code: SpecosErrorCode, path: string): SpecosError {
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function requireArtifactDirectory(
+  state: MutableValidation,
+  object: Record<string, any> | undefined,
+  key: string,
+  path: string,
+): void {
+  requireString(state, object, key, "SPECOS_MANIFEST_INVALID", path);
+  if (isNonEmptyString(object?.[key]) && !isSafeRelativePath(object[key])) {
+    state.errors.push(makeError("SPECOS_MANIFEST_INVALID", path));
+  }
 }
 
 function requireObject(state: MutableValidation, value: unknown, code: SpecosErrorCode, path: string): void {
@@ -3990,13 +4272,30 @@ function requireTestScheduleTasks(state: MutableValidation, value: unknown): voi
       "SPECOS_TEST_SCHEDULE_INVALID",
       `${path}.agentRole`,
     );
-    requireOneOf(
-      state,
-      task?.type,
-      ["implementation", "api-test", "ui-test-gap"],
-      "SPECOS_TEST_SCHEDULE_INVALID",
-      `${path}.type`,
-    );
+      requireOneOf(
+        state,
+        task?.type,
+        [
+          "implementation",
+          "api-test",
+          "integration-test",
+          "e2e-test",
+          "performance-test",
+          "load-test",
+          "stress-test",
+          "spike-test",
+          "soak-test",
+          "concurrency-test",
+          "security-test",
+          "migration-test",
+          "compatibility-test",
+          "observability-test",
+          "chaos-test",
+          "ui-test-gap",
+        ],
+        "SPECOS_TEST_SCHEDULE_INVALID",
+        `${path}.type`,
+      );
     requireOneOf(state, task?.status, ["ready", "blocked"], "SPECOS_TEST_SCHEDULE_INVALID", `${path}.status`);
     requireStringArray(state, task?.inputs, "SPECOS_TEST_SCHEDULE_INVALID", `${path}.inputs`);
     requireStringArray(state, task?.outputs, "SPECOS_TEST_SCHEDULE_INVALID", `${path}.outputs`);
@@ -4013,9 +4312,21 @@ function requireTestScheduleTasks(state: MutableValidation, value: unknown): voi
       "SPECOS_TEST_SCHEDULE_INVALID",
       `${path}.traceability.endpoints`,
     );
-    if (task?.status === "blocked") {
-      requireString(state, task, "reason", "SPECOS_TEST_SCHEDULE_INVALID", `${path}.reason`);
-    }
+      if (task?.trackId === "execution" && task?.agentRole !== "execution-editor") {
+        state.errors.push(makeError("SPECOS_TEST_SCHEDULE_INVALID", `${path}.agentRole`));
+      }
+      if (task?.trackId === "testing" && task?.agentRole === "execution-editor") {
+        state.errors.push(makeError("SPECOS_TEST_SCHEDULE_INVALID", `${path}.agentRole`));
+      }
+      if (task?.trackId === "execution" && task?.type !== "implementation") {
+        state.errors.push(makeError("SPECOS_TEST_SCHEDULE_INVALID", `${path}.type`));
+      }
+      if (task?.type === "ui-test-gap" && (task?.status !== "blocked" || task?.agentRole !== "playwright-test-agent")) {
+        state.errors.push(makeError("SPECOS_TEST_SCHEDULE_INVALID", `${path}.type`));
+      }
+      if (task?.status === "blocked") {
+        requireString(state, task, "reason", "SPECOS_TEST_SCHEDULE_INVALID", `${path}.reason`);
+      }
   });
 }
 

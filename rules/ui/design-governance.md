@@ -15,7 +15,7 @@ Keep platform design documents, UI design intent, and feature specs aligned with
 ## Feature Boundary Rules
 
 - Put reusable architecture, shared contracts, and long-lived interaction models in `design/`.
-- Put one implementation-ready feature slice in `specs/<SPEC-ID>-<slug>/spec.md`.
+- Put one implementation-ready feature slice in `.features/<SPEC-ID>-<slug>/spec.md`.
 - Put code-delivery notes in `implementation/`.
 - Put approval and critique in `reviews/`.
 

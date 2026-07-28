@@ -72,8 +72,8 @@ vi.mock("@/lib/projects", () => ({
       architecture: "modular-monolith",
       stacks: ["go"],
       selectedAssets: [],
-      draftTemplateId: "template-feature-draft",
-      draftPath: "spec-web-ui/workspace/projects/backend-kit/draft.md",
+      prdTemplateId: "template-feature-draft",
+      prdPath: "spec-web-ui/workspace/projects/backend-kit/prd.md",
       exportTargets: []
     },
     selectedAssets: [],

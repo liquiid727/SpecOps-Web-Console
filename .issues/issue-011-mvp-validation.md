@@ -27,4 +27,4 @@ high
 
 ## Source
 
-tasks/prd-cli-gui.md
+- Traceability: legacy/unmapped

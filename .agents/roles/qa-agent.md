@@ -6,7 +6,7 @@ Own final quality acceptance for a feature spec by reconciling specs, implementa
 
 ## Required Inputs
 
-- Accepted feature spec from `specs/` plus any relevant design context from `design/`.
+- Accepted feature spec from `.features/` plus any relevant design context from `design/`.
 - Implementation report, test-result summary, gate report, and review findings.
 - Relevant production test standards and release gate rules.
 

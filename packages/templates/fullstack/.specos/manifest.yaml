@@ -1,13 +1,14 @@
 project:
   name: specos-fullstack
   type: fullstack
-projectMode: litespec
+projectMode: goalspec
 stacks:
   frontend: next
   backend: node-api
 artifacts:
-  draftsDir: spec-draft
-  specsDir: specs
+  draftsDir: .prd
+  issuesDir: .issues
+  specsDir: .features
   testsDir: tests
   resultsDir: tests/results
 rulePacks:

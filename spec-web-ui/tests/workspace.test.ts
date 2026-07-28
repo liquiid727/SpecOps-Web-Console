@@ -30,8 +30,8 @@ const catalog: CatalogAsset[] = [
     appliesTo: ["backend", "frontend"],
     dependsOn: ["rule-backend-governance"],
     conflictsWith: [],
-    sourcePath: "spec-draft/_template/feature/product-ui.template.md",
-    files: ["spec-draft/_template/feature/product-ui.template.md"],
+    sourcePath: ".prd/_template/feature/product-ui.template.md",
+    files: [".prd/_template/feature/product-ui.template.md"],
     version: "1.0.0"
   },
   {
@@ -93,9 +93,9 @@ const project: ProjectManifest = {
     { assetId: "agent-manual-editor", enabled: true },
     { assetId: "team-governance-pack", enabled: true }
   ],
-  draftTemplateId: "template-feature-draft",
-  draftPath: "spec-web-ui/workspace/projects/rewards-platform/draft.md",
-  exportTargets: ["docs/", "current/", "rules/", "specs/_template/", "ai/agents/", "agent-teams/", "project-manifest.yaml"]
+  prdTemplateId: "template-feature-draft",
+  prdPath: "spec-web-ui/workspace/projects/rewards-platform/prd.md",
+  exportTargets: ["docs/", "current/", "rules/", ".features/_template/", "ai/agents/", "agent-teams/", "project-manifest.yaml"]
 };
 
 describe("resolveProjectWorkspace", () => {

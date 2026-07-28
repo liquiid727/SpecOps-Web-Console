@@ -4,7 +4,7 @@
 
 它的核心价值不是做一个普通后台，也不是把所有 workflow 都塞进 UI 里执行，而是沉淀、浏览、选择和组合开发人员日常高频使用的 AI 工程资产，让项目可以快速建立自己的规则、Agent 能力、测试规范和交付结构。
 
-它也不是单个目标项目的需求状态系统。具体项目的 `draft -> design -> roadmap -> feature spec -> review -> tests` 生命周期应留在目标项目仓库内；`spec-web-ui` 只负责维护、组合、预览和导出可复用资产，不持有目标项目的规范化需求真相。
+它也不是单个目标项目的需求状态系统。具体项目的 `.prd -> design -> .features/roadmap.md -> Feature Spec/Test Spec -> .issues -> review -> tests` 生命周期应留在目标项目仓库内；`spec-web-ui` 只负责维护、组合、预览和导出可复用资产，不持有目标项目的规范化需求真相。
 
 ## 核心定位
 
@@ -65,7 +65,7 @@
 - 创建配置工作区。
 - 组合项目所需资产。
 - 预览项目级 AI 配置、目录结构和 workflow 关系。
-- 提供工作台内部的配置草稿和导出预览，但不替代目标项目仓库中的 `spec-draft/`、`design/`、`specs/roadmap.md` 或 feature specs。
+- 提供工作台内部的配置草稿和导出预览，但不替代目标项目仓库中的 `.prd/`、`design/`、`.features/roadmap.md`、Feature/Test Specs 或 `.issues/`。
 - 导出 review snapshot。
 - 生成可被 CLI 安装的 `.specos-bundle/`。
 
@@ -74,7 +74,7 @@
 ## UX / 交互设计参考
 
 - [Workbench UX Design](design/workbench-ux-design.md)
-- [Requirement Intake Flow](../spec-draft/requirement-intake-flow.md)
+- [Requirement Intake Flow](../.prd/prd-chat-streaming-and-persistent-runtime.md)
 
 这些文档共同定义两条边界：`spec-web-ui` 是独立工具站点和资产工作台；具体项目需求流程属于目标项目仓库。后续首页、Discover、Configuration Workspace、Export Preview 等用户界面改动，应优先保持“清爽、简单、明确下一步”的工具站点体验。
 

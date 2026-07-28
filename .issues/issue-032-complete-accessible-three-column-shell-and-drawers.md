@@ -26,5 +26,5 @@ high
 SPEC §2.3; PRD US-005
 
 ## Source
-- `tasks/prd-cli-gui-workbench.md`
-- `tasks/spec-cli-gui-workbench.md`
+
+- Traceability: legacy/unmapped

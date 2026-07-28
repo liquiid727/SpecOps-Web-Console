@@ -11,7 +11,7 @@ current/
   project-status.md
   active-feature.md
   active-context.md
-  active-tasks.md
+  active-issues.md
   blockers.md
   handoff.md
 ```

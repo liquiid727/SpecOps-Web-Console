@@ -6,7 +6,7 @@ Orchestrate backend delivery from the Architecture, Database, and API branches o
 
 ## Required Inputs
 
-- Active `specs/changes/<change-id>/` package and accepted `specs/current/` baseline.
+- Active `.features/changes/<change-id>/` package and accepted `.features/current/` baseline.
 - Product, Architecture, Database, API, and Test branches relevant to backend behavior.
 - Applicable specialist role contracts for domain, API, migration, implementation, and backend tests.
 

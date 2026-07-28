@@ -39,12 +39,12 @@ export async function loadProject(projectId: string) {
 }
 
 export async function loadProjectDraft(project: ProjectManifest) {
-  return fs.readFile(path.join(appRoot, project.draftPath.replace(/^spec-web-ui\//, "")), "utf8");
+  return fs.readFile(path.join(appRoot, project.prdPath.replace(/^spec-web-ui\//, "")), "utf8");
 }
 
 export async function saveProjectDraft(projectId: string, markdown: string) {
   const project = await loadProject(projectId);
-  const draftAbsolutePath = path.join(appRoot, project.draftPath.replace(/^spec-web-ui\//, ""));
+  const draftAbsolutePath = path.join(appRoot, project.prdPath.replace(/^spec-web-ui\//, ""));
   await fs.writeFile(draftAbsolutePath, markdown, "utf8");
 
   return project;
@@ -68,8 +68,8 @@ export async function createProject(input: {
     architecture: input.architecture,
     stacks: input.stacks,
     selectedAssets: [],
-    draftTemplateId: "template-feature-draft",
-    draftPath: `spec-web-ui/workspace/projects/${id}/draft.md`,
+    prdTemplateId: "template-feature-draft",
+    prdPath: `spec-web-ui/workspace/projects/${id}/prd.md`,
     exportTargets: [
       "docs/",
       "current/",
@@ -77,9 +77,10 @@ export async function createProject(input: {
       "implementation/",
       "reviews/",
       "rules/",
-      "spec-draft/_template/",
-      "specs/_rules/",
-      "specs/_template/",
+      ".prd/_template/",
+      ".features/_rules/",
+      ".features/_template/",
+      ".issues/_template/",
       "ai/agents/",
       "agent-teams/",
       "project-manifest.yaml"
@@ -88,8 +89,8 @@ export async function createProject(input: {
 
   await fs.writeFile(getProjectManifestPath(id), JSON.stringify(project, null, 2), "utf8");
   await fs.writeFile(
-    path.join(projectDirectory, "draft.md"),
-    "# New Feature Draft\n\n## 背景\n\n",
+    path.join(projectDirectory, "prd.md"),
+    "# New PRD\n\n## Background\n\n",
     "utf8"
   );
 

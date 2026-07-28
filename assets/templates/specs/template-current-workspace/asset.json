@@ -2,7 +2,7 @@
   "id": "template-current-workspace",
   "type": "spec_template",
   "title": "Current Workspace Seed",
-  "summary": "Seeds the active delivery workspace so agents can load current status, tasks, blockers, and handoff context.",
+  "summary": "Seeds the active delivery workspace so agents can load current status, issues, blockers, and handoff context.",
   "direction": "fullstack",
   "categories": [
     "operations",
@@ -30,7 +30,7 @@
     "current/project-status.md",
     "current/active-feature.md",
     "current/active-context.md",
-    "current/active-tasks.md",
+    "current/active-issues.md",
     "current/blockers.md",
     "current/handoff.md"
   ],
@@ -45,7 +45,7 @@
     "current/project-status.md": "assets/templates/specs/template-current-workspace/project-status.md",
     "current/active-feature.md": "assets/templates/specs/template-current-workspace/active-feature.md",
     "current/active-context.md": "assets/templates/specs/template-current-workspace/active-context.md",
-    "current/active-tasks.md": "assets/templates/specs/template-current-workspace/active-tasks.md",
+    "current/active-issues.md": "assets/templates/specs/template-current-workspace/active-issues.md",
     "current/blockers.md": "assets/templates/specs/template-current-workspace/blockers.md",
     "current/handoff.md": "assets/templates/specs/template-current-workspace/handoff.md"
   }

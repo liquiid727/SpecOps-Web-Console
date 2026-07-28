@@ -3,7 +3,7 @@
 ## Meta
 
 - Spec ID: `<SPEC-ID>`
-- Source Spec: `specs/<SPEC-ID>-<slug>/spec.md`
+- Source Spec: `.features/<SPEC-ID>-<slug>/spec.md`
 - Status: `in_progress`
 
 ## Delivered Files

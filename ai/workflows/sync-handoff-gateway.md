@@ -13,7 +13,7 @@ Keep SpecOS specs useful by making every semantic change declare which neighbori
 Require a `Sync Handoff` when a task changes meaning, behavior, ownership, routing, validation, or release evidence in any of these surfaces:
 
 - `docs/spec-modes/` or `current/`
-- `spec-draft/`, `design/`, `specs/roadmap.md`, or `specs/<SPEC-ID>-<slug>/`
+- `.prd/`, `design/`, `.features/roadmap.md`, or `.features/<SPEC-ID>-<slug>/`
 - `.agents/manifest.yaml`
 - `.agents/roles/`, `.agents/modes/`, `ai/agents/`, or `ai/agents/modes/`
 - `skills/developer/`
@@ -32,8 +32,8 @@ Use this matrix to decide what must be checked before handoff.
 | --- | --- | --- |
 | `docs/spec-modes/*` or `current/*` | agent loading order, active handoff notes, release gates, template defaults | `pola` or `spec-editor` |
 | `design/*` | roadmap, feature specs, UI design notes, rules, review gates | `spec-editor` |
-| `specs/roadmap.md` | dependent feature specs, release gates, implementation ordering, tests | `spec-editor` |
-| `specs/*/spec.md` | implementation notes, tests, reviews, API contracts, release gates | `spec-editor` |
+| `.features/roadmap.md` | dependent feature specs, release gates, implementation ordering, tests | `spec-editor` |
+| `.features/*/spec.md` | implementation notes, tests, reviews, API contracts, release gates | `spec-editor` |
 | `.agents/manifest.yaml` | `.agents/roles/*`, `.agents/modes/*`, `ai/agents/*`, `ai/agents/modes/*`, `.agents/README.md`, route preview expectations, scoped skills | `pola` with affected role owner |
 | `.agents/roles/*` or `.agents/modes/*` | matching `ai/agents/*` or `ai/agents/modes/*`, manifest metadata, context includes, role outputs | affected role owner |
 | `ai/agents/*` or `ai/agents/modes/*` | matching `.agents/roles/*` or `.agents/modes/*`, manifest outputs, workflow docs | affected role owner |

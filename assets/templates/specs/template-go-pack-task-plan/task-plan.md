@@ -2,12 +2,12 @@
 
 ```markdown
 ## Task Plan
-total_tasks: <N>
+total_issues: <N>
 risk_summary: P0:<n> P1:<n> P2:<n>
 parallel_groups:
   group_1: [T001, T002]
   group_2: [T003]
-tasks:
+issues:
   - task_id: <T001>
     context: <bounded context>
     layer: governance | docs | domain | application | interfaces | infrastructure

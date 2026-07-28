@@ -7,7 +7,7 @@ Use it to keep only the context agents and engineers need right now:
 - project status
 - active feature
 - active context
-- active tasks
+- active issues
 - blockers
 - handoff notes
 
@@ -18,7 +18,7 @@ current/
   project-status.md
   active-feature.md
   active-context.md
-  active-tasks.md
+  active-issues.md
   blockers.md
   handoff.md
 ```

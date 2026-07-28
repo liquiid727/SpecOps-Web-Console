@@ -19,8 +19,8 @@ updated_assets:
   - cli-gui/README.md
   - cli-gui/client/main.test.tsx
 waived_assets:
-  - specs/roadmap.md: no roadmap scope or milestone changed; this is a UI implementation alignment for the existing cli-gui surface.
-  - specs/: no accepted feature spec exists for this branch-local GUI iteration, and the durable design doc now owns the layout decision.
+  - `.features/roadmap.md`: no roadmap scope or milestone changed; this is a UI implementation alignment for the existing cli-gui surface.
+  - `.features/`: no accepted feature spec exists for this branch-local GUI iteration, and the durable design doc now owns the layout decision.
   - rules/: no governance rule changed; existing UI and CI rules were followed.
 open_sync_risks:
   - none

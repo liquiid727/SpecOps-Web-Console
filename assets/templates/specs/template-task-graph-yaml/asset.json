@@ -34,7 +34,7 @@
   "conflictsWith": [],
   "sourcePath": "assets/templates/specs/template-task-graph-yaml/task-graph.template.yaml",
   "files": [
-    "tasks/task-graph.yaml"
+    ".issues/task-graph.yaml"
   ],
   "version": "1.0.0",
   "draftHints": [
@@ -44,6 +44,6 @@
   ],
   "sampleOutput": "一份包含 taskGraph.nodes、sourceSpecRefs、context、dependencies、outputs、verificationRefs 的 Task Graph IR YAML。",
   "contentFiles": {
-    "tasks/task-graph.yaml": "assets/templates/specs/template-task-graph-yaml/task-graph.template.yaml"
+    ".issues/task-graph.yaml": "assets/templates/specs/template-task-graph-yaml/task-graph.template.yaml"
   }
 }

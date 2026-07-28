@@ -8,8 +8,9 @@ const nextConfig: NextConfig = {
     "/*": [
       "./workspace/**/*",
       "../rules/**/*",
-      "../spec-draft/**/*",
-      "../specs/**/*",
+      "../.prd/**/*",
+      "../.features/**/*",
+      "../.issues/**/*",
       "../ai/**/*",
       "../assets/**/*",
       "../packages/catalog/config/**/*",

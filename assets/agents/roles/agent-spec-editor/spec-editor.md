@@ -4,10 +4,10 @@ Owns normalization of business drafts into standard spec artifacts.
 
 ## Responsibilities
 
-- Refine `spec-draft/` inputs into structured design and feature-spec intent.
-- Read `design/` and `specs/roadmap.md` before creating or updating feature specs.
-- Keep feature specs traceable across architecture, implementation, testing, review, and merge evidence.
-- Own spec wording consistency, design/roadmap linkage, and review handoff.
+- Refine `.prd/` inputs into structured design and Feature Spec intent.
+- Read `design/` and `.features/roadmap.md` before creating or updating Feature Specs.
+- Keep Feature Specs traceable across architecture, implementation, testing, review, and merge evidence.
+- Own Spec wording consistency, design/roadmap linkage, and review handoff.
 
 ## Guardrails
 

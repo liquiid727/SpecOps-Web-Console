@@ -39,18 +39,21 @@ project/
 │   ├── decisions.md
 │   └── handoff.md
 │
-├── specs/
+├── .prd/
+│   ├── prd-<slug>.md
+│   └── _template/
+│
+├── .features/
 │   ├── roadmap.md
 │   ├── release-plan.md
-│   ├── _draft/
-│   ├── RP-001-event-ingestion/
-│   │   ├── spec.md
-│   │   ├── task-plan.md
-│   │   ├── model.md
-│   │   ├── api.md
-│   │   ├── migration.md
-│   │   └── changelog.md
-│   └── ...
+│   └── RP-001-event-ingestion/
+│       ├── spec.md
+│       ├── test-spec.md
+│       ├── task-plan.md
+│       ├── model.md
+│       ├── api.md
+│       ├── migration.md
+│       └── changelog.md
 │
 ├── implementation/
 │   ├── RP-001/
@@ -109,7 +112,7 @@ Agents should not load the entire repository at once.
 Load:
 
 - `design/`
-- `specs/`
+- `.features/`
 - `reviews/architecture/`
 
 ### Implementation Agent
@@ -117,7 +120,7 @@ Load:
 Load:
 
 - `current/`
-- `specs/`
+- `.features/`
 - `implementation/`
 - `backend.skill.md`
 
@@ -125,7 +128,7 @@ Load:
 
 Load:
 
-- `specs/`
+- `.features/`
 - `tests/`
 - `reviews/`
 - `testing.skill.md`

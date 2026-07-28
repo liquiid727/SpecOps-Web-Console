@@ -16,12 +16,12 @@ README.md
 current/
 design/
 docs/workflow.md
-specs/
+.features/
   roadmap.md
   issues/
     README.md
   RP-001-example/
 tests/
-  specs/
+  .features/
 .agents/
 ```

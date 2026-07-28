@@ -1,6 +1,6 @@
 # Test Plan Schema
 
-Normalized `test-plan` artifacts should be generated from feature specs before selecting execution tools.
+Normalized `test-plan` artifacts should be generated from approved Feature-local Test Specs before selecting execution tools.
 
 Required fields:
 
@@ -9,6 +9,9 @@ Required fields:
 - `riskTier`
 - `specId`
 - `specVersion`
+- `testSpecPath`
+- `testSpecVersion`
+- `testSpecStatus` (`approved` for release-eligible plans)
 - `featureName`
 - `source`
 - `flows[]`

@@ -11,14 +11,14 @@ GoalSpec runs a versioned dual-track workflow as the project's standard delivery
 
 | Step | Command | Output |
 | --- | --- | --- |
-| Plan | `/prd` | PRD in `spec-draft/` |
-| Specify | `/prd-to-spec` | One or more modular, approved Feature Specs in `specs/` |
+| Plan | `/prd` | PRD in `.prd/` |
+| Specify | `/prd-to-spec` | One or more modular, approved Feature Specs in `.features/` |
 | Split implementation | `/to-issues` | Implementation Issues linked to the exact Feature Spec version |
-| Specify verification | `/spec-to-test` | Independent Test Spec in `tests/specs/`, bound to the approved Feature Spec version |
+| Specify verification | `/spec-to-test` | Independent Test Spec in `.features/`, bound to the approved Feature Spec version |
 | Split verification | `/to-issues` | Verification Issues linked to the exact Test Spec version |
 | Execute | host agent or `/loop-it` | Implementation and verification evidence |
-| Review | `/review-it` | `specs/RP-xxx/review.md` |
-| Ship | `/ship-it` | Commit, PR, merge, `specs/RP-xxx/changelog.md`, issue closed |
+| Review | `/review-it` | `.features/RP-xxx/review.md` |
+| Ship | `/ship-it` | Commit, PR, merge, `.features/RP-xxx/changelog.md`, issue closed |
 
 Even a small feature keeps one approved Feature Spec. A Test Spec may be lightweight, but it must identify the source Feature Spec version whenever independent verification is required.
 

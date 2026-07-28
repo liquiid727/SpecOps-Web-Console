@@ -10,8 +10,8 @@ export interface BundleProject {
   projectType: "backend" | "frontend" | "mixed";
   architecture: string;
   stacks: string[];
-  draftTemplateId: string;
-  draftPath: string;
+  prdTemplateId: string;
+  prdPath: string;
   exportTargets: string[];
 }
 
@@ -44,9 +44,10 @@ export interface SpecosBundleManifest {
     available: string[];
   };
   entrypoints: {
-    draftTemplate: string;
+    prdTemplate: string;
     designTemplate: string;
-    specTemplate: string;
+    featureTemplate: string;
+    issueTemplate: string;
     workflowId: string;
   };
   capabilities: {
