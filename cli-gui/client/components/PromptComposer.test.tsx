@@ -38,17 +38,16 @@ describe("PromptComposer", () => {
     expect(byLabel(container, "Send prompt")).toBeTruthy();
   });
 
-  // —— console-gaps issue #3：四态下拉选择，状态受控于 App 层 ——
-  it("opens the four-mode dropdown and reports the selection upward", () => {
+  it("exposes only the executable Default and Plan modes", () => {
     const onWorkModeChange = vi.fn();
-    act(() => root.render(<I18nProvider><FeedbackProvider><PromptComposer disabled={false} onSend={async () => undefined} workMode="spec" onWorkModeChange={onWorkModeChange} /></FeedbackProvider></I18nProvider>));
+    act(() => root.render(<I18nProvider><FeedbackProvider><PromptComposer disabled={false} onSend={async () => undefined} workMode="default" onWorkModeChange={onWorkModeChange} /></FeedbackProvider></I18nProvider>));
     const trigger = container.querySelector(".work-mode-trigger") as HTMLButtonElement;
-    expect(trigger.textContent).toBe("Spec");
+    expect(trigger.textContent).toBe("Default");
     act(() => trigger.click());
     const options = Array.from(container.querySelectorAll('[role="menuitemradio"]'));
-    expect(options.map((option) => option.textContent)).toEqual(["Default", "Spec", "Goal", "Plan"]);
-    expect(options[1].getAttribute("aria-checked")).toBe("true");
-    act(() => (options[3] as HTMLButtonElement).click());
+    expect(options.map((option) => option.textContent)).toEqual(["Default", "Plan"]);
+    expect(options[0].getAttribute("aria-checked")).toBe("true");
+    act(() => (options[1] as HTMLButtonElement).click());
     expect(onWorkModeChange).toHaveBeenCalledWith("plan");
     expect(container.querySelector(".work-mode-menu")).toBeNull();
   });
@@ -62,22 +61,14 @@ describe("PromptComposer", () => {
     expect(onSend).toHaveBeenCalledWith("ship the login form", expect.any(String));
   });
 
-  it("opens the @ context menu and inserts a context token", () => {
+  it("hides unresolved context controls instead of sending fake tokens", () => {
     act(() => root.render(<I18nProvider><FeedbackProvider><PromptComposer disabled={false} onSend={async () => undefined} /></FeedbackProvider></I18nProvider>));
-    act(() => byLabel(container, "Context").click());
-    const fileItem = Array.from(container.querySelectorAll('[role="option"]')).find((item) => item.textContent === "File") as HTMLButtonElement;
-    expect(fileItem).toBeTruthy();
-    act(() => fileItem.click());
-    expect((container.querySelector("textarea") as HTMLTextAreaElement).value).toContain("@file");
+    expect(byLabel(container, "Context")).toBeUndefined();
   });
 
-  it("opens the / command palette and inserts a command token", () => {
+  it("hides command tokens until they have backend semantics", () => {
     act(() => root.render(<I18nProvider><FeedbackProvider><PromptComposer disabled={false} onSend={async () => undefined} /></FeedbackProvider></I18nProvider>));
-    act(() => byLabel(container, "Commands").click());
-    const testItem = Array.from(container.querySelectorAll('[role="option"]')).find((item) => item.textContent?.includes("Test")) as HTMLButtonElement;
-    expect(testItem).toBeTruthy();
-    act(() => testItem.click());
-    expect((container.querySelector("textarea") as HTMLTextAreaElement).value).toContain("/test");
+    expect(byLabel(container, "Commands")).toBeUndefined();
   });
 
   it("sends the prompt and clears the box", async () => {
@@ -134,12 +125,13 @@ describe("PromptComposer", () => {
     expect(container.querySelector(".composer-controls")).toBeNull();
     expect(container.querySelector(".composer-toolbar")).not.toBeNull();
     expect(byLabel(container, "Permission")).toBeUndefined();
-    expect(container.querySelector(".composer-pill")?.textContent).toContain("Agent");
+    expect(container.querySelector(".composer-pill")).toBeNull();
+    expect(byLabel(container, "Attach")).toBeUndefined();
     expect(byLabel(container, "Send prompt")).toBeTruthy();
     const chip = container.querySelector(".composer-chip") as HTMLButtonElement;
     expect(chip.textContent).toBe("Default");
     act(() => chip.click());
-    expect(container.querySelectorAll('[role="menuitemradio"]').length).toBe(4);
+    expect(container.querySelectorAll('[role="menuitemradio"]').length).toBe(2);
   });
 
   // —— console-gaps issue #5（project-quest SPEC §5.7）：润色/压缩与一步撤销 ——

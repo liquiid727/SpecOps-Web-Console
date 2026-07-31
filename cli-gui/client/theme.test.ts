@@ -7,6 +7,7 @@ describe("theme preferences", () => {
     expect(normalizeTheme("sepia")).toBe("qoder-light");
     expect(readTheme({ getItem: () => null })).toBe("qoder-light");
     expect(readTheme({ getItem: () => "classic" })).toBe("classic");
+    expect(readTheme({ getItem: () => "zcode" })).toBe("zcode");
   });
 
   it("survives storage failures", () => {

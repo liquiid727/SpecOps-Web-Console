@@ -172,3 +172,38 @@ chat 会话。三栏壳、组织管理、拖拽排序、Quest Home 骨架均已�
 | §5 三栏布局 / Quest Home | §2、§6、§7 |
 | §5 通用要求（i18n/可达性/四态/readonly） | §3.3、§7 |
 | §4.2.4 降级解释 | §6 |
+
+## 11. 前端技术栈与状态管理（规范性约束）
+
+### 11.1 技术栈基线（TS + React + Vite + Zustand + Tailwind + 自定义组件）
+
+| 层 | 选型 | 约束 |
+|---|---|---|
+| 语言/构建 | TypeScript strict + Vite | 类型与服务端共享 `shared/`，客户端不重复定义协议类型 |
+| UI 框架 | React 19（无路由库） | 视图切换由 `usePreferencesStore.currentView` 驱动，不引入 react-router |
+| 状态管理 | **Zustand**（`client/app/store.ts`） | 全局状态唯一方案；禁止再引入 redux/jotai/mobx 等第二套状态库 |
+| 样式 | Tailwind + 语义 token（`styles/tokens.css` + 主题 CSS） | 视觉契约在 `DESIGN.md`，token 不得在组件内硬编码；`npm run ui:check` 门禁 |
+| 组件体系 | 自定义组件库 `components/ui`（基础）/ `patterns`（模式）/ `cards`（结构化卡片） | 不引入第三方 UI 组件库；新组件先查 `ui/index.ts` 与 `patterns/index.ts` 复用 |
+| 领域能力 | @xterm/xterm、react-markdown+remark-gfm、@dnd-kit | 用途单一，不得泛化为通用 UI 依赖 |
+
+### 11.2 状态分层（三切片，`client/app/store.ts`）
+
+| Store | 内容 | 持久化 |
+|---|---|---|
+| `useAppStore` | 服务端状态镜像（workspaces/profiles/sessions/readonly）、会话焦点、轮次活动、loading/loadError | 不持久化；服务端是唯一事实源，`refresh()` 全量替换 + 请求序号防竞态 |
+| `usePreferencesStore` | `UiPreferencesV1`（视图、栏位开合、分组/过滤、工作模式、CLI 模式、模型偏好） | localStorage，版本化 parse/校验在 `preferences.ts`，非法值回退默认 |
+| `useUiStore` | 瞬态 UI（overlay、pendingDelete、pickerBusy、新建会话默认模式） | 不持久化，刷新即重置 |
+
+分层纪律（review 必查）：
+
+- **store 无副作用呈现**：store 内不弹 toast、不调 i18n、不操作 DOM；action 失败返回 cause，由组件层（feedback/t）决定呈现。
+- **实时流不进全局 store**：transcript/terminal 的 WS 订阅仍由 `ChatView`/`TerminalView` 组件内部消费（高频帧进全局 store 会放大重渲染）；仅轮次活动汇总（`reportTurnActivity`）回写 `useAppStore`。
+- **横切关注保持 Context**：i18n / 主题 / Feedback 是渲染依赖注入，不归入状态切片；不得把业务数据新增进 Context。
+- **新增全局状态必须归入三切片之一**；组件内 `useState` 仅限本组件私有的表单/交互态。
+- **领域组件取数两条路径**：经状态根（`App.tsx`）props 下发，或直接订阅 store 切片 selector；禁止将 store 状态复制进组件本地 `useState` 镜像。
+- **测试隔离**：store 是模块级单例，用例前必须经 `resetClientStores()` 重置（`client/test/setup.ts` 已接入）。
+
+### 11.3 演进方向（非 MVP01 验收项）
+
+- 去轮询化：`session-updated` WS 帧直接写 `useAppStore`，2s 轮询降级为兜底。
+- props 下钻收敛：`Sidebar`/`MainArea` 的会话操作回调逐步改为组件内订阅 store action，保持小步可评审。

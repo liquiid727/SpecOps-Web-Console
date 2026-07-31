@@ -1,10 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiClientError, api } from "./api";
+import { ApiClientError, api, openTranscriptSubscription } from "./api";
 
 const originalFetch = globalThis.fetch;
+const originalWebSocket = globalThis.WebSocket;
 
 afterEach(() => {
   globalThis.fetch = originalFetch;
+  globalThis.WebSocket = originalWebSocket;
+  delete window.__SPECOS_DESKTOP_RUNTIME__;
   vi.restoreAllMocks();
 });
 
@@ -86,5 +89,39 @@ describe("API compatibility client", () => {
     await expect(api.pickWorkspace()).resolves.toMatchObject({ cancelled: true });
     expect(fetch).toHaveBeenNthCalledWith(1, "/api/state", expect.objectContaining({ headers: expect.any(Headers) }));
     expect(fetch).toHaveBeenNthCalledWith(2, "/api/workspaces/pick", expect.objectContaining({ method: "POST", body: JSON.stringify({ intentToken: "fresh-intent" }) }));
+  });
+
+  it("routes packaged desktop requests to the loopback sidecar with the launch bearer", async () => {
+    const credential = "a".repeat(64);
+    window.__SPECOS_DESKTOP_RUNTIME__ = { baseUrl: "http://127.0.0.1:43123", credential };
+    const fetch = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify({ sessions: [], profiles: [], workspaces: [] }), { status: 200, headers: { "content-type": "application/json" } }));
+    globalThis.fetch = fetch as typeof globalThis.fetch;
+
+    await api.state();
+
+    expect(fetch).toHaveBeenCalledWith("http://127.0.0.1:43123/api/state", expect.objectContaining({
+      headers: expect.objectContaining({})
+    }));
+    const headers = fetch.mock.calls[0]?.[1]?.headers as Headers;
+    expect(headers.get("authorization")).toBe(`Bearer ${credential}`);
+  });
+
+  it("keeps the desktop WebSocket bearer out of the URL", () => {
+    const credential = "c".repeat(64);
+    window.__SPECOS_DESKTOP_RUNTIME__ = { baseUrl: "http://127.0.0.1:43123", credential };
+    const addEventListener = vi.fn();
+    const close = vi.fn();
+    const WebSocketMock = vi.fn(function (_url: string | URL, _protocols?: string | string[]) { return { addEventListener, close }; });
+    globalThis.WebSocket = WebSocketMock as unknown as typeof WebSocket;
+
+    const unsubscribe = openTranscriptSubscription("session-1", 0, {});
+
+    expect(WebSocketMock).toHaveBeenCalledWith(
+      "ws://127.0.0.1:43123/ws?sessionId=session-1&channel=events&afterSequence=0",
+      [`specos-bearer.${credential}`]
+    );
+    expect(String(WebSocketMock.mock.calls[0]?.[0])).not.toContain(credential);
+    unsubscribe();
+    expect(close).toHaveBeenCalledWith(1000, "client closed");
   });
 });

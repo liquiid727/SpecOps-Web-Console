@@ -66,10 +66,24 @@ describe("Sidebar", () => {
     // 会话列表不展示启动/停止类运行状态描述（仅轮次进行中提示）
     expect(container.textContent).not.toContain("Running");
     expect(container.textContent).not.toContain("Stopped");
-    // chat 封闭期：无存量 chat 会话时 Chats 分区展示「暂未开放」空态（console-gaps SPEC §1）
-    expect(container.textContent).toContain("Chat is temporarily unavailable");
+    // Chat 开启（CHAT_ENABLED=true）：Chats 分区恢复可用，不再展示「即将上线」占位
+    expect(container.textContent).not.toContain("Coming soon");
+    expect(container.textContent).not.toContain("Chat is a future capability");
+    expect(container.querySelector(".chats-disabled")).toBeNull();
     // 语言切换收入设置 Appearance，左栏不再挂载（console-gaps SPEC §6）
     expect(container.querySelector(".language-toggle")).toBeNull();
+  });
+
+  it("shows the dashed new-quest draft placeholder while drafting", () => {
+    act(() => root.render(<I18nProvider><Sidebar {...baseProps({ questDraftActive: true })} /></I18nProvider>));
+    const draftRow = container.querySelector(".quest-draft-row");
+    expect(draftRow).not.toBeNull();
+    expect(draftRow?.textContent).toContain("New task");
+    expect(draftRow?.textContent).toContain("Quest");
+    expect(draftRow?.querySelector(".quest-draft-dot")).not.toBeNull();
+    // 未进入草稿态时不渲染占位行
+    act(() => root.render(<I18nProvider><Sidebar {...baseProps()} /></I18nProvider>));
+    expect(container.querySelector(".quest-draft-row")).toBeNull();
   });
 
   it("selects a quest and switches views from the bottom links", () => {

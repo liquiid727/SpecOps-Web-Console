@@ -255,7 +255,7 @@ describe("application composition", () => {
     const sent = await post(address.port, "/api/sessions/session-1/messages", { clientMessageId: "client-1", content: "hello", startIfStopped: true, confirmedStart: true });
     expect(sent.status).toBe(202);
     expect(sent.json).toMatchObject({ duplicate: false, event: { kind: "user_message", raw: "hello", clientMessageId: "client-1" }, runtimeStatus: "running" });
-    expect(process.write).toHaveBeenCalledWith("hello\r");
+    expect(process.write).toHaveBeenCalledWith("\x1b[200~hello\x1b[201~\r");
 
     const duplicate = await post(address.port, "/api/sessions/session-1/messages", { clientMessageId: "client-1", content: "hello", startIfStopped: true, confirmedStart: true });
     expect(duplicate.json).toMatchObject({ duplicate: true, event: { clientMessageId: "client-1" } });

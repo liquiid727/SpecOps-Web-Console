@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import type { CliProfile, FilePreview, FileTreePage, GitDiffResponse, GitStatusResponse, LanguageSummaryResponse, Session, Workspace } from "../../shared/types";
-import { api } from "../api";
 import { toFeedbackError } from "../feedback-errors";
 import { useI18n } from "../i18n";
 import { Icon } from "./ui/Icon";
@@ -8,6 +7,7 @@ import { useFeedback } from "./ui/Feedback";
 import { Select } from "./ui/Select";
 import { StatusBadge } from "./StatusBadge";
 import { Button, IconButton, TextField } from "./ui";
+import { useClientRuntime } from "../runtime/client-runtime";
 
 export function DetailsTab({ profile, session, workspace }: { profile?: CliProfile; session: Session; workspace?: Workspace }) {
   const { language, t } = useI18n();
@@ -29,6 +29,7 @@ export function DetailsTab({ profile, session, workspace }: { profile?: CliProfi
 export function FilesTab({ workspace, onSelect }: { workspace?: Workspace; onSelect: (path: string) => void }) {
   const { t } = useI18n();
   const feedback = useFeedback();
+  const runtime = useClientRuntime();
   const [data, setData] = useState<FileTreePage>();
   const [error, setError] = useState<string>();
   const [directory, setDirectory] = useState("");
@@ -38,18 +39,19 @@ export function FilesTab({ workspace, onSelect }: { workspace?: Workspace; onSel
     const controller = new AbortController();
     setData(undefined);
     setError(undefined);
-    void api.workspaceFiles(workspace.id, directory, undefined, controller.signal).then(setData).catch((cause) => { if (cause?.name !== "AbortError") { setError(t("inspectionFailed")); feedback.error(toFeedbackError(cause, t, "inspectionFailed", `files:${workspace.id}:${directory}`)); } });
+    void runtime.workspace.workspaceFiles(workspace.id, directory, undefined, controller.signal).then(setData).catch((cause) => { if (cause?.name !== "AbortError") { setError(t("inspectionFailed")); feedback.error(toFeedbackError(cause, t, "inspectionFailed", `files:${workspace.id}:${directory}`)); } });
     return () => controller.abort();
-  }, [directory, feedback, reload, workspace, t]);
+  }, [directory, feedback, reload, runtime.workspace, workspace, t]);
   if (!workspace) return <InspectorState text={t("unknownWorkspace")} />;
   if (error) return <InspectorState text={error} error onRetry={() => setReload((value) => value + 1)} />;
   if (!data) return <InspectorState text={t("loading")} />;
-  return <div className="inspector-list"><div className="inspector-tab-toolbar">{directory ? <Button variant="secondary" className="secondary-button" onClick={() => setDirectory(directory.split("/").slice(0, -1).join("/"))}>{t("parentDirectory")}</Button> : <span className="eyebrow">{t("tab_files")}</span>}<IconButton icon="refresh" onClick={() => setReload((value) => value + 1)} label={t("refresh")} title={t("refresh")} /></div>{data.entries.map((entry) => <Button variant="ghost" className="inspector-list-row file-entry-button" key={entry.path} onClick={() => entry.type === "directory" ? setDirectory(entry.path) : onSelect(entry.path)}><Icon name={entry.type === "directory" ? "folder" : "terminal"} /><span>{entry.path}</span></Button>)}{data.nextCursor && <Button variant="secondary" className="secondary-button" onClick={() => void api.workspaceFiles(workspace.id, directory, data.nextCursor).then((page) => setData({ ...page, entries: [...data.entries, ...page.entries] }))}>{t("loadMore")}</Button>}</div>;
+  return <div className="inspector-list"><div className="inspector-tab-toolbar">{directory ? <Button variant="secondary" className="secondary-button" onClick={() => setDirectory(directory.split("/").slice(0, -1).join("/"))}>{t("parentDirectory")}</Button> : <span className="eyebrow">{t("tab_files")}</span>}<IconButton icon="refresh" onClick={() => setReload((value) => value + 1)} label={t("refresh")} title={t("refresh")} /></div>{data.entries.map((entry) => <Button variant="ghost" className="inspector-list-row file-entry-button" key={entry.path} onClick={() => entry.type === "directory" ? setDirectory(entry.path) : onSelect(entry.path)}><Icon name={entry.type === "directory" ? "folder" : "terminal"} /><span>{entry.path}</span></Button>)}{data.nextCursor && <Button variant="secondary" className="secondary-button" onClick={() => void runtime.workspace.workspaceFiles(workspace.id, directory, data.nextCursor).then((page) => setData({ ...page, entries: [...data.entries, ...page.entries] }))}>{t("loadMore")}</Button>}</div>;
 }
 
 export function PreviewTab({ workspace, initialPath }: { workspace?: Workspace; initialPath: string }) {
   const { t } = useI18n();
   const feedback = useFeedback();
+  const runtime = useClientRuntime();
   const [path, setPath] = useState(initialPath);
   const [preview, setPreview] = useState<FilePreview>();
   const [error, setError] = useState<string>();
@@ -61,7 +63,7 @@ export function PreviewTab({ workspace, initialPath }: { workspace?: Workspace; 
     requestRef.current?.abort();
     const controller = new AbortController();
     requestRef.current = controller;
-    await api.filePreview(workspace.id, requestedPath.trim(), controller.signal).then(setPreview).catch((cause) => { if (cause?.name !== "AbortError") { setError(t("inspectionFailed")); feedback.error(toFeedbackError(cause, t, "inspectionFailed", `preview:${workspace.id}:${requestedPath}`)); } });
+    await runtime.workspace.filePreview(workspace.id, requestedPath.trim(), controller.signal).then(setPreview).catch((cause) => { if (cause?.name !== "AbortError") { setError(t("inspectionFailed")); feedback.error(toFeedbackError(cause, t, "inspectionFailed", `preview:${workspace.id}:${requestedPath}`)); } });
   }
   useEffect(() => {
     setPath(initialPath);
@@ -78,6 +80,7 @@ export function PreviewTab({ workspace, initialPath }: { workspace?: Workspace; 
 export function LanguagesTab({ workspace }: { workspace?: Workspace }) {
   const { t } = useI18n();
   const feedback = useFeedback();
+  const runtime = useClientRuntime();
   const [data, setData] = useState<LanguageSummaryResponse>();
   const [error, setError] = useState<string>();
   const [reload, setReload] = useState(0);
@@ -86,9 +89,9 @@ export function LanguagesTab({ workspace }: { workspace?: Workspace }) {
     const controller = new AbortController();
     setData(undefined);
     setError(undefined);
-    void api.languageSummary(workspace.id, controller.signal).then(setData).catch((cause) => { if (cause?.name !== "AbortError") { setError(t("inspectionFailed")); feedback.error(toFeedbackError(cause, t, "inspectionFailed", `languages:${workspace.id}`)); } });
+    void runtime.workspace.languageSummary(workspace.id, controller.signal).then(setData).catch((cause) => { if (cause?.name !== "AbortError") { setError(t("inspectionFailed")); feedback.error(toFeedbackError(cause, t, "inspectionFailed", `languages:${workspace.id}`)); } });
     return () => controller.abort();
-  }, [feedback, reload, workspace, t]);
+  }, [feedback, reload, runtime.workspace, workspace, t]);
   if (error) return <InspectorState text={error} error onRetry={() => setReload((value) => value + 1)} />;
   if (!data) return <InspectorState text={t("loading")} />;
   return <div className="inspector-list"><div className="inspector-tab-toolbar"><span className="eyebrow">{t("tab_languages")}</span><IconButton icon="refresh" onClick={() => setReload((value) => value + 1)} label={t("refresh")} title={t("refresh")} /></div>{data.partial && <div className="inspector-notice">{t("inspectionTruncated")}</div>}{data.entries.map((entry) => <div className="detail-row" key={entry.language}><span>{entry.language}</span><strong>{entry.files} / {Math.round(entry.share * 100)}%</strong></div>)}</div>;
@@ -97,6 +100,7 @@ export function LanguagesTab({ workspace }: { workspace?: Workspace }) {
 export function DiffTab({ workspace }: { workspace?: Workspace }) {
   const { t } = useI18n();
   const feedback = useFeedback();
+  const runtime = useClientRuntime();
   const [scope, setScope] = useState<"unstaged" | "staged">("unstaged");
   const [data, setData] = useState<GitDiffResponse>();
   const [error, setError] = useState<string>();
@@ -106,9 +110,9 @@ export function DiffTab({ workspace }: { workspace?: Workspace }) {
     const controller = new AbortController();
     setData(undefined);
     setError(undefined);
-    void api.gitDiff(workspace.id, scope, controller.signal).then(setData).catch((cause) => { if (cause?.name !== "AbortError") { setError(t("inspectionFailed")); feedback.error(toFeedbackError(cause, t, "inspectionFailed", `diff:${workspace.id}:${scope}`)); } });
+    void runtime.workspace.gitDiff(workspace.id, scope, controller.signal).then(setData).catch((cause) => { if (cause?.name !== "AbortError") { setError(t("inspectionFailed")); feedback.error(toFeedbackError(cause, t, "inspectionFailed", `diff:${workspace.id}:${scope}`)); } });
     return () => controller.abort();
-  }, [feedback, workspace, scope, reload, t]);
+  }, [feedback, runtime.workspace, workspace, scope, reload, t]);
   if (!workspace) return <InspectorState text={t("unknownWorkspace")} />;
   return <div className="diff-tab">
     <div className="inspector-tab-toolbar"><Select ariaLabel={t("diffScope")} value={scope} options={[{ value: "unstaged", label: t("unstaged") }, { value: "staged", label: t("staged") }]} onChange={(value) => setScope(value as "unstaged" | "staged")} /><IconButton icon="refresh" onClick={() => setReload((value) => value + 1)} label={t("refresh")} title={t("refresh")} /></div>
@@ -129,6 +133,7 @@ export function DiffTab({ workspace }: { workspace?: Workspace }) {
 export function GitTab({ workspace }: { workspace?: Workspace }) {
   const { t } = useI18n();
   const feedback = useFeedback();
+  const runtime = useClientRuntime();
   const [data, setData] = useState<GitStatusResponse>();
   const [error, setError] = useState<string>();
   const [reload, setReload] = useState(0);
@@ -137,9 +142,9 @@ export function GitTab({ workspace }: { workspace?: Workspace }) {
     const controller = new AbortController();
     setData(undefined);
     setError(undefined);
-    void api.gitStatus(workspace.id, controller.signal).then(setData).catch((cause) => { if (cause?.name !== "AbortError") { setError(t("inspectionFailed")); feedback.error(toFeedbackError(cause, t, "inspectionFailed", `git:${workspace.id}`)); } });
+    void runtime.workspace.gitStatus(workspace.id, controller.signal).then(setData).catch((cause) => { if (cause?.name !== "AbortError") { setError(t("inspectionFailed")); feedback.error(toFeedbackError(cause, t, "inspectionFailed", `git:${workspace.id}`)); } });
     return () => controller.abort();
-  }, [feedback, workspace, reload, t]);
+  }, [feedback, runtime.workspace, workspace, reload, t]);
   if (!workspace) return <InspectorState text={t("unknownWorkspace")} />;
   if (error) return <InspectorState text={error} error onRetry={() => setReload((value) => value + 1)} />;
   if (!data) return <InspectorState text={t("loading")} />;

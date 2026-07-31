@@ -37,6 +37,7 @@ import {
   RefreshCw,
   Search,
   Send,
+  Server,
   Settings,
   Shrink,
   ShieldCheck,
@@ -60,7 +61,7 @@ export type IconName =
   | "close" | "command" | "compress" | "file" | "file-code" | "filter" | "folder" | "git" | "globe"
   | "grid" | "help" | "home" | "infinity" | "info" | "languages" | "list" | "menu" | "message" | "mic"
   | "more" | "panel" | "panel-left" | "panel-left-close" | "panel-right" | "panel-right-close"
-  | "play" | "refresh" | "search" | "send" | "settings" | "shield" | "shopping" | "sparkles"
+  | "play" | "refresh" | "search" | "send" | "server" | "settings" | "shield" | "shopping" | "sparkles"
   | "star" | "stop" | "target" | "terminal" | "trash" | "user" | "wand" | "warning" | "zap";
 
 const icons: Record<IconName, LucideIcon> = {
@@ -103,6 +104,7 @@ const icons: Record<IconName, LucideIcon> = {
   refresh: RefreshCw,
   search: Search,
   send: Send,
+  server: Server,
   settings: Settings,
   shield: ShieldCheck,
   shopping: ShoppingBag,

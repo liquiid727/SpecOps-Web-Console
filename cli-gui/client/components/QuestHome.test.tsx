@@ -6,6 +6,18 @@ import { I18nProvider } from "../i18n";
 import { FeedbackProvider } from "./ui/Feedback";
 import { QuestHome } from "./QuestHome";
 
+vi.mock("../runtime/client-runtime", () => {
+  // 稳定单例：真实 ClientRuntime context 值不变；若每次渲染返回新对象会让 capabilities effect 死循环
+  const runtime = {
+    engines: {
+      engineReadiness: () => new Promise(() => undefined),
+      // CLI/模型联动（QA 调节）：模型列表来自所选 CLI 的 capabilities
+      profileCapabilities: () => Promise.resolve({ adapterId: "codex", compatibility: "supported", permissions: [], modes: [], models: [{ id: "gpt-5-codex" }], supportsComposer: true, supportsStructuredRecognition: true, supportsHeadlessTurns: true })
+    }
+  };
+  return { useClientRuntime: () => runtime };
+});
+
 const workspaces: Workspace[] = [
   { id: "workspace-1", name: "Payment Platform", path: "/projects/payment", createdAt: "2026-01-01T00:00:00Z" }
 ];
@@ -13,13 +25,15 @@ const profiles: CliProfile[] = [
   { id: "profile-1", name: "Codex CLI", command: "codex", args: [], createdAt: "2026-01-01T00:00:00Z" }
 ];
 
-function Harness({ ws = workspaces, ps = profiles, onQuickCreate = async () => undefined, onOpenSettings = () => undefined }: {
+function Harness({ ws = workspaces, ps = profiles, onQuickCreate = async () => undefined, onOpenSettings = () => undefined, onAdvancedCreate, draftMode }: {
   ws?: Workspace[];
   ps?: CliProfile[];
   onQuickCreate?: (input: { content: string; workspaceId: string; profileId: string }) => Promise<void>;
   onOpenSettings?: () => void;
+  onAdvancedCreate?: () => void;
+  draftMode?: boolean;
 }) {
-  return <QuestHome workspaces={ws} profiles={ps} onQuickCreate={onQuickCreate} onOpenSettings={onOpenSettings} />;
+  return <QuestHome workspaces={ws} profiles={ps} onQuickCreate={onQuickCreate} onOpenSettings={onOpenSettings} onAdvancedCreate={onAdvancedCreate} draftMode={draftMode} />;
 }
 
 function render(root: Root, element: ReactElement) {
@@ -57,26 +71,77 @@ describe("QuestHome", () => {
     container.remove();
   });
 
-  it("renders the title, start-in selectors, recommended tasks and security banner", () => {
+  it("renders the title, workspace chip, recommended tasks and the CLI selector above the composer", async () => {
     render(root, <Harness />);
+    await act(async () => undefined);
     expect(container.textContent).toContain("Quest on, hands off");
-    expect(container.querySelector(".start-in-row")).not.toBeNull();
-    // Start in 行提供工作区与 profile 下拉（frontend-spec §2、§6）
-    expect(container.querySelector<HTMLButtonElement>(".start-in-select .custom-select-trigger[aria-label='Project']")!.textContent).toContain("Payment Platform");
-    expect(container.querySelector<HTMLButtonElement>(".start-in-select .custom-select-trigger[aria-label='CLI profile']")!.textContent).toContain("Codex CLI");
+    expect(container.querySelector(".quest-context-bar")).not.toBeNull();
+    // context bar 仅保留 workspace chip；CLI 选择器移到 composer 上方与模型并排（QA 调节）
+    expect(container.querySelector<HTMLButtonElement>(".context-chip[aria-label='Project']")!.textContent).toContain("Payment Platform");
+    expect(container.querySelector(".context-chip[aria-label='CLI profile']")).toBeNull();
+    expect(container.querySelector(".composer-controls .cli-selector")!.textContent).toContain("Codex CLI");
     expect(container.querySelectorAll(".task-card")).toHaveLength(3);
-    expect(container.querySelector(".security-banner")).not.toBeNull();
-    expect(container.textContent).toContain("Security, from the first line of code");
+    // 单屏精简（QA 调节）：安全横幅与最近工作区列表不再渲染
+    expect(container.querySelector(".security-banner")).toBeNull();
+    expect(container.querySelector(".quest-home-workspaces")).toBeNull();
   });
 
-  it("orders the workspace selector by most recent use", () => {
+  it("loads the model options from the selected CLI capabilities", async () => {
+    render(root, <Harness />);
+    // capabilities 解析后模型选择器启用并包含联动模型项
+    await act(async () => undefined);
+    const modelTrigger = Array.from(container.querySelectorAll<HTMLButtonElement>(".composer-controls .capability-selector:not(.cli-selector) .custom-select-trigger"))[0]!;
+    expect(modelTrigger.disabled).toBe(false);
+    act(() => modelTrigger.click());
+    expect(container.textContent).toContain("gpt-5-codex");
+  });
+
+  it("keeps only the clean input surface in new-quest draft mode", () => {
+    render(root, <Harness draftMode />);
+    // 草稿态：保留标题、context bar 与 composer，隐藏引擎就绪/安全横幅/最近工作区
+    expect(container.querySelector(".quest-home.draft-mode")).not.toBeNull();
+    expect(container.querySelector(".quest-context-bar")).not.toBeNull();
+    expect(container.querySelector(".prompt-composer")).not.toBeNull();
+    expect(container.querySelector(".engine-readiness")).toBeNull();
+    expect(container.querySelector(".security-banner")).toBeNull();
+    expect(container.querySelector(".quest-home-workspaces")).toBeNull();
+  });
+
+  it("orders the workspace chip by most recent use", () => {
     const ws: Workspace[] = [
       { id: "workspace-old", name: "Old Project", path: "/projects/old", createdAt: "2026-01-01T00:00:00Z" },
       { id: "workspace-new", name: "Fresh Project", path: "/projects/fresh", createdAt: "2026-01-02T00:00:00Z", lastOpenedAt: "2026-03-01T00:00:00Z" }
     ];
     render(root, <Harness ws={ws} />);
     // 最近使用的工作区成为默认选中项（frontend-spec §6）
-    expect(container.querySelector<HTMLButtonElement>(".start-in-select .custom-select-trigger[aria-label='Project']")!.textContent).toContain("Fresh Project");
+    expect(container.querySelector<HTMLButtonElement>(".context-chip[aria-label='Project']")!.textContent).toContain("Fresh Project");
+  });
+
+  it("switches the workspace through the inline popover limited to the 3 most recent", () => {
+    const ws: Workspace[] = [
+      { id: "w1", name: "Alpha", path: "/p/a", createdAt: "2026-01-01T00:00:00Z", lastOpenedAt: "2026-04-01T00:00:00Z" },
+      { id: "w2", name: "Beta", path: "/p/b", createdAt: "2026-01-02T00:00:00Z", lastOpenedAt: "2026-03-01T00:00:00Z" },
+      { id: "w3", name: "Gamma", path: "/p/c", createdAt: "2026-01-03T00:00:00Z", lastOpenedAt: "2026-02-01T00:00:00Z" },
+      { id: "w4", name: "Delta", path: "/p/d", createdAt: "2026-01-04T00:00:00Z", lastOpenedAt: "2026-01-05T00:00:00Z" }
+    ];
+    render(root, <Harness ws={ws} />);
+    const chip = container.querySelector<HTMLButtonElement>(".context-chip[aria-label='Project']")!;
+    act(() => chip.click());
+    // popover 仅展示最近 3 个工作区（issue-054）
+    const items = container.querySelectorAll<HTMLButtonElement>(".context-popover-item");
+    expect(items).toHaveLength(3);
+    expect(Array.from(items).map((item) => item.textContent)).toEqual(["Alpha", "Beta", "Gamma"]);
+    act(() => items[1].click());
+    expect(container.querySelector(".context-popover")).toBeNull();
+    expect(container.querySelector<HTMLButtonElement>(".context-chip[aria-label='Project']")!.textContent).toContain("Beta");
+  });
+
+  it("opens the advanced creation dialog from the context bar link", () => {
+    const onAdvancedCreate = vi.fn();
+    render(root, <Harness onAdvancedCreate={onAdvancedCreate} />);
+    const link = container.querySelector<HTMLButtonElement>(".advanced-create-link")!;
+    act(() => link.click());
+    expect(onAdvancedCreate).toHaveBeenCalledOnce();
   });
 
   it("submits the composer content through the one-shot creation flow and clears on success", async () => {

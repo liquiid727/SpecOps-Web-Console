@@ -6,11 +6,11 @@
 
 ## Acceptance Criteria
 
-- [ ] 显示实时 CLI 输出。
-- [ ] 支持键盘输入、ANSI 颜色和 Ctrl+C。
-- [ ] 支持终端 resize。
-- [ ] 支持多个 Session Tab。
-- [ ] Verify in browser using dev-browser skill。
+- [x] 显示实时 CLI 输出。
+- [x] 支持键盘输入、ANSI 颜色和 Ctrl+C。
+- [x] 支持终端 resize。
+- [x] 支持多个 Session Tab。
+- [x] Verify in browser using dev-browser skill。
 
 ## Dependencies
 

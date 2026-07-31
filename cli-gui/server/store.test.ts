@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import type { AppStateEnvelopeV2, AppStateEnvelopeV3, AppStateV2, AppStateV3 } from "../shared/types.js";
+import type { AppStateEnvelopeV2, AppStateEnvelopeV4, AppStateV2, AppStateV3 } from "../shared/types.js";
 import { createJsonStateRepository, StateRepositoryError } from "./store.js";
 
 const roots: string[] = [];
@@ -56,8 +56,8 @@ describe("JSON state repository lifecycle", () => {
     state.workspaces[0].name = "Mutated after save";
     await Promise.all([first, second, repository.drain()]);
 
-    const written = JSON.parse(await fs.readFile(path.join(dataDirectory, "state.json"), "utf8")) as AppStateEnvelopeV3;
-    expect(written.schemaVersion).toBe(3);
+    const written = JSON.parse(await fs.readFile(path.join(dataDirectory, "state.json"), "utf8")) as AppStateEnvelopeV4;
+    expect(written.schemaVersion).toBe(4);
     expect(written.state.workspaces[0].name).toBe("Workspace");
   });
 
@@ -75,7 +75,7 @@ describe("JSON state repository lifecycle", () => {
     const state = await createJsonStateRepository({ dataDirectory, clock: { now: () => "2026-01-02T00:00:00Z" } }).load();
     expect(state.sessions[0]).toMatchObject({ id: "session-1", interactionMode: "terminal", runtimeStatus: "stopped", exitCode: 7, organizationStatus: "active", revision: 1 });
     expect(state.workspaces[0].kind).toBe("local-folder");
-    expect(JSON.parse(await fs.readFile(statePath, "utf8")).schemaVersion).toBe(3);
+    expect(JSON.parse(await fs.readFile(statePath, "utf8")).schemaVersion).toBe(4);
     expect(JSON.parse(await fs.readFile(`${statePath}.v1.bak`, "utf8")).sessions[0].id).toBe("session-1");
   });
 
@@ -95,8 +95,8 @@ describe("JSON state repository lifecycle", () => {
   });
 });
 
-describe("schema v2 -> v3 migration", () => {
-  it("migrates a realistic v2 envelope with zero entity or field loss and writes state.json.v2.bak once", async () => {
+describe("schema v2/v3 -> v4 migration", () => {
+  it("migrates a realistic v2 envelope without losing legacy fields and writes state.json.v2.bak once", async () => {
     const dataDirectory = await makeDataDirectory("cli-gui-state-v2v3-");
     const workspacePath = await fs.realpath(await fs.mkdtemp(path.join(dataDirectory, "workspace-")));
     const envelope = buildV2Envelope(workspacePath);
@@ -113,16 +113,16 @@ describe("schema v2 -> v3 migration", () => {
     expect(state.sessions).toHaveLength(2);
     expect(state.workspaces[0]).toEqual({ ...envelope.state.workspaces[0], path: workspacePath, kind: "local-folder" });
     expect(state.profiles).toEqual(envelope.state.profiles);
-    expect(state.sessions[0]).toEqual({ ...envelope.state.sessions[0], interactionMode: "terminal" });
-    expect(state.sessions[1]).toEqual({ ...envelope.state.sessions[1], interactionMode: "terminal" });
+    expect(state.sessions[0]).toMatchObject({ ...envelope.state.sessions[0], interactionMode: "terminal", backendId: "codex" });
+    expect(state.sessions[1]).toMatchObject({ ...envelope.state.sessions[1], interactionMode: "terminal", backendId: "claude" });
 
-    // 写回后 envelope 升级为 v3，且源版本备份 state.json.v2.bak 保留原始内容。
+    // 写回后 envelope 升级为 v4，且源版本备份 state.json.v2.bak 保留原始内容。
     await repository.drain();
-    const written = JSON.parse(await fs.readFile(statePath, "utf8")) as AppStateEnvelopeV3;
-    expect(written.schemaVersion).toBe(3);
+    const written = JSON.parse(await fs.readFile(statePath, "utf8")) as AppStateEnvelopeV4;
+    expect(written.schemaVersion).toBe(4);
     expect(await fs.readFile(`${statePath}.v2.bak`, "utf8")).toBe(original);
 
-    // 重复加载：已是 v3，备份不被覆盖。
+    // 重复加载：已是 v4，备份不被覆盖。
     await fs.writeFile(`${statePath}.v2.bak`, "sentinel", "utf8");
     const reloaded = await createJsonStateRepository({ dataDirectory, clock: { now: () => "2026-02-02T00:00:00Z" } }).load();
     expect(reloaded).toEqual(state);
@@ -143,14 +143,54 @@ describe("schema v2 -> v3 migration", () => {
 
     const state = await createJsonStateRepository({ dataDirectory, clock: { now: () => "2026-02-01T00:00:00Z" } }).load();
     expect(state.sessions[0].chatContext).toEqual({ resumeToken: "thread-1", activeModel: "gpt-5", lastTurnCompletedAt: "2026-01-03T00:00:00Z" });
+    expect(state.sessions[0].backendId).toBe("codex");
+    expect(state.sessions[0].backendSessionRef).toEqual({
+      backendId: "codex",
+      nativeSessionId: "thread-1",
+      transport: "json-stream",
+      migrationMetadata: { sourceSchemaVersion: 3 }
+    });
     expect(state.sessions[0].runtimeStatus).toBe("stopped");
     expect(state.sessions[1].chatContext).toBeUndefined();
+  });
+
+  it("backs up v3 exactly and retains direct legacy backend fields plus unknown session data", async () => {
+    const dataDirectory = await makeDataDirectory("cli-gui-state-v3v4-");
+    const workspacePath = await fs.realpath(await fs.mkdtemp(path.join(dataDirectory, "workspace-")));
+    const envelope = buildV2Envelope(workspacePath) as unknown as { schemaVersion: 3; state: { sessions: Record<string, unknown>[] } };
+    envelope.schemaVersion = 3;
+    envelope.state.sessions[0].interactionMode = "chat";
+    envelope.state.sessions[0].adapterId = "claude-code";
+    envelope.state.sessions[0].resumeToken = "native-session-7";
+    envelope.state.sessions[0].vendorCursor = { page: 7, opaque: "cursor" };
+    const statePath = path.join(dataDirectory, "state.json");
+    const original = JSON.stringify(envelope, null, 2);
+    await fs.writeFile(statePath, original, "utf8");
+
+    const state = await createJsonStateRepository({ dataDirectory, clock: { now: () => "2026-02-01T00:00:00Z" } }).load();
+
+    expect(state.sessions[0].backendId).toBe("claude");
+    expect(state.sessions[0].backendSessionRef).toEqual({
+      backendId: "claude",
+      nativeSessionId: "native-session-7",
+      transport: "json-stream",
+      migrationMetadata: {
+        sourceSchemaVersion: 3,
+        unknownFields: { vendorCursor: { page: 7, opaque: "cursor" } }
+      }
+    });
+    expect(await fs.readFile(`${statePath}.v3.bak`, "utf8")).toBe(original);
+    expect((JSON.parse(await fs.readFile(statePath, "utf8")) as AppStateEnvelopeV4).schemaVersion).toBe(4);
   });
 
   it.each([
     ["invalid interactionMode", (state: { sessions: Record<string, unknown>[] }) => { state.sessions[0].interactionMode = "voice"; }],
     ["forged workspace kind", (state: { workspaces: Record<string, unknown>[] }) => { state.workspaces[0].kind = "ssh-remote"; }],
-    ["malformed chatContext", (state: { sessions: Record<string, unknown>[] }) => { state.sessions[0].interactionMode = "chat"; state.sessions[0].chatContext = { resumeToken: 42 }; }]
+    ["malformed chatContext", (state: { sessions: Record<string, unknown>[] }) => { state.sessions[0].interactionMode = "chat"; state.sessions[0].chatContext = { resumeToken: 42 }; }],
+    ["mismatched backend identity", (state: { sessions: Record<string, unknown>[] }) => {
+      state.sessions[0].backendId = "codex";
+      state.sessions[0].backendSessionRef = { backendId: "claude", transport: "json-stream" };
+    }]
   ])("fails migration on %s and leaves the source untouched", async (_label, mutate) => {
     const dataDirectory = await makeDataDirectory("cli-gui-state-invalid-");
     const workspacePath = await fs.realpath(await fs.mkdtemp(path.join(dataDirectory, "workspace-")));
@@ -169,7 +209,7 @@ describe("schema v2 -> v3 migration", () => {
   it("rejects unknown future schema versions without touching the source", async () => {
     const dataDirectory = await makeDataDirectory("cli-gui-state-future-");
     const statePath = path.join(dataDirectory, "state.json");
-    const original = JSON.stringify({ schemaVersion: 4, state: { workspaces: [], profiles: [], sessions: [] } });
+    const original = JSON.stringify({ schemaVersion: 5, state: { workspaces: [], profiles: [], sessions: [] } });
     await fs.writeFile(statePath, original, "utf8");
 
     const repository = createJsonStateRepository({ dataDirectory, clock: { now: () => "2026-02-01T00:00:00Z" } });

@@ -6,10 +6,10 @@
 
 ## Acceptance Criteria
 
-- [ ] 默认提供 Codex CLI 和 Claude CLI。
-- [ ] Profile 包含可执行文件和参数数组。
-- [ ] 支持新增、编辑和删除 Profile。
-- [ ] 不通过未拆分的 shell 字符串执行命令。
+- [x] 默认提供 Codex CLI 和 Claude CLI。
+- [x] Profile 包含可执行文件和参数数组。
+- [x] 支持新增、编辑和删除 Profile。
+- [x] 不通过未拆分的 shell 字符串执行命令。
 
 ## Dependencies
 

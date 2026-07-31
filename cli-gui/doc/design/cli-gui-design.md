@@ -12,6 +12,7 @@ The normative visual and interaction contract is [`../DESIGN.md`](../DESIGN.md).
 - Responsive rules: `client/styles/responsive.css`
 - Base component API: `client/components/ui/index.ts`
 - Reusable patterns: `client/components/patterns/index.ts`
+- Global client state (Zustand, three slices; normative contract in `../mvp01/spec/frontend-spec.md` §11): `client/app/store.ts`
 - Automated contract checks: `scripts/check-ui-governance.ts` and `npm run ui:check`
 
 ## Migration note

@@ -1,4 +1,5 @@
 import http from "node:http";
+import { timingSafeEqual } from "node:crypto";
 import { WebSocketServer } from "ws";
 import type { Application, Logger } from "./ports.js";
 import { ApiHttpError, sendJson, toApiError } from "./api-errors.js";
@@ -11,6 +12,7 @@ export interface ServerConfig {
   allowedOrigins?: readonly string[];
   allowedHosts?: readonly string[];
   csrfCapability?: string;
+  bearerCredential?: string;
 }
 
 export interface ServerHandle {
@@ -44,9 +46,16 @@ export function createServer(application: Application, config: ServerConfig): Se
     try {
       url = new URL(request.url ?? "/", `http://${request.headers.host ?? config.host}`);
       assertAllowedRequest(request, config, boundPort);
+      assertBearer(request, config.bearerCredential);
       assertCsrf(request, config.csrfCapability);
+      applyCors(request, response);
     } catch (error) {
       handleError(error, request, response, requestId, "/");
+      return;
+    }
+    if (request.method === "OPTIONS") {
+      response.statusCode = 204;
+      response.end();
       return;
     }
     void application.handleHttp(request, response, url).catch((error) => handleError(error, request, response, requestId, url.pathname));
@@ -57,6 +66,7 @@ export function createServer(application: Application, config: ServerConfig): Se
     let url: URL;
     try {
       assertAllowedRequest(request, config, boundPort, true);
+      assertBearer(request, config.bearerCredential, true);
       assertCsrf(request, config.csrfCapability, true);
       url = new URL(request.url ?? "/", `http://${request.headers.host ?? config.host}`);
     } catch {
@@ -139,9 +149,38 @@ function assertCsrf(request: http.IncomingMessage, capability: string | undefine
   if (!capability) return;
   if (!websocket && ["GET", "HEAD", "OPTIONS"].includes(request.method ?? "GET")) return;
   const token = websocket
-    ? new URL(request.url ?? "/", "http://localhost").searchParams.get("capability")
+    ? new URL(request.url ?? "/", "http://localhost").searchParams.get("capability") ?? webSocketCredential(request)
     : headerValue(request.headers["x-specos-csrf-capability"]);
   if (!token || token !== capability) throw new ApiHttpError(403, "ORIGIN_NOT_ALLOWED", "Request capability is not allowed.");
+}
+
+function assertBearer(request: http.IncomingMessage, credential: string | undefined, websocket = false) {
+  if (!credential || (!websocket && request.method === "OPTIONS")) return;
+  const token = websocket
+    ? webSocketCredential(request)
+    : headerValue(request.headers.authorization)?.replace(/^Bearer\s+/i, "");
+  if (!token || !equalSecret(token, credential)) throw new ApiHttpError(403, "ORIGIN_NOT_ALLOWED", "Request credential is not allowed.");
+}
+
+function equalSecret(candidate: string, expected: string) {
+  const left = Buffer.from(candidate);
+  const right = Buffer.from(expected);
+  return left.length === right.length && timingSafeEqual(left, right);
+}
+
+function webSocketCredential(request: http.IncomingMessage) {
+  const protocols = headerValue(request.headers["sec-websocket-protocol"]);
+  const protocol = protocols?.split(",").map((value) => value.trim()).find((value) => value.startsWith("specos-bearer."));
+  return protocol?.slice("specos-bearer.".length);
+}
+
+function applyCors(request: http.IncomingMessage, response: http.ServerResponse) {
+  const origin = headerValue(request.headers.origin);
+  if (!origin) return;
+  response.setHeader("access-control-allow-origin", origin);
+  response.setHeader("vary", "Origin");
+  response.setHeader("access-control-allow-methods", "GET, HEAD, POST, PATCH, DELETE, OPTIONS");
+  response.setHeader("access-control-allow-headers", "authorization, content-type, x-specos-csrf-capability");
 }
 
 function headerValue(value: string | string[] | undefined) {

@@ -6,12 +6,12 @@
 
 ## Acceptance Criteria
 
-- [ ] 创建前显示命令、参数和工作目录。
-- [ ] 用户确认后才启动 CLI。
-- [ ] stopped Session 显示恢复操作。
-- [ ] 恢复复用原 Workspace、Profile 和名称。
-- [ ] 删除运行中 Session 前要求确认。
-- [ ] Verify in browser using dev-browser skill。
+- [x] 创建前显示命令、参数和工作目录。
+- [x] 用户确认后才启动 CLI。
+- [x] stopped Session 显示恢复操作。
+- [x] 恢复复用原 Workspace、Profile 和名称。
+- [x] 删除运行中 Session 前要求确认。
+- [x] Verify in browser using dev-browser skill。
 
 ## Dependencies
 

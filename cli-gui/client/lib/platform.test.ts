@@ -12,19 +12,17 @@ describe("PlatformAdapter", () => {
     vi.restoreAllMocks();
   });
 
-  it("reports web mode and rejects filesystem access without a native bridge", async () => {
+  it("reports web mode without exposing arbitrary filesystem access", async () => {
     expect(isTauri()).toBe(false);
     const web = new WebPlatformAdapter();
     expect(web.kind).toBe("web");
     expect(await web.platformInfo()).toBe("web");
-    await expect(web.readTextFile("/tmp/x")).rejects.toThrow(/web/);
     expect(await web.pickFolder()).toBeNull();
   });
 
-  it("routes filesystem calls through the Tauri bridge when present", async () => {
+  it("routes the native folder picker through the Tauri bridge", async () => {
     const invoke = vi.fn(async (cmd: string) => {
       if (cmd === "platform_info") return "9.9.9";
-      if (cmd === "list_directory") return [{ name: "a", path: "/a", is_dir: true }];
       return null;
     });
     const open = vi.fn(async () => "/Users/me/project");
@@ -36,8 +34,27 @@ describe("PlatformAdapter", () => {
     expect(tauri.kind).toBe("tauri");
     expect(await tauri.platformInfo()).toBe("9.9.9");
     expect(await tauri.pickFolder()).toBe("/Users/me/project");
-    const entries = await tauri.listDirectory("/");
-    expect(entries[0]).toEqual({ name: "a", path: "/a", isDir: true });
     expect(invoke).toHaveBeenCalledWith("platform_info");
   });
+
+  it("returns null when Tauri dialog is cancelled (returns null)", async () => {
+    const open = vi.fn(async () => null);
+    (window as unknown as { __TAURI__?: TauriGlobal }).__TAURI__ = { core: { invoke: vi.fn() }, dialog: { open } };
+    const tauri = new TauriPlatformAdapter();
+    expect(await tauri.pickFolder()).toBeNull();
+  });
+
+  it("returns first path when Tauri dialog returns an array", async () => {
+    const open = vi.fn(async () => ["/path/one", "/path/two"]);
+    (window as unknown as { __TAURI__?: TauriGlobal }).__TAURI__ = { core: { invoke: vi.fn() }, dialog: { open } };
+    const tauri = new TauriPlatformAdapter();
+    expect(await tauri.pickFolder()).toBe("/path/one");
+  });
+
+  it("returns null when Tauri dialog module is unavailable", async () => {
+    (window as unknown as { __TAURI__?: TauriGlobal }).__TAURI__ = { core: { invoke: vi.fn() } };
+    const tauri = new TauriPlatformAdapter();
+    expect(await tauri.pickFolder()).toBeNull();
+  });
+
 });

@@ -1,4 +1,4 @@
-export const CURRENT_SCHEMA_VERSION = 3 as const;
+export const CURRENT_SCHEMA_VERSION = 4 as const;
 
 /** kimi / glm 为 Claude Code 兼容 CLI（协议同 claude-code，仅命令与版本检测不同）。 */
 export type CliAdapterId = "claude-code" | "codex" | "kimi" | "glm" | "generic";
@@ -35,6 +35,12 @@ export type SessionOrganizationStatus = "active" | "completed" | "archived";
 /** 交互模式，创建时确定，不可变更（Fork 时继承，可改）。 */
 export type SessionInteractionMode = "chat" | "terminal";
 
+/** 双模式渲染（dual-mode 设计 §5/§9）：当前可见视图，切换不改变进程生命周期。 */
+export type SessionActiveView = "terminal" | "gui";
+
+/** 单一输入所有权（dual-mode 设计 §10）：任一时刻只有一个输入源可写入会话。 */
+export type SessionInputOwner = "terminal" | "gui" | "none";
+
 export interface SessionLaunchConfig {
   permission: string | null;
   mode: string | null;
@@ -59,6 +65,17 @@ export interface SessionChatContext {
   lastTurnCompletedAt?: string;
 }
 
+export interface BackendSessionRef {
+  backendId: string;
+  nativeSessionId?: string;
+  transport: "native-sdk" | "acp" | "json-stream" | "pty";
+  resumeData?: Record<string, unknown>;
+  migrationMetadata?: {
+    sourceSchemaVersion: number;
+    unknownFields?: Record<string, unknown>;
+  };
+}
+
 export interface SessionRuntimeError {
   code: string;
   message: string;
@@ -71,6 +88,10 @@ export interface Session {
   profileId: string;
   name: string;
   interactionMode: SessionInteractionMode;
+  /** 可选追加字段（schema 仍为 v4）：load 时按 interactionMode 归一默认值（chat → gui，terminal → terminal）。 */
+  activeView?: SessionActiveView;
+  /** 与 activeView 同步的输入所有者；只影响输入路由，不影响进程。 */
+  inputOwner?: SessionInputOwner;
   runtimeStatus: SessionRuntimeStatus;
   organizationStatus: SessionOrganizationStatus;
   pinned: boolean;
@@ -78,6 +99,10 @@ export interface Session {
   launchConfig: SessionLaunchConfig;
   chatContext?: SessionChatContext;
   terminalContext?: SessionTerminalContext;
+  /** MVP02 Agent Engine identity; Profile remains advanced launch configuration. */
+  backendId?: string;
+  /** Vendor/native identity used for structured resume across Runtime restarts. */
+  backendSessionRef?: BackendSessionRef;
   parentSessionId?: string;
   forkEventId?: string;
   forkSequence?: number;
@@ -98,8 +123,15 @@ export interface AppStateV3 {
 }
 
 export interface AppStateEnvelopeV3 {
-  schemaVersion: typeof CURRENT_SCHEMA_VERSION;
+  schemaVersion: 3;
   state: AppStateV3;
+}
+
+export type AppStateV4 = AppStateV3;
+
+export interface AppStateEnvelopeV4 {
+  schemaVersion: typeof CURRENT_SCHEMA_VERSION;
+  state: AppStateV4;
 }
 
 // ---------------------------------------------------------------------------

@@ -1,9 +1,9 @@
 import { useRef, useState } from "react";
 import type { MouseEvent } from "react";
 import type { Session, Workspace } from "../../shared/types";
-import { CHAT_INTERACTION_ENABLED } from "../app/feature-flags";
 import type { AppView, SessionFilter, SessionGrouping } from "../app/preferences";
 import type { SessionGroup } from "../app/session-selectors";
+import { CHAT_ENABLED } from "../feature-flags";
 import { useI18n, type TranslationKey } from "../i18n";
 import { Icon } from "./ui/Icon";
 import { Select } from "./ui/Select";
@@ -27,6 +27,8 @@ interface SidebarProps {
   readonly: boolean;
   openFolderBusy: boolean;
   activeTurns?: Record<string, string>;
+  /** 新建 Quest 草稿态：Quests 区顶部展示虚线占位行，发送首条消息后替换为真实会话 */
+  questDraftActive?: boolean;
   onViewChange: (view: AppView) => void;
   onNewQuest: () => void;
   onSelectSession: (id: string) => void;
@@ -50,11 +52,13 @@ export function Sidebar(props: SidebarProps) {
   const { t } = useI18n();
   const [menuSession, setMenuSession] = useState<Session>();
   const [controlsOpen, setControlsOpen] = useState(false);
+  const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
   const [draggedSessionId, setDraggedSessionId] = useState<string>();
   const [announcement, setAnnouncement] = useState("");
   const panelRef = useRef<HTMLElement>(null);
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
   const controlsTriggerRef = useRef<HTMLButtonElement>(null);
+  const workspaceTriggerRef = useRef<HTMLButtonElement>(null);
   useMobileDrawerFocus(panelRef, props.onClose);
   const manual = props.grouping === "manual";
   const totalSessions = props.questGroups.reduce((count, group) => count + group.sessions.length, 0);
@@ -95,12 +99,27 @@ export function Sidebar(props: SidebarProps) {
     return t((timeLabelKeys.has(group.labelKey) ? group.labelKey : "projects") as TranslationKey);
   }
 
+  function sessionMenuItems(session: Session) {
+    return [
+      { id: "rename", label: t("rename"), disabled: props.readonly, onSelect: () => props.onRename(session) },
+      { id: "pin", label: session.pinned ? t("unpin") : t("pin"), disabled: props.readonly, onSelect: () => props.onPin(session) },
+      { id: "complete", label: session.organizationStatus === "completed" ? t("reopen") : t("complete"), disabled: props.readonly, onSelect: () => props.onComplete(session) },
+      { id: "archive", label: session.organizationStatus === "archived" ? t("restore") : t("archive"), disabled: props.readonly, onSelect: () => props.onArchive(session) },
+      { id: "fork", label: t("fork"), disabled: props.readonly, onSelect: () => props.onFork(session) },
+      { id: "delete", label: t("deleteSession"), disabled: props.readonly, danger: true, onSelect: () => props.onDelete(session) }
+    ];
+  }
+
   return <aside ref={panelRef} id="session-navigator" className="qoder-sidebar app-sidebar" aria-label={t("sessions")} onKeyDown={(event) => { if (event.key === "Escape" && menuSession) { event.preventDefault(); closeMenu(); } }}>
     <div className="sidebar-top-zone">
       <Button variant="primary" className="new-quest-button" onClick={props.onNewQuest} disabled={props.readonly}><span><Icon name="add" />{t("qoderNewQuest")}</span><kbd>⌘N</kbd></Button>
     </div>
     <div className="sidebar-scroll-zone">
-      <div className="sidebar-section-heading"><strong>{t("qoderQuests")}</strong><div><IconButton appearance="section" icon="list" label={t("qoderComingSoon")} disabled title={t("qoderComingSoon")} /><IconButton ref={controlsTriggerRef} appearance="section" icon="filter" label={t("filterBy")} title={t("filterBy")} aria-haspopup="menu" aria-expanded={controlsOpen} onClick={() => setControlsOpen((open) => !open)} /><IconButton appearance="section" icon="folder" label={t("openFolder")} title={t("openFolder")} onClick={props.onOpenFolder} disabled={props.readonly || props.openFolderBusy} /></div>{controlsOpen && <Menu className="quest-menu sidebar-controls-menu" ariaLabel={t("filterBy")} triggerRef={controlsTriggerRef} onClose={(restoreFocus = true) => { setControlsOpen(false); if (restoreFocus) requestAnimationFrame(() => controlsTriggerRef.current?.focus()); }} items={[
+      <div className="sidebar-section-heading"><strong>{t("qoderQuests")}</strong><div><IconButton appearance="section" className={props.currentView === "quests" ? "active" : undefined} icon="list" label={t("qoderViewAllQuests")} title={t("qoderViewAllQuests")} aria-pressed={props.currentView === "quests"} onClick={() => props.onViewChange("quests")} /><IconButton ref={controlsTriggerRef} appearance="section" icon="filter" label={t("filterBy")} title={t("filterBy")} aria-haspopup="menu" aria-expanded={controlsOpen} onClick={() => setControlsOpen((open) => !open)} /><IconButton ref={workspaceTriggerRef} appearance="section" icon="folder" label={t("workspaceActions")} title={t("workspaceActions")} aria-haspopup="menu" aria-expanded={workspaceMenuOpen} onClick={() => setWorkspaceMenuOpen((open) => !open)} disabled={props.readonly} /></div>{workspaceMenuOpen && <Menu className="quest-menu sidebar-controls-menu" ariaLabel={t("workspaceActions")} triggerRef={workspaceTriggerRef} onClose={(restoreFocus = true) => { setWorkspaceMenuOpen(false); if (restoreFocus) requestAnimationFrame(() => workspaceTriggerRef.current?.focus()); }} items={[
+        { id: "open-folder", icon: "folder", label: props.openFolderBusy ? t("working") : t("openFolder"), disabled: props.readonly || props.openFolderBusy, onSelect: props.onOpenFolder },
+        { id: "setup-workspace", icon: "settings", label: t("setupWorkspace"), disabled: props.readonly, onSelect: props.onOpenSettings },
+        { id: "connect-ssh", icon: "server", label: t("connectSsh"), disabled: true, onSelect: () => undefined }
+      ]} />}{controlsOpen && <Menu className="quest-menu sidebar-controls-menu" ariaLabel={t("filterBy")} triggerRef={controlsTriggerRef} onClose={(restoreFocus = true) => { setControlsOpen(false); if (restoreFocus) requestAnimationFrame(() => controlsTriggerRef.current?.focus()); }} items={[
         { id: "group-project", label: t("groupProject"), onSelect: () => props.onGroupingChange("project") },
         { id: "group-time", label: t("groupTime"), onSelect: () => props.onGroupingChange("time") },
         { id: "group-recent", label: t("groupRecent"), onSelect: () => props.onGroupingChange("recent") },
@@ -115,7 +134,12 @@ export function Sidebar(props: SidebarProps) {
         <Select ariaLabel={t("filterBy")} value={props.filter} options={[{ value: "active", label: t("filterActive") }, { value: "completed", label: t("filterCompleted") }, { value: "archived", label: t("filterArchived") }]} onChange={(value) => props.onFilterChange(value as SessionFilter)} />
       </div>
       <div className="quest-list">
-        {!totalSessions && <p className="sidebar-empty">{t("noSessionsForFilter")}</p>}
+        {props.questDraftActive && <Button unstyled className="quest-draft-row" aria-current="true" aria-label={t("qoderNewQuestDraft")} onClick={props.onNewQuest}>
+          <span className="quest-draft-name">{t("qoderNewQuestDraft")}</span>
+          <span className="quest-draft-badge">{t("qoderQuestBadge")}</span>
+          <span className="quest-draft-dot" aria-hidden="true" />
+        </Button>}
+        {!totalSessions && !props.questDraftActive && <p className="sidebar-empty">{t("noSessionsForFilter")}</p>}
         {props.questGroups.map((group) => <div className="quest-group" key={group.id}>
           <div className="quest-group-heading" id={`quest-group-${group.id}`}>{groupHeading(group)}</div>
           {group.sessions.map((session, sessionIndex) => <div
@@ -129,49 +153,57 @@ export function Sidebar(props: SidebarProps) {
             <Button variant="ghost" className="quest-row-main" onClick={() => props.onSelectSession(session.id)} onContextMenu={(event: MouseEvent<HTMLButtonElement>) => { event.preventDefault(); openMenu(session, event.currentTarget); }} aria-current={session.id === props.activeSessionId ? "page" : undefined}>
               {session.pinned ? <Icon name="star" className="quest-leading pinned" /> : <span className="quest-dot" />}
               <span className="quest-copy"><strong>{session.name}</strong>{props.activeTurns?.[session.id] && <small>{t("turnInProgress")}</small>}</span>
-              <span className="quest-time">{relativeTime(session.lastActiveAt)}</span>
+              <span className="quest-time">{relativeTime(session.lastActiveAt, t)}</span>
             </Button>
             {manual && <div className="quest-reorder" aria-label={t("sessionActions")}>
               <Button variant="ghost" onClick={() => moveWithinGroup(group, session, -1)} aria-label={t("moveUp")} title={t("moveUp")} disabled={props.readonly || sessionIndex === 0}>↑</Button>
               <Button variant="ghost" onClick={() => moveWithinGroup(group, session, 1)} aria-label={t("moveDown")} title={t("moveDown")} disabled={props.readonly || sessionIndex === group.sessions.length - 1}>↓</Button>
             </div>}
             <IconButton className="quest-more" icon="more" label={t("openSessionActions")} aria-haspopup="menu" aria-expanded={menuSession?.id === session.id} onClick={(event) => menuSession?.id === session.id ? closeMenu() : openMenu(session, event.currentTarget)} />
-            {menuSession?.id === session.id && <Menu className="quest-menu" ariaLabel={t("sessionActions")} triggerRef={menuTriggerRef} onClose={closeMenu} items={[
-              { id: "rename", label: t("rename"), disabled: props.readonly, onSelect: () => props.onRename(session) },
-              { id: "pin", label: session.pinned ? t("unpin") : t("pin"), disabled: props.readonly, onSelect: () => props.onPin(session) },
-              { id: "complete", label: session.organizationStatus === "completed" ? t("reopen") : t("complete"), disabled: props.readonly, onSelect: () => props.onComplete(session) },
-              { id: "archive", label: session.organizationStatus === "archived" ? t("restore") : t("archive"), disabled: props.readonly, onSelect: () => props.onArchive(session) },
-              { id: "fork", label: t("fork"), disabled: props.readonly, onSelect: () => props.onFork(session) },
-              { id: "delete", label: t("deleteSession"), disabled: props.readonly, danger: true, onSelect: () => props.onDelete(session) }
-            ]} />}
+            {menuSession?.id === session.id && <Menu className="quest-menu" ariaLabel={t("sessionActions")} triggerRef={menuTriggerRef} onClose={closeMenu} items={sessionMenuItems(session)} />}
           </div>)}
         </div>)}
       </div>
-      <div className="sidebar-section-heading chats-heading"><strong>{t("qoderChats")}</strong></div>
-      <div className="chat-list">
-        {/* chat 封闭期：无存量会话展示「暂未开放」空态；存量会话照常列出可查看（console-gaps SPEC §1） */}
-        {!props.chatGroups.some((group) => group.sessions.length > 0) && <p className="sidebar-empty">{t(CHAT_INTERACTION_ENABLED ? "qoderNoChatsYet" : "chatSectionDisabled")}</p>}
-        {props.chatGroups.flatMap((group) => group.sessions).map((session) => <Button variant="ghost" className={`chat-row ${session.id === props.activeSessionId ? "active" : ""}`} key={session.id} onClick={() => props.onSelectSession(session.id)}><span className="chat-avatar">{session.name.slice(0, 1).toUpperCase()}</span><span><strong>{session.name}</strong></span><time>{relativeTime(session.lastActiveAt)}</time></Button>)}
+      <div className={`sidebar-section-heading chats-heading${CHAT_ENABLED ? "" : " chats-disabled"}`}><strong>{t("qoderChats")}</strong>{!CHAT_ENABLED && <span className="coming-soon-badge">{t("comingSoon")}</span>}</div>
+      <div className={`chat-list${CHAT_ENABLED ? "" : " chats-disabled"}`}>
+        {/* Chat 是后续版本功能（feature-flags CHAT_ENABLED）：分区置灰，仅存量 chat 会话保留可打开 */}
+        {!props.chatGroups.some((group) => group.sessions.length > 0) && <p className="sidebar-empty">{CHAT_ENABLED ? t("qoderNoChatsYet") : t("chatComingSoonHint")}</p>}
+        {props.chatGroups.flatMap((group) => group.sessions).map((session) => <div className="chat-row-shell" key={session.id}>
+          <Button
+            variant="ghost"
+            className={`chat-row ${session.id === props.activeSessionId ? "active" : ""}`}
+            onClick={() => props.onSelectSession(session.id)}
+            onContextMenu={(event: MouseEvent<HTMLButtonElement>) => { event.preventDefault(); openMenu(session, event.currentTarget); }}
+            aria-current={session.id === props.activeSessionId ? "page" : undefined}
+          >
+            <span className="chat-avatar">{session.name.slice(0, 1).toUpperCase()}</span>
+            <span><strong>{session.name}</strong>{props.activeTurns?.[session.id] && <small>{t("turnInProgress")}</small>}</span>
+            <time>{relativeTime(session.lastActiveAt, t)}</time>
+          </Button>
+          <IconButton className="chat-more" icon="more" label={t("openSessionActions")} aria-haspopup="menu" aria-expanded={menuSession?.id === session.id} onClick={(event) => menuSession?.id === session.id ? closeMenu() : openMenu(session, event.currentTarget)} />
+          {menuSession?.id === session.id && <Menu className="quest-menu" ariaLabel={t("sessionActions")} triggerRef={menuTriggerRef} onClose={closeMenu} items={sessionMenuItems(session)} />}
+        </div>)}
       </div>
     </div>
     <div className="sidebar-bottom-zone">
-      <Button variant="ghost" className={`sidebar-link ${props.currentView === "quest-home" ? "active" : ""}`} onClick={() => props.onViewChange("quest-home")}><span><Icon name="home" />{t("qoderBetterLoop")}</span><small>Help</small></Button>
+      <Button variant="ghost" className={`sidebar-link ${props.currentView === "quest-home" ? "active" : ""}`} onClick={() => props.onViewChange("quest-home")}><span><Icon name="home" />{t("qoderBetterLoop")}</span><small>{t("help")}</small></Button>
       <Button variant="ghost" className={`sidebar-link ${props.currentView === "knowledge" ? "active" : ""}`} onClick={() => props.onViewChange("knowledge")}><span><Icon name="book" />{t("qoderKnowledge")}</span></Button>
       <Button variant="ghost" className={`sidebar-link ${props.currentView === "marketplace" ? "active" : ""}`} onClick={() => props.onViewChange("marketplace")}><span><Icon name="shopping" />{t("qoderMarketplace")}</span></Button>
       <Button variant="ghost" className="open-folder-sidebar" onClick={props.onOpenFolder} disabled={props.readonly || props.openFolderBusy}><Icon name="folder" />{props.openFolderBusy ? t("working") : t("openFolder")}</Button>
       {/* 语言切换收入设置 Appearance，左栏不再常驻（console-gaps SPEC §6） */}
-      <div className="sidebar-user"><span className="chat-avatar">L</span><span className="user-copy"><strong>liquiid</strong><small>Local</small></span><IconButton appearance="section" icon="settings" onClick={props.onOpenSettings} label={t("openSettings")} /></div>
+      <div className="sidebar-user"><span className="chat-avatar">L</span><span className="user-copy"><strong>liquiid</strong><small>{t("qoderLocal")}</small></span><IconButton appearance="section" icon="settings" onClick={props.onOpenSettings} label={t("openSettings")} /></div>
     </div>
     <div className="navigator-live-region" aria-live="polite">{announcement}</div>
   </aside>;
 }
 
-function relativeTime(value: string) {
+// 相对时间随界面语言本地化（QA 调节：中文模式不再出现 now/m/h/d）
+function relativeTime(value: string, t: (key: TranslationKey, params?: Record<string, string | number>) => string) {
   const timestamp = new Date(value).getTime();
   if (!Number.isFinite(timestamp)) return "";
   const minutes = Math.floor((Date.now() - timestamp) / 60_000);
-  if (minutes < 1) return "now";
-  if (minutes < 60) return `${minutes}m`;
-  if (minutes < 1_440) return `${Math.floor(minutes / 60)}h`;
-  return `${Math.floor(minutes / 1_440)}d`;
+  if (minutes < 1) return t("timeJustNow");
+  if (minutes < 60) return t("timeMinutesShort", { n: minutes });
+  if (minutes < 1_440) return t("timeHoursShort", { n: Math.floor(minutes / 60) });
+  return t("timeDaysShort", { n: Math.floor(minutes / 1_440) });
 }

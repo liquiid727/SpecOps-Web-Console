@@ -4,13 +4,13 @@
 Persist accessible user-defined ordering independently within pinned and unpinned organizational sections.
 
 ## Acceptance Criteria
-- [ ] Accept the complete ordered membership for one organization-status and pinned section.
-- [ ] Require expected revisions for every member.
-- [ ] Reject missing, duplicate, foreign, or stale members.
-- [ ] Assign normalized section-local manualOrder values.
-- [ ] Do not change lastActiveAt when reordering.
-- [ ] Return current section metadata on revision conflict.
-- [ ] Add normalization, conflict, and independent-section tests.
+- [x] Accept the complete ordered membership for one organization-status and pinned section.
+- [x] Require expected revisions for every member.
+- [x] Reject missing, duplicate, foreign, or stale members.
+- [x] Assign normalized section-local manualOrder values.
+- [x] Do not change lastActiveAt when reordering.
+- [x] Return current section metadata on revision conflict.
+- [x] Add normalization, conflict, and independent-section tests.
 
 ## Dependencies
 Issues #20, #21

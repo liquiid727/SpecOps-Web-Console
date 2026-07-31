@@ -10,6 +10,7 @@ import { createJsonStateRepository } from "./store.js";
 import { createJsonTranscriptRepository } from "./transcript-store.js";
 import { createProfileAdapterRegistry } from "./profile-adapters.js";
 import { createCodexMcpRuntime } from "./codex-mcp-runtime.js";
+import { createAgentBackendRegistry, createProfileAdapterTurnExecutor } from "./agent-backends.js";
 
 const clock: Clock = { now: () => new Date().toISOString() };
 const execFileAsync = promisify(execFile);
@@ -20,6 +21,8 @@ export function createProductionDependencies(options: {
   processEnvironment: Readonly<Record<string, string | undefined>>;
 }): ApplicationDependencies {
   const logger = createConsoleLogger();
+  const profileAdapters = createProfileAdapterRegistry({ logger });
+  const persistentChatRuntime = createCodexMcpRuntime({ logger });
   return {
     stateRepository: createJsonStateRepository({ dataDirectory: options.dataDirectory, clock, readonly: options.readonly }),
     transcriptRepository: createJsonTranscriptRepository({ dataDirectory: options.dataDirectory, readonly: options.readonly }),
@@ -48,9 +51,14 @@ export function createProductionDependencies(options: {
     },
     gitInspector: createLocalGitInspector(),
     directoryPicker: createConfiguredDirectoryPicker(options.processEnvironment) ?? createMacDirectoryPicker(),
-    profileAdapters: createProfileAdapterRegistry({ logger }),
+    profileAdapters,
     // codex chat 常驻运行时（streaming-spec §3.3）：不可用时 orchestrator 自动回落 spawn 冷路径
-    persistentChatRuntime: createCodexMcpRuntime({ logger }),
+    persistentChatRuntime,
+    agentBackends: createAgentBackendRegistry(profileAdapters, createProfileAdapterTurnExecutor({
+      processEnvironment: options.processEnvironment,
+      persistentChatRuntime,
+      logger
+    })),
     clock,
     idGenerator: { create: (prefix) => `${prefix}-${randomUUID()}` },
     policy: { readonly: options.readonly, processEnvironment: { ...options.processEnvironment }, csrfCapability: options.processEnvironment.SPECOS_CSRF_CAPABILITY ?? randomBytes(24).toString("base64url") },

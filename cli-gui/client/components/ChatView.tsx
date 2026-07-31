@@ -2,9 +2,8 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import type { CliProfile, CliProfileCapabilities, Session, SessionLaunchConfig, TranscriptEvent, Workspace } from "../../shared/types";
 import type { SendMessageResponse } from "../../shared/types";
 import type { TurnStatus } from "../../shared/websocket";
-import { api, ApiClientError } from "../api";
-import { CHAT_INTERACTION_ENABLED } from "../app/feature-flags";
 import type { CenterView, ComposerWorkMode } from "../app/preferences";
+import { readPreferences, writePreferences } from "../app/preferences";
 import { toFeedbackError, toFeedbackWarning } from "../feedback-errors";
 import { useI18n } from "../i18n";
 import { TerminalView } from "../terminal";
@@ -12,11 +11,16 @@ import { PromptComposer } from "./PromptComposer";
 import { SessionLifecycleStatusBar } from "./SessionLifecycleStatusBar";
 import { Icon } from "./ui/Icon";
 import { useFeedback } from "./ui/Feedback";
-import { Badge, Button, EmptyState, Tabs } from "./ui";
+import { Button, EmptyState } from "./ui";
 import { deriveSessionLifecycleStatus, type SessionLifecycleStatus } from "../transcript-display";
+import { useClientRuntime } from "../runtime/client-runtime";
 
 const TranscriptPanel = lazy(() => import("./TranscriptPanel").then((module) => ({ default: module.TranscriptPanel })));
 const ChatTerminalReplay = lazy(() => import("./ChatTerminalReplay").then((module) => ({ default: module.ChatTerminalReplay })));
+
+// 模型自动同步节流（issue-053）：每 profile 每 10 分钟至多触发一次，跨组件挂载共享
+const MODEL_SYNC_INTERVAL_MS = 10 * 60 * 1000;
+const modelSyncAt = new Map<string, number>();
 
 interface ChatViewProps {
   session: Session;
@@ -32,14 +36,15 @@ interface ChatViewProps {
   onStop?: (id: string) => void;
   /** 会话列表的轮次进行中指示（frontend-spec §6）：turnId 为空表示无进行中轮次 */
   onTurnActivity?: (sessionId: string, turnId?: string) => void;
-  /** 四态工作模式：App 层持久化状态下发至 composer（console-gaps SPEC §3） */
+  /** MVP02 工作模式：Default 正常执行；Plan 映射为后端只读/计划能力。 */
   workMode: ComposerWorkMode;
   onWorkModeChange: (mode: ComposerWorkMode) => void;
 }
 
-export function ChatView({ session, workspace, profile, readonly, centerView, onCenterViewChange, onLaunchConfigChange, onSend, onStatus, onResume, onStop, onTurnActivity, workMode, onWorkModeChange }: ChatViewProps) {
-  const { t, statusLabel } = useI18n();
+export function ChatView({ session, profile, readonly, centerView, onCenterViewChange, onLaunchConfigChange, onSend, onStatus, onResume, onStop, onTurnActivity, workMode, onWorkModeChange }: ChatViewProps) {
+  const { t } = useI18n();
   const feedback = useFeedback();
+  const runtime = useClientRuntime();
   const [capabilities, setCapabilities] = useState<CliProfileCapabilities>();
   // 轮次状态双通道：turn-status 帧（实时）+ 事件流推导（重连/回放兜底，api-spec §4.2）
   const [frameTurn, setFrameTurn] = useState<{ turnId: string; status: TurnStatus }>();
@@ -47,16 +52,24 @@ export function ChatView({ session, workspace, profile, readonly, centerView, on
   const [echoEvents, setEchoEvents] = useState<TranscriptEvent[]>([]);
   const [lifecycleStatus, setLifecycleStatus] = useState<SessionLifecycleStatus>("idle");
   const cancelledTurnsRef = useRef(new Set<string>());
+  const notifiedTurnsRef = useRef(new Set<string>());
 
   useEffect(() => {
     if (!profile) { setCapabilities(undefined); return; }
     const controller = new AbortController();
     setCapabilities(undefined);
-    void api.profileCapabilities(profile.id, controller.signal).then(setCapabilities).catch((cause) => {
+    void runtime.engines.profileCapabilities(profile.id, controller.signal).then((detected) => {
+      setCapabilities(detected);
+      // 探测成功后自动同步模型列表（issue-053）：节流内静默触发，失败不打扰用户
+      if (detected.compatibility === "supported" && Date.now() - (modelSyncAt.get(profile.id) ?? 0) >= MODEL_SYNC_INTERVAL_MS) {
+        modelSyncAt.set(profile.id, Date.now());
+        void runtime.engines.syncModels(profile.id).catch(() => undefined);
+      }
+    }).catch((cause) => {
       if (cause?.name !== "AbortError") feedback.warning(toFeedbackWarning(cause, t, "capabilitiesUnavailable", `capabilities:${profile.id}`));
     });
     return () => controller.abort();
-  }, [feedback, profile, t]);
+  }, [feedback, profile, runtime.engines, t]);
 
   // 切换会话时重置轮次与回显状态
   useEffect(() => {
@@ -70,14 +83,21 @@ export function ChatView({ session, workspace, profile, readonly, centerView, on
   const status = session.runtimeStatus ?? session.status ?? "stopped";
   const running = status === "running" || status === "starting";
   const chatSession = session.interactionMode === "chat";
-  // chat 封闭期：存量 chat 会话 transcript 可查看，composer 禁用（console-gaps SPEC §1）
-  const chatFeatureOff = chatSession && !CHAT_INTERACTION_ENABLED;
-  const composerDisabled = readonly || session.organizationStatus !== "active" || chatFeatureOff;
+  const chatReady = capabilities?.compatibility === "supported" && capabilities.supportsHeadlessTurns;
+  const chatUnavailable = chatSession && capabilities !== undefined && !chatReady;
+  const composerDisabled = readonly || (session.organizationStatus ?? "active") !== "active" || (chatSession && !chatReady);
 
   const handleTurnStatus = useCallback((turnId: string, turnStatus: TurnStatus) => {
     if (turnStatus === "running" || turnStatus === "waiting_approval") setFrameTurn({ turnId, status: turnStatus });
     else setFrameTurn((current) => (current?.turnId === turnId ? undefined : current));
-  }, []);
+    const notificationKey = `${turnId}:${turnStatus}`;
+    if (!notifiedTurnsRef.current.has(notificationKey)) {
+      if (turnStatus === "waiting_approval") void runtime.platform.notify(t("notificationApprovalTitle"), session.name);
+      if (turnStatus === "completed") void runtime.platform.notify(t("notificationCompletedTitle"), session.name);
+      if (turnStatus === "failed") void runtime.platform.notify(t("notificationFailedTitle"), session.name);
+      notifiedTurnsRef.current.add(notificationKey);
+    }
+  }, [runtime.platform, session.name, t]);
   const handleDerivedTurn = useCallback((turnId: string | undefined) => setDerivedTurnId(turnId), []);
 
   const derivedActive = derivedTurnId && !cancelledTurnsRef.current.has(derivedTurnId) ? derivedTurnId : undefined;
@@ -101,12 +121,12 @@ export function ChatView({ session, workspace, profile, readonly, centerView, on
     const turnId = activeTurnId;
     if (!turnId) return;
     try {
-      await api.cancelTurn(session.id, turnId);
+      await runtime.sessions.cancelTurn(session.id, turnId);
       cancelledTurnsRef.current.add(turnId);
       setFrameTurn(undefined);
       onStatus();
     } catch (cause) {
-      if (cause instanceof ApiClientError && cause.code === "TURN_NOT_ACTIVE") {
+      if ((cause as { code?: string } | undefined)?.code === "TURN_NOT_ACTIVE") {
         cancelledTurnsRef.current.add(turnId);
         setFrameTurn(undefined);
         onStatus();
@@ -119,25 +139,31 @@ export function ChatView({ session, workspace, profile, readonly, centerView, on
   // 审批应答（frontend-spec §5.4 / api-spec §2.5）：409 APPROVAL_NOT_PENDING → toast 已失效 + 重抛定格气泡，刷新最终态
   const respondApproval = useCallback(async (approvalId: string, decision: "allow" | "deny") => {
     try {
-      await api.respondApproval(session.id, approvalId, decision);
+      await runtime.sessions.respondApproval(session.id, approvalId, decision);
     } catch (cause) {
-      if (cause instanceof ApiClientError && cause.code === "APPROVAL_NOT_PENDING") {
+      if ((cause as { code?: string } | undefined)?.code === "APPROVAL_NOT_PENDING") {
         feedback.warning(toFeedbackWarning(cause, t, "approvalNoLongerPending", `approval:${session.id}:${approvalId}`));
         onStatus();
         throw cause;
       }
       feedback.error(toFeedbackError(cause, t, "composerFailed", `approval:${session.id}:${approvalId}`));
     }
-  }, [feedback, onStatus, session.id, t]);
+  }, [feedback, onStatus, runtime.sessions, session.id, t]);
 
   // 模型即时切换：PATCH activeModel，下一轮生效（frontend-spec §5.3 / api-spec §2.6）
   function changeActiveModel(model: string | null) {
     if (!model) return;
     void (async () => {
       try {
-        await api.updateActiveModel(session.id, model, session.revision ?? 1);
+        await runtime.sessions.updateActiveModel(session.id, model, session.revision ?? 1);
         feedback.success({ title: t("modelNextTurn") });
         onStatus();
+        // 持久化最后使用模型（issue-055）：下次创建会话时自动预选
+        if (profile) {
+          const prefs = readPreferences();
+          prefs.modelPreferences.lastUsedModel[profile.id] = model;
+          writePreferences(prefs);
+        }
       } catch (cause) {
         feedback.error(toFeedbackError(cause, t, "composerFailed", `active-model:${session.id}`));
       }
@@ -159,29 +185,19 @@ export function ChatView({ session, workspace, profile, readonly, centerView, on
   const resumeContinues = session.interactionMode === "terminal" && Boolean(session.terminalContext?.resumeToken);
   const resumeTitle = resumeContinues ? t("resumeContinuesCli") : undefined;
 
+  function changeWorkMode(mode: ComposerWorkMode) {
+    onWorkModeChange(mode);
+    if (!profile) return;
+    if (profile.adapterId === "codex") {
+      onLaunchConfigChange({ mode: mode === "plan" ? "read-only" : null });
+    } else if (profile.adapterId === "claude-code") {
+      onLaunchConfigChange({ permission: mode === "plan" ? "plan" : null });
+    }
+  }
+
   return (
     <div className="chat-view">
-      <div className="chat-header">
-        <div className="chat-header-main">
-          <h2>{session.name}</h2>
-          {workspace && <span className="chat-header-meta"><Icon name="folder" />{workspace.name}</span>}
-          <span className="chat-header-meta"><Icon name="git" />{t("qoderDefaultBranch")}</span>
-        </div>
-        <div className="chat-header-actions">
-          <Tabs className="view-tabs" ariaLabel={t("centerView")} value={centerView} onChange={onCenterViewChange} items={[{ id: "transcript", label: <><Icon name="panel" />{t("transcript")}</> }, { id: "terminal", label: <><Icon name="terminal" />{t("terminal")}</> }]} />
-          <Badge className={`chat-status ${status}`}>{statusLabel(status)}</Badge>
-          {session.organizationStatus === "active" && !running && (
-            <Button variant="primary" className="primary-button" onClick={() => onResume?.(session.id)} disabled={readonly} title={resumeTitle}>
-              <Icon name="play" />{t("resume")}
-            </Button>
-          )}
-          {running && (
-            <Button variant="secondary" className="secondary-button" onClick={() => onStop?.(session.id)} disabled={readonly}>
-              <Icon name="stop" />{t("stop")}
-            </Button>
-          )}
-        </div>
-      </div>
+      {/* 会话头部已合并进全局标题栏（App → TitleBar），保持单一 header 行 */}
       <div className="chat-messages">
         <SessionLifecycleStatusBar status={lifecycleStatus} interactionMode={session.interactionMode} />
         {status === "error" && (
@@ -198,10 +214,24 @@ export function ChatView({ session, workspace, profile, readonly, centerView, on
             )}
           </div>
         )}
-        {centerView === "transcript" ? <Suspense fallback={<div className="transcript-state">{t("loadingTranscript")}</div>}><TranscriptPanel sessionId={session.id} chatMode={chatSession} turnPending={turnActive} localEvents={echoEvents} onTurnStatus={handleTurnStatus} onDerivedTurn={handleDerivedTurn} onRetry={composerDisabled ? undefined : retryTurn} onApprove={approvalEnabled ? respondApproval : undefined} approvalFallback={approvalFallback} onSessionLifecycle={setLifecycleStatus} /></Suspense> : chatSession ? <Suspense fallback={<div className="transcript-state">{t("loadingTranscript")}</div>}><ChatTerminalReplay sessionId={session.id} /></Suspense> : running ? <div className="chat-terminal"><TerminalView sessionId={session.id} onStatus={onStatus} /></div> : <EmptyState className="chat-empty" icon={<Icon name="terminal" />} description={t("terminalStopped")} />}
+        {/* dual-mode §9.2：双 View 常挂载——GUI 与 Terminal 同时存在，非活动视图 CSS 隐藏 */}
+        <div style={centerView !== "transcript" ? { visibility: "hidden", position: "absolute", pointerEvents: "none", width: "100%", height: "100%" } : undefined}>
+          <Suspense fallback={<div className="transcript-state">{t("loadingTranscript")}</div>}>
+            {chatSession
+              ? <TranscriptPanel sessionId={session.id} chatMode={chatSession} turnPending={turnActive} localEvents={echoEvents} onTurnStatus={handleTurnStatus} onDerivedTurn={handleDerivedTurn} onRetry={composerDisabled ? undefined : retryTurn} onApprove={approvalEnabled ? respondApproval : undefined} approvalFallback={approvalFallback} onSessionLifecycle={setLifecycleStatus} onViewInTerminal={() => onCenterViewChange("terminal")} />
+              : <TranscriptPanel sessionId={session.id} chatMode={false} turnPending={turnActive} localEvents={echoEvents} onTurnStatus={handleTurnStatus} onDerivedTurn={handleDerivedTurn} onRetry={composerDisabled ? undefined : retryTurn} onApprove={approvalEnabled ? respondApproval : undefined} approvalFallback={approvalFallback} onSessionLifecycle={setLifecycleStatus} onViewInTerminal={() => onCenterViewChange("terminal")} />}
+          </Suspense>
+        </div>
+        {/* Terminal 视图：chat 会话为只读回放，terminal 会话为交互式 PTY */}
+        {chatSession
+          ? <div style={centerView !== "terminal" ? { visibility: "hidden", position: "absolute", pointerEvents: "none", width: "100%", height: "100%" } : undefined}><Suspense fallback={<div className="transcript-state">{t("loadingTranscript")}</div>}><ChatTerminalReplay sessionId={session.id} /></Suspense></div>
+          : <div className="chat-terminal" style={centerView !== "terminal" ? { visibility: "hidden", position: "absolute", pointerEvents: "none", width: "100%", height: "100%" } : undefined}>{running || true ? <TerminalView sessionId={session.id} onStatus={onStatus} hidden={centerView !== "terminal"} inputEnabled={(session as unknown as { inputOwner?: string }).inputOwner !== "gui"} /> : <EmptyState className="chat-empty" icon={<Icon name="terminal" />} description={t("terminalStopped")} />}</div>}
       </div>
+      {/* terminal 会话切到 terminal 视图时隐藏 composer（输入直达 PTY）；chat 会话在 terminal 回放视图下仍保留（issue-046） */}
+      {!(centerView === "terminal" && !chatSession) && (
       <div className="chat-composer">
-        {chatFeatureOff && <p className="composer-disabled-note" role="note">{t("chatComposerDisabled")}</p>}
+        {chatUnavailable && <p className="composer-disabled-note" role="note">{t("interactionModeLocked")}</p>}
+        {chatSession && capabilities === undefined && <p className="composer-disabled-note" role="status">{t("engineChecking")}</p>}
         <PromptComposer
           disabled={composerDisabled}
           onSend={handleSend}
@@ -215,11 +245,12 @@ export function ChatView({ session, workspace, profile, readonly, centerView, on
           waitingApproval={waitingApproval}
           onCancelTurn={cancelActiveTurn}
           workMode={workMode}
-          onWorkModeChange={onWorkModeChange}
+          onWorkModeChange={changeWorkMode}
           profileId={session.profileId}
           enhanceSupported={capabilities?.supportsPromptEnhancement}
         />
       </div>
+      )}
     </div>
   );
 }

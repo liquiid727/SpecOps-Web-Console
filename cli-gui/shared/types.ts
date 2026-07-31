@@ -11,8 +11,11 @@ export { CURRENT_SCHEMA_VERSION } from "./state.js";
 export type {
   AppStateEnvelopeV2,
   AppStateEnvelopeV3,
+  AppStateEnvelopeV4,
   AppStateV2,
   AppStateV3,
+  AppStateV4,
+  BackendSessionRef,
   CliAdapterId,
   CliProfile as CliProfileV2,
   CliProfile as CliProfileV3,
@@ -29,6 +32,9 @@ export type {
   WorkspaceV2
 } from "./state.js";
 export type * from "./api.js";
+export type * from "./agent-runtime.js";
+export type * from "./model-provider.js";
+export type * from "./remote.js";
 export type * from "./capabilities.js";
 export type * from "./transcript.js";
 export type * from "./websocket.js";

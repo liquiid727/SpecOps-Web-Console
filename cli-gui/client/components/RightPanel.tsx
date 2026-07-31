@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import type { CliProfile, Session, Workspace } from "../../shared/types";
+import type { CliProfile, Session, TranscriptEvent, Workspace } from "../../shared/types";
 import { useI18n } from "../i18n";
 import { TerminalView } from "../terminal";
+import { reduceSessionEvents } from "../transcript-display";
 import { EmptyState, Icon, IconButton, Tabs } from "./ui";
 import { useMobileDrawerFocus } from "./ui/useMobileDrawerFocus";
-import { DetailsTab, DiffTab, FilesTab as WorkspaceFilesTab, GitTab, LanguagesTab, PreviewTab } from "./inspector-tabs";
+import { Detail, DiffTab, FilesTab as WorkspaceFilesTab, GitTab, LanguagesTab, PreviewTab } from "./inspector-tabs";
+import { useClientRuntime } from "../runtime/client-runtime";
 
 interface RightPanelProps {
   session: Session;
@@ -21,12 +23,12 @@ interface RightPanelProps {
 
 export function RightPanel({ session, workspace, profile, runningCount, runningLimit, activeTab = "summary", onTabChange, onClose }: RightPanelProps) {
   const { t } = useI18n();
+  const isDev = typeof process !== "undefined" && process.env?.NODE_ENV === "development" || (import.meta as unknown as { env?: { DEV?: boolean } })?.env?.DEV;
   const tabs = [
     { id: "summary", label: t("qoderSummary") },
-    { id: "terminal", label: t("qoderTerminal") },
     { id: "files", label: t("qoderFiles") },
-    { id: "spec", label: t("qoderSpec") },
-    { id: "review", label: t("qoderReview") }
+    { id: "terminal", label: t("qoderTerminal") },
+    ...(isDev ? [{ id: "raw-events", label: "Raw Events" }] : [])
   ];
   const [tab, setTab] = useState(activeTab);
   const panelRef = useRef<HTMLElement>(null);
@@ -39,26 +41,41 @@ export function RightPanel({ session, workspace, profile, runningCount, runningL
       {tab === "summary" && <SummaryTab session={session} workspace={workspace} profile={profile} runningCount={runningCount} runningLimit={runningLimit} />}
       {tab === "terminal" && <TerminalTab session={session} />}
       {tab === "files" && <FilesTab workspace={workspace} />}
-      {tab === "spec" && <SpecTab />}
-      {tab === "review" && <ReviewTab />}
+      {tab === "raw-events" && <RawEventsTab session={session} />}
     </div>
   </aside>;
 }
 
 function SummaryTab({ session, workspace, profile, runningCount, runningLimit }: { session: Session; workspace?: Workspace; profile?: CliProfile; runningCount?: number; runningLimit?: number }) {
   const { t } = useI18n();
+  const runtime = useClientRuntime();
+  const [branch, setBranch] = useState<string>();
+  const [capabilityTransport, setCapabilityTransport] = useState<string>();
+  const [recentEvents, setRecentEvents] = useState<TranscriptEvent[]>([]);
   const nearLimit = runningCount !== undefined && runningLimit !== undefined && runningLimit > 0 && runningCount >= runningLimit - 1;
+  useEffect(() => {
+    const controller = new AbortController();
+    if (workspace) void runtime.workspace.gitStatus(workspace.id, controller.signal).then((status) => setBranch(status.branch ?? status.detachedHead)).catch(() => undefined);
+    if (profile) void runtime.engines.profileCapabilities(profile.id, controller.signal).then((capabilities) => setCapabilityTransport(capabilities.supportsHeadlessTurns ? "json-stream" : "pty")).catch(() => undefined);
+    void runtime.events.transcript(session.id, 0, 200, controller.signal).then((page) => setRecentEvents(Array.isArray(page?.events) ? page.events : [])).catch(() => undefined);
+    return () => controller.abort();
+  }, [profile, runtime.engines, runtime.events, runtime.workspace, session.id, workspace]);
+  const progress = [...recentEvents].reverse().find((event) => event.kind === "tool_activity" || event.kind === "lifecycle");
+  const artifacts = [...new Set(recentEvents.filter((event) => event.kind === "file_change").map((event) => String(event.metadata?.path ?? event.raw)))].slice(-5);
   return <div className="summary-tab">
     {runningCount !== undefined && runningLimit !== undefined && <div className="runtime-monitor-row" role="status">
       <span>{t("runningSessionsLabel")}</span><strong>{runningCount}/{runningLimit}</strong>
       {nearLimit && <small className="runtime-monitor-warning">{t("nearConcurrencyLimit")}</small>}
     </div>}
-    <div className="summary-details"><DetailsTab session={session} workspace={workspace} profile={profile} /></div>
-    <div className="right-panel-empty">
-      <div><Icon name="target" /><strong>{t("qoderProgress")}</strong><p>{t("qoderProgressEmpty")}</p></div>
-      <div><Icon name="zap" /><strong>{t("qoderArtifacts")}</strong><p>{t("qoderArtifactsEmpty")}</p></div>
-      <div><Icon name="book" /><strong>{t("qoderReferences")}</strong><p>{t("qoderReferencesEmpty")}</p></div>
+    <div className="summary-details">
+      <Detail label={t("engine")} value={profile?.adapterId === "claude-code" ? "Claude" : profile?.adapterId === "codex" ? "Codex" : profile?.name ?? t("unknownProfile")} />
+      <Detail label={t("model")} value={session.chatContext?.activeModel ?? session.launchConfig?.model ?? t("modelDefault")} />
+      <Detail label={t("transport")} value={capabilityTransport ?? "—"} mono />
+      <Detail label={t("workspace")} value={workspace?.name ?? t("unknownWorkspace")} />
+      <Detail label={t("branch")} value={branch ?? "—"} mono />
     </div>
+    {progress && <section className="runtime-monitor-section"><strong><Icon name="target" />{t("qoderProgress")}</strong><p>{progress.raw}</p></section>}
+    {artifacts.length > 0 && <section className="runtime-monitor-section"><strong><Icon name="zap" />{t("qoderArtifacts")}</strong>{artifacts.map((artifact) => <code key={artifact}>{artifact}</code>)}</section>}
   </div>;
 }
 
@@ -90,12 +107,29 @@ function FilesTab({ workspace }: { workspace?: Workspace }) {
   </div>;
 }
 
-function SpecTab() {
-  const { t } = useI18n();
-  return <EmptyState className="right-panel-empty" icon={<Icon name="file" />} title={t("qoderSpec")} description={t("qoderSpecEmpty")} />;
-}
-
-function ReviewTab() {
-  const { t } = useI18n();
-  return <EmptyState className="right-panel-empty" icon={<Icon name="shield" />} title={t("qoderReview")} description={t("qoderReviewEmpty")} />;
+/** dev-only Raw Events 调试面板（dual-mode 设计§2）：展示原始 transcript 事件与归并结果对照 */
+function RawEventsTab({ session }: { session: Session }) {
+  const runtime = useClientRuntime();
+  const [events, setEvents] = useState<TranscriptEvent[]>([]);
+  useEffect(() => {
+    const controller = new AbortController();
+    void runtime.events.transcript(session.id, 0, 200, controller.signal).then((page) => setEvents(Array.isArray(page?.events) ? page.events : [])).catch(() => undefined);
+    return () => controller.abort();
+  }, [runtime.events, session.id]);
+  const viewModel = reduceSessionEvents(events);
+  return <div className="raw-events-tab" style={{ fontSize: "11px", overflow: "auto", padding: "8px", fontFamily: "monospace" }}>
+    <details open><summary style={{ cursor: "pointer", fontWeight: 600 }}>Raw Events ({events.length})</summary>
+      <pre style={{ whiteSpace: "pre-wrap", wordBreak: "break-all", maxHeight: "300px", overflow: "auto" }}>{JSON.stringify(events.map((e) => ({ seq: e.sequence, kind: e.kind, raw: e.raw?.slice(0, 80), meta: e.metadata })), null, 1)}</pre>
+    </details>
+    <details><summary style={{ cursor: "pointer", fontWeight: 600 }}>Reduced View Model</summary>
+      <pre style={{ whiteSpace: "pre-wrap", wordBreak: "break-all", maxHeight: "300px", overflow: "auto" }}>{JSON.stringify({
+        messages: [...viewModel.messagesById.values()].map((m) => ({ id: m.id, kind: m.kind, content: m.content.slice(0, 80) })),
+        tools: [...viewModel.toolCallsById.values()].map((t) => ({ id: t.id, tool: t.tool })),
+        shellRuns: [...viewModel.shellRunsById.values()].map((s) => ({ id: s.id, outputLen: s.output.length })),
+        files: [...viewModel.fileChangesByPath.keys()],
+        approvals: [...viewModel.approvalsById.values()].map((a) => ({ id: a.approvalId, decision: a.decision, expired: a.expired })),
+        status: viewModel.currentStatus
+      }, null, 1)}</pre>
+    </details>
+  </div>;
 }

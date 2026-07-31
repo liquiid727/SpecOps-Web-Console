@@ -1,5 +1,6 @@
-import type { ApiErrorCode, ApiErrorResponse, DowngradeReason, FilePreview, FileTreePage, GitDiffResponse, GitStatusResponse, LanguageSummaryResponse, PickWorkspaceResponse, SendMessageRequest, SendMessageResponse, SessionWithCompatibilityStatus, StateResponse, TranscriptPage } from "../shared/types";
-import type { AppStateV2, CliProfileV2, CliProfileCapabilities, ProfileModelsResponse, PromptEnhanceRequest, PromptEnhanceResponse, SkillContentResponse, SkillListResponse, SkillScope, WorkspaceV2 } from "../shared/types";
+import type { ApiErrorCode, ApiErrorResponse, DowngradeReason, EngineReadinessResponse, FilePreview, FileTreePage, GitDiffResponse, GitStatusResponse, LanguageSummaryResponse, PickWorkspaceResponse, SendMessageRequest, SendMessageResponse, SessionWithCompatibilityStatus, StateResponse, TranscriptPage } from "../shared/types";
+import type { AppStateV2, CliProfileV2, CliProfileCapabilities, ProfileModelsResponse, PromptEnhanceRequest, PromptEnhanceResponse, SkillContentResponse, SkillListResponse, SkillScope, SyncModelsResponse, WorkspaceV2 } from "../shared/types";
+import type { SessionActiveView } from "../shared/state";
 import type { EventServerFrame, TerminalServerFrame } from "../shared/websocket";
 
 export class ApiClientError extends Error {
@@ -12,11 +13,24 @@ export class ApiClientError extends Error {
 let csrfCapability: string | undefined;
 let pickerIntentToken: string | undefined;
 
+interface DesktopRuntimeBootstrap {
+  baseUrl: string;
+  credential: string;
+}
+
+declare global {
+  interface Window {
+    __SPECOS_DESKTOP_RUNTIME__?: DesktopRuntimeBootstrap;
+  }
+}
+
 export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   if (!headers.has("content-type")) headers.set("content-type", "application/json");
+  const desktopRuntime = getDesktopRuntime();
+  if (desktopRuntime && !headers.has("authorization")) headers.set("authorization", `Bearer ${desktopRuntime.credential}`);
   if (csrfCapability && !headers.has("x-specos-csrf-capability")) headers.set("x-specos-csrf-capability", csrfCapability);
-  const response = await fetch(path, { ...init, headers });
+  const response = await fetch(resolveHttpUrl(path, desktopRuntime), { ...init, headers });
   if (response.status === 204) return undefined as T;
   const payload = await response.json().catch(() => undefined) as T | ApiErrorResponse | undefined;
   if (!response.ok) {
@@ -45,6 +59,7 @@ export interface TerminalSubscriptionHandlers {
   onOpen?: () => void;
   onOutput?: (data: string) => void;
   onStatus?: (status: import("../shared/types").SessionRuntimeStatus, exitCode?: number) => void;
+  onInputRejected?: (reason: string) => void;
   onError?: (message: string) => void;
   onClose?: () => void;
 }
@@ -52,9 +67,13 @@ export interface TerminalSubscriptionHandlers {
 export function openTranscriptSubscription(sessionId: string, afterSequence: number, handlers: TranscriptSubscriptionHandlers) {
   if (typeof WebSocket === "undefined") return () => undefined;
   const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+  const desktopRuntime = getDesktopRuntime();
   const query = new URLSearchParams({ sessionId, channel: "events", afterSequence: String(Math.max(0, afterSequence)) });
-  if (csrfCapability) query.set("capability", csrfCapability);
-  const socket = new WebSocket(`${protocol}://${window.location.host}/ws?${query.toString()}`);
+  if (csrfCapability && !desktopRuntime) query.set("capability", csrfCapability);
+  const socket = new WebSocket(
+    resolveWebSocketUrl(`/ws?${query.toString()}`, protocol, desktopRuntime),
+    desktopRuntime ? [`specos-bearer.${desktopRuntime.credential}`] : undefined
+  );
   socket.addEventListener("open", () => handlers.onOpen?.());
   socket.addEventListener("message", (message) => {
     try {
@@ -78,15 +97,20 @@ export function openTranscriptSubscription(sessionId: string, afterSequence: num
 export function openTerminalSubscription(sessionId: string, handlers: TerminalSubscriptionHandlers) {
   if (typeof WebSocket === "undefined") return { sendInput: () => undefined, resize: () => undefined, close: () => undefined };
   const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+  const desktopRuntime = getDesktopRuntime();
   const query = new URLSearchParams({ sessionId, channel: "terminal" });
-  if (csrfCapability) query.set("capability", csrfCapability);
-  const socket = new WebSocket(`${protocol}://${window.location.host}/ws?${query.toString()}`);
+  if (csrfCapability && !desktopRuntime) query.set("capability", csrfCapability);
+  const socket = new WebSocket(
+    resolveWebSocketUrl(`/ws?${query.toString()}`, protocol, desktopRuntime),
+    desktopRuntime ? [`specos-bearer.${desktopRuntime.credential}`] : undefined
+  );
   socket.addEventListener("open", () => handlers.onOpen?.());
   socket.addEventListener("message", (message) => {
     try {
       const frame = JSON.parse(String(message.data)) as TerminalServerFrame | { type: "output" | "status" | "error"; data?: string; status?: import("../shared/types").SessionRuntimeStatus; message?: string; exitCode?: number };
       if (frame.type === "terminal-output" || frame.type === "output") handlers.onOutput?.(frame.data ?? "");
       else if (frame.type === "runtime-status" || frame.type === "status") handlers.onStatus?.(frame.status!, frame.exitCode);
+      else if (frame.type === "input-rejected") handlers.onInputRejected?.((frame as { reason?: string }).reason ?? "Input rejected.");
       else if (frame.type === "protocol-error") handlers.onError?.(frame.error.message);
       else if (frame.type === "error") handlers.onError?.(frame.message ?? "Terminal connection failed.");
     } catch {
@@ -108,6 +132,24 @@ function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
   return Boolean(error && typeof error === "object" && typeof (error as { code?: unknown }).code === "string" && typeof (error as { message?: unknown }).message === "string" && typeof (error as { requestId?: unknown }).requestId === "string");
 }
 
+function getDesktopRuntime(): DesktopRuntimeBootstrap | undefined {
+  if (typeof window === "undefined") return undefined;
+  const runtime = window.__SPECOS_DESKTOP_RUNTIME__;
+  if (!runtime || !/^http:\/\/127\.0\.0\.1:\d+$/.test(runtime.baseUrl) || !/^[a-f0-9]{64}$/.test(runtime.credential)) return undefined;
+  return runtime;
+}
+
+function resolveHttpUrl(path: string, runtime = getDesktopRuntime()) {
+  return runtime ? new URL(path, `${runtime.baseUrl}/`).toString() : path;
+}
+
+function resolveWebSocketUrl(path: string, fallbackProtocol: string, runtime = getDesktopRuntime()) {
+  if (!runtime) return `${fallbackProtocol}://${window.location.host}${path}`;
+  const url = new URL(path, `${runtime.baseUrl}/`);
+  url.protocol = "ws:";
+  return url.toString();
+}
+
 async function loadState() {
   const next = await request<StateResponse>("/api/state");
   csrfCapability = next.csrfCapability;
@@ -117,17 +159,19 @@ async function loadState() {
 
 export const api = {
   state: loadState,
+  engineReadiness: (signal?: AbortSignal) => request<EngineReadinessResponse>("/api/engines/readiness", { signal }),
   createWorkspace: (input: { name: string; path: string }) => request<WorkspaceV2>("/api/workspaces", { method: "POST", body: JSON.stringify(input) }),
   createProfile: (input: { name: string; command: string; args: string[]; adapterId?: string }) => request<CliProfileV2>("/api/profiles", { method: "POST", body: JSON.stringify(input) }),
   profileCapabilities: (id: string, signal?: AbortSignal) => request<CliProfileCapabilities>(`/api/profiles/${id}/capabilities`, { signal }),
   profileModels: (id: string, signal?: AbortSignal) => request<ProfileModelsResponse>(`/api/profiles/${id}/models`, { signal }),
   syncProfileModels: (id: string) => request<ProfileModelsResponse>(`/api/profiles/${id}/models/sync`, { method: "POST", body: "{}" }),
+  syncModels: (id: string) => request<SyncModelsResponse>(`/api/profiles/${id}/sync-models`, { method: "POST", body: "{}" }),
   addProfileModel: (id: string, model: string) => request<ProfileModelsResponse>(`/api/profiles/${id}/models/custom`, { method: "POST", body: JSON.stringify({ model }) }),
   removeProfileModel: (id: string, model: string) => request<ProfileModelsResponse>(`/api/profiles/${id}/models/custom/${encodeURIComponent(model)}`, { method: "DELETE", body: "{}" }),
   skills: (scope: SkillScope, workspaceId?: string, signal?: AbortSignal) => request<SkillListResponse>(`/api/skills?scope=${scope}${workspaceId ? `&workspaceId=${encodeURIComponent(workspaceId)}` : ""}`, { signal }),
   skillContent: (scope: SkillScope, id: string, workspaceId?: string, signal?: AbortSignal) => request<SkillContentResponse>(`/api/skills/content?scope=${scope}&id=${encodeURIComponent(id)}${workspaceId ? `&workspaceId=${encodeURIComponent(workspaceId)}` : ""}`, { signal }),
   enhancePrompt: (input: PromptEnhanceRequest, signal?: AbortSignal) => request<PromptEnhanceResponse>("/api/prompt/enhance", { method: "POST", body: JSON.stringify(input), signal }),
-  createSession: (input: { name: string; workspaceId: string; profileId: string; confirmed: boolean; start?: boolean; interactionMode?: "chat" | "terminal"; terminal?: { cols: number; rows: number } }) => request<SessionWithCompatibilityStatus & { session?: SessionWithCompatibilityStatus; capabilities?: CliProfileCapabilities; interactionModeDowngraded?: boolean; downgradeReason?: DowngradeReason }>("/api/sessions", { method: "POST", body: JSON.stringify({ start: input.start ?? true, ...input }) }),
+  createSession: (input: { name: string; workspaceId: string; profileId: string; confirmed: boolean; start?: boolean; interactionMode?: "chat" | "terminal"; terminal?: { cols: number; rows: number }; launchConfig?: { model?: string | null; permission?: string | null; mode?: string | null } }) => request<SessionWithCompatibilityStatus & { session?: SessionWithCompatibilityStatus; capabilities?: CliProfileCapabilities; interactionModeDowngraded?: boolean; downgradeReason?: DowngradeReason }>("/api/sessions", { method: "POST", body: JSON.stringify({ start: input.start ?? true, ...input }) }),
   startSession: (id: string) => request<SessionWithCompatibilityStatus>(`/api/sessions/${id}/start`, { method: "POST", body: JSON.stringify({ confirmed: true }) }),
   stopSession: (id: string) => request<SessionWithCompatibilityStatus>(`/api/sessions/${id}/stop`, { method: "POST", body: "{}" }),
   renameSession: (id: string, name: string, expectedRevision: number) => request<SessionWithCompatibilityStatus>(`/api/sessions/${id}`, { method: "PATCH", body: JSON.stringify({ name, expectedRevision }) }),
@@ -159,7 +203,8 @@ export const api = {
   },
   deleteSession: (id: string) => request<void>(`/api/sessions/${id}`, { method: "DELETE", body: "{}" }),
   deleteWorkspace: (id: string) => request<void>(`/api/workspaces/${id}`, { method: "DELETE", body: "{}" }),
-  deleteProfile: (id: string) => request<void>(`/api/profiles/${id}`, { method: "DELETE", body: "{}" })
+  deleteProfile: (id: string) => request<void>(`/api/profiles/${id}`, { method: "DELETE", body: "{}" }),
+  switchView: (id: string, view: SessionActiveView, expectedRevision: number) => request<SessionWithCompatibilityStatus>(`/api/sessions/${id}/view`, { method: "POST", body: JSON.stringify({ view, expectedRevision }) })
 };
 
 export type ClientAppState = AppStateV2 & { sessions: SessionWithCompatibilityStatus[]; maxRunningSessions?: number };

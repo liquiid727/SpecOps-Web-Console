@@ -9,6 +9,12 @@ export async function main() {
   const host = "127.0.0.1";
   const port = Number(process.env.PORT ?? 3001);
   const guiPort = readPort(process.env.SPECOS_GUI_PORT, 3000);
+  const defaultOrigins = [
+    `http://${host}:${port}`,
+    `http://localhost:${port}`,
+    `http://${host}:${guiPort}`,
+    `http://localhost:${guiPort}`
+  ];
   const dependencies = createProductionDependencies({
     dataDirectory: path.resolve(process.env.SPECOS_DATA_DIRECTORY ?? path.resolve(process.cwd(), "data")),
     readonly: process.env.SPECOS_RUNTIME_MODE === "readonly",
@@ -23,12 +29,8 @@ export async function main() {
     requestIdFactory: () => dependencies.idGenerator.create("request"),
     allowedHosts: [host, "localhost"],
     csrfCapability: dependencies.policy.csrfCapability,
-    allowedOrigins: [
-      `http://${host}:${port}`,
-      `http://localhost:${port}`,
-      `http://${host}:${guiPort}`,
-      `http://localhost:${guiPort}`
-    ]
+    bearerCredential: process.env.SPECOS_DESKTOP_BEARER,
+    allowedOrigins: readAllowedOrigins(process.env.SPECOS_ALLOWED_ORIGINS, defaultOrigins)
   });
   const address = await server.listen();
   dependencies.logger.info(`Product AI OS listening on http://${address.host}:${address.port}`);
@@ -65,4 +67,10 @@ export const modulePath = fileURLToPath(import.meta.url);
 function readPort(value: string | undefined, fallback: number) {
   const port = Number(value);
   return Number.isInteger(port) && port > 0 && port <= 65_535 ? port : fallback;
+}
+
+export function readAllowedOrigins(value: string | undefined, fallback: readonly string[]) {
+  if (!value) return [...fallback];
+  const origins = value.split(",").map((origin) => origin.trim()).filter(Boolean);
+  return origins.length ? [...new Set(origins)] : [...fallback];
 }

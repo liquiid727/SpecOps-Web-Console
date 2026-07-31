@@ -27,16 +27,16 @@ describe("NewSessionDialog", () => {
     container.remove();
   });
 
-  it("renders launch context and submits terminal mode while chat is feature-flagged off", async () => {
+  it("defaults to chat mode when the engine supports structured turns", async () => {
     const onCreate = vi.fn().mockResolvedValue(undefined);
     const loadCapabilities = vi.fn().mockResolvedValue(capabilitiesWith(true));
     await act(async () => root.render(<I18nProvider><NewSessionDialog workspaces={[workspace]} profiles={[profile]} readonly={false} onClose={() => undefined} onCreate={onCreate} onOpenSettings={() => undefined} loadCapabilities={loadCapabilities} /></I18nProvider>));
 
-    // chat 封闭期（console-gaps SPEC §1）：模式控件锁定 terminal + 「暂未开放」说明
+    // Chat 开启（CHAT_ENABLED=true）：支持 headless 的 Profile 默认 chat，模式可选（issue-066 Chat-first）
     const modeTrigger = container.querySelector<HTMLButtonElement>(".interaction-mode-field .custom-select-trigger")!;
-    expect(modeTrigger.disabled).toBe(true);
-    expect(modeTrigger.textContent).toContain("Terminal");
-    expect(container.textContent).toContain("Chat mode is temporarily unavailable");
+    expect(modeTrigger.disabled).toBe(false);
+    expect(modeTrigger.textContent).toContain("Chat");
+    expect(container.textContent).not.toContain("Chat is a future capability");
 
     const input = container.querySelector("input")!;
     act(() => {
@@ -51,7 +51,7 @@ describe("NewSessionDialog", () => {
     expect(container.textContent).toContain("Project");
     expect(container.textContent).not.toContain("Workspace");
     expect(loadCapabilities).toHaveBeenCalledWith(profile.id, expect.anything());
-    expect(onCreate).toHaveBeenCalledWith({ name: "Backend refactor", workspaceId: workspace.id, profileId: profile.id, interactionMode: "terminal" });
+    expect(onCreate).toHaveBeenCalledWith({ name: "Backend refactor", workspaceId: workspace.id, profileId: profile.id, interactionMode: "chat" });
   });
 
   it("locks the mode to terminal when the profile cannot run chat turns", async () => {
@@ -59,10 +59,11 @@ describe("NewSessionDialog", () => {
     const loadCapabilities = vi.fn().mockResolvedValue(capabilitiesWith(false));
     await act(async () => root.render(<I18nProvider><NewSessionDialog workspaces={[workspace]} profiles={[profile]} readonly={false} onClose={() => undefined} onCreate={onCreate} onOpenSettings={() => undefined} loadCapabilities={loadCapabilities} /></I18nProvider>));
 
-    // 能力锁定与功能开关叠加：仍锁定 terminal（开关文案优先，frontend-spec §6 降级路径不变）
+    // 能力锁定：所选 Profile 不支持 headless → 锁定 terminal 并展示降级说明（frontend-spec §6）
     const modeTrigger = container.querySelector<HTMLButtonElement>(".interaction-mode-field .custom-select-trigger")!;
     expect(modeTrigger.disabled).toBe(true);
     expect(modeTrigger.textContent).toContain("Terminal");
+    expect(container.textContent).toContain("does not support chat mode");
 
     const input = container.querySelector("input")!;
     act(() => {
@@ -85,7 +86,7 @@ describe("NewSessionDialog", () => {
     expect(onCreate).toHaveBeenCalledOnce();
     const payload = onCreate.mock.calls[0][0] as { name: string; workspaceId: string; profileId: string; interactionMode: string };
     expect(payload.name).toMatch(/^Payment Platform \d{2}-\d{2} \d{2}:\d{2}$/);
-    expect(payload).toMatchObject({ workspaceId: workspace.id, profileId: profile.id, interactionMode: "terminal" });
+    expect(payload).toMatchObject({ workspaceId: workspace.id, profileId: profile.id, interactionMode: "chat" });
   });
 
   it("directs incomplete setup to settings", () => {

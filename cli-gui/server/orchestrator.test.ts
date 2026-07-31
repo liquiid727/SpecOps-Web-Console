@@ -146,6 +146,30 @@ const turnEnded = (events: RecordedEvent[], turnId: string) =>
   events.some((event) => event.kind === "lifecycle" && typeof event.metadata?.status === "string" && String(event.metadata.status).startsWith("turn-") && event.metadata?.turnId === turnId);
 
 describe("runtime orchestrator chat turns", () => {
+  it("projects compatibility PTY diagnostics into replay output without treating them as assistant text", async () => {
+    const { orchestrator, events } = createHarness();
+    await orchestrator.submitTurn("backend-session", {
+      turnId: "backend-turn-1",
+      prompt: "backend prompt",
+      runBackend: async () => ({
+        events: (async function* () {
+          yield {
+            kind: "diagnostic" as const,
+            occurredAt: new Date().toISOString(),
+            text: "cli-raw backend prompt",
+            metadata: { code: "COMPATIBILITY_EVENT", compatibilityKind: "pty_output" }
+          };
+        })(),
+        result: Promise.resolve({ status: "completed" as const }),
+        cancel: async () => undefined
+      })
+    });
+    await waitFor(() => turnEnded(events, "backend-turn-1"));
+
+    expect(events.some((event) => event.kind === "pty_output" && event.raw === "cli-raw backend prompt")).toBe(true);
+    expect(events.some((event) => event.kind === "assistant_message" && event.raw === "cli-raw backend prompt")).toBe(false);
+  });
+
   it("runs multiple sequential turns, streams events, and reports resumeToken on success only", async () => {
     const { orchestrator, events, statusCalls, turnStatuses } = createHarness();
     await orchestrator.submitTurn("s1", makeTurn("turn-1", "first prompt", echoScript, ["thread-1"]));
@@ -494,6 +518,19 @@ describe("runtime orchestrator persistent turns", () => {
     expect(events.some((event) => event.kind === "assistant_message" && event.raw === "assistant says hi")).toBe(true);
     expect(statusCalls).toContainEqual({ sessionId: "p2", status: "running", extra: { resumeToken: "spawn-fallback-token" } });
     expect(events.some((event) => event.metadata?.status === "turn-completed" && event.metadata?.turnId === "turn-1")).toBe(true);
+  });
+
+  it("falls back when persistent setup rejects asynchronously as unavailable", async () => {
+    const { orchestrator, events, statusCalls } = createHarness();
+    const turn = makePersistentTurn("turn-1", "late fallback", async () => {
+      throw new PersistentRuntimeUnavailableError("mcp handshake failed");
+    });
+    await orchestrator.submitTurn("p2-async", turn);
+    await waitFor(() => turnEnded(events, "turn-1"));
+
+    expect(events.some((event) => event.kind === "assistant_message" && event.raw === "assistant says hi")).toBe(true);
+    expect(statusCalls).toContainEqual({ sessionId: "p2-async", status: "running", extra: { resumeToken: "spawn-fallback-token" } });
+    expect(events.some((event) => event.kind === "error" && event.metadata?.code === "TURN_FAILED")).toBe(false);
   });
 
   it("fails the turn without fallback when runPersistent throws a non-availability error", async () => {

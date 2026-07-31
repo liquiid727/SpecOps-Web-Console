@@ -6,10 +6,10 @@
 
 ## Acceptance Criteria
 
-- [ ] 每个 Session 使用独立 PTY。
-- [ ] 支持启动、输入、Ctrl+C、resize 和停止。
-- [ ] 捕获退出码和异常退出。
-- [ ] 至少支持 4 个并发 Session。
+- [x] 每个 Session 使用独立 PTY。
+- [x] 支持启动、输入、Ctrl+C、resize 和停止。
+- [x] 捕获退出码和异常退出。
+- [x] 至少支持 4 个并发 Session。
 
 ## Dependencies
 

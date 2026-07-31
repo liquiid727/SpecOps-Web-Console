@@ -4,14 +4,14 @@
 Implement the session organizational state machine independently of PTY runtime state.
 
 ## Acceptance Criteria
-- [ ] Implement pin and unpin without changing runtime status.
-- [ ] Implement archive and restore transitions.
-- [ ] Implement complete and reopen transitions.
-- [ ] Require explicit stopRunning confirmation before archiving or completing a running session.
-- [ ] Stop the PTY before committing a confirmed runtime-affecting transition.
-- [ ] Reject start and composer input for archived or completed sessions.
-- [ ] Persist organizational timestamps and revisions.
-- [ ] Add valid-transition, invalid-transition, and running-confirmation tests.
+- [x] Implement pin and unpin without changing runtime status.
+- [x] Implement archive and restore transitions.
+- [x] Implement complete and reopen transitions.
+- [x] Require explicit stopRunning confirmation before archiving or completing a running session.
+- [x] Stop the PTY before committing a confirmed runtime-affecting transition.
+- [x] Reject start and composer input for archived or completed sessions.
+- [x] Persist organizational timestamps and revisions.
+- [x] Add valid-transition, invalid-transition, and running-confirmation tests.
 
 ## Dependencies
 Issues #18, #20

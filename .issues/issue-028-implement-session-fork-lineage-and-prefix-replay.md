@@ -4,15 +4,15 @@
 Create session branches that share an immutable visible parent transcript prefix without cloning a running process.
 
 ## Acceptance Criteria
-- [ ] Fork at the latest fully persisted visible event.
-- [ ] Inherit workspace, profile, and effective launch configuration.
-- [ ] Create a distinct stopped active child session with parent and boundary metadata.
-- [ ] Resolve parent prefix followed by child events during replay.
-- [ ] Prevent later parent events from appearing in the child.
-- [ ] Protect referenced parent prefixes from retention.
-- [ ] Reject parent deletion while dependent forks exist.
-- [ ] Materialize history when Fork depth would exceed 32.
-- [ ] Add Fork, replay, retention, deletion, and depth tests.
+- [x] Fork at the latest fully persisted visible event.
+- [x] Inherit workspace, profile, and effective launch configuration.
+- [x] Create a distinct stopped active child session with parent and boundary metadata.
+- [x] Resolve parent prefix followed by child events during replay.
+- [x] Prevent later parent events from appearing in the child.
+- [x] Protect referenced parent prefixes from retention.
+- [x] Reject parent deletion while dependent forks exist.
+- [x] Materialize history when Fork depth would exceed 32.
+- [x] Add Fork, replay, retention, deletion, and depth tests.
 
 ## Dependencies
 Issues #21, #23, #25

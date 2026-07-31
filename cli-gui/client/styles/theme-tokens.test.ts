@@ -6,7 +6,7 @@ function readStyle(name: string): string {
   return readFileSync(fileURLToPath(new URL(name, import.meta.url)), "utf8");
 }
 
-const themeFiles = ["qoder-light", "qoder-dark", "classic", "neo"] as const;
+const themeFiles = ["qoder-light", "qoder-dark", "classic", "neo", "zcode"] as const;
 
 // Semantic tokens that components.css depends on after the Qoder Light theme upgrade.
 const requiredTokens = [

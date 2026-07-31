@@ -6,12 +6,12 @@
 
 ## Acceptance Criteria
 
-- [ ] 真实环境验证 Codex CLI 启动和交互。
-- [ ] 真实环境验证 Claude CLI 启动和交互。
-- [ ] 验证至少 4 个并发 Session。
-- [ ] 验证 Ctrl+C、resize、停止、恢复和异常退出。
-- [ ] `npm run test` 通过。
-- [ ] `npm run build` 通过。
+- [x] 真实环境验证 Codex CLI 启动和交互。
+- [x] 真实环境验证 Claude CLI 启动和交互。
+- [x] 验证至少 4 个并发 Session。
+- [x] 验证 Ctrl+C、resize、停止、恢复和异常退出。
+- [x] `npm run test` 通过。
+- [x] `npm run build` 通过。
 
 ## Dependencies
 

@@ -11,7 +11,7 @@ afterEach(async () => {
   await Promise.all(servers.splice(0).map((server) => server.close()));
 });
 
-function createSecuredServer() {
+function createSecuredServer(bearerCredential?: string, allowedOrigins = ["http://127.0.0.1:3000"]) {
   const server = createServer({
     async handleHttp(_request, response) { sendJson(response, 200, { ok: true }); },
     handleWebSocket(client) { client.close(1000, "test"); },
@@ -19,8 +19,9 @@ function createSecuredServer() {
   }, {
     host: "127.0.0.1",
     port: 0,
-    csrfCapability: "process-capability",
-    allowedOrigins: ["http://127.0.0.1:3000"],
+    csrfCapability: bearerCredential ?? "process-capability",
+    bearerCredential,
+    allowedOrigins,
     logger: { info: () => undefined, warn: () => undefined, error: () => undefined },
     requestIdFactory: () => "request-test"
   });
@@ -28,9 +29,9 @@ function createSecuredServer() {
   return server;
 }
 
-function request(port: number, headers: Record<string, string>) {
+function request(port: number, headers: Record<string, string>, method = "GET") {
   return new Promise<number>((resolve, reject) => {
-    const req = http.request({ host: "127.0.0.1", port, path: "/api/state", method: "GET", headers }, (response) => {
+    const req = http.request({ host: "127.0.0.1", port, path: "/api/state", method, headers }, (response) => {
       response.resume();
       response.on("end", () => resolve(response.statusCode ?? 0));
     });
@@ -63,6 +64,29 @@ describe("loopback transport authorization", () => {
       const socket = new WebSocket(`ws://127.0.0.1:${address.port}/ws?sessionId=session-1&capability=wrong`, { origin: "http://127.0.0.1:3000" });
       socket.once("error", () => resolve());
       socket.once("close", () => resolve());
+    });
+  });
+
+  it("requires the per-launch bearer and permits authenticated CORS preflight", async () => {
+    const server = createSecuredServer("launch-secret", ["tauri://localhost"]);
+    const address = await server.listen();
+    const baseHeaders = { host: `127.0.0.1:${address.port}`, origin: "tauri://localhost" };
+
+    expect(await request(address.port, baseHeaders)).toBe(403);
+    expect(await request(address.port, { ...baseHeaders, authorization: "Bearer wrong" })).toBe(403);
+    expect(await request(address.port, { ...baseHeaders, authorization: "Bearer launch-secret" })).toBe(200);
+    expect(await request(address.port, baseHeaders, "OPTIONS")).toBe(204);
+
+    await new Promise<void>((resolve) => {
+      const socket = new WebSocket(`ws://127.0.0.1:${address.port}/ws?sessionId=session-1`, "specos-bearer.wrong", { origin: "tauri://localhost" });
+      socket.once("error", () => resolve());
+      socket.once("close", () => resolve());
+    });
+    await new Promise<void>((resolve, reject) => {
+      const socket = new WebSocket(`ws://127.0.0.1:${address.port}/ws?sessionId=session-1`, "specos-bearer.launch-secret", { origin: "tauri://localhost" });
+      socket.once("open", () => undefined);
+      socket.once("close", () => resolve());
+      socket.once("error", reject);
     });
   });
 });

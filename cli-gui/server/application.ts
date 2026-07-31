@@ -2,9 +2,11 @@ import type http from "node:http";
 import path from "node:path";
 import { WebSocket } from "ws";
 import type {
+  AgentInput,
   AppStateV3,
   CapabilityDetectionResult,
   CliProfileCapabilities,
+  EngineReadiness,
   FilePreview,
   FileTreeEntry,
   FileTreePage,
@@ -23,6 +25,7 @@ import { builtinModelIds, mergeModelSources, readSyncedModels } from "./model-ca
 import { ENHANCE_INPUT_LIMIT, EnhanceExecutionError, buildEnhancePrompt, runEnhance } from "./prompt-enhance.js";
 import { listSkills, readSkillContent, type SkillScanOptions } from "./skills.js";
 import { discoverTerminalResumeToken } from "./terminal-resume.js";
+import { toEngineReadiness } from "./engine-readiness.js";
 import type { Application, ApplicationDependencies, PersistentTurnHandlers } from "./ports.js";
 
 const MAX_FILE_DEPTH = 32;
@@ -78,6 +81,14 @@ export async function createApplication(dependencies: ApplicationDependencies): 
           // 轮次成功后 Orchestrator 上报 resumeToken，写入 chatContext（domain-spec §2.1；保持 I-3：terminal 不写）
           if (extra?.resumeToken && session.interactionMode === "chat") {
             session.chatContext = { ...session.chatContext, resumeToken: extra.resumeToken };
+            const profile = state.profiles.find((item) => item.id === session.profileId);
+            const backendId = session.backendId ?? (profile ? backendIdForAdapter(profile.adapterId) : "unknown");
+            session.backendId = backendId;
+            session.backendSessionRef = {
+              backendId,
+              nativeSessionId: extra.resumeToken,
+              transport: session.backendSessionRef?.transport ?? "json-stream"
+            };
           }
           session.runtimeStatus = "running";
           session.lastActiveAt = dependencies.clock.now();
@@ -262,8 +273,9 @@ export async function createApplication(dependencies: ApplicationDependencies): 
 
   async function resolveCapabilities(profile: SessionV3["profileId"] extends string ? AppStateV3["profiles"][number] : never): Promise<CapabilityDetectionResult> {
     const adapter = profile.adapterId;
+    if (dependencies.agentBackends) return dependencies.agentBackends.probe(profile);
     if (dependencies.profileAdapters.capabilities) return dependencies.profileAdapters.capabilities(profile);
-    return { adapterId: adapter, compatibility: adapter === "generic" ? "supported" : "unknown-version", permissions: [], modes: [], models: [], supportsComposer: true, supportsStructuredRecognition: false, supportsHeadlessTurns: false, supportsResume: false, supportsApproval: false, supportsPromptEnhancement: false };
+    return { adapterId: adapter, compatibility: adapter === "generic" ? "supported" : "unknown-version", permissions: [], modes: [], models: [], supportsComposer: true, supportsStructuredRecognition: false, supportsHeadlessTurns: false, supportsResume: false, supportsApproval: false, supportsPromptEnhancement: false, guiMode: "unsupported" as const };
   }
 
   const requireProfile = (id: string) => {
@@ -280,6 +292,14 @@ export async function createApplication(dependencies: ApplicationDependencies): 
   }
 
   const readProfileSyncedModels = dependencies.modelSyncReader ?? ((profile: AppStateV3["profiles"][number]) => readSyncedModels(profile.adapterId));
+
+  /** 执行 CLI 命令发现模型并写入 synced 层（issue-053）：adapter 无 discoverModels 时保持原列表 */
+  async function syncModels(profileId: string) {
+    const profile = requireProfile(profileId);
+    if (dependencies.profileAdapters.discoverModels) profile.syncedModels = await dependencies.profileAdapters.discoverModels(profile);
+    await dependencies.stateRepository.save(state);
+    return { models: await mergedProfileModels(profile), synced: profile.syncedModels ?? [] };
+  }
 
   async function resolveLaunch(profile: AppStateV3["profiles"][number], config: SessionV3["launchConfig"], resumeToken?: string) {
     try {
@@ -305,7 +325,12 @@ export async function createApplication(dependencies: ApplicationDependencies): 
     const profile = state.profiles.find((item) => item.id === session.profileId);
     if (!workspace || !profile) return;
     const token = await discoverResumeToken({ adapterId: profile.adapterId, cwd: workspace.path, sinceMs: spawnedAt, env: dependencies.policy.processEnvironment });
-    if (token) session.terminalContext = { ...session.terminalContext, resumeToken: token };
+    if (token) {
+      session.terminalContext = { ...session.terminalContext, resumeToken: token };
+      const backendId = session.backendId ?? backendIdForAdapter(profile.adapterId);
+      session.backendId = backendId;
+      session.backendSessionRef = { backendId, nativeSessionId: token, transport: "pty" };
+    }
   }
 
   /** 以 resume 启动失败（token 过期/被清理）时清除凭据，下次恢复回到全新启动 */
@@ -645,6 +670,17 @@ export async function createApplication(dependencies: ApplicationDependencies): 
       return;
     }
 
+    if (method === "GET" && resource === "engines" && id === "readiness") {
+      const engines: EngineReadiness[] = [];
+      for (const profile of state.profiles) {
+        if (profile.adapterId !== "codex" && profile.adapterId !== "claude-code") continue;
+        const readiness = toEngineReadiness(profile, await resolveCapabilities(profile));
+        if (readiness) engines.push(readiness);
+      }
+      sendJson(response, 200, { engines, probedAt: dependencies.clock.now() });
+      return;
+    }
+
     if (resource === "skills" && method === "GET") {
       // 只读端点（console-gaps SPEC §7.3）：scope 必选；workspace scope 要求 workspaceId 命中已注册工作区
       const scopeParam = url.searchParams.get("scope");
@@ -787,6 +823,10 @@ export async function createApplication(dependencies: ApplicationDependencies): 
         sendJson(response, 200, { models: await mergedProfileModels(profile), synced: profile.syncedModels });
         return;
       }
+      if (method === "POST" && id && action === "sync-models" && !segments[3]) {
+        sendJson(response, 200, await syncModels(id));
+        return;
+      }
       if (method === "POST" && id && action === "models" && segments[3] === "custom" && !segments[4]) {
         const profile = requireProfile(id);
         const model = requireText(body.model, "model").trim();
@@ -893,6 +933,11 @@ export async function createApplication(dependencies: ApplicationDependencies): 
         const session: SessionV3 = {
           id: dependencies.idGenerator.create("session"), name: requireResourceName(body.name, "name"), workspaceId, profileId, interactionMode,
           runtimeStatus: "stopped", organizationStatus: "active", pinned: false, manualOrder: nextManualOrder(), launchConfig,
+          backendId: dependencies.agentBackends?.forProfile(profile).id ?? backendIdForAdapter(profile.adapterId),
+          backendSessionRef: {
+            backendId: dependencies.agentBackends?.forProfile(profile).id ?? backendIdForAdapter(profile.adapterId),
+            transport: interactionMode === "chat" ? "json-stream" : "pty"
+          },
           revision: 1, createdAt: now, lastActiveAt: now
         };
         state.sessions.push(session);
@@ -1036,6 +1081,40 @@ export async function createApplication(dependencies: ApplicationDependencies): 
             const workspace = state.workspaces.find((item) => item.id === session.workspaceId);
             const profile = state.profiles.find((item) => item.id === session.profileId);
             if (!workspace || !profile) throw new ApiHttpError(400, "VALIDATION_FAILED", "Session references a missing workspace or profile.");
+            const turnId = dependencies.idGenerator.create("turn");
+            if (dependencies.agentBackends) {
+              const backend = dependencies.agentBackends.forProfile(profile);
+              const backendSession = await backend.openSession({
+                sessionId: id,
+                workspacePath: workspace.path,
+                config: { profile },
+                resume: session.backendSessionRef?.backendId === backend.id ? session.backendSessionRef : undefined
+              });
+              session.backendId = backend.id;
+              session.backendSessionRef = {
+                ...backendSession.ref,
+                backendId: backend.id,
+                transport: backendSession.selectedTransport
+              };
+              const backendInput: AgentInput = {
+                turnId,
+                prompt: content,
+                clientMessageId,
+                ...(normalizeOption(session.chatContext?.activeModel ?? session.launchConfig.model) ? { model: normalizeOption(session.chatContext?.activeModel ?? session.launchConfig.model)! } : {}),
+                ...(normalizeOption(session.launchConfig.permission) ? { permission: normalizeOption(session.launchConfig.permission)! } : {}),
+                ...(normalizeOption(session.launchConfig.mode) ? { mode: normalizeOption(session.launchConfig.mode)! } : {})
+              };
+              const { event } = await orchestrator.submitTurn(id, {
+                turnId,
+                prompt: content,
+                clientMessageId,
+                runBackend: () => backendSession.runTurn(backendInput)
+              });
+              session.lastActiveAt = dependencies.clock.now();
+              await dependencies.stateRepository.save(state);
+              sendJson(response, 202, { event, runtimeStatus: session.runtimeStatus, duplicate: false, turnId });
+              return;
+            }
             const registry = dependencies.profileAdapters;
             if (!registry.buildTurn || !registry.parseEvents) throw new ApiHttpError(422, "SESSION_START_FAILED", "Chat turns are not supported by this server build.");
             // 审批应答通道仅对 supportsApproval 的 profile 接线（D-8）；否则不产生挂起路径
@@ -1043,7 +1122,6 @@ export async function createApplication(dependencies: ApplicationDependencies): 
             const approvalWiring = capabilities.supportsApproval && registry.buildApprovalResponse
               ? { buildApprovalResponse: (approvalId: string, decision: "allow" | "deny") => registry.buildApprovalResponse!(profile, approvalId, decision) }
               : {};
-            const turnId = dependencies.idGenerator.create("turn");
             // codex 常驻运行时注入（streaming-spec §3.5）：选项翻译与 argv 路径同源（default → 省略）
             const persistentRuntime = dependencies.persistentChatRuntime;
             const persistentWiring = persistentRuntime && profile.adapterId === "codex" && capabilities.supportsHeadlessTurns
@@ -1093,7 +1171,7 @@ export async function createApplication(dependencies: ApplicationDependencies): 
             throw new ApiHttpError(502, "MESSAGE_DELIVERY_FAILED", "Message was recorded but could not be delivered.");
           }
           try {
-            orchestrator.writeTerminal(id, `${content}\r`);
+            orchestrator.writeTerminal(id, `\x1b[200~${content.replace(/\r\n|\r/g, "\n")}\x1b[201~\r`);
           } catch (error) {
             await appendEvent(session, { occurredAt: dependencies.clock.now(), kind: "error", source: "session-manager", raw: "Message was recorded but could not be delivered.", metadata: { code: "MESSAGE_DELIVERY_FAILED", clientMessageId } });
             throw new ApiHttpError(502, "MESSAGE_DELIVERY_FAILED", "Message was recorded but could not be delivered.", undefined, { cause: error });
@@ -1136,6 +1214,31 @@ export async function createApplication(dependencies: ApplicationDependencies): 
         if (!orchestrator.isRunning(id)) throw new ApiHttpError(409, "SESSION_NOT_ACTIVE", "Session is not running.");
         orchestrator.resizeTerminal(id, body.cols, body.rows);
         sendJson(response, 204, null);
+        return;
+      }
+      if (method === "POST" && id && action === "view") {
+        // dual-mode §9.1：视图切换 API
+        const session = requireSession(id);
+        if (session.organizationStatus !== "active") throw new ApiHttpError(409, "SESSION_NOT_ACTIVE", "Only active sessions can switch view.");
+        assertRevision(session, body.expectedRevision);
+        const view = body.view;
+        if (view !== "terminal" && view !== "gui") throw new ApiHttpError(400, "VALIDATION_FAILED", "view must be 'terminal' or 'gui'.", { field: "view" });
+        // guiMode 守卫：unsupported 时禁止切 gui
+        if (view === "gui") {
+          const profile = state.profiles.find((item) => item.id === session.profileId);
+          if (profile) {
+            const capabilities = await resolveCapabilities(profile);
+            if (capabilities.guiMode === "unsupported") throw new ApiHttpError(400, "VIEW_UNSUPPORTED", "GUI mode is not supported by this profile.");
+          }
+        }
+        session.activeView = view;
+        session.inputOwner = view;
+        session.revision += 1;
+        await dependencies.stateRepository.save(state);
+        // 审计事件（docx 附录 B side effects）
+        await appendEvent(session, { occurredAt: dependencies.clock.now(), kind: "lifecycle", source: "session-manager", raw: `View switched to ${view}.`, metadata: { view, reason: "user-switch" } });
+        publishSessionUpdate(session);
+        sendJson(response, 200, serializeSession(session));
         return;
       }
     }
@@ -1190,6 +1293,12 @@ export async function createApplication(dependencies: ApplicationDependencies): 
           const message = JSON.parse(raw.toString()) as { type: string; data?: string; cols?: number; rows?: number };
           if (!orchestrator.isRunning(sessionId)) return;
           if ((message.type === "terminal-input" || message.type === "input") && typeof message.data === "string") {
+            // dual-mode §10：inputOwner !== "terminal" 时拒绝终端输入（resize 不受限）
+            const session = getSession(sessionId);
+            if (session?.inputOwner && session.inputOwner !== "terminal") {
+              client.send(JSON.stringify({ type: "input-rejected", reason: `Input owner is '${session.inputOwner}', terminal input blocked.` }));
+              return;
+            }
             orchestrator.writeTerminal(sessionId, message.data);
             touchSession(sessionId);
           } else if ((message.type === "terminal-resize" || message.type === "resize") && Number.isInteger(message.cols) && Number.isInteger(message.rows)) {
@@ -1251,6 +1360,7 @@ async function serveStatic(dependencies: ApplicationDependencies, response: http
 
 function isKnownApiRoute(method: string, resource: string | undefined, id: string | undefined, action: string | undefined, segments: string[]) {
   if (method === "GET" && resource === "state" && !id) return true;
+  if (method === "GET" && resource === "engines" && id === "readiness" && !action) return true;
   if (resource === "workspaces") {
     if (method === "POST" && ((id === "pick" && !action) || (!id && action === "pick"))) return true;
     if (method === "GET" && id && ["files", "preview", "languages"].includes(action ?? "")) return true;
@@ -1274,7 +1384,7 @@ function isKnownApiRoute(method: string, resource: string | undefined, id: strin
   if (method === "POST" && action === "turns" && segments[3] === "cancel") return true;
   if (method === "POST" && action === "approvals" && Boolean(segments[3])) return true;
   if (method === "PATCH" || method === "DELETE") return !action;
-  return method === "POST" && ["start", "stop", "resize", "pin", "archive", "complete", "restore", "reopen", "fork", "messages"].includes(action ?? "");
+  return method === "POST" && ["start", "stop", "resize", "pin", "archive", "complete", "restore", "reopen", "fork", "messages", "view"].includes(action ?? "");
 }
 
 async function readJson(request: http.IncomingMessage) {
@@ -1385,6 +1495,12 @@ function inferProfileAdapter(command: string) {
   if (normalized.includes("kimi")) return "kimi" as const;
   if (normalized.includes("glm")) return "glm" as const;
   return "generic" as const;
+}
+
+function backendIdForAdapter(adapterId: CliAdapterId) {
+  if (adapterId === "claude-code") return "claude";
+  if (adapterId === "generic") return "generic-pty";
+  return adapterId;
 }
 
 function isSafeRelativePath(value: string) {

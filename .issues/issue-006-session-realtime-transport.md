@@ -6,10 +6,10 @@
 
 ## Acceptance Criteria
 
-- [ ] 前端可以订阅指定 Session 输出。
-- [ ] 前端输入只发送到对应 PTY。
-- [ ] 多个 Session 输出不会串台。
-- [ ] 连接断开和恢复有明确错误状态。
+- [x] 前端可以订阅指定 Session 输出。
+- [x] 前端输入只发送到对应 PTY。
+- [x] 多个 Session 输出不会串台。
+- [x] 连接断开和恢复有明确错误状态。
 
 ## Dependencies
 

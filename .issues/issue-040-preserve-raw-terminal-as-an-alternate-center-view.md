@@ -4,14 +4,14 @@
 Keep direct xterm interaction available beside the structured transcript without creating duplicate CLI processes.
 
 ## Acceptance Criteria
-- [ ] Add accessible Transcript and Terminal view tabs.
-- [ ] Move terminal WebSocket access behind TerminalTransport.
-- [ ] Switching views must not create another PTY.
-- [ ] Preserve ANSI, keyboard input, Ctrl+C, resize, errors, and session isolation.
-- [ ] Use stable status callbacks so ordinary App rerenders do not recreate the terminal connection.
-- [ ] Show explicit status for stopped and unavailable terminal sessions.
-- [ ] Persist the selected center view per session.
-- [ ] Add terminal transport, tab, regression, and browser tests.
+- [x] Add accessible Transcript and Terminal view tabs.
+- [x] Move terminal WebSocket access behind TerminalTransport.
+- [x] Switching views must not create another PTY.
+- [x] Preserve ANSI, keyboard input, Ctrl+C, resize, errors, and session isolation.
+- [x] Use stable status callbacks so ordinary App rerenders do not recreate the terminal connection.
+- [x] Show explicit status for stopped and unavailable terminal sessions.
+- [x] Persist the selected center view per session.
+- [x] Add terminal transport, tab, regression, and browser tests.
 
 ## Dependencies
 Issues #18, #30, #36

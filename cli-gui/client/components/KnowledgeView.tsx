@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import type { SkillContentResponse, SkillScope, SkillSummary, Workspace } from "../../shared/types";
-import { api } from "../api";
 import { useI18n } from "../i18n";
 import { Icon, type IconName } from "./ui/Icon";
 import { Badge, Button, EmptyState, Select, Tabs, TextField } from "./ui";
 import { ViewHeader } from "./patterns";
+import { useClientRuntime } from "../runtime/client-runtime";
 
 type KnowledgeTab = "wiki" | "card" | "memory" | "skills";
 
@@ -109,6 +109,7 @@ export function KnowledgeView({ workspaces = [], activeWorkspaceId }: KnowledgeV
 /** Skills 只读浏览（console-gaps SPEC §7.4）：system/workspace scope 切换 + 列表 + SKILL.md 原文预览 */
 function SkillsPanel({ query, workspaces, activeWorkspaceId }: { query: string; workspaces: Workspace[]; activeWorkspaceId?: string }) {
   const { t } = useI18n();
+  const runtime = useClientRuntime();
   const [scope, setScope] = useState<SkillScope>("system");
   const [workspaceId, setWorkspaceId] = useState<string | undefined>(activeWorkspaceId ?? workspaces[0]?.id);
   const [skills, setSkills] = useState<SkillSummary[]>([]);
@@ -130,16 +131,16 @@ function SkillsPanel({ query, workspaces, activeWorkspaceId }: { query: string; 
     }
     const controller = new AbortController();
     setStatus("loading");
-    api.skills(scope, scope === "workspace" ? workspaceId : undefined, controller.signal)
+    runtime.workspace.skills(scope, scope === "workspace" ? workspaceId : undefined, controller.signal)
       .then((response) => { setSkills(response.skills); setStatus("ready"); })
       .catch(() => { if (!controller.signal.aborted) setStatus("error"); });
     return () => controller.abort();
-  }, [scope, workspaceId, workspaceMissing]);
+  }, [runtime.workspace, scope, workspaceId, workspaceMissing]);
 
   const openSkill = (id: string) => {
     setSelected(id);
     setContentStatus("loading");
-    api.skillContent(scope, id, scope === "workspace" ? workspaceId : undefined)
+    runtime.workspace.skillContent(scope, id, scope === "workspace" ? workspaceId : undefined)
       .then((response) => { setContent(response); setContentStatus("ready"); })
       .catch(() => setContentStatus("error"));
   };

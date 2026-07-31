@@ -1,18 +1,11 @@
 import { useState } from "react";
 
-export interface DirEntry {
-  name: string;
-  path: string;
-  isDir: boolean;
-}
-
 export interface PlatformAdapter {
   readonly kind: "web" | "tauri";
   platformInfo(): Promise<string>;
-  readTextFile(path: string): Promise<string>;
-  writeTextFile(path: string, contents: string): Promise<void>;
-  listDirectory(path: string): Promise<DirEntry[]>;
   pickFolder(): Promise<string | null>;
+  notify(title: string, body?: string): Promise<boolean>;
+  copyText(text: string): Promise<boolean>;
 }
 
 interface TauriGlobal {
@@ -36,17 +29,19 @@ export class WebPlatformAdapter implements PlatformAdapter {
   async platformInfo(): Promise<string> {
     return "web";
   }
-  async readTextFile(): Promise<string> {
-    throw new Error("fs-read-unavailable-web");
-  }
-  async writeTextFile(): Promise<void> {
-    throw new Error("fs-write-unavailable-web");
-  }
-  async listDirectory(): Promise<DirEntry[]> {
-    throw new Error("fs-list-unavailable-web");
-  }
   async pickFolder(): Promise<null> {
     return null;
+  }
+  async notify(title: string, body?: string): Promise<boolean> {
+    if (typeof Notification === "undefined") return false;
+    if (Notification.permission !== "granted") return false;
+    new Notification(title, { body });
+    return true;
+  }
+  async copyText(text: string): Promise<boolean> {
+    if (!globalThis.navigator?.clipboard) return false;
+    await navigator.clipboard.writeText(text);
+    return true;
   }
 }
 
@@ -62,22 +57,18 @@ export class TauriPlatformAdapter implements PlatformAdapter {
   async platformInfo(): Promise<string> {
     return this.ensure().core!.invoke<string>("platform_info");
   }
-  async readTextFile(path: string): Promise<string> {
-    return this.ensure().core!.invoke<string>("read_text_file", { path });
-  }
-  async writeTextFile(path: string, contents: string): Promise<void> {
-    await this.ensure().core!.invoke("write_text_file", { path, contents });
-  }
-  async listDirectory(path: string): Promise<DirEntry[]> {
-    const entries = await this.ensure().core!.invoke<Array<{ name: string; path: string; is_dir: boolean }>>("list_directory", { path });
-    return entries.map((entry) => ({ name: entry.name, path: entry.path, isDir: entry.is_dir }));
-  }
   async pickFolder(): Promise<string | null> {
     const dialog = tauriGlobal()?.dialog;
     if (!dialog) return null;
     const result = await dialog.open({ directory: true });
     if (Array.isArray(result)) return result[0] ?? null;
     return result;
+  }
+  async notify(title: string, body?: string): Promise<boolean> {
+    return new WebPlatformAdapter().notify(title, body);
+  }
+  async copyText(text: string): Promise<boolean> {
+    return new WebPlatformAdapter().copyText(text);
   }
 }
 

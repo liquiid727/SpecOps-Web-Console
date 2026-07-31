@@ -1,11 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { TranslationKey } from "./i18n";
 
-export type ThemeId = "qoder-light" | "classic" | "neo";
+export type ThemeId = "qoder-light" | "classic" | "neo" | "zcode";
 
 export interface ThemeDefinition {
   id: ThemeId;
   labelKey: TranslationKey;
+  descriptionKey: TranslationKey;
   colorScheme: "light" | "dark";
   rootClassName: string;
 }
@@ -13,9 +14,10 @@ export interface ThemeDefinition {
 export const themeStorageKey = "product-ai-os-cli-gui-theme";
 
 export const themeDefinitions = [
-  { id: "qoder-light", labelKey: "themeQoderLight", colorScheme: "light", rootClassName: "theme-qoder-light" },
-  { id: "neo", labelKey: "themeNeo", colorScheme: "light", rootClassName: "theme-neo" },
-  { id: "classic", labelKey: "themeClassic", colorScheme: "dark", rootClassName: "theme-classic" }
+  { id: "qoder-light", labelKey: "themeQoderLight", descriptionKey: "themeQoderLightDescription", colorScheme: "light", rootClassName: "theme-qoder-light" },
+  { id: "neo", labelKey: "themeNeo", descriptionKey: "themeNeoDescription", colorScheme: "light", rootClassName: "theme-neo" },
+  { id: "classic", labelKey: "themeClassic", descriptionKey: "themeClassicDescription", colorScheme: "dark", rootClassName: "theme-classic" },
+  { id: "zcode", labelKey: "themeZcode", descriptionKey: "themeZcodeDescription", colorScheme: "dark", rootClassName: "theme-zcode" }
 ] as const satisfies readonly ThemeDefinition[];
 
 const ThemeContext = createContext<{
@@ -25,7 +27,7 @@ const ThemeContext = createContext<{
 } | undefined>(undefined);
 
 export function normalizeTheme(value: unknown): ThemeId {
-  return value === "classic" || value === "neo" || value === "qoder-light" ? value : "qoder-light";
+  return value === "classic" || value === "neo" || value === "qoder-light" || value === "zcode" ? value : "qoder-light";
 }
 
 export function readTheme(storage: Pick<Storage, "getItem"> | undefined = typeof window === "undefined" ? undefined : window.localStorage): ThemeId {

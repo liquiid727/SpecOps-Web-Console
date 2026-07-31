@@ -6,10 +6,10 @@
 
 ## Acceptance Criteria
 
-- [ ] 本地服务可启动并监听 localhost。
-- [ ] 明确区分 workspace/readonly 模式。
-- [ ] 为 PTY、持久化和实时通信提供独立模块边界。
-- [ ] 服务异常时返回可理解错误。
+- [x] 本地服务可启动并监听 localhost。
+- [x] 明确区分 workspace/readonly 模式。
+- [x] 为 PTY、持久化和实时通信提供独立模块边界。
+- [x] 服务异常时返回可理解错误。
 
 ## Dependencies
 

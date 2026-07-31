@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { TranscriptEvent } from "../../shared/types";
-import { api, openTranscriptSubscription } from "../api";
 import { toFeedbackError, toFeedbackWarning } from "../feedback-errors";
 import { useI18n } from "../i18n";
 import { Icon } from "./ui/Icon";
@@ -12,6 +11,8 @@ import { isNearBottom, projectTranscriptEvents, buildTurnPrompts, buildApprovalS
 import type { TurnStatus } from "../../shared/websocket";
 import { AsyncState } from "./patterns";
 import { Button } from "./ui";
+import { CliOutputCard, StructuredCardList } from "./cards";
+import { useClientRuntime } from "../runtime/client-runtime";
 
 const MAX_MARKDOWN_BYTES = 256 * 1024;
 
@@ -34,11 +35,14 @@ interface TranscriptPanelProps {
   turnPending?: boolean;
   /** 会话运行态（顶部 SessionLifecycleStatusBar 数据源） */
   onSessionLifecycle?: (status: SessionLifecycleStatus) => void;
+  /** 切换到终端视图（dual-mode §11：ShellRun/CLI 输出卡片保留“在终端查看”入口） */
+  onViewInTerminal?: () => void;
 }
 
-export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerivedTurn, onRetry, onApprove, approvalFallback, chatMode, turnPending, onSessionLifecycle }: TranscriptPanelProps) {
+export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerivedTurn, onRetry, onApprove, approvalFallback, chatMode, turnPending, onSessionLifecycle, onViewInTerminal }: TranscriptPanelProps) {
   const { t } = useI18n();
   const feedback = useFeedback();
+  const runtime = useClientRuntime();
   const [events, setEvents] = useState<TranscriptEvent[]>([]);
   const [nextHistorySequence, setNextHistorySequence] = useState(0);
   const [hasMore, setHasMore] = useState(false);
@@ -49,6 +53,9 @@ export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerive
   const [retryKey, setRetryKey] = useState(0);
   // 流式气泡（streaming-spec FR-5）：turn-delta 累积临时文本，assistant_message 落盘或轮次终态后清除
   const [stream, setStream] = useState<{ turnId: string; text: string }>();
+  // rAF 批处理（dual-mode §12/17.2）：多个 delta 帧合并为单次 state 更新，避免每 delta 触发重渲染
+  const deltaBufferRef = useRef<{ turnId: string; text: string } | undefined>(undefined);
+  const rafRef = useRef<number | undefined>(undefined);
   const reconnectTimer = useRef<number | undefined>(undefined);
   const latestSequenceRef = useRef(0);
   const generationRef = useRef(0);
@@ -93,10 +100,27 @@ export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerive
     };
     const acceptTurnDelta = (turnId: string, delta: string) => {
       if (!isCurrent()) return;
-      setStream((current) => current && current.turnId === turnId ? { turnId, text: current.text + delta } : { turnId, text: delta });
+      // rAF 批处理（dual-mode §12/17.2）：累积 delta 到 buffer，单帧内合并后统一 flush
+      const buf = deltaBufferRef.current;
+      if (buf && buf.turnId === turnId) {
+        buf.text += delta;
+      } else {
+        deltaBufferRef.current = { turnId, text: delta };
+      }
+      if (rafRef.current === undefined) {
+        rafRef.current = requestAnimationFrame(() => {
+          rafRef.current = undefined;
+          const pending = deltaBufferRef.current;
+          if (!pending) return;
+          deltaBufferRef.current = undefined;
+          setStream((current) => current && current.turnId === pending.turnId
+            ? { turnId: pending.turnId, text: current.text + pending.text }
+            : { turnId: pending.turnId, text: pending.text });
+        });
+      }
     };
 
-    api.transcript(sessionId, 0, 200, controller.signal).then((page) => {
+    runtime.events.transcript(sessionId, 0, 200, controller.signal).then((page) => {
       if (!isCurrent()) return;
       const events = Array.isArray(page.events) ? page.events : [];
       const sessionEvents = events.filter((event) => event.sessionId === sessionId);
@@ -106,7 +130,7 @@ export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerive
       latestSequenceRef.current = sessionEvents.at(-1)?.sequence ?? historySequence;
       setHasMore(page.hasMore === true);
       setLoading(false);
-      closeSubscription = openTranscriptSubscription(sessionId, latestSequenceRef.current, {
+      closeSubscription = runtime.events.subscribe(sessionId, latestSequenceRef.current, {
         onReady: () => { if (isCurrent()) setConnectionState("connected"); },
         onEvent: acceptEvent,
         onTurnStatus: acceptTurnStatus,
@@ -121,7 +145,7 @@ export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerive
           reconnectTimer.current = window.setTimeout(() => {
             if (isCurrent()) {
               closeSubscription();
-              closeSubscription = openTranscriptSubscription(sessionId, latestSequenceRef.current, {
+              closeSubscription = runtime.events.subscribe(sessionId, latestSequenceRef.current, {
                 onEvent: acceptEvent,
                 onTurnStatus: acceptTurnStatus,
                 onTurnDelta: acceptTurnDelta,
@@ -134,7 +158,9 @@ export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerive
           }, 500);
         }
       });
-      if (isCurrent() && typeof WebSocket === "undefined") setConnectionState("offline");
+      void runtime.capabilities().then(({ sessionStreaming }) => {
+        if (isCurrent() && !sessionStreaming) setConnectionState("offline");
+      });
     }).catch((cause) => {
       if (isCurrent() && cause?.name !== "AbortError") {
         setError(true);
@@ -147,9 +173,11 @@ export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerive
       cancelled = true;
       controller.abort();
       if (reconnectTimer.current !== undefined) window.clearTimeout(reconnectTimer.current);
+      if (rafRef.current !== undefined) cancelAnimationFrame(rafRef.current);
+      deltaBufferRef.current = undefined;
       closeSubscription();
     };
-  }, [feedback, mergeEvent, onTurnStatus, retryKey, sessionId, t]);
+  }, [feedback, mergeEvent, onTurnStatus, retryKey, runtime, sessionId, t]);
 
   // 发送响应中的 user_message 事件立即回显（mergeEvent 按 id 去重，WS 重复推送无双气泡）
   useEffect(() => {
@@ -168,7 +196,7 @@ export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerive
     const requestedSessionId = sessionId;
     setLoadingMore(true);
     try {
-      const page = await api.transcript(requestedSessionId, nextHistorySequence, 200);
+      const page = await runtime.events.transcript(requestedSessionId, nextHistorySequence, 200);
       if (generationRef.current !== generation || requestedSessionId !== sessionId) return;
       for (const event of page.events) if (event.sessionId === requestedSessionId) mergeEvent(event);
       setNextHistorySequence((current) => Math.max(current, page.nextAfterSequence));
@@ -217,20 +245,20 @@ export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerive
       {connectionState === "reconnecting" && <span>{t("reconnecting")}</span>}
       {connectionState === "offline" && <span>{t("offlineMode")}</span>}
     </div>
-    {displayEvents.map((item) => {
+    <StructuredCardList items={displayEvents} chatMode={chatMode} onApprove={onApprove} onViewInTerminal={onViewInTerminal} renderFallback={(item) => {
       const turnId = typeof item.event.metadata?.turnId === "string" ? item.event.metadata.turnId : undefined;
       const prompt = item.event.kind === "error" && turnId ? turnPrompts.get(turnId) : undefined;
       const approvalId = item.event.kind === "approval_request" && typeof item.event.metadata?.approvalId === "string" ? item.event.metadata.approvalId : undefined;
       return <TranscriptMessage
         item={item}
-        key={item.id}
         chatMode={chatMode}
         onRetry={onRetry && prompt ? () => onRetry(prompt) : undefined}
         approval={approvalId ? approvalStates.get(approvalId) : undefined}
         onRespondApproval={onApprove && approvalId ? (decision) => onApprove(approvalId, decision) : undefined}
         fallbackHint={approvalFallback && item.event.kind === "error" && Boolean(turnId)}
+        onViewInTerminal={onViewInTerminal}
       />;
-    })}
+    }} />
     {stream && <StreamingMessage text={stream.text} chatMode={chatMode} />}
     {turnPending && !stream && <TurnPendingIndicator chatMode={chatMode} />}
     {!following && <Button variant="secondary" className="secondary-button back-to-latest" onClick={backToLatest}>{t("backToLatest")}</Button>}
@@ -261,7 +289,7 @@ export function TurnPendingIndicator(_props: { chatMode?: boolean } = {}) {
 }
 
 /** kind → 渲染全表（frontend-spec §3.1）；未知 kind 中性兜底，前向兼容不报错；user/assistant 不显示名称（类终端直显输入输出） */
-export function TranscriptMessage({ item, onRetry, approval, onRespondApproval, fallbackHint, chatMode = false }: { item: TranscriptDisplayItem; onRetry?: () => void; approval?: ApprovalDisplayState; onRespondApproval?: (decision: "allow" | "deny") => Promise<void>; fallbackHint?: boolean; chatMode?: boolean }) {
+export function TranscriptMessage({ item, onRetry, approval, onRespondApproval, fallbackHint, chatMode = false, onViewInTerminal }: { item: TranscriptDisplayItem; onRetry?: () => void; approval?: ApprovalDisplayState; onRespondApproval?: (decision: "allow" | "deny") => Promise<void>; fallbackHint?: boolean; chatMode?: boolean; onViewInTerminal?: () => void }) {
   const { t } = useI18n();
   const { event } = item;
   const kind = event.kind as string;
@@ -298,11 +326,8 @@ export function TranscriptMessage({ item, onRetry, approval, onRespondApproval, 
     </article>;
   }
   if (kind === "pty_output") {
-    return <article className="transcript-event pty_output">
-      <header><span>{t("cliOutput")}</span>{time}</header>
-      <details className="transcript-output"><summary>{summarizeCliOutput(item.content)}</summary><pre className="transcript-plain">{item.content}</pre></details>
-      <Button variant="ghost" className="copy-button" onClick={() => void navigator.clipboard?.writeText(item.content)}>{t("copy")}</Button>
-    </article>;
+    // 终端风格卡片（dual-mode §11）：噪音清洗尾部预览，完整字节流由 Terminal 视图呈现
+    return <CliOutputCard content={item.content} timestamp={event.occurredAt} onViewInTerminal={onViewInTerminal} />;
   }
   if (kind === "lifecycle") {
     const status = typeof event.metadata?.status === "string" ? event.metadata.status : "";
@@ -395,9 +420,10 @@ export function MarkdownLite({ source, truncated = false }: { source: string; tr
 /** 代码块：保留空白与语言标注，复制内容为 raw 源码（frontend-spec §4） */
 function CodeBlock({ children }: { children?: ReactNode }) {
   const { t } = useI18n();
+  const runtime = useClientRuntime();
   const preRef = useRef<HTMLPreElement | null>(null);
   return <div className="markdown-code-block">
-    <Button variant="ghost" className="copy-button code-copy" onClick={() => void navigator.clipboard?.writeText(preRef.current?.textContent ?? "")}>{t("copy")}</Button>
+    <Button variant="ghost" className="copy-button code-copy" onClick={() => void runtime.platform.copyText(preRef.current?.textContent ?? "")}>{t("copy")}</Button>
     <pre ref={preRef}>{children}</pre>
   </div>;
 }
@@ -407,7 +433,7 @@ function safeUrl(value: string | undefined) {
   if (value.startsWith("//")) return "";
   if (value.startsWith("#") || value.startsWith("/") || value.startsWith("./") || value.startsWith("../")) return value;
   try {
-    const parsed = new URL(value, window.location.origin);
+    const parsed = new URL(value, "https://local.invalid");
     return ["http:", "https:", "mailto:"].includes(parsed.protocol) ? value : "";
   } catch {
     return "";

@@ -2,7 +2,14 @@ import { expect, test } from "@playwright/test";
 
 const NAVIGATOR = "#session-navigator";
 const INSPECTOR = "#session-inspector";
-const SESSION_ROW = ".quest-row-main";
+const SESSION_ROW = ":is(.quest-row-main, .chat-row)";
+
+// 产品默认语言为中文（i18n.tsx QA 调节）；E2E 断言基于英文 label，显式预置英文偏好。
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem("product-ai-os-cli-gui-language", "en");
+  });
+});
 
 test("loads the disposable workbench shell", async ({ page }) => {
   await page.goto("/");
@@ -72,7 +79,7 @@ test("keeps mobile session controls inside the viewport and drawers focusable", 
     await page.evaluate(() => localStorage.clear());
     await page.reload();
 
-    // Activating the fixture session on a narrow viewport closes the navigator and opens the inspector.
+    // Activating the fixture session on a narrow viewport closes the navigator; the inspector stays hidden by default.
     await page.locator(SESSION_ROW).filter({ hasText: "Fixture session" }).first().click();
     await expect(page.locator(NAVIGATOR)).toHaveCount(0);
 
@@ -80,16 +87,14 @@ test("keeps mobile session controls inside the viewport and drawers focusable", 
     const metrics = await page.evaluate(() => ({ clientWidth: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth }));
     expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth);
 
-    // The composer exposes three launch pills (permission, mode, model).
-    await expect(page.locator(".prompt-composer .custom-select")).toHaveCount(3);
+    // MVP02 exposes one semantic work-mode control plus permission and model selects.
+    await expect(page.locator(".prompt-composer .work-mode-selector > button")).toBeVisible();
+    await expect(page.locator(".prompt-composer .custom-select")).toHaveCount(2);
 
-    // The inspector opens after selecting a session; Escape closes it.
+    // The inspector stays hidden until opened via the right-panel toggle; Escape closes it and restores focus to that toggle.
     const inspector = page.locator(INSPECTOR);
-    await expect(inspector).toBeVisible();
-    await page.keyboard.press("Escape");
     await expect(inspector).toHaveCount(0);
 
-    // Reopen the inspector via the right-panel toggle; Escape restores focus to that toggle.
     const rightToggle = page.getByRole("button", { name: "Toggle right panel" });
     await rightToggle.click();
     await expect(inspector).toBeVisible();
@@ -124,16 +129,17 @@ test("runs the disposable session through transcript, terminal, inspector, and p
 
   // The current Qoder chat path preserves Transcript / Terminal as alternate center views.
   const centerTabs = page.locator(".chat-header-actions");
-  await centerTabs.getByRole("tab", { name: "Terminal" }).click();
+  await centerTabs.getByRole("radio", { name: "Terminal" }).click();
   await expect(page.locator(".chat-terminal .terminal-host")).toBeVisible();
-  await centerTabs.getByRole("tab", { name: "Transcript" }).click();
+  await centerTabs.getByRole("radio", { name: "Transcript" }).click();
   await expect(page.locator(".chat-messages")).toContainText("hello fixture");
 
   // Open the inspector and verify the terminal surface.
   await page.getByRole("button", { name: "Toggle right panel" }).click();
   await expect(page.locator(INSPECTOR)).toBeVisible();
   await page.locator(".right-panel-tabs").getByRole("tab", { name: "Terminal" }).click();
-  await expect(page.locator(".terminal-host")).toBeVisible();
+  // 中心 Terminal 视图与右栏 Terminal tab 可共存；只断言右栏内的 terminal surface。
+  await expect(page.locator(`${INSPECTOR} .terminal-host`)).toBeVisible();
 
   // Files tab -> files sub-tab -> README.md -> preview.
   await page.locator(".right-panel-tabs").getByRole("tab", { name: "Files" }).click();
@@ -146,8 +152,9 @@ test("runs the disposable session through transcript, terminal, inspector, and p
   await page.getByRole("button", { name: "Toggle right panel" }).click();
   await expect(page.locator(INSPECTOR)).toHaveCount(0);
 
-  // Open folder (web fallback picks nothing) must not raise an alert.
-  await page.getByRole("button", { name: "Open folder" }).first().click();
+  // Open folder (workspace actions menu → Open folder).
+  await page.getByRole("button", { name: "Workspace actions" }).click();
+  await page.getByRole("menuitem", { name: "Open folder" }).click();
   await expect(page.locator(".alert")).toHaveCount(0);
 
   // Settings -> Appearance -> Neo theme.
@@ -219,10 +226,10 @@ test("keeps concurrent chat and terminal sessions isolated (multi-session smoke)
 // issue-015：Quest Home 一次提交创建流 happy path（frontend-spec §2/§6；test-spec §3.7）
 test("creates and runs a chat session from Quest Home in one submit", async ({ page }) => {
   await page.goto("/");
-  await page.evaluate(() => localStorage.clear());
-  await page.reload();
-  // Quest Home 默认视图：选择支持 headless 的 profile
-  await page.locator(".start-in-row").getByRole("button", { name: "CLI profile" }).click();
+  // 偏好已服务端持久化（issue-031）；用 New Quest 按钮显式进入 Quest Home，与真实用户路径一致。
+  await page.getByRole("button", { name: /New Quest/ }).click();
+  // Quest Home 默认视图：选择支持 headless 的 profile（selector 在 PromptComposer 内）
+  await page.locator(".quest-home-input").getByRole("button", { name: "CLI profile" }).click();
   await page.getByRole("option", { name: "Fixture headless" }).click();
   const prompt = page.getByRole("textbox", { name: "Prompt" });
   await prompt.fill("quest home first turn");
@@ -236,9 +243,8 @@ test("creates and runs a chat session from Quest Home in one submit", async ({ p
 // issue-015：Quest Home 降级路径（generic profile → 服务端降级 terminal + 一次性说明）
 test("explains the downgrade when creating from Quest Home with a terminal-only profile", async ({ page }) => {
   await page.goto("/");
-  await page.evaluate(() => localStorage.clear());
-  await page.reload();
-  await page.locator(".start-in-row").getByRole("button", { name: "CLI profile" }).click();
+  await page.getByRole("button", { name: /New Quest/ }).click();
+  await page.locator(".quest-home-input").getByRole("button", { name: "CLI profile" }).click();
   await page.getByRole("option", { name: "Fixture PTY" }).click();
   const prompt = page.getByRole("textbox", { name: "Prompt" });
   await prompt.fill("downgrade quest");
@@ -252,9 +258,8 @@ test("explains the downgrade when creating from Quest Home with a terminal-only 
 // Quest Home 创建 → 多轮 → 取消一轮 → chat Terminal tab 原始输出 → 刷新回放 → 归档
 test("runs the B-gate smoke chain: create, multi-turn, cancel, terminal replay, reload, archive", async ({ page }) => {
   await page.goto("/");
-  await page.evaluate(() => localStorage.clear());
-  await page.reload();
-  await page.locator(".start-in-row").getByRole("button", { name: "CLI profile" }).click();
+  await page.getByRole("button", { name: /New Quest/ }).click();
+  await page.locator(".quest-home-input").getByRole("button", { name: "CLI profile" }).click();
   await page.getByRole("option", { name: "Fixture headless" }).click();
   const prompt = page.getByRole("textbox", { name: "Prompt" });
   await prompt.fill("smoke first turn");
@@ -275,9 +280,9 @@ test("runs the B-gate smoke chain: create, multi-turn, cancel, terminal replay, 
   await expect(stopTurn).toHaveCount(0, { timeout: 10_000 });
 
   // chat Terminal tab：各轮 CLI 原始输出（降级 pty_output）只读回放
-  await page.getByRole("tab", { name: "Terminal" }).click();
+  await page.getByRole("radio", { name: "Terminal" }).click();
   await expect(page.locator(".pty-replay")).toContainText("cli-raw smoke first turn", { timeout: 10_000 });
-  await page.getByRole("tab", { name: "Transcript" }).click();
+  await page.getByRole("radio", { name: "Transcript" }).click();
 
   // 刷新回放：transcript 从磁盘重放后依旧完整
   await page.reload();

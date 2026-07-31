@@ -4,14 +4,14 @@
 Expose profile-driven launch controls in the composer and persist their semantic session configuration.
 
 ## Acceptance Criteria
-- [ ] Show permission, mode, and model selectors with CLI default.
-- [ ] Load options from the selected profile adapter capabilities.
-- [ ] Disable unsupported controls with an explanation.
-- [ ] Persist changes through optimistic session metadata updates.
-- [ ] Label values that apply on next start or Fork.
-- [ ] Do not claim a live update when the adapter cannot apply it.
-- [ ] Degrade unknown CLI versions to CLI default.
-- [ ] Add Claude Code, Codex, generic, conflict, English/Chinese, and browser tests.
+- [x] Show permission, mode, and model selectors with CLI default.
+- [x] Load options from the selected profile adapter capabilities.
+- [x] Disable unsupported controls with an explanation.
+- [x] Persist changes through optimistic session metadata updates.
+- [x] Label values that apply on next start or Fork.
+- [x] Do not claim a live update when the adapter cannot apply it.
+- [x] Degrade unknown CLI versions to CLI default.
+- [x] Add Claude Code, Codex, generic, conflict, English/Chinese, and browser tests.
 
 ## Dependencies
 Issues #20, #29, #38

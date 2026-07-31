@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import type { CliProfile, CliProfileCapabilities, Workspace } from "../../shared/types";
-import { api } from "../api";
-import { CHAT_INTERACTION_ENABLED } from "../app/feature-flags";
+import { useClientRuntime } from "../runtime/client-runtime";
+import { CHAT_ENABLED } from "../feature-flags";
 import { useI18n } from "../i18n";
 import { Icon } from "./ui/Icon";
 import { Overlay } from "./ui/Overlay";
@@ -22,25 +22,27 @@ interface NewSessionDialogProps {
   loadCapabilities?: (profileId: string, signal?: AbortSignal) => Promise<CliProfileCapabilities>;
 }
 
-export function NewSessionDialog({ profiles, readonly, workspaces, onClose, onCreate, onOpenSettings, defaultMode = "chat", loadCapabilities = api.profileCapabilities }: NewSessionDialogProps) {
+export function NewSessionDialog({ profiles, readonly, workspaces, onClose, onCreate, onOpenSettings, defaultMode = "chat", loadCapabilities }: NewSessionDialogProps) {
   const { t } = useI18n();
+  const runtime = useClientRuntime();
+  const capabilityLoader = loadCapabilities ?? runtime.engines.profileCapabilities;
   const [form, setForm] = useState({ name: "", workspaceId: workspaces[0]?.id ?? "", profileId: profiles[0]?.id ?? "" });
-  const [mode, setMode] = useState<"chat" | "terminal">(defaultMode);
+  const [mode, setMode] = useState<"chat" | "terminal">(CHAT_ENABLED ? defaultMode : "terminal");
   const [capabilities, setCapabilities] = useState<CliProfileCapabilities>();
   const [submitting, setSubmitting] = useState(false);
   const ready = workspaces.length > 0 && profiles.length > 0;
   // chat 功能开关关闭 → 全局锁定 terminal（console-gaps SPEC §1）；否则按 capability 锁定：
   // 所选 Profile 不支持 headless → 模式锁定 terminal 并展示降级说明；加载失败保持可选，以服务端结果为准（frontend-spec §6）
-  const chatLocked = !CHAT_INTERACTION_ENABLED || capabilities?.supportsHeadlessTurns === false;
+  const chatLocked = !CHAT_ENABLED || capabilities?.supportsHeadlessTurns === false || (capabilities !== undefined && capabilities.compatibility !== "supported");
   const effectiveMode = chatLocked ? "terminal" : mode;
 
   useEffect(() => {
     if (!form.profileId) { setCapabilities(undefined); return; }
     const controller = new AbortController();
     setCapabilities(undefined);
-    loadCapabilities(form.profileId, controller.signal).then((next) => { if (!controller.signal.aborted) setCapabilities(next); }).catch(() => undefined);
+    capabilityLoader(form.profileId, controller.signal).then((next) => { if (!controller.signal.aborted) setCapabilities(next); }).catch(() => undefined);
     return () => controller.abort();
-  }, [form.profileId, loadCapabilities]);
+  }, [capabilityLoader, form.profileId]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -60,7 +62,7 @@ export function NewSessionDialog({ profiles, readonly, workspaces, onClose, onCr
         <label><span>{t("cliProfile")}</span><Select ariaLabel={t("cliProfile")} value={form.profileId} options={profiles.map((profile) => ({ value: profile.id, label: profile.name }))} onChange={(profileId) => setForm({ ...form, profileId })} /></label>
       </div>
       <label className="interaction-mode-field"><span>{t("interactionModeLabel")}</span><Select ariaLabel={t("interactionModeLabel")} value={effectiveMode} disabled={chatLocked} options={[{ value: "chat", label: t("interactionModeChat") }, { value: "terminal", label: t("interactionModeTerminal") }]} onChange={(next) => setMode(next as "chat" | "terminal")} /></label>
-      {chatLocked && <small className="interaction-mode-locked">{t(CHAT_INTERACTION_ENABLED ? "interactionModeLocked" : "chatTemporarilyDisabled")}</small>}
+      {chatLocked && <small className="interaction-mode-locked">{CHAT_ENABLED ? t("interactionModeLocked") : t("chatComingSoonHint")}</small>}
       <LaunchPreview workspace={workspaces.find((item) => item.id === form.workspaceId)} profile={profiles.find((item) => item.id === form.profileId)} />
       <DialogActions><Button variant="secondary" className="secondary-button" onClick={onClose}>{t("cancel")}</Button><Button type="submit" variant="primary" className="primary-button" disabled={readonly} loading={submitting} loadingLabel={t("starting")}>{t("confirmAndStart")}</Button></DialogActions>
     </form>}

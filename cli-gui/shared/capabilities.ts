@@ -1,5 +1,28 @@
 import type { CliAdapterId } from "./state.js";
 
+export type AgentEngineId = "codex" | "claude";
+export type AgentTransportKind = "native-sdk" | "acp" | "json-stream" | "pty";
+
+export interface EngineRemediation {
+  kind: "install-guide" | "authenticate" | "update" | "retry-probe" | "open-setup-terminal";
+  code: "ENGINE_NOT_INSTALLED" | "ENGINE_AUTH_REQUIRED" | "ENGINE_VERSION_UNSUPPORTED" | "ENGINE_PROBE_TIMEOUT" | "ENGINE_PROBE_UNKNOWN";
+  label: string;
+  url?: string;
+}
+
+/** Product-facing health for a runnable Agent Engine. */
+export interface EngineReadiness {
+  engineId: AgentEngineId;
+  profileId: string;
+  installation: "available" | "missing";
+  authentication: "ready" | "required" | "unknown";
+  compatibility: "supported" | "unsupported" | "unknown";
+  version?: string;
+  selectedTransport?: AgentTransportKind;
+  capabilities?: CliProfileCapabilities;
+  remediation?: EngineRemediation;
+}
+
 export interface CliOptionDefinition {
   id: string;
   labelKey: string;
@@ -24,6 +47,8 @@ export interface CliProfileCapabilities {
   supportsApproval: boolean;
   /** 是否支持提示词润色/压缩一次性调用（project-quest SPEC §5.7：codex/claude 家族 true、generic false） */
   supportsPromptEnhancement: boolean;
+  /** GUI 渲染能力分级（dual-mode 设计 §8.2）：full=完整 GUI 可用，partial=实验性可切但降级提示，unsupported=仅终端 */
+  guiMode: "full" | "partial" | "unsupported";
 }
 
 /** 服务端创建会话时，若 chat 降级为 terminal，附带的公开降级原因（便于前端精准提示与排查） */
@@ -40,6 +65,7 @@ export type CapabilityDetectionFailure =
   | "version-unparseable"
   | "version-out-of-range"
   | "adapter-unsupported"
+  | "probe-timeout"
   | "unknown";
 
 /** 探测结果：CliProfileCapabilities + 诊断字段（adapter-spec §5） */

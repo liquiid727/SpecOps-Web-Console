@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { TranscriptEvent } from "../../shared/types";
-import { api, openTranscriptSubscription } from "../api";
 import { toFeedbackError } from "../feedback-errors";
 import { useI18n } from "../i18n";
 import { sanitizePtyOutput } from "../transcript-display";
 import { AsyncState } from "./patterns";
 import { Icon } from "./ui/Icon";
 import { useFeedback } from "./ui/Feedback";
+import { useClientRuntime } from "../runtime/client-runtime";
 
 /** chat 会话 Terminal tab 的回放分段：连续相同 turnId 的 pty_output 归为一段（frontend-spec §2，I-3 只读） */
 export interface PtyReplaySegment {
@@ -45,6 +45,7 @@ export function buildPtyReplaySegments(events: TranscriptEvent[]): PtyReplaySegm
 export function ChatTerminalReplay({ sessionId }: { sessionId: string }) {
   const { t } = useI18n();
   const feedback = useFeedback();
+  const runtime = useClientRuntime();
   const [events, setEvents] = useState<TranscriptEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const generationRef = useRef(0);
@@ -63,7 +64,7 @@ export function ChatTerminalReplay({ sessionId }: { sessionId: string }) {
       const all: TranscriptEvent[] = [];
       let after = 0;
       for (;;) {
-        const page = await api.transcript(sessionId, after, 200, controller.signal);
+        const page = await runtime.events.transcript(sessionId, after, 200, controller.signal);
         for (const event of page.events) if (event.sessionId === sessionId) all.push(event);
         after = Math.max(after + 1, page.nextAfterSequence);
         if (!page.hasMore) break;
@@ -72,7 +73,7 @@ export function ChatTerminalReplay({ sessionId }: { sessionId: string }) {
       setEvents(all);
       setLoading(false);
       const lastSequence = all.at(-1)?.sequence ?? 0;
-      closeSubscription = openTranscriptSubscription(sessionId, lastSequence, {
+      closeSubscription = runtime.events.subscribe(sessionId, lastSequence, {
         onEvent: (event) => {
           if (event.sessionId !== sessionId || !isCurrent()) return;
           setEvents((current) => (current.some((existing) => existing.id === event.id) ? current : [...current, event]));
@@ -89,7 +90,7 @@ export function ChatTerminalReplay({ sessionId }: { sessionId: string }) {
       controller.abort();
       closeSubscription();
     };
-  }, [feedback, sessionId, t]);
+  }, [feedback, runtime.events, sessionId, t]);
 
   const segments = useMemo(() => buildPtyReplaySegments(events), [events]);
   const listRef = useRef<HTMLDivElement | null>(null);

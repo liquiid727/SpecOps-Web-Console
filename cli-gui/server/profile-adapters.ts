@@ -44,6 +44,8 @@ export function mapDetectionFailureToDowngradeReason(failure: CapabilityDetectio
       return "version-out-of-range";
     case "adapter-unsupported":
       return "adapter-unsupported";
+    case "probe-timeout":
+      return "capability-detect-failed";
     case "version-unparseable":
       return "unknown-version";
     case "unknown":
@@ -72,7 +74,8 @@ const genericCapabilities: CliProfileCapabilities = {
   supportsHeadlessTurns: false,
   supportsResume: false,
   supportsApproval: false,
-  supportsPromptEnhancement: false
+  supportsPromptEnhancement: false,
+  guiMode: "unsupported"
 };
 
 /** 已验证 CLI 版本范围默认值（adapter-spec §5）；版本外 headless 能力关闭。kimi/glm 无默认区间：探测到版本即通过 */
@@ -167,6 +170,21 @@ export function createProfileAdapterRegistry(options: { logger?: Logger } = {}):
       if (profile.adapterId === "codex") return { command: profile.command, args: [...profile.args, "exec", "--skip-git-repo-check", config.prompt] };
       if (isClaudeFamily(profile.adapterId)) return { command: profile.command, args: [...profile.args, "-p", config.prompt] };
       throw new EnhanceUnsupportedError(profile.adapterId);
+    },
+    /** 执行 CLI 命令发现模型（issue-053）：codex `models` / claude 家族 `--list-models`；失败或无输出回退内置目录 */
+    async discoverModels(profile) {
+      const detected = await capabilities(profile);
+      const fallback = builtinModelIds(profile.adapterId, detected.detectedVersion);
+      const listArgs = profile.adapterId === "codex" ? ["models"] : isClaudeFamily(profile.adapterId) ? ["--list-models"] : undefined;
+      if (!listArgs) return fallback;
+      try {
+        const result = await execFileAsync(profile.command, [...profile.args, ...listArgs], { timeout: 10_000, maxBuffer: 256 * 1024, shell: false, env: sanitizeCliEnvironment(process.env) });
+        const models = parseModelListOutput(result.stdout);
+        return models.length ? models : fallback;
+      } catch (error) {
+        logger?.warn("Model discovery via CLI failed", { profileId: profile.id, adapterId: profile.adapterId, error: String(error) });
+        return fallback;
+      }
     }
   };
 }
@@ -177,6 +195,19 @@ export class HeadlessTurnUnsupportedError extends Error {
     super(`Adapter does not support headless turns: ${adapterId}`);
     this.name = "HeadlessTurnUnsupportedError";
   }
+}
+
+/** 模型列表命令输出解析（issue-053）：逐行取首 token，过滤表头/分隔符等非 id 行，去重保序 */
+export function parseModelListOutput(output: string): string[] {
+  const ids: string[] = [];
+  for (const rawLine of output.split(/\r?\n/)) {
+    const line = rawLine.trim().replace(/^[-*•]\s+/, "");
+    if (!line || line.endsWith(":")) continue;
+    const token = line.split(/\s+/)[0];
+    if (!/^[a-z0-9][a-z0-9._[\]-]*$/i.test(token)) continue;
+    if (!ids.includes(token)) ids.push(token);
+  }
+  return ids;
 }
 
 export class EnhanceUnsupportedError extends Error {
@@ -218,7 +249,7 @@ function* mapCodexLine(line: string, ctx: ParseContext, result: TurnParseResult)
     yield { kind: "pty_output", source: "profile-adapter", raw: line, metadata: { turnId: ctx.turnId } };
     return;
   }
-  const event = parsed as { type: string; thread_id?: unknown; session_id?: unknown; usage?: unknown; item?: unknown };
+  const event = parsed as { type: string; thread_id?: unknown; session_id?: unknown; usage?: unknown; item?: unknown; error?: unknown; approval_id?: unknown; description?: unknown; decision?: unknown; status?: unknown };
   if (event.type === "thread.started" || event.type === "session.created") {
     const token = typeof event.thread_id === "string" ? event.thread_id : typeof event.session_id === "string" ? event.session_id : undefined;
     if (token) { result.resumeToken = token; return; }
@@ -226,6 +257,28 @@ function* mapCodexLine(line: string, ctx: ParseContext, result: TurnParseResult)
     return;
   }
   if (event.type === "turn.started" || event.type === "item.started" || event.type === "item.updated") return;
+  // §7 structured error：codex error 事件 → error 类型事件
+  if (event.type === "error") {
+    const errObj = event.error as { message?: unknown; code?: unknown } | undefined;
+    const message = typeof errObj?.message === "string" ? errObj.message : typeof event.error === "string" ? event.error : line;
+    const code = typeof errObj?.code === "string" ? errObj.code : undefined;
+    yield { kind: "error", source: "profile-adapter", raw: message, metadata: { turnId: ctx.turnId, ...(code ? { errorCode: code } : {}) } };
+    return;
+  }
+  // §7 approval request/result：codex 审批事件
+  if (event.type === "approval.requested" || event.type === "approval_requested") {
+    const approvalId = typeof event.approval_id === "string" ? event.approval_id : ctx.turnId;
+    const description = typeof event.description === "string" ? event.description : "Approval requested";
+    yield { kind: "approval_request", source: "profile-adapter", raw: description, metadata: { turnId: ctx.turnId, approvalId } };
+    return;
+  }
+  if (event.type === "approval.resolved" || event.type === "approval_resolved") {
+    const approvalId = typeof event.approval_id === "string" ? event.approval_id : ctx.turnId;
+    const decision = typeof event.decision === "string" ? event.decision : "recorded";
+    yield { kind: "approval_response", source: "profile-adapter", raw: decision, metadata: { turnId: ctx.turnId, approvalId, decision } };
+    return;
+  }
+  // §7 completion + usage：turn.completed → lifecycle completion 事件 + usage 提取
   if (event.type === "turn.completed") {
     const usage = event.usage as { input_tokens?: unknown; output_tokens?: unknown } | undefined;
     if (usage && typeof usage === "object") {
@@ -234,6 +287,12 @@ function* mapCodexLine(line: string, ctx: ParseContext, result: TurnParseResult)
         outputTokens: typeof usage.output_tokens === "number" ? usage.output_tokens : undefined
       };
     }
+    yield { kind: "lifecycle", source: "profile-adapter", raw: "Turn completed.", metadata: { turnId: ctx.turnId, status: "turn-completed" } };
+    return;
+  }
+  // §7 cancellation：turn.cancelled → lifecycle 事件
+  if (event.type === "turn.cancelled") {
+    yield { kind: "lifecycle", source: "profile-adapter", raw: "Turn cancelled.", metadata: { turnId: ctx.turnId, status: "turn-cancelled" } };
     return;
   }
   if (event.type === "item.completed" && event.item && typeof event.item === "object") {
@@ -260,10 +319,12 @@ function* mapCodexLine(line: string, ctx: ParseContext, result: TurnParseResult)
         return;
       }
     }
-    yield { kind: "pty_output", source: "profile-adapter", raw: line, metadata: { turnId: ctx.turnId } };
+    // item.completed 未识别子类型 → diagnostic 降级（§7：never crash the turn stream）
+    yield { kind: "pty_output", source: "profile-adapter", raw: line, metadata: { turnId: ctx.turnId, diagnostic: true } };
     return;
   }
-  yield { kind: "pty_output", source: "profile-adapter", raw: line, metadata: { turnId: ctx.turnId } };
+  // 未识别事件类型 → diagnostic 降级（§7：unknown vendor events become diagnostic）
+  yield { kind: "pty_output", source: "profile-adapter", raw: line, metadata: { turnId: ctx.turnId, diagnostic: true } };
 }
 
 /** Claude `-p --output-format stream-json` JSONL → 规范事件；容错映射表，未识别降级 pty_output（adapter-spec §3.2、§4） */
@@ -297,7 +358,7 @@ function* mapClaudeLine(line: string, ctx: ParseContext, result: TurnParseResult
     yield { kind: "pty_output", source: "profile-adapter", raw: line, metadata: { turnId: ctx.turnId } };
     return;
   }
-  const event = parsed as { type: string; session_id?: unknown; message?: unknown; usage?: unknown; event?: unknown };
+  const event = parsed as { type: string; session_id?: unknown; message?: unknown; usage?: unknown; event?: unknown; error?: unknown; approval_id?: unknown; description?: unknown; decision?: unknown };
   // session_id 多帧重复出现：取最后一个（adapter-spec §6）
   if (typeof event.session_id === "string" && event.session_id) result.resumeToken = event.session_id;
   // --include-partial-messages 的增量帧：text_delta → hooks；其余子型静默忽略（已知高频帧不降级，streaming-spec §3.6）
@@ -311,7 +372,28 @@ function* mapClaudeLine(line: string, ctx: ParseContext, result: TurnParseResult
   if (event.type === "system") {
     // init 等系统帧：提取 session_id 后不产出事件；无 session_id 的未知系统帧降级
     if (typeof event.session_id === "string" && event.session_id) return;
-    yield { kind: "pty_output", source: "profile-adapter", raw: line, metadata: { turnId: ctx.turnId } };
+    yield { kind: "pty_output", source: "profile-adapter", raw: line, metadata: { turnId: ctx.turnId, diagnostic: true } };
+    return;
+  }
+  // §7 structured error：claude error 事件
+  if (event.type === "error") {
+    const errObj = event.error as { message?: unknown; type?: unknown } | undefined;
+    const message = typeof errObj?.message === "string" ? errObj.message : typeof event.error === "string" ? event.error : line;
+    const errorType = typeof errObj?.type === "string" ? errObj.type : undefined;
+    yield { kind: "error", source: "profile-adapter", raw: message, metadata: { turnId: ctx.turnId, ...(errorType ? { errorCode: errorType } : {}) } };
+    return;
+  }
+  // §7 approval request/result：claude permission/approval 帧
+  if (event.type === "approval_requested" || event.type === "permission_requested") {
+    const approvalId = typeof event.approval_id === "string" ? event.approval_id : ctx.turnId;
+    const description = typeof event.description === "string" ? event.description : "Permission requested";
+    yield { kind: "approval_request", source: "profile-adapter", raw: description, metadata: { turnId: ctx.turnId, approvalId } };
+    return;
+  }
+  if (event.type === "approval_resolved" || event.type === "permission_resolved") {
+    const approvalId = typeof event.approval_id === "string" ? event.approval_id : ctx.turnId;
+    const decision = typeof event.decision === "string" ? event.decision : "recorded";
+    yield { kind: "approval_response", source: "profile-adapter", raw: decision, metadata: { turnId: ctx.turnId, approvalId, decision } };
     return;
   }
   // user 帧为 tool_result 回显：tool_use 已产 tool_activity，且 Adapter 不得产出 user_message（adapter-spec §4）
@@ -321,20 +403,31 @@ function* mapClaudeLine(line: string, ctx: ParseContext, result: TurnParseResult
     if (Array.isArray(content)) {
       let emitted = false;
       for (const item of content) {
-        const block = item as { type?: unknown; text?: unknown; name?: unknown };
+        const block = item as { type?: unknown; text?: unknown; name?: unknown; input?: unknown };
         if (block?.type === "text" && typeof block.text === "string") {
           emitted = true;
           yield { kind: "assistant_message", source: "profile-adapter", raw: block.text, metadata: { turnId: ctx.turnId } };
         } else if (block?.type === "tool_use" && typeof block.name === "string") {
           emitted = true;
+          // §7 tool + file change：识别文件操作工具产出 file_change 事件
+          const isFileOp = /^(write|create|edit|update|delete|move|rename)_?file/i.test(block.name) || block.name === "Write" || block.name === "Edit";
+          if (isFileOp && block.input && typeof block.input === "object") {
+            const path = typeof (block.input as { path?: unknown }).path === "string" ? (block.input as { path: string }).path
+              : typeof (block.input as { file_path?: unknown }).file_path === "string" ? (block.input as { file_path: string }).file_path : undefined;
+            if (path) {
+              yield { kind: "file_change", source: "profile-adapter", raw: path, metadata: { turnId: ctx.turnId, path, tool: block.name } };
+              continue;
+            }
+          }
           yield { kind: "tool_activity", source: "profile-adapter", raw: block.name, metadata: { turnId: ctx.turnId, tool: block.name } };
         }
       }
       if (emitted) return;
     }
-    yield { kind: "pty_output", source: "profile-adapter", raw: line, metadata: { turnId: ctx.turnId } };
+    yield { kind: "pty_output", source: "profile-adapter", raw: line, metadata: { turnId: ctx.turnId, diagnostic: true } };
     return;
   }
+  // §7 completion + usage：result 帧 → lifecycle 事件 + usage
   if (event.type === "result") {
     const usage = event.usage as { input_tokens?: unknown; output_tokens?: unknown } | undefined;
     if (usage && typeof usage === "object") {
@@ -343,9 +436,17 @@ function* mapClaudeLine(line: string, ctx: ParseContext, result: TurnParseResult
         outputTokens: typeof usage.output_tokens === "number" ? usage.output_tokens : undefined
       };
     }
+    // result 帧携带 error → 额外产出 error 事件
+    const resultError = (parsed as { error?: unknown }).error;
+    if (resultError && typeof resultError === "object") {
+      const errMsg = typeof (resultError as { message?: unknown }).message === "string" ? (resultError as { message: string }).message : JSON.stringify(resultError);
+      yield { kind: "error", source: "profile-adapter", raw: errMsg, metadata: { turnId: ctx.turnId } };
+    }
+    yield { kind: "lifecycle", source: "profile-adapter", raw: "Turn completed.", metadata: { turnId: ctx.turnId, status: "turn-completed" } };
     return;
   }
-  yield { kind: "pty_output", source: "profile-adapter", raw: line, metadata: { turnId: ctx.turnId } };
+  // 未识别事件类型 → diagnostic 降级（§7：unknown vendor events become diagnostic）
+  yield { kind: "pty_output", source: "profile-adapter", raw: line, metadata: { turnId: ctx.turnId, diagnostic: true } };
 }
 
 async function detectCapabilities(profile: CliProfileV2, options: { logger?: Logger; envVersionOverride?: Record<string, string> } = {}): Promise<CapabilityDetectionResult> {
@@ -361,7 +462,7 @@ async function detectCapabilities(profile: CliProfileV2, options: { logger?: Log
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
     compatibility = code === "ENOENT" ? "unavailable" : "unknown-version";
-    detectionFailure = code === "ENOENT" ? "command-missing" : "unknown";
+    detectionFailure = code === "ENOENT" ? "command-missing" : isProbeTimeout(error) ? "probe-timeout" : "unknown";
   }
   const optionSet = profile.adapterId === "claude-code" ? claudeOptions : isClaudeFamily(profile.adapterId) ? claudeCompatibleOptions : codexOptions;
   // 模型列表：内置目录（按探测版本）∪ syncedModels ∪ customModels，去重且 default 首位（console-gaps SPEC §2.5）
@@ -383,6 +484,12 @@ async function detectCapabilities(profile: CliProfileV2, options: { logger?: Log
     supportsHeadlessTurns: headless,
     detectionFailure
   });
+  // guiMode 派生（dual-mode 设计 §8.2）：headless+structuredRecognition → full；compatibility supported 但仅 PTY → partial；其他 unsupported
+  const guiMode: CliProfileCapabilities["guiMode"] = headless && compatibility === "supported"
+    ? "full"
+    : compatibility === "supported"
+      ? "partial"
+      : "unsupported";
   return {
     adapterId: profile.adapterId,
     detectedVersion,
@@ -397,6 +504,7 @@ async function detectCapabilities(profile: CliProfileV2, options: { logger?: Log
     supportsApproval: false,
     // 润色与 headless 同门槛：需 CLI 在验证版本区间内且为 codex/claude 家族（generic 恒 false）
     supportsPromptEnhancement: headless,
+    guiMode,
     detectionFailure,
     versionRange
   };
@@ -408,6 +516,11 @@ function appendOption(args: string[], value: string | null, flag: string | undef
   if (!value || value === "default") return;
   if (!flag || !definitions.some((definition) => definition.id === value)) throw new UnsupportedCliOptionError(value);
   args.push(flag, value);
+}
+
+function isProbeTimeout(error: unknown) {
+  const candidate = error as { code?: unknown; killed?: unknown; signal?: unknown };
+  return candidate.code === "ETIMEDOUT" || candidate.killed === true || candidate.signal === "SIGTERM";
 }
 
 function options(ids: string[]): CliOptionDefinition[] {

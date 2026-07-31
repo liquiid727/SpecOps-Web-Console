@@ -141,7 +141,7 @@ describe("codex parseEvents (adapter-spec §3.1/§4)", () => {
     const stream = new PassThrough();
     stream.end(fixture);
     const { events, result } = await collect(registry.parseEvents!(headlessCodex(), stream, { turnId: "turn-1" }));
-    expect(events.map((event) => event.kind)).toEqual(["pty_output", "assistant_message", "tool_activity", "file_change", "file_change", "pty_output", "pty_output"]);
+    expect(events.map((event) => event.kind)).toEqual(["pty_output", "assistant_message", "tool_activity", "file_change", "file_change", "pty_output", "pty_output", "lifecycle"]);
     expect(events[0].raw).toBe("OpenAI Codex banner line");
     expect(events[1].raw).toBe("Hello **world**");
     expect(events[2]).toMatchObject({ raw: "go test ./...", metadata: { turnId: "turn-1", tool: "command_execution", exitCode: 0 } });
@@ -149,10 +149,11 @@ describe("codex parseEvents (adapter-spec §3.1/§4)", () => {
     expect(events[4].metadata).toMatchObject({ path: "refund.go" });
     expect(events[5].raw).toBe('{"type":"item.completed","item":{"type":"agent_message"}}');
     expect(events[6].raw).toBe('{"type":"mystery.future.event","payload":1}');
+    expect(events[7]).toMatchObject({ kind: "lifecycle", raw: "Turn completed.", metadata: { turnId: "turn-1", status: "turn-completed" } });
     for (const event of events) {
       expect(event.source).toBe("profile-adapter");
       expect(event.metadata?.turnId).toBe("turn-1");
-      expect(["lifecycle", "error", "user_message", "approval_response"]).not.toContain(event.kind);
+      expect(["error", "user_message", "approval_response"]).not.toContain(event.kind);
     }
     expect(result.resumeToken).toBe("t-2");
     expect(result.usage).toEqual({ inputTokens: 10, outputTokens: 5 });
@@ -167,6 +168,9 @@ describe("codex parseEvents (adapter-spec §3.1/§4)", () => {
     expect(first.done).toBe(false);
     expect((first.value as ParsedTurnEvent).raw).toBe("first");
     stream.end('{"type":"turn.completed","usage":{"input_tokens":1,"output_tokens":2}}\n');
+    const lifecycle = await iterator.next();
+    expect(lifecycle.done).toBe(false);
+    expect((lifecycle.value as ParsedTurnEvent).kind).toBe("lifecycle");
     const done = await iterator.next();
     expect(done.done).toBe(true);
     expect((done.value as TurnParseResult).usage).toEqual({ inputTokens: 1, outputTokens: 2 });
@@ -221,16 +225,17 @@ describe("claude parseEvents (adapter-spec §3.2/§4)", () => {
     const stream = new PassThrough();
     stream.end(fixture);
     const { events, result } = await collect(registry.parseEvents!(headlessClaude(), stream, { turnId: "turn-c1" }));
-    expect(events.map((event) => event.kind)).toEqual(["pty_output", "assistant_message", "tool_activity", "pty_output", "pty_output"]);
+    expect(events.map((event) => event.kind)).toEqual(["pty_output", "assistant_message", "tool_activity", "pty_output", "pty_output", "lifecycle"]);
     expect(events[0].raw).toBe("Claude Code banner line");
     expect(events[1].raw).toBe("Hello **claude**");
     expect(events[2]).toMatchObject({ raw: "Bash", metadata: { turnId: "turn-c1", tool: "Bash" } });
     expect(events[3].raw).toBe('{"type":"assistant","message":{"content":[{"type":"unknown_block"}]},"session_id":"sess-1"}');
     expect(events[4].raw).toBe('{"type":"mystery.future.event","payload":1}');
+    expect(events[5]).toMatchObject({ kind: "lifecycle", raw: "Turn completed.", metadata: { turnId: "turn-c1", status: "turn-completed" } });
     for (const event of events) {
       expect(event.source).toBe("profile-adapter");
       expect(event.metadata?.turnId).toBe("turn-c1");
-      expect(["lifecycle", "error", "user_message", "approval_response"]).not.toContain(event.kind);
+      expect(["error", "user_message", "approval_response"]).not.toContain(event.kind);
     }
     expect(result.resumeToken).toBe("sess-2");
     expect(result.usage).toEqual({ inputTokens: 7, outputTokens: 3 });
@@ -245,6 +250,9 @@ describe("claude parseEvents (adapter-spec §3.2/§4)", () => {
     expect(first.done).toBe(false);
     expect((first.value as ParsedTurnEvent).raw).toBe("first");
     stream.end('{"type":"result","session_id":"sess-9","usage":{"input_tokens":1,"output_tokens":2}}\n');
+    const lifecycle = await iterator.next();
+    expect(lifecycle.done).toBe(false);
+    expect((lifecycle.value as ParsedTurnEvent).kind).toBe("lifecycle");
     const done = await iterator.next();
     expect(done.done).toBe(true);
     expect((done.value as TurnParseResult)).toMatchObject({ resumeToken: "sess-9", usage: { inputTokens: 1, outputTokens: 2 } });
@@ -268,7 +276,7 @@ describe("claude parseEvents (adapter-spec §3.2/§4)", () => {
     const { events, result } = await collect(registry.parseEvents!(headlessClaude(), stream, { turnId: "turn-c3" }, { onDelta: (delta) => deltas.push(delta) }));
     expect(deltas).toEqual(["Hel", "lo!"]);
     // stream_event 帧不产出 transcript 事件；终帧 assistant_message 照常落盘
-    expect(events.map((event) => event.kind)).toEqual(["assistant_message"]);
+    expect(events.map((event) => event.kind)).toEqual(["assistant_message", "lifecycle"]);
     expect(events[0].raw).toBe("Hello!");
     expect(result.resumeToken).toBe("sess-d");
   });
@@ -308,7 +316,7 @@ describe("claude-compatible adapters (kimi/glm)", () => {
     const stream = new PassThrough();
     stream.end('{"type":"assistant","message":{"content":[{"type":"text","text":"pong"}]},"session_id":"sess-g"}\n{"type":"result","session_id":"sess-g","usage":{"input_tokens":1,"output_tokens":1}}\n');
     const { events, result } = await collect(registry.parseEvents!(base("glm", process.execPath), stream, { turnId: "turn-g1" }));
-    expect(events.map((event) => event.kind)).toEqual(["assistant_message"]);
+    expect(events.map((event) => event.kind)).toEqual(["assistant_message", "lifecycle"]);
     expect(result.resumeToken).toBe("sess-g");
   });
 });

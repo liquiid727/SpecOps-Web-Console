@@ -9,12 +9,14 @@
     "dev:status": "tsx scripts/dev-status.ts",
     "dev:server": "tsx watch server/index.ts",
     "dev:client": "vite --host 127.0.0.1",
+    "dev:tauri-client": "tsc -p tsconfig.server.json && vite --host 127.0.0.1",
     "build": "tsc -p tsconfig.server.json && vite build",
     "design:lint": "designmd lint DESIGN.md",
     "ui:check": "npm run design:lint && tsx scripts/check-ui-governance.ts",
     "start": "node dist-server/server/index.js",
     "smoke:real-cli": "tsx scripts/real-cli-smoke.ts",
-    "test:e2e": "playwright test",
+    "test:e2e": "npm run build && zsh scripts/ego-browser-e2e.sh",
+    "test:e2e:playwright": "playwright test",
     "test": "vitest run"
   },
   "dependencies": {
@@ -32,7 +34,8 @@
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
     "tailwind-merge": "^3.3.1",
-    "ws": "^8.18.0"
+    "ws": "^8.18.0",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@google/design.md": "0.3.0",

@@ -6,6 +6,7 @@ import {
   type AppState,
   type AppStateEnvelopeV2,
   type AppStateEnvelopeV3,
+  type AppStateEnvelopeV4,
   type AppStateV3,
   type CliProfileV3,
   type SessionChatContext,
@@ -42,7 +43,7 @@ export function createJsonStateRepository({ dataDirectory, clock, readonly = fal
 
   const save = (state: AppStateV3) => {
     if (readonly) return Promise.reject(new StateRepositoryError("READONLY_MODE", "Readonly mode does not write state."));
-    const snapshot: AppStateEnvelopeV3 = { schemaVersion: CURRENT_SCHEMA_VERSION, state: structuredClone(state) };
+    const snapshot: AppStateEnvelopeV4 = { schemaVersion: CURRENT_SCHEMA_VERSION, state: structuredClone(state) };
     const previous = writeQueues.get(statePath) ?? Promise.resolve();
     const next = previous.catch(() => undefined).then(async () => {
       await fs.mkdir(resolvedDataDirectory, { recursive: true });
@@ -82,11 +83,11 @@ export function createJsonStateRepository({ dataDirectory, clock, readonly = fal
         throw new StateRepositoryError("STATE_CORRUPT", "State file is not valid JSON; the source was left unchanged.", { cause: error });
       }
 
-      const envelope = isEnvelopeV3(parsed) ? parsed : undefined;
+      const envelope = isEnvelopeV4(parsed) ? parsed : undefined;
       const sourceVersion = detectSourceVersion(parsed);
       let state: AppStateV3;
       try {
-        state = await migrateAndValidate(parsed as AppState | AppStateEnvelopeV2 | AppStateEnvelopeV3, clock);
+        state = await migrateAndValidate(parsed as AppState | AppStateEnvelopeV2 | AppStateEnvelopeV3 | AppStateEnvelopeV4, clock);
       } catch (error) {
         if (error instanceof StateRepositoryError) throw error;
         throw new StateRepositoryError("STATE_MIGRATION_FAILED", "State file could not be migrated safely; the source was left unchanged.", { cause: error });
@@ -119,9 +120,10 @@ export function createJsonStateRepository({ dataDirectory, clock, readonly = fal
   }
 }
 
-export async function migrateAndValidate(parsed: AppState | AppStateEnvelopeV2 | AppStateEnvelopeV3, clock: Clock): Promise<AppStateV3> {
+export async function migrateAndValidate(parsed: AppState | AppStateEnvelopeV2 | AppStateEnvelopeV3 | AppStateEnvelopeV4, clock: Clock): Promise<AppStateV3> {
   if (!parsed || typeof parsed !== "object") throw new Error("state root must be an object");
-  const envelope = isEnvelopeV3(parsed) ? parsed : isEnvelopeV2(parsed) ? parsed : undefined;
+  const envelope = isEnvelopeV4(parsed) ? parsed : isEnvelopeV3(parsed) ? parsed : isEnvelopeV2(parsed) ? parsed : undefined;
+  const sourceVersion = detectSourceVersion(parsed);
   if ("schemaVersion" in parsed && !envelope) throw new Error("unsupported state schema version");
   const source = (envelope?.state ?? parsed) as Partial<AppState>;
   if (!Array.isArray(source.workspaces) || !Array.isArray(source.profiles) || !Array.isArray(source.sessions)) {
@@ -135,7 +137,7 @@ export async function migrateAndValidate(parsed: AppState | AppStateEnvelopeV2 |
   const profiles = (source.profiles.length ? source.profiles : fallbackProfiles).map((profile): CliProfileV3 => {
     if (!profile || typeof profile !== "object") throw new Error("profile must be an object");
     const candidate = profile as Partial<CliProfileV3>;
-    if (!nonEmpty(candidate.id) || !nonEmpty(candidate.name) || !nonEmpty(candidate.command) || !Array.isArray(candidate.args) || candidate.args.some((arg) => typeof arg !== "string") || (candidate.adapterId !== undefined && !["claude-code", "codex", "generic"].includes(candidate.adapterId))) {
+    if (!nonEmpty(candidate.id) || !nonEmpty(candidate.name) || !nonEmpty(candidate.command) || !Array.isArray(candidate.args) || candidate.args.some((arg) => typeof arg !== "string") || (candidate.adapterId !== undefined && !["claude-code", "codex", "kimi", "glm", "generic"].includes(candidate.adapterId))) {
       throw new Error("profile has invalid fields");
     }
     return {
@@ -172,7 +174,7 @@ export async function migrateAndValidate(parsed: AppState | AppStateEnvelopeV2 |
   const profileIds = new Set(profiles.map((profile) => profile.id));
   const sessions = source.sessions.map((session, index): SessionV3 => {
     if (!session || typeof session !== "object") throw new Error("session must be an object");
-    const candidate = session as Partial<SessionV3> & { status?: string; error?: unknown };
+    const candidate = session as Partial<SessionV3> & { status?: string; error?: unknown; adapterId?: unknown; resumeToken?: unknown };
     if (!nonEmpty(candidate.id) || !nonEmpty(candidate.name) || !nonEmpty(candidate.workspaceId) || !nonEmpty(candidate.profileId) || !workspaceIds.has(candidate.workspaceId) || !profileIds.has(candidate.profileId)) {
       throw new Error("session contains an invalid reference");
     }
@@ -184,6 +186,32 @@ export async function migrateAndValidate(parsed: AppState | AppStateEnvelopeV2 |
     const interactionMode = candidate.interactionMode ?? "terminal";
     if (interactionMode !== "chat" && interactionMode !== "terminal") throw new Error("session has invalid interaction mode");
     const chatContext = normalizeChatContext(candidate.chatContext, interactionMode);
+    const terminalContext = normalizeTerminalContext(candidate.terminalContext, interactionMode);
+    const profile = profiles.find((item) => item.id === candidate.profileId)!;
+    if (candidate.resumeToken !== undefined && typeof candidate.resumeToken !== "string") throw new Error("session has invalid legacy resume token");
+    if (candidate.adapterId !== undefined && typeof candidate.adapterId !== "string") throw new Error("session has invalid legacy adapter id");
+    const normalizedBackendSessionRef = normalizeBackendSessionRef(candidate.backendSessionRef);
+    const backendId = nonEmpty(candidate.backendId)
+      ? candidate.backendId
+      : normalizedBackendSessionRef?.backendId
+        ?? (nonEmpty(candidate.adapterId) ? backendIdForLegacyAdapter(candidate.adapterId) : backendIdForAdapter(profile.adapterId));
+    if (normalizedBackendSessionRef && normalizedBackendSessionRef.backendId !== backendId) throw new Error("session backend id does not match backend session ref");
+    const legacyNativeSessionId = candidate.resumeToken
+      ?? (interactionMode === "chat" ? chatContext?.resumeToken : terminalContext?.resumeToken);
+    const unknownFields = sourceVersion < CURRENT_SCHEMA_VERSION ? extractUnknownSessionFields(session as unknown as Record<string, unknown>) : undefined;
+    const migrationMetadata = sourceVersion < CURRENT_SCHEMA_VERSION
+      ? {
+        sourceSchemaVersion: sourceVersion,
+        ...(unknownFields && Object.keys(unknownFields).length ? { unknownFields } : {})
+      }
+      : normalizedBackendSessionRef?.migrationMetadata;
+    const backendSessionRef = {
+      backendId: normalizedBackendSessionRef?.backendId ?? backendId,
+      transport: normalizedBackendSessionRef?.transport ?? (interactionMode === "chat" ? "json-stream" as const : "pty" as const),
+      ...(normalizedBackendSessionRef?.nativeSessionId || legacyNativeSessionId ? { nativeSessionId: normalizedBackendSessionRef?.nativeSessionId ?? legacyNativeSessionId } : {}),
+      ...(normalizedBackendSessionRef?.resumeData ? { resumeData: normalizedBackendSessionRef.resumeData } : {}),
+      ...(migrationMetadata ? { migrationMetadata } : {})
+    };
     const manualOrder = typeof candidate.manualOrder === "number" && Number.isFinite(candidate.manualOrder) ? candidate.manualOrder : (index + 1) * 1000;
     const revision = typeof candidate.revision === "number" && Number.isInteger(candidate.revision) && candidate.revision > 0 ? candidate.revision : 1;
     if (!["active", "completed", "archived"].includes(candidate.organizationStatus ?? "active")) throw new Error("session has invalid organization status");
@@ -196,6 +224,9 @@ export async function migrateAndValidate(parsed: AppState | AppStateEnvelopeV2 |
       profileId: candidate.profileId,
       name: candidate.name,
       interactionMode,
+      // dual-mode 归一（设计 §9）：load 时按 interactionMode 补默认值（chat → gui，terminal → terminal）
+      activeView: candidate.activeView === "terminal" || candidate.activeView === "gui" ? candidate.activeView : interactionMode === "chat" ? "gui" : "terminal",
+      inputOwner: candidate.inputOwner === "terminal" || candidate.inputOwner === "gui" || candidate.inputOwner === "none" ? candidate.inputOwner : interactionMode === "chat" ? "gui" : "terminal",
       runtimeStatus: "stopped",
       organizationStatus: candidate.organizationStatus ?? "active",
       pinned: candidate.pinned ?? false,
@@ -207,6 +238,9 @@ export async function migrateAndValidate(parsed: AppState | AppStateEnvelopeV2 |
         ...(launchConfig.branch !== undefined ? { branch: launchConfig.branch } : {})
       },
       ...(chatContext !== undefined ? { chatContext } : {}),
+      ...(terminalContext !== undefined ? { terminalContext } : {}),
+      backendId,
+      backendSessionRef,
       parentSessionId: candidate.parentSessionId,
       forkEventId: candidate.forkEventId,
       forkSequence: candidate.forkSequence,
@@ -230,8 +264,8 @@ export async function migrateAndValidate(parsed: AppState | AppStateEnvelopeV2 |
   return { workspaces, profiles, sessions };
 }
 
-export function migrateState(parsed: AppState | AppStateEnvelopeV2 | AppStateEnvelopeV3, clock: Clock): AppStateV3 {
-  const source = isEnvelopeV3(parsed) || isEnvelopeV2(parsed) ? parsed.state : parsed;
+export function migrateState(parsed: AppState | AppStateEnvelopeV2 | AppStateEnvelopeV3 | AppStateEnvelopeV4, clock: Clock): AppStateV3 {
+  const source = isEnvelopeV4(parsed) || isEnvelopeV3(parsed) || isEnvelopeV2(parsed) ? parsed.state : parsed;
   const profiles = source.profiles?.length ? source.profiles : [
     { id: "profile-codex", name: "Codex CLI", command: "codex", args: [], adapterId: "codex" as const, createdAt: clock.now() },
     { id: "profile-claude", name: "Claude CLI", command: "claude", args: [], adapterId: "claude-code" as const, createdAt: clock.now() }
@@ -269,6 +303,57 @@ function normalizeChatContext(value: unknown, interactionMode: "chat" | "termina
   };
 }
 
+function normalizeTerminalContext(value: unknown, interactionMode: "chat" | "terminal") {
+  if (value === undefined || interactionMode !== "terminal") return undefined;
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("session has invalid terminal context");
+  const resumeToken = (value as { resumeToken?: unknown }).resumeToken;
+  if (resumeToken !== undefined && typeof resumeToken !== "string") throw new Error("session has invalid terminal context");
+  return resumeToken ? { resumeToken } : {};
+}
+
+function normalizeBackendSessionRef(value: unknown): import("../shared/types.js").BackendSessionRef | undefined {
+  if (value === undefined) return undefined;
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("session has invalid backend session ref");
+  const candidate = value as Partial<import("../shared/types.js").BackendSessionRef>;
+  if (!nonEmpty(candidate.backendId) || !["native-sdk", "acp", "json-stream", "pty"].includes(String(candidate.transport))) throw new Error("session has invalid backend session ref");
+  if (candidate.nativeSessionId !== undefined && typeof candidate.nativeSessionId !== "string") throw new Error("session has invalid backend session ref");
+  if (candidate.resumeData !== undefined && (!candidate.resumeData || typeof candidate.resumeData !== "object" || Array.isArray(candidate.resumeData))) throw new Error("session has invalid backend session ref");
+  const migrationMetadata = normalizeMigrationMetadata(candidate.migrationMetadata);
+  return {
+    backendId: candidate.backendId,
+    transport: candidate.transport!,
+    ...(candidate.nativeSessionId ? { nativeSessionId: candidate.nativeSessionId } : {}),
+    ...(candidate.resumeData ? { resumeData: candidate.resumeData } : {}),
+    ...(migrationMetadata ? { migrationMetadata } : {})
+  };
+}
+
+function normalizeMigrationMetadata(value: unknown): import("../shared/types.js").BackendSessionRef["migrationMetadata"] | undefined {
+  if (value === undefined) return undefined;
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("session has invalid backend migration metadata");
+  const sourceSchemaVersion = (value as { sourceSchemaVersion?: unknown }).sourceSchemaVersion;
+  const unknownFields = (value as { unknownFields?: unknown }).unknownFields;
+  if (typeof sourceSchemaVersion !== "number" || !Number.isInteger(sourceSchemaVersion) || sourceSchemaVersion < 1) throw new Error("session has invalid backend migration metadata");
+  if (unknownFields !== undefined && (!unknownFields || typeof unknownFields !== "object" || Array.isArray(unknownFields))) throw new Error("session has invalid backend migration metadata");
+  return {
+    sourceSchemaVersion,
+    ...(unknownFields ? { unknownFields: structuredClone(unknownFields as Record<string, unknown>) } : {})
+  };
+}
+
+const knownSessionFields = new Set([
+  "id", "workspaceId", "profileId", "name", "interactionMode", "activeView", "inputOwner",
+  "runtimeStatus", "status", "organizationStatus", "pinned", "manualOrder", "launchConfig",
+  "chatContext", "terminalContext", "backendId", "backendSessionRef", "adapterId", "resumeToken",
+  "parentSessionId", "forkEventId", "forkSequence", "forkedAt", "createdAt", "lastActiveAt",
+  "completedAt", "archivedAt", "exitCode", "error", "revision"
+]);
+
+function extractUnknownSessionFields(session: Record<string, unknown>): Record<string, unknown> | undefined {
+  const unknownFields = Object.fromEntries(Object.entries(session).filter(([key]) => !knownSessionFields.has(key)));
+  return Object.keys(unknownFields).length ? structuredClone(unknownFields) : undefined;
+}
+
 function detectSourceVersion(value: unknown): number {
   if (value && typeof value === "object" && "schemaVersion" in value) {
     const version = (value as { schemaVersion?: unknown }).schemaVersion;
@@ -282,6 +367,10 @@ function isEnvelopeV2(value: unknown): value is AppStateEnvelopeV2 {
 }
 
 function isEnvelopeV3(value: unknown): value is AppStateEnvelopeV3 {
+  return Boolean(value && typeof value === "object" && "schemaVersion" in value && (value as { schemaVersion?: unknown }).schemaVersion === 3 && "state" in value);
+}
+
+function isEnvelopeV4(value: unknown): value is AppStateEnvelopeV4 {
   return Boolean(value && typeof value === "object" && "schemaVersion" in value && (value as { schemaVersion?: unknown }).schemaVersion === CURRENT_SCHEMA_VERSION && "state" in value);
 }
 
@@ -305,4 +394,16 @@ function inferAdapterId(command: string) {
   if (normalized.includes("codex")) return "codex" as const;
   if (normalized.includes("claude")) return "claude-code" as const;
   return "generic" as const;
+}
+
+function backendIdForAdapter(adapterId: CliProfileV3["adapterId"]) {
+  if (adapterId === "claude-code") return "claude";
+  if (adapterId === "generic") return "generic-pty";
+  return adapterId;
+}
+
+function backendIdForLegacyAdapter(adapterId: string) {
+  if (adapterId === "claude-code") return "claude";
+  if (adapterId === "generic") return "generic-pty";
+  return adapterId;
 }

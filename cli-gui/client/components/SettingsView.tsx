@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import type { CliProfileV2, ProfileModelEntry } from "../../shared/types";
-import { api } from "../api";
 import { toFeedbackError } from "../feedback-errors";
 import { useI18n } from "../i18n";
 import { detectShortcutPlatform, formatShortcut, SHORTCUT_CATEGORY_LABEL, SHORTCUTS, type ShortcutCategory } from "../app/shortcuts";
+import { readPreferences, writePreferences, type CliMode } from "../app/preferences";
 import { Icon } from "./ui/Icon";
-import { Badge, Button, TextField, useFeedback } from "./ui";
+import { Badge, Button, Select, TextField, useFeedback } from "./ui";
 import { SettingsSection, ViewHeader } from "./patterns";
-import { usePlatform } from "../lib/platform";
+import { useClientRuntime } from "../runtime/client-runtime";
 
 type SettingsTab = "account" | "models" | "mcp" | "shortcuts" | "security";
 
@@ -22,8 +22,8 @@ const tabs: { id: SettingsTab; label: string; icon: string }[] = [
 const shortcutCategories: ShortcutCategory[] = ["navigation", "panels", "session", "composer"];
 
 export function SettingsView() {
-  const { t } = useI18n();
-  const platform = usePlatform();
+  const { t, language, setLanguage } = useI18n();
+  const platform = useClientRuntime().platform;
   const shortcutPlatform = detectShortcutPlatform();
   const [activeTab, setActiveTab] = useState<SettingsTab>("account");
 
@@ -46,23 +46,42 @@ export function SettingsView() {
         </nav>
         <div className="settings-panel">
           {activeTab === "account" && (
-            <SettingsSection title={t("qoderSettingsAccount")}>
-              <p className="settings-description">{t("qoderAccountDescription")}</p>
-              <div className="settings-credits">
-                <Icon name="sparkles" />
-                <div>
-                  <strong>{t("qoderCredits")}</strong>
-                  <span>1,200</span>
+            <>
+              <SettingsSection title={t("qoderSettingsAccount")}>
+                <p className="settings-description">{t("qoderAccountDescription")}</p>
+                <div className="settings-credits">
+                  <Icon name="sparkles" />
+                  <div>
+                    <strong>{t("qoderCredits")}</strong>
+                    <span>1,200</span>
+                  </div>
                 </div>
-              </div>
-              <p className="settings-description"><strong>{t("qoderPlatform")}:</strong> {platform.kind === "tauri" ? "Tauri" : "Web"}</p>
-            </SettingsSection>
+                <p className="settings-description"><strong>{t("qoderPlatform")}:</strong> {platform.kind === "tauri" ? "Tauri" : "Web"}</p>
+              </SettingsSection>
+              {/* 界面语言（QA 调节）：默认中文，与标题栏 LanguageToggle 共享同一 localStorage 偏好 */}
+              <SettingsSection title={t("languageSettingTitle")}>
+                <p className="settings-description">{t("languageSettingDescription")}</p>
+                <Select
+                  ariaLabel={t("languageSettingTitle")}
+                  className="language-select"
+                  value={language}
+                  options={[
+                    { value: "zh", label: "中文" },
+                    { value: "en", label: "English" }
+                  ]}
+                  onChange={(value) => setLanguage(value as "zh" | "en")}
+                />
+              </SettingsSection>
+            </>
           )}
           {activeTab === "models" && (
-            <SettingsSection title={t("qoderSettingsModels")}>
-              <p className="settings-description">{t("qoderModelsDescription")}</p>
-              <ModelsSettings />
-            </SettingsSection>
+            <>
+              <CliModeSettings />
+              <SettingsSection title={t("qoderSettingsModels")}>
+                <p className="settings-description">{t("qoderModelsDescription")}</p>
+                <ModelsSettings />
+              </SettingsSection>
+            </>
           )}
           {activeTab === "mcp" && (
             <SettingsSection title={t("qoderSettingsMcp")}>
@@ -101,10 +120,41 @@ export function SettingsView() {
   );
 }
 
+/** Settings > CLI Mode（issue-052，cli-structured-tui-adaptation spec §2.3）：auto / codex-cli / claude-cli，写入 UI preferences */
+function CliModeSettings() {
+  const { t } = useI18n();
+  const [cliMode, setCliMode] = useState<CliMode>(() => readPreferences().cliMode);
+
+  const changeMode = (value: string) => {
+    const mode = value as CliMode;
+    setCliMode(mode);
+    // 快捷键（⌘⇧C/⌘⇧L）与设置页共享同一 localStorage 偏好；基于最新存储合并避免覆盖其它字段
+    writePreferences({ ...readPreferences(), cliMode: mode });
+  };
+
+  return (
+    <SettingsSection title={t("cliModeTitle")}>
+      <p className="settings-description">{t("cliModeDescription")}</p>
+      <Select
+        ariaLabel={t("cliModeTitle")}
+        className="cli-mode-select"
+        value={cliMode}
+        options={[
+          { value: "auto", label: t("cliModeAuto") },
+          { value: "codex-cli", label: t("cliModeCodex") },
+          { value: "claude-cli", label: t("cliModeClaude") }
+        ]}
+        onChange={changeMode}
+      />
+    </SettingsSection>
+  );
+}
+
 /** Settings > Models：三层来源合并列表 + Sync + 自定义导入（console-gaps SPEC §2.6） */
 function ModelsSettings() {
   const { t } = useI18n();
   const feedback = useFeedback();
+  const runtime = useClientRuntime();
   const [profiles, setProfiles] = useState<CliProfileV2[]>([]);
   const [readonly, setReadonly] = useState(false);
   const [models, setModels] = useState<Record<string, ProfileModelEntry[]>>({});
@@ -116,11 +166,11 @@ function ModelsSettings() {
     let cancelled = false;
     void (async () => {
       try {
-        const state = await api.state();
+        const state = await runtime.sessions.state();
         if (cancelled) return;
         setProfiles(state.profiles);
         setReadonly(state.readonly);
-        const loaded = await Promise.all(state.profiles.map(async (profile) => [profile.id, (await api.profileModels(profile.id)).models ?? []] as const));
+        const loaded = await Promise.all(state.profiles.map(async (profile) => [profile.id, (await runtime.engines.profileModels(profile.id)).models ?? []] as const));
         if (cancelled) return;
         setModels(Object.fromEntries(loaded));
         setStatus("ready");
@@ -136,7 +186,7 @@ function ModelsSettings() {
   const sync = async (profileId: string) => {
     setSyncing(profileId);
     try {
-      const result = await api.syncProfileModels(profileId);
+      const result = await runtime.engines.syncProfileModels(profileId);
       setModels((current) => ({ ...current, [profileId]: result.models ?? [] }));
       feedback.success({ title: t("modelsSyncDone"), description: t("modelsSyncCount", { count: (result.synced ?? []).length }) });
     } catch (cause) {
@@ -150,7 +200,7 @@ function ModelsSettings() {
     const model = (drafts[profileId] ?? "").trim();
     if (!model) return;
     try {
-      const result = await api.addProfileModel(profileId, model);
+      const result = await runtime.engines.addProfileModel(profileId, model);
       setModels((current) => ({ ...current, [profileId]: result.models ?? [] }));
       setDrafts((current) => ({ ...current, [profileId]: "" }));
     } catch (cause) {
@@ -160,7 +210,7 @@ function ModelsSettings() {
 
   const removeModel = async (profileId: string, model: string) => {
     try {
-      const result = await api.removeProfileModel(profileId, model);
+      const result = await runtime.engines.removeProfileModel(profileId, model);
       setModels((current) => ({ ...current, [profileId]: result.models ?? [] }));
     } catch (cause) {
       feedback.error(toFeedbackError(cause, t, "modelsRemoveFailed", `models-remove:${profileId}`));

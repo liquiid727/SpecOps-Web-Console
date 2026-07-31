@@ -10,6 +10,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { WebSocket } from "ws";
 import type { AppStateV3, TranscriptEvent, TranscriptPage } from "../shared/types.js";
 import { createApplication } from "./application.js";
+import { createAgentBackendRegistry, createProfileAdapterTurnExecutor } from "./agent-backends.js";
 import { createServer } from "./http-server.js";
 import { createProfileAdapterRegistry } from "./profile-adapters.js";
 import { PersistentRuntimeUnavailableError } from "./ports.js";
@@ -286,6 +287,33 @@ describe("chat API wiring", () => {
       expect(second.status).toBe(202);
       await waitFor(() => turnEnded(transcripts.get(sessionId), second.json.turnId));
       expect(turnConfigs.at(-1)?.resumeToken).toBe("thread-1");
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("routes chat turns through AgentBackend when the production backend registry is present", async () => {
+    const { dependencies, state, transcripts, turnConfigs } = createChatDependencies();
+    dependencies.agentBackends = createAgentBackendRegistry(dependencies.profileAdapters, createProfileAdapterTurnExecutor({
+      processEnvironment: dependencies.policy.processEnvironment,
+      logger: dependencies.logger
+    }));
+    const { server, port } = await startServer(dependencies);
+    try {
+      const created = await post(port, "/api/sessions", { name: "Chat", workspaceId: "workspace-1", profileId: "profile-chat" });
+      const sessionId = created.json.id as string;
+
+      const sent = await post(port, `/api/sessions/${sessionId}/messages`, { clientMessageId: "client-backend", content: "hello", startIfStopped: true, confirmedStart: true });
+      expect(sent.status).toBe(202);
+      await waitFor(() => turnEnded(transcripts.get(sessionId), sent.json.turnId));
+
+      expect(dependencies.ptyRuntime.spawn).not.toHaveBeenCalled();
+      expect(turnConfigs.at(-1)).toMatchObject({ workspacePath: fixtureDir, prompt: "hello" });
+      const session = state.sessions.find((item) => item.id === sessionId)!;
+      expect(session.backendId).toBe("codex");
+      expect(session.backendSessionRef).toMatchObject({ backendId: "codex", transport: "json-stream", nativeSessionId: "thread-1" });
+      const events = transcripts.get(sessionId)!;
+      expect(events.some((event) => event.kind === "assistant_message" && event.raw === "assistant says hi" && event.metadata?.turnId === sent.json.turnId)).toBe(true);
     } finally {
       await server.close();
     }
@@ -795,9 +823,9 @@ describe("global session concurrency limit (D-6)", () => {
       const termEventsB = transcripts.get(termB)!;
       expect(termEventsA.every((event) => event.sessionId === termA)).toBe(true);
       expect(termEventsB.every((event) => event.sessionId === termB)).toBe(true);
-      expect(termEventsA.some((event) => event.kind === "pty_output" && event.raw.includes("pty-a:ls-alpha"))).toBe(true);
+      expect(termEventsA.some((event) => event.kind === "pty_output" && event.raw.includes("pty-a:") && event.raw.includes("ls-alpha"))).toBe(true);
       expect(termEventsA.some((event) => event.raw.includes("pty-b") || event.raw.includes("ls-beta"))).toBe(false);
-      expect(termEventsB.some((event) => event.kind === "pty_output" && event.raw.includes("pty-b:ls-beta"))).toBe(true);
+      expect(termEventsB.some((event) => event.kind === "pty_output" && event.raw.includes("pty-b:") && event.raw.includes("ls-beta"))).toBe(true);
       expect(termEventsB.some((event) => event.raw.includes("pty-a") || event.raw.includes("ls-alpha"))).toBe(false);
 
       // WS 事件帧无串台：每路订阅收到的 transcript-event 全部属于自己的会话

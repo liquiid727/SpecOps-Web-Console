@@ -9,6 +9,7 @@ export type TerminalClientFrame =
 export type TerminalServerFrame =
   | { type: "terminal-output"; data: string }
   | { type: "runtime-status"; status: SessionRuntimeStatus; exitCode?: number }
+  | { type: "input-rejected"; reason: string }
   | { type: "protocol-error"; error: ApiError };
 
 /** 轮次即时状态（api-spec §4.2）：不承载内容，断线不补发，状态可由事件回放推导 */

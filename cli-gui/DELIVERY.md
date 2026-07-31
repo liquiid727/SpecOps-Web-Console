@@ -15,7 +15,8 @@ This record tracks the implementation evidence for the CLI GUI workbench. Issue 
 
 - `npm test`: passed, 18 test files and 54 tests.
 - `npm run build`: passed.
-- `npm run test:e2e`: passed with the disposable Playwright fixture, including mobile drawer/backdrop, transcript, terminal, inspector, picker, and settings flows.
+- `npm run test:e2e`: uses the local `ego-browser` runner with an in-runtime disposable fixture server and covers shell/responsive, Chat-first, multi-turn, cancellation, terminal replay, reload/archive, downgrade, and theme persistence flows.
+- `npm run test:e2e:playwright`: retains the full disposable Playwright suite for environments that allow Playwright Chromium to launch.
 - `npm run smoke:real-cli`: passed with authenticated Codex and Claude fixed-prompt checks, four concurrent real Codex/Claude PTYs in isolated temporary data and HOME directories, resize, Ctrl+C input, stop, recovery, and abnormal-exit lifecycle checks.
 - All fixtures use temporary directories. No real CLI output, credentials, or source-repository state is persisted.
 

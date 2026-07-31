@@ -4,13 +4,13 @@
 Expose bounded visible transcript history for stopped and running sessions.
 
 ## Acceptance Criteria
-- [ ] Add GET /api/sessions/:id/transcript with afterSequence and limit.
-- [ ] Return events in visible sequence order with hasMore and nextAfterSequence.
-- [ ] Cap limits at 200 events and 1 MiB per response.
-- [ ] Return retention visibility information.
-- [ ] Return defined not-found and corrupt-transcript errors.
-- [ ] Support empty, partial, complete, retained, and Fork-prefix histories.
-- [ ] Add API integration tests.
+- [x] Add GET /api/sessions/:id/transcript with afterSequence and limit.
+- [x] Return events in visible sequence order with hasMore and nextAfterSequence.
+- [x] Cap limits at 200 events and 1 MiB per response.
+- [x] Return retention visibility information.
+- [x] Return defined not-found and corrupt-transcript errors.
+- [x] Support empty, partial, complete, retained, and Fork-prefix histories.
+- [x] Add API integration tests.
 
 ## Dependencies
 Issue #23

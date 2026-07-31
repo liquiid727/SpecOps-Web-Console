@@ -54,10 +54,44 @@ test-spec 横切全部分册                    architecture-spec 约束全部�
 | D-8 | 审批协议 | `approval_request`/`approval_response` 两个 kind 在 A 段进事件协议与 Orchestrator 挂起语义；审批 HTTP 端点与 UI 在 B 段 | PRD §4.2.1「协议预留零成本，事后补协议代价高」 |
 | D-9 | Adapter 无状态性 | AgentAdapter 为纯翻译层：不持进程句柄、不做执行控制、不写存储 | PRD §4.4 分层纪律；执行控制归 Orchestrator |
 | D-10 | Turn 不入 state.json | ChatTurn 是运行时对象，仅存在于 Orchestrator 内存；轮次边界通过 transcript 事件 `metadata.turnId` 持久化 | 轮次状态可由事件流推导，避免双写不一致 |
+| D-11 | 前端状态管理 | 客户端全局状态统一收敛到 Zustand（`client/app/store.ts` 三切片：服务端镜像 / UI 偏好 / 瞬态 UI）；i18n/主题/Feedback 保持 Context | 状态根 props 下钻已达临界；订阅式 store 为去轮询化（WS 帧直写 store）铺路；全栈只允许这一套状态库，见 frontend-spec §11 |
 
 ---
 
 ## 2. Architecture
+
+### 2.0 目标架构全景（长期演进视图）
+
+多前端（Web / Desktop / TUI）共享同一 GUI Backend 与 Agent Runtime，底层通过
+Adapter 层对接各家 CLI。MVP01 只交付其中 Browser → Codex/Claude/Generic 一条
+主线（见 §2.1），Gemini / Kimi Code / GLM / Qwen 等 Adapter 为后续扩展位，
+新增 CLI 只允许以 Adapter 形式接入，不得侵入 Runtime 层。
+
+```
+                    ┌─────────────────────┐
+                    │   Web / Mobile Web  │
+                    └──────────┬──────────┘
+                               │
+┌──────────────┐    ┌──────────▼──────────┐
+│ Desktop GUI  │───▶│   GUI Backend/API   │
+│Tauri/Electron│    │ WebSocket/SSE/HTTP  │
+└──────────────┘    └──────────┬──────────┘
+                               │
+┌──────────────┐    ┌──────────▼──────────┐
+│ Unified TUI  │───▶│   Agent Runtime     │
+└──────────────┘    │ Session / Task /    │
+                    │ Permission / Files  │
+                    └──────────┬──────────┘
+                               │
+     ┌──────────┬──────────────┼──────────────┬──────────┬──────────┐
+     │          │              │              │          │          │
+┌────▼─────┐┌───▼──────┐┌──────▼─────┐┌───────▼───┐┌─────▼───┐┌─────▼────┐
+│  Codex   ││  Claude  ││   Gemini   ││ Kimi Code ││   GLM   ││   Qwen   │
+│ Adapter  ││ Adapter  ││  Adapter   ││  Adapter  ││ Adapter ││ Adapter  │
+└────┬─────┘└───┬──────┘└──────┬─────┘└───────┬───┘└─────┬───┘└─────┬────┘
+     │          │              │              │          │          │
+ codex CLI  claude CLI    gemini CLI      kimi CLI    glm CLI   qwen CLI
+```
 
 ### 2.1 System Context（分层与纪律）
 
@@ -74,7 +108,7 @@ Runtime Orchestrator     ── 怎么跑：Runtime Worker、轮次互斥、取�
 CLI Adapter              ── 无状态翻译：capability、argv、事件解析
    │                        (server/profile-adapters.ts 演进为 AgentAdapter)
    ▼
-Codex / Claude / Generic CLI（GLM/Kimi 为 MVP01+ 扩展位）
+Codex / Claude / Generic CLI（Gemini/Kimi Code/GLM/Qwen 为 MVP01+ 扩展位，见 §2.0）
 ```
 
 分层禁令（违反即架构缺陷，review 必查）：
@@ -96,6 +130,7 @@ Codex / Claude / Generic CLI（GLM/Kimi 为 MVP01+ 扩展位）
 | StateRepository | `server/store.ts` | MODIFY | v2→v3 迁移（见 storage-spec） |
 | TranscriptRepository | `server/transcript-store.ts` | MODIFY | 读侧 legacy kind 规范化；其余保持 |
 | Ports | `server/ports.ts` | MODIFY | 新增 `RuntimeOrchestrator`、`ChatTurnProcessRunner` port |
+| Client Store | `client/app/store.ts` | NEW | Zustand 三切片全局状态（D-11，见 frontend-spec §11） |
 | Client App | `client/app/App.tsx` 等 | MODIFY | Chat View、Quest Home、审批气泡（见 frontend-spec） |
 
 ### 2.3 File Structure（NEW / MODIFY 总览）
@@ -117,6 +152,7 @@ cli-gui/
 │   ├── store.ts            [MODIFY: v3 迁移]
 │   └── transcript-store.ts [MODIFY: 读侧 kind 规范化]
 └── client/
+    ├── app/store.ts             [NEW: Zustand 三切片（app/preferences/ui）+ resetClientStores 测试隔离]
     ├── components/ChatView.tsx   [MODIFY: 消息流、气泡、Markdown、tool 折叠、审批气泡]
     ├── components/QuestHome.tsx [MODIFY: Start in 下拉 + 一次提交创建流（B 段）]
     ├── components/PromptComposer.tsx [MODIFY: 模型选择器、start-and-send]

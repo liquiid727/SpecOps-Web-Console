@@ -1,7 +1,8 @@
 import type http from "node:http";
 import type { Readable } from "node:stream";
-import type { AppStateV3, CliProfileV3, CliProfileCapabilities, CapabilityDetectionResult, FilePreview, FileTreePage, GitDiffResponse, GitStatusResponse, LanguageSummaryResponse, SessionRuntimeStatus, TranscriptEvent, TranscriptEventKind, TranscriptEventMetadataValue, TranscriptEventSource, TranscriptPage, Workspace } from "../shared/types.js";
+import type { AgentTurnHandle, AppStateV3, CliProfileV3, CliProfileCapabilities, CapabilityDetectionResult, FilePreview, FileTreePage, GitDiffResponse, GitStatusResponse, LanguageSummaryResponse, SessionRuntimeStatus, TranscriptEvent, TranscriptEventKind, TranscriptEventMetadataValue, TranscriptEventSource, TranscriptPage, Workspace } from "../shared/types.js";
 import type { WebSocket } from "ws";
+import type { AgentBackendRegistry } from "./agent-backends.js";
 
 export interface StateRepository {
   load(): Promise<AppStateV3>;
@@ -86,13 +87,15 @@ export interface TurnInput {
   model?: string;
   resumeToken?: string;
   /** CLI 语义注入（Adapter buildTurn 的应用侧包装）：Orchestrator 不理解任何 CLI 语义 */
-  buildCommand(): Promise<PreparedLaunch>;
+  buildCommand?(): Promise<PreparedLaunch>;
   /** CLI 语义注入（Adapter parseEvents 的应用侧包装）：stdout → 规范事件流；hooks 承载文本增量 */
-  parseOutput(stdout: Readable, hooks?: TurnStreamHooks): AsyncGenerator<ParsedTurnEvent, TurnParseResult, void>;
+  parseOutput?(stdout: Readable, hooks?: TurnStreamHooks): AsyncGenerator<ParsedTurnEvent, TurnParseResult, void>;
   /** headless 审批应答格式（Adapter 声明，D-8）；存在时 Orchestrator 保持 stdin 开放并启用 waiting_approval 挂起路径 */
   buildApprovalResponse?(approvalId: string, decision: "allow" | "deny"): string;
   /** 常驻运行时路径（streaming-spec FR-2）：抛 PersistentRuntimeUnavailableError 时同轮回落 spawn 路径 */
   runPersistent?(handlers: PersistentTurnHandlers): PersistentTurnHandle;
+  /** MVP02 AgentBackend 路径：生产 chat turn 必须穿过 BackendSessionHandle.runTurn 后再进入 Orchestrator 生命周期控制。 */
+  runBackend?(): Promise<AgentTurnHandle>;
 }
 
 /** 轮次流式增量回调（临时通道，不落 transcript） */
@@ -217,6 +220,8 @@ export interface ProfileAdapterRegistry {
   buildApprovalResponse?(profile: CliProfileV3, approvalId: string, decision: "allow" | "deny"): string;
   /** 组装润色/压缩一次性 argv（project-quest SPEC §5.7：codex exec / claude -p，参数数组）；不支持的 adapter 抛错 */
   buildEnhance?(profile: CliProfileV3, config: { prompt: string }): Promise<CommandSpec>;
+  /** 执行 CLI 命令发现模型 id 列表（issue-053：codex `models` / claude `--list-models`）；失败回退内置目录 */
+  discoverModels?(profile: CliProfileV3): Promise<string[]>;
 }
 
 export interface TurnConfig {
@@ -287,6 +292,8 @@ export interface ApplicationDependencies {
   gitInspector: GitInspector;
   directoryPicker: DirectoryPicker;
   profileAdapters: ProfileAdapterRegistry;
+  /** MVP02 backend registry; legacy ProfileAdapterRegistry remains the turn translator during migration. */
+  agentBackends?: AgentBackendRegistry;
   /** 可选：terminal 原生 resume 的 token 归因发现（缺省扫描 CLI 本地会话目录；测试可注入假实现） */
   terminalResumeDiscovery?: (input: { adapterId: string; cwd: string; sinceMs: number; env?: Readonly<Record<string, string | undefined>> }) => Promise<string | undefined>;
   /** 可选：模型同步读取本机 CLI 配置（缺省读 ~/.codex/config.toml 与 ~/.claude/settings.json；测试可注入假实现，console-gaps SPEC §2.2） */

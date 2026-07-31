@@ -1,15 +1,12 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Baseline capability set for the Product AI OS desktop shell.",
+  "description": "Least-privilege WebView capability set. Sidecar supervision stays host-owned; notification and clipboard use WebView APIs.",
   "windows": ["main"],
   "permissions": [
-    "core:default",
-    "shell:allow-open",
+    "core:app:default",
+    "core:window:default",
     "dialog:allow-open",
-    "dialog:allow-message",
-    "fs:allow-read-text-file",
-    "fs:allow-write-text-file",
-    "fs:allow-read-dir"
+    "dialog:allow-message"
   ]
 }

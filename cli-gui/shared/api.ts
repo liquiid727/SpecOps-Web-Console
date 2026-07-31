@@ -1,5 +1,5 @@
-import type { CliProfileCapabilities } from "./capabilities.js";
-import type { Session, SessionLaunchConfig, SessionOrganizationStatus, SessionRuntimeStatus, Workspace } from "./state.js";
+import type { CliProfileCapabilities, EngineReadiness, ProfileModelEntry } from "./capabilities.js";
+import type { Session, SessionActiveView, SessionLaunchConfig, SessionOrganizationStatus, SessionRuntimeStatus, Workspace } from "./state.js";
 import type { TranscriptEvent } from "./transcript.js";
 
 export type ApiErrorCode =
@@ -45,6 +45,7 @@ export type ApiErrorCode =
   | "ENHANCE_UNAVAILABLE"
   | "ENHANCE_FAILED"
   | "ENHANCE_TIMEOUT"
+  | "VIEW_UNSUPPORTED"
   | "ROUTE_NOT_FOUND"
   | "INTERNAL_ERROR";
 
@@ -73,6 +74,11 @@ export interface CreateSessionResponse {
   session: Session;
   capabilities: CliProfileCapabilities;
   startupError?: ApiError;
+}
+
+export interface EngineReadinessResponse {
+  engines: EngineReadiness[];
+  probedAt: string;
 }
 
 export interface PatchSessionRequest {
@@ -169,4 +175,25 @@ export interface PromptEnhanceResponse {
   content: string;
   /** 输出超 64KiB 时截断 */
   truncated: boolean;
+}
+
+/** POST /api/profiles/:id/sync-models 响应（issue-053）：CLI 命令发现的模型写入 synced 层后回报合并列表 */
+export interface SyncModelsResponse {
+  models: ProfileModelEntry[];
+  synced: string[];
+}
+
+// ---------------------------------------------------------------------------
+// 双模式渲染：视图切换 API（dual-mode 设计 §9.1 / §10.1）
+// ---------------------------------------------------------------------------
+
+/** POST /api/sessions/:id/view 请求体 */
+export interface SwitchViewRequest {
+  view: SessionActiveView;
+  expectedRevision: number;
+}
+
+/** POST /api/sessions/:id/view 成功响应 */
+export interface SwitchViewResponse {
+  session: Session;
 }

@@ -1,4 +1,3 @@
-import { ApiClientError } from "./api";
 import type { ApiErrorCode } from "../shared/api";
 import type { TranslationKey } from "./i18n";
 import type { FeedbackOptions } from "./components/ui/Feedback";
@@ -41,7 +40,7 @@ const errorMessageKeys: Partial<Record<ApiErrorCode, TranslationKey>> = {
 };
 
 export function toFeedbackError(cause: unknown, t: (key: TranslationKey, params?: Record<string, string | number | undefined>) => string, fallback: TranslationKey = "operationFailed", key?: string): FeedbackOptions {
-  const apiError = cause instanceof ApiClientError ? cause : undefined;
+  const apiError = asApiError(cause);
   const messageKey = apiError ? errorMessageKeys[apiError.code] ?? fallback : fallback;
   const reference = apiError && apiError.requestId !== "unknown" ? ` ${t("requestReference", { id: apiError.requestId })}` : "";
   // 服务端 details（如 SESSION_CONCURRENCY_LIMIT 的 running/limit）作为文案插值参数（frontend-spec §6）
@@ -55,11 +54,22 @@ export function toFeedbackError(cause: unknown, t: (key: TranslationKey, params?
 }
 
 export function toFeedbackWarning(cause: unknown, t: (key: TranslationKey, params?: Record<string, string | number | undefined>) => string, fallback: TranslationKey = "operationFailed", key?: string): FeedbackOptions {
-  const apiError = cause instanceof ApiClientError ? cause : undefined;
+  const apiError = asApiError(cause);
   const messageKey = apiError ? errorMessageKeys[apiError.code] ?? fallback : fallback;
   return {
     title: t("warning"),
     description: t(messageKey),
     key: key ?? (apiError ? `api-warning:${apiError.code}` : undefined)
+  };
+}
+
+function asApiError(cause: unknown): { code: ApiErrorCode; requestId: string; details?: Record<string, unknown> } | undefined {
+  if (!cause || typeof cause !== "object") return undefined;
+  const value = cause as { code?: unknown; requestId?: unknown; details?: unknown };
+  if (typeof value.code !== "string" || typeof value.requestId !== "string") return undefined;
+  return {
+    code: value.code as ApiErrorCode,
+    requestId: value.requestId,
+    details: value.details && typeof value.details === "object" ? value.details as Record<string, unknown> : undefined
   };
 }

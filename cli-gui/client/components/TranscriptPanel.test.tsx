@@ -126,7 +126,8 @@ describe("ChatView structured rendering (kind → render table)", () => {
     expect(tool?.querySelector("summary")?.textContent).toBe("bash: go test");
     expect(tool?.querySelector("pre")?.textContent).toContain("go test ./... output");
     expect(container.querySelector(".transcript-event.file_change code")?.textContent).toBe("src/payment.go");
-    expect(container.querySelector(".transcript-event.pty_output details")).not.toBeNull();
+    // pty_output → 终端风格 CLI 输出卡片（dual-mode §11）
+    expect(container.querySelector(".transcript-event.card-cli-output .cli-output-text")?.textContent).toBe("raw bytes");
     expect(container.querySelector(".transcript-event.lifecycle .lifecycle-status")?.textContent).toBe("turn-cancelled");
     expect(container.querySelector(".transcript-event.error .error-code")?.textContent).toBe("SESSION_START_FAILED");
     expect(container.querySelector(".transcript-event.approval_request")).not.toBeNull();

@@ -4,14 +4,14 @@
 Provide Project, Time, Recent, and Manual navigation modes over active, completed, and archived sessions.
 
 ## Acceptance Criteria
-- [ ] Group by workspace in Project mode.
-- [ ] Use localized Today, Yesterday, Previous 7 Days, and Older buckets in Time mode.
-- [ ] Sort by lastActiveAt with a stable ID tie-breaker in Recent mode.
-- [ ] Use pinned and unpinned manualOrder sections in Manual mode.
-- [ ] Provide Active, Completed, and Archived filters.
-- [ ] Keep pinned sessions above ordinary groups where applicable.
-- [ ] Persist grouping and filter preferences.
-- [ ] Add pure selector, locale, empty-state, and component tests in both languages.
+- [x] Group by workspace in Project mode.
+- [x] Use localized Today, Yesterday, Previous 7 Days, and Older buckets in Time mode.
+- [x] Sort by lastActiveAt with a stable ID tie-breaker in Recent mode.
+- [x] Use pinned and unpinned manualOrder sections in Manual mode.
+- [x] Provide Active, Completed, and Archived filters.
+- [x] Keep pinned sessions above ordinary groups where applicable.
+- [x] Persist grouping and filter preferences.
+- [x] Add pure selector, locale, empty-state, and component tests in both languages.
 
 ## Dependencies
 Issues #21, #22, #30

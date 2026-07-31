@@ -20,16 +20,17 @@ describe("LanguageToggle", () => {
     container.remove();
   });
 
-  it("defaults to English and persists Chinese mode", () => {
+  it("defaults to Chinese and persists English mode", () => {
     act(() => root.render(<I18nProvider><LanguageToggle /></I18nProvider>));
 
-    expect(document.documentElement.lang).toBe("en");
-    expect(container.querySelector(".active")?.textContent).toBe("EN");
+    // 默认语言已改中文（QA 调节）：无存储偏好时首渲染即 zh
+    expect(document.documentElement.lang).toBe("zh-CN");
+    expect(container.querySelector(".active")?.textContent).toBe("中文");
 
     act(() => container.querySelector("button")!.click());
 
-    expect(document.documentElement.lang).toBe("zh-CN");
-    expect(window.localStorage.getItem("product-ai-os-cli-gui-language")).toBe("zh");
-    expect(container.querySelector(".active")?.textContent).toBe("中文");
+    expect(document.documentElement.lang).toBe("en");
+    expect(window.localStorage.getItem("product-ai-os-cli-gui-language")).toBe("en");
+    expect(container.querySelector(".active")?.textContent).toBe("EN");
   });
 });

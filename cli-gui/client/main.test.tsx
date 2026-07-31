@@ -151,13 +151,13 @@ describe("CLI GUI workbench", () => {
     expect(document.body.querySelector(".overlay-panel")).toBeNull();
   });
 
-  it("quick create from Quest Home posts a terminal session while chat is feature-flagged off", async () => {
+  it("quick create from Quest Home posts a chat-first session", async () => {
     const sessionBodies: string[] = [];
     const fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url === "/api/sessions" && init?.method === "POST") {
         sessionBodies.push(String(init.body));
-        return new Response(JSON.stringify({ id: "session-new", session: { id: "session-new", workspaceId: "workspace-1", profileId: "profile-1", name: "Ship the fix", status: "running", interactionMode: "terminal", createdAt: "2026-07-28T00:00:00.000Z", lastActiveAt: "2026-07-28T00:00:00.000Z" } }), { status: 200 });
+        return new Response(JSON.stringify({ id: "session-new", session: { id: "session-new", workspaceId: "workspace-1", profileId: "profile-1", name: "Ship the fix", status: "running", interactionMode: "chat", createdAt: "2026-07-28T00:00:00.000Z", lastActiveAt: "2026-07-28T00:00:00.000Z" } }), { status: 200 });
       }
       if (url.endsWith("/messages")) return new Response(JSON.stringify({ accepted: true }), { status: 200 });
       return new Response(JSON.stringify(state), { status: 200 });
@@ -172,7 +172,6 @@ describe("CLI GUI workbench", () => {
     });
     await screenText(element, "Quests");
 
-    // Quest Home 一次提交：chat 封闭期创建的会话必须是 terminal（console-gaps SPEC §1）
     const textarea = element.querySelector(".quest-home textarea") as HTMLTextAreaElement;
     await act(async () => {
       const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")!.set!;
@@ -184,10 +183,11 @@ describe("CLI GUI workbench", () => {
     });
 
     await vi.waitFor(() => expect(sessionBodies.length).toBeGreaterThan(0));
-    expect(JSON.parse(sessionBodies[0]).interactionMode).toBe("terminal");
+    // Chat-first（issue-066）：CHAT_ENABLED 时 Quest Home 快速创建默认 chat，不支持时由服务端降级
+    expect(JSON.parse(sessionBodies[0]).interactionMode).toBe("chat");
   });
 
-  it("keeps the composer read-only for existing chat sessions while chat is feature-flagged off", async () => {
+  it("enables the composer for a ready structured chat engine", async () => {
     const chatState = {
       ...state,
       sessions: [
@@ -197,6 +197,7 @@ describe("CLI GUI workbench", () => {
     };
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
       if (String(input) === "/api/state") return new Response(JSON.stringify(chatState), { status: 200 });
+      if (String(input).endsWith("/capabilities")) return new Response(JSON.stringify({ adapterId: "codex", compatibility: "supported", permissions: [], modes: [], models: [], supportsComposer: true, supportsStructuredRecognition: true, supportsHeadlessTurns: true, supportsResume: true, supportsApproval: false, supportsPromptEnhancement: true }), { status: 200 });
       return new Response("[]", { status: 200, headers: { "content-type": "application/json" } });
     }) as typeof globalThis.fetch);
     const element = document.createElement("div");
@@ -208,13 +209,11 @@ describe("CLI GUI workbench", () => {
     });
     await screenText(element, "Legacy chat");
 
-    // 存量 chat 会话仍可从 Chats 分区打开查看 transcript，但 composer 禁用（console-gaps SPEC §1）
     const chatRow = Array.from(element.querySelectorAll<HTMLButtonElement>(".chat-row")).find((button) => button.textContent?.includes("Legacy chat"))!;
     await act(async () => { chatRow.click(); });
 
     await vi.waitFor(() => expect(element.querySelector(".chat-view")).toBeTruthy());
-    expect(element.textContent).toContain("This conversation is read-only");
-    expect((element.querySelector(".chat-composer textarea") as HTMLTextAreaElement).disabled).toBe(true);
+    await vi.waitFor(() => expect((element.querySelector(".chat-composer textarea") as HTMLTextAreaElement).disabled).toBe(false));
   });
 
   it("switches primary views with Ctrl/Cmd+1..5 shortcuts", async () => {
@@ -271,7 +270,7 @@ describe("CLI GUI workbench", () => {
     expect((element.querySelector("textarea") as HTMLTextAreaElement).value).toContain("@");
   });
 
-  // —— console-gaps issue #3：Ctrl+Tab / Ctrl+Shift+Tab 循环四态工作模式并持久化 ——
+  // MVP02 only cycles executable Default/Plan modes.
   it("cycles the composer work mode with Ctrl+Tab and persists it, even from a focused textarea", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(state), { status: 200 })));
     const element = document.createElement("div");
@@ -290,9 +289,9 @@ describe("CLI GUI workbench", () => {
       act(() => target.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", ctrlKey: true, shiftKey, bubbles: true })));
 
     await cycle(false);
-    expect(storedMode()).toBe("spec");
+    expect(storedMode()).toBe("plan");
     await cycle(false);
-    expect(storedMode()).toBe("goal");
+    expect(storedMode()).toBe("default");
 
     // 输入框聚焦时同样生效（console-gaps SPEC §3）
     const textarea = element.querySelector("textarea") as HTMLTextAreaElement;
@@ -300,7 +299,7 @@ describe("CLI GUI workbench", () => {
     expect(storedMode()).toBe("plan");
 
     await cycle(true);
-    expect(storedMode()).toBe("goal");
+    expect(storedMode()).toBe("default");
   });
 });
 

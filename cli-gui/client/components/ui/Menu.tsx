@@ -1,7 +1,8 @@
 import { useEffect, useRef, type KeyboardEvent, type RefObject } from "react";
 import { cn } from "../../lib/utils";
+import { Icon, type IconName } from "./Icon";
 
-export interface MenuItem { id: string; label: string; disabled?: boolean; danger?: boolean; onSelect: () => void; }
+export interface MenuItem { id: string; label: string; icon?: IconName; disabled?: boolean; danger?: boolean; onSelect: () => void; }
 
 export function Menu({ ariaLabel, className, itemClassName, items, onClose, triggerRef, unstyled = false }: { ariaLabel: string; className?: string; itemClassName?: string | ((item: MenuItem) => string | undefined); items: readonly MenuItem[]; onClose: (restoreFocus?: boolean) => void; triggerRef: RefObject<HTMLElement | null>; unstyled?: boolean }) {
   const menuRef = useRef<HTMLDivElement>(null);
@@ -19,5 +20,5 @@ export function Menu({ ariaLabel, className, itemClassName, items, onClose, trig
     if (event.key === "End") { event.preventDefault(); elements.at(-1)?.focus(); }
     if (event.key === "Escape") { event.preventDefault(); onClose(); }
   }
-  return <div ref={menuRef} className={unstyled ? className : cn("ui-menu", className)} role="menu" aria-label={ariaLabel} onKeyDown={onKeyDown}>{items.map((item) => <button type="button" role="menuitem" className={cn(item.danger && "danger", typeof itemClassName === "function" ? itemClassName(item) : itemClassName)} disabled={item.disabled} key={item.id} onClick={() => { item.onSelect(); onClose(false); }}>{item.label}</button>)}</div>;
+  return <div ref={menuRef} className={unstyled ? className : cn("ui-menu", className)} role="menu" aria-label={ariaLabel} onKeyDown={onKeyDown}>{items.map((item) => <button type="button" role="menuitem" className={cn(item.danger && "danger", typeof itemClassName === "function" ? itemClassName(item) : itemClassName)} disabled={item.disabled} key={item.id} onClick={() => { item.onSelect(); onClose(false); }}>{item.icon && <Icon name={item.icon} />}{item.label}</button>)}</div>;
 }

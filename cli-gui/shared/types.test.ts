@@ -5,6 +5,7 @@ import type {
   ApiErrorResponse,
   AppStateEnvelopeV2,
   AppStateEnvelopeV3,
+  AppStateEnvelopeV4,
   AppStateV3,
   EventServerFrame,
   PickWorkspaceResponse,
@@ -37,15 +38,16 @@ const canonicalSession: SessionV3 = {
   revision: 3
 };
 
-describe("schema v3 contracts", () => {
-  it("defines an exact version-three state envelope", () => {
-    const envelope: AppStateEnvelopeV3 = {
+describe("state schema contracts", () => {
+  it("defines an exact version-four envelope while retaining v3 input", () => {
+    const envelope: AppStateEnvelopeV4 = {
       schemaVersion: CURRENT_SCHEMA_VERSION,
       state: { workspaces: [], profiles: [], sessions: [canonicalSession] }
     };
 
-    expect(envelope.schemaVersion).toBe(3);
-    expectTypeOf(envelope.schemaVersion).toEqualTypeOf<3>();
+    expect(envelope.schemaVersion).toBe(4);
+    expectTypeOf(envelope.schemaVersion).toEqualTypeOf<4>();
+    expectTypeOf<AppStateEnvelopeV3["schemaVersion"]>().toEqualTypeOf<3>();
     expectTypeOf<AppStateV3["sessions"][number]>().toEqualTypeOf<SessionV3>();
     expectTypeOf<AppStateEnvelopeV2["schemaVersion"]>().toEqualTypeOf<2>();
     expectTypeOf<SessionV2>().toEqualTypeOf<Omit<SessionV3, "interactionMode" | "chatContext" | "terminalContext">>();
@@ -87,7 +89,7 @@ describe("schema v3 contracts", () => {
   it("shares discriminated transport and error types", () => {
     expectTypeOf<SessionStatus>().toEqualTypeOf<SessionV3["runtimeStatus"]>();
     expectTypeOf<ApiErrorResponse["error"]["code"]>().toEqualTypeOf<ApiErrorCode>();
-    expectTypeOf<TerminalServerFrame["type"]>().toEqualTypeOf<"terminal-output" | "runtime-status" | "protocol-error">();
+    expectTypeOf<TerminalServerFrame["type"]>().toEqualTypeOf<"terminal-output" | "runtime-status" | "input-rejected" | "protocol-error">();
     expectTypeOf<EventServerFrame["type"]>().toEqualTypeOf<"subscription-ready" | "transcript-event" | "session-updated" | "recording-warning" | "turn-status" | "turn-delta" | "protocol-error">();
 
     const pick: PickWorkspaceResponse = { cancelled: false, workspace: { id: "workspace-1", name: "Workspace", path: "/tmp/workspace", kind: "local-folder", createdAt: "2026-01-01T00:00:00Z" } };

@@ -40,10 +40,10 @@ describe("RightPanel", () => {
     container.remove();
   });
 
-  it("renders the five tabs and session details in the summary tab", () => {
+  it("renders only data-backed tabs and runtime details in the summary tab", () => {
     render(root, stoppedSession);
     const tabLabels = Array.from(container.querySelectorAll("[role='tab']")).map((tab) => tab.textContent);
-    expect(tabLabels).toEqual(["Summary", "Terminal", "Files", "Spec", "Review"]);
+    expect(tabLabels).toEqual(["Summary", "Files", "Terminal", "Raw Events"]);
     expect(container.querySelector(".summary-details")).not.toBeNull();
     expect(container.textContent).toContain("Claude CLI");
     expect(container.textContent).toContain("Payment Platform");

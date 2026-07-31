@@ -5,7 +5,7 @@
 @media (max-width: 639px) {
   :root { --sidebar-width: 306px; }
   h1 { font-size: 15px; }
-  .primary-button, .secondary-button, .danger-button { min-height: 44px; padding-inline: 10px; }
+  /* 主/次/危险按钮的触控尺寸已收编到 components.css 的 max-sm: 变体 */
   .terminal-chrome > span:last-child { max-width: 55vw; }
   .view-tabs button { min-height: 40px; padding-inline: 7px; }
   .terminal-surface { margin-right: max(8px, env(safe-area-inset-right)); }
@@ -49,16 +49,24 @@
 }
 
 @media (max-width: 899px) {
-  .qoder-titlebar { z-index: calc(var(--z-drawer) + 1); grid-template-columns: auto minmax(0, 1fr) auto; }
+  /* 窄屏下侧栏是抽屉：标题栏左列不再预留侧栏宽度，也不再与侧栏同色 */
+  .qoder-titlebar, .qoder-titlebar.with-sidebar { z-index: calc(var(--z-drawer) + 1); grid-template-columns: auto minmax(0, 1fr); }
+  .qoder-titlebar.with-sidebar .titlebar-sidebar-zone { background: color-mix(in srgb, var(--bg-panel) 88%, transparent); border-right: 0; border-bottom-color: var(--border); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); }
   .qoder-body, .qoder-body.sidebar-open, .qoder-body.right-open, .qoder-body.sidebar-open.right-open { grid-template-columns: minmax(0, 1fr); }
   .qoder-sidebar { position: fixed; z-index: var(--z-drawer); top: var(--titlebar-height); bottom: 0; left: 0; width: min(var(--sidebar-width), 92vw); padding-bottom: env(safe-area-inset-bottom); box-shadow: var(--shadow-drawer); animation: drawer-in-left .18s ease-out; }
   .navigator-backdrop { display: block; position: fixed; z-index: var(--z-drawer-backdrop); inset: var(--titlebar-height) 0 0 min(var(--sidebar-width), 92vw); border: 0; background: var(--backdrop-soft); animation: overlay-in .16s ease-out; }
 }
 
+@media (max-width: 768px) {
+  .chat-messages > .transcript-list { max-width: 100%; }
+  .quest-board-columns { grid-template-columns: minmax(0, 1fr); overflow: auto; }
+  .quest-board-column { flex: none; }
+}
+
 @media (max-width: 639px) {
   .quest-home { padding: var(--space-5) var(--space-3); }
   .quest-home-title { font-size: var(--text-2xl); }
-  .chat-header, .view-header { padding-inline: var(--space-3); }
+  .view-header { padding-inline: var(--space-3); }
   .chat-messages, .view-content { padding: var(--space-3); }
   .settings-view .settings-layout { grid-template-columns: 1fr; }
   .settings-view .settings-nav { position: static; flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--border); }

@@ -22,6 +22,8 @@ export const SHORTCUTS: ShortcutDefinition[] = [
   { id: "toggle-inspector", keys: ["Mod", "J"], labelKey: "shortcutToggleInspector", category: "panels" },
   { id: "toggle-inspector-alt", keys: ["Mod", "Shift", "I"], labelKey: "shortcutToggleInspectorAlt", category: "panels" },
   { id: "new-session", keys: ["Mod", "N"], labelKey: "shortcutNewSession", category: "session" },
+  { id: "cli-mode-codex", keys: ["Mod", "Shift", "C"], labelKey: "shortcutCliModeCodex", category: "session" },
+  { id: "cli-mode-claude", keys: ["Mod", "Shift", "L"], labelKey: "shortcutCliModeClaude", category: "session" },
   { id: "view-quest-home", keys: ["Mod", "1"], labelKey: "shortcutViewQuestHome", category: "navigation" },
   { id: "view-chat", keys: ["Mod", "2"], labelKey: "shortcutViewChat", category: "navigation" },
   { id: "view-knowledge", keys: ["Mod", "3"], labelKey: "shortcutViewKnowledge", category: "navigation" },

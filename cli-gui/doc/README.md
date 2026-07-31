@@ -9,6 +9,8 @@ doc/
 ├── README.md            # this index
 ├── AGENTS.md            # CLI GUI doc/UI-delivery operating notes (incl. i18n rules)
 ├── mvp01/               # MVP01 main line (Agent Console)
+├── mvp02/               # terminal replacement (remote control descoped)
+├── mvp02-check-qa/       # MVP02 local desktop experience hardening and QA gate
 ├── workbench/           # three-column workbench module
 ├── project-quest/       # project entry & New Quest creation module
 ├── qoder-ui/            # Qoder UI retrofit module (delivered)
@@ -21,6 +23,29 @@ doc/
 - `Agent_Console_MVP01_PRD.md`: **integrated MVP01 entry PRD (v0.3)** — Session Manager + Chat visualization dual core, Runtime Orchestrator layering, MVP01-A/B scope split, §12 traceability mapping. Start here.
 - `prd-cli-gui.md`: MVP01 baseline PRD — Workspace / Profile / Session lifecycle and PTY.
 - `cli-gui.md`: original Product AI OS MVP01 draft (kept as source draft; superseded by the PRDs).
+
+## mvp02/ — desktop terminal replacement
+
+- `README.md`: MVP02-A scope, delivery gate, and document index (MVP02-B remote
+  control is descoped; its Issues #076-#089 were deleted).
+- `client-platform-prd.md`: shared Desktop/Remote client product contract.
+- `desktop-terminal-replacement-prd.md`: no-external-terminal user journey and acceptance criteria.
+- `remote-prd.md`, `remote.md`: remote-control PRD and retained original concept (reference only; descoped).
+- `spec/architecture-spec.md`: MVP02 technical entry point and split SPEC index.
+
+The durable cross-release architecture is
+`../../design/cli-gui-platform-design.md`. MVP03 owns official App replacement
+and differentiated product features; it is not the MVP02 completion gate.
+
+## mvp02-check-qa/ — local desktop experience hardening
+
+- `README.md`: independent QA track positioned after MVP02-A.
+- `experience-checklist.md`: startup, Workspace, Session, Chat, Settings, responsive,
+  accessibility, i18n, lifecycle and performance checks.
+- `qa-gate.md`: execution evidence and gate decision template.
+
+This track supplements MVP02 without changing the existing MVP02 PRD/SPEC or
+including MVP03 product enhancements and MVP02-B remote implementation.
 
 ## workbench/ — three-column workbench
 

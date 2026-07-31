@@ -62,7 +62,7 @@ export function WorkspaceProfileManager(props: WorkspaceProfileManagerProps) {
               {!props.workspaces.length && <p className="resource-empty">{t("noWorkspacesRegistered")}</p>}
             </div>
             <form className="compact-form" onSubmit={submitWorkspace}>
-              <TextField label={t("name")} required placeholder="Payment platform" value={workspaceForm.name} onChange={(event) => setWorkspaceForm({ ...workspaceForm, name: event.target.value })} />
+              <TextField label={t("name")} required placeholder={t("workspaceNamePlaceholder")} value={workspaceForm.name} onChange={(event) => setWorkspaceForm({ ...workspaceForm, name: event.target.value })} />
               <TextField label={t("localPath")} required placeholder="/Users/me/project" value={workspaceForm.path} onChange={(event) => setWorkspaceForm({ ...workspaceForm, path: event.target.value })} />
               <Button type="submit" variant="primary" className="primary-button" disabled={props.readonly}><Icon name="add" />{t("addWorkspace")}</Button>
             </form>
@@ -77,7 +77,7 @@ export function WorkspaceProfileManager(props: WorkspaceProfileManagerProps) {
               })}
             </div>
             <form className="compact-form" onSubmit={submitProfile}>
-              <TextField label={t("name")} required placeholder="Review Claude" value={profileForm.name} onChange={(event) => setProfileForm({ ...profileForm, name: event.target.value })} />
+              <TextField label={t("name")} required placeholder={t("profileNamePlaceholder")} value={profileForm.name} onChange={(event) => setProfileForm({ ...profileForm, name: event.target.value })} />
               <div className="field-grid"><TextField label={t("command")} required placeholder="claude" value={profileForm.command} onChange={(event) => setProfileForm({ ...profileForm, command: event.target.value })} /><TextField label={t("arguments")} placeholder="--model opus" value={profileForm.args} onChange={(event) => setProfileForm({ ...profileForm, args: event.target.value })} /></div>
               <Button type="submit" variant="primary" className="primary-button" disabled={props.readonly}><Icon name="add" />{t("saveProfile")}</Button>
             </form>
@@ -105,7 +105,7 @@ function AppearanceSettings() {
       <div className="theme-choice-list" role="radiogroup" aria-label={t("theme")}>
         {themes.map((option) => <Button variant="ghost" key={option.id} data-theme-choice={option.id} role="radio" aria-checked={theme === option.id} className={theme === option.id ? "active" : ""} onClick={() => setTheme(option.id)}>
           <span>{t(option.labelKey)}</span>
-          <small>{t(option.id === "qoder-light" ? "themeQoderLightDescription" : option.id === "neo" ? "themeNeoDescription" : "themeClassicDescription")}</small>
+          <small>{t(option.descriptionKey)}</small>
         </Button>)}
       </div>
     </div>
