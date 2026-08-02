@@ -1,5 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import type { CliProfile, CliProfileCapabilities, Workspace } from "../../shared/types";
+import type { ModelDeploymentSummary } from "../../shared/model-deployment";
+import type { PriorityModelRoute, ResolvedRoute } from "../../shared/model-route";
 import { useClientRuntime } from "../runtime/client-runtime";
 import { CHAT_ENABLED } from "../feature-flags";
 import { useI18n } from "../i18n";
@@ -14,21 +16,26 @@ interface NewSessionDialogProps {
   readonly: boolean;
   workspaces: Workspace[];
   onClose: () => void;
-  onCreate: (input: { name: string; workspaceId: string; profileId: string; interactionMode: "chat" | "terminal" }) => Promise<void>;
+  onCreate: (input: { name: string; workspaceId: string; profileId: string; interactionMode: "chat" | "terminal"; modelRouteId?: string }) => Promise<void>;
   onOpenSettings: () => void;
-  /** 新建入口默认 chat（Quest/Chat 均为对话会话）；用户可手动改选 terminal */
+  /** 新建入口默认 terminal（终端模式）；用户可手动改选 chat */
   defaultMode?: "chat" | "terminal";
   /** capability 加载入口（默认 api.profileCapabilities；测试可注入，frontend-spec §6） */
   loadCapabilities?: (profileId: string, signal?: AbortSignal) => Promise<CliProfileCapabilities>;
 }
 
-export function NewSessionDialog({ profiles, readonly, workspaces, onClose, onCreate, onOpenSettings, defaultMode = "chat", loadCapabilities }: NewSessionDialogProps) {
+export function NewSessionDialog({ profiles, readonly, workspaces, onClose, onCreate, onOpenSettings, defaultMode = "terminal", loadCapabilities }: NewSessionDialogProps) {
   const { t } = useI18n();
   const runtime = useClientRuntime();
   const capabilityLoader = loadCapabilities ?? runtime.engines.profileCapabilities;
   const [form, setForm] = useState({ name: "", workspaceId: workspaces[0]?.id ?? "", profileId: profiles[0]?.id ?? "" });
   const [mode, setMode] = useState<"chat" | "terminal">(CHAT_ENABLED ? defaultMode : "terminal");
   const [capabilities, setCapabilities] = useState<CliProfileCapabilities>();
+  const [routes, setRoutes] = useState<PriorityModelRoute[]>([]);
+  const [deployments, setDeployments] = useState<ModelDeploymentSummary[]>([]);
+  const [routeId, setRouteId] = useState("");
+  const [routePreview, setRoutePreview] = useState<ResolvedRoute>();
+  const [routeLoading, setRouteLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const ready = workspaces.length > 0 && profiles.length > 0;
   // chat 功能开关关闭 → 全局锁定 terminal（console-gaps SPEC §1）；否则按 capability 锁定：
@@ -44,14 +51,42 @@ export function NewSessionDialog({ profiles, readonly, workspaces, onClose, onCr
     return () => controller.abort();
   }, [capabilityLoader, form.profileId]);
 
+  useEffect(() => {
+    if (effectiveMode !== "chat") {
+      setRoutePreview(undefined);
+      setRouteLoading(false);
+      return;
+    }
+    let active = true;
+    setRouteLoading(true);
+    void Promise.all([runtime.routing.modelRoutes(), runtime.routing.modelDeployments()]).then(([routeResponse, deploymentResponse]) => {
+      if (!active) return;
+      setRoutes(routeResponse.routes);
+      setDeployments(deploymentResponse.deployments);
+    }).catch(() => undefined).finally(() => { if (active) setRouteLoading(false); });
+    return () => { active = false; };
+  }, [effectiveMode, runtime.routing]);
+
+  useEffect(() => {
+    if (effectiveMode !== "chat" || !form.workspaceId || !form.profileId) return;
+    let active = true;
+    setRouteLoading(true);
+    void runtime.routing.previewModelRoute({ workspaceId: form.workspaceId, profileId: form.profileId, ...(routeId ? { routeId } : {}) }).then((response) => {
+      if (active) setRoutePreview(response.resolvedRoute);
+    }).catch(() => {
+      if (active) setRoutePreview(undefined);
+    }).finally(() => { if (active) setRouteLoading(false); });
+    return () => { active = false; };
+  }, [effectiveMode, form.profileId, form.workspaceId, routeId, runtime.routing]);
+
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!form.workspaceId || !form.profileId) return;
+    if (!form.workspaceId || !form.profileId || (effectiveMode === "chat" && (routeLoading || routePreview?.canSend === false || !routePreview))) return;
     // 名称可选：留空时用「工作区名 + 时间」自动生成，免去每次手动输入
     const workspaceName = workspaces.find((item) => item.id === form.workspaceId)?.name;
     const name = form.name.trim() || generateSessionName(workspaceName || t("newCliSession"));
     setSubmitting(true);
-    try { await onCreate({ ...form, name, interactionMode: effectiveMode }); } finally { setSubmitting(false); }
+    try { await onCreate({ ...form, name, interactionMode: effectiveMode, ...(routeId ? { modelRouteId: routeId } : {}) }); } finally { setSubmitting(false); }
   }
 
   return <Overlay title={t("newCliSession")} description={t("newSessionDescription")} onClose={onClose}>
@@ -63,8 +98,9 @@ export function NewSessionDialog({ profiles, readonly, workspaces, onClose, onCr
       </div>
       <label className="interaction-mode-field"><span>{t("interactionModeLabel")}</span><Select ariaLabel={t("interactionModeLabel")} value={effectiveMode} disabled={chatLocked} options={[{ value: "chat", label: t("interactionModeChat") }, { value: "terminal", label: t("interactionModeTerminal") }]} onChange={(next) => setMode(next as "chat" | "terminal")} /></label>
       {chatLocked && <small className="interaction-mode-locked">{CHAT_ENABLED ? t("interactionModeLocked") : t("chatComingSoonHint")}</small>}
+      {effectiveMode === "chat" && <RoutePreview routes={routes} deployments={deployments} routeId={routeId} preview={routePreview} loading={routeLoading} onChange={setRouteId} />}
       <LaunchPreview workspace={workspaces.find((item) => item.id === form.workspaceId)} profile={profiles.find((item) => item.id === form.profileId)} />
-      <DialogActions><Button variant="secondary" className="secondary-button" onClick={onClose}>{t("cancel")}</Button><Button type="submit" variant="primary" className="primary-button" disabled={readonly} loading={submitting} loadingLabel={t("starting")}>{t("confirmAndStart")}</Button></DialogActions>
+      <DialogActions><Button variant="secondary" className="secondary-button" onClick={onClose}>{t("cancel")}</Button><Button type="submit" variant="primary" className="primary-button" disabled={readonly || (effectiveMode === "chat" && (routeLoading || !routePreview?.canSend))} loading={submitting} loadingLabel={t("starting")}>{t("confirmAndStart")}</Button></DialogActions>
     </form>}
   </Overlay>;
 }
@@ -80,4 +116,17 @@ function LaunchPreview({ workspace, profile }: { workspace?: Workspace; profile?
   const { t } = useI18n();
   const command = profile ? [profile.command, ...profile.args].map((part) => JSON.stringify(part)).join(" ") : "—";
   return <div className="launch-preview"><span>{t("launchPreview")}</span><code>{command}</code><small>{workspace?.path ?? t("selectWorkspace")}</small></div>;
+}
+
+function RoutePreview({ routes, deployments, routeId, preview, loading, onChange }: { routes: PriorityModelRoute[]; deployments: ModelDeploymentSummary[]; routeId: string; preview?: ResolvedRoute; loading: boolean; onChange: (routeId: string) => void }) {
+  const { t } = useI18n();
+  const preferred = deployments.find((deployment) => deployment.id === preview?.selectedDeploymentId);
+  const source = preview?.sourceTrace.findLast((entry) => entry.field === "routeId")?.source;
+  return <section className="new-session-route" data-route-source={source ?? "project"} aria-label={t("routeControlLabel")}>
+    <label><span>{t("routeControlLabel")}</span><Select ariaLabel={t("routeControlLabel")} value={routeId || "inherit"} options={[{ value: "inherit", label: t("routeInherit") }, ...routes.filter((route) => route.enabled && !route.archivedAt).map((route) => ({ value: route.id, label: route.name }))]} onChange={(value) => onChange(value === "inherit" ? "" : value)} /></label>
+    <div className="new-session-route-summary" aria-live="polite">
+      <span>{source ? t(`routeSource${source.slice(0, 1).toUpperCase()}${source.slice(1)}` as "routeSourceProject") : t("routeLoading")}</span>
+      {loading ? <small>{t("routeResolving")}</small> : preferred ? <small>{t("routePreferred", { name: preferred.name, model: preferred.modelId })}</small> : preview?.canSend === false ? <small>{t("routeUnavailable")}</small> : <small>{t("routeLegacy")}</small>}
+    </div>
+  </section>;
 }

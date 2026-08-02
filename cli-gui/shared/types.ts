@@ -12,6 +12,10 @@ export type {
   AppStateEnvelopeV2,
   AppStateEnvelopeV3,
   AppStateEnvelopeV4,
+  AppStateEnvelopeV5,
+  AppStateEnvelopeV6,
+  AppStateEnvelopeV7,
+  AppStateEnvelopeV8,
   AppStateV2,
   AppStateV3,
   AppStateV4,
@@ -34,6 +38,9 @@ export type {
 export type * from "./api.js";
 export type * from "./agent-runtime.js";
 export type * from "./model-provider.js";
+export type * from "./model-deployment.js";
+export type * from "./model-route.js";
+export type * from "./execution-attempt.js";
 export type * from "./remote.js";
 export type * from "./capabilities.js";
 export type * from "./transcript.js";
@@ -66,6 +73,7 @@ export interface Session {
   interactionMode?: import("./state.js").SessionInteractionMode;
   chatContext?: import("./state.js").SessionChatContext;
   terminalContext?: import("./state.js").SessionTerminalContext;
+  modelRouteId?: string;
   parentSessionId?: string;
   forkEventId?: string;
   forkSequence?: number;

@@ -7,6 +7,10 @@ import {
   type AppStateEnvelopeV2,
   type AppStateEnvelopeV3,
   type AppStateEnvelopeV4,
+  type AppStateEnvelopeV5,
+  type AppStateEnvelopeV6,
+  type AppStateEnvelopeV7,
+  type AppStateEnvelopeV8,
   type AppStateV3,
   type CliProfileV3,
   type SessionChatContext,
@@ -14,6 +18,9 @@ import {
   type SessionV3,
   type WorkspaceV3
 } from "../shared/types.js";
+import type { ModelProviderConfig } from "../shared/model-provider.js";
+import type { ModelDeploymentConfig } from "../shared/model-deployment.js";
+import type { PriorityModelRoute, WorkspaceModelRouteBinding } from "../shared/model-route.js";
 import type { Clock, StateRepository } from "./ports.js";
 
 export interface JsonStateRepositoryOptions {
@@ -43,7 +50,16 @@ export function createJsonStateRepository({ dataDirectory, clock, readonly = fal
 
   const save = (state: AppStateV3) => {
     if (readonly) return Promise.reject(new StateRepositoryError("READONLY_MODE", "Readonly mode does not write state."));
-    const snapshot: AppStateEnvelopeV4 = { schemaVersion: CURRENT_SCHEMA_VERSION, state: structuredClone(state) };
+    const snapshot: AppStateEnvelopeV8 = {
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      state: structuredClone({
+        ...state,
+        providers: state.providers ?? [],
+        modelDeployments: state.modelDeployments ?? [],
+        modelRoutes: state.modelRoutes ?? [],
+        workspaceModelRouteBindings: state.workspaceModelRouteBindings ?? []
+      })
+    };
     const previous = writeQueues.get(statePath) ?? Promise.resolve();
     const next = previous.catch(() => undefined).then(async () => {
       await fs.mkdir(resolvedDataDirectory, { recursive: true });
@@ -70,7 +86,7 @@ export function createJsonStateRepository({ dataDirectory, clock, readonly = fal
       }
 
       if (raw === undefined) {
-        const state: AppStateV3 = { workspaces: [], profiles: defaultProfiles(), sessions: [] };
+        const state: AppStateV3 = { workspaces: [], profiles: defaultProfiles(), sessions: [], providers: [], modelDeployments: [], modelRoutes: [], workspaceModelRouteBindings: [] };
         if (!readonly) await save(state);
         return structuredClone(state);
       }
@@ -83,11 +99,11 @@ export function createJsonStateRepository({ dataDirectory, clock, readonly = fal
         throw new StateRepositoryError("STATE_CORRUPT", "State file is not valid JSON; the source was left unchanged.", { cause: error });
       }
 
-      const envelope = isEnvelopeV4(parsed) ? parsed : undefined;
+      const envelope = isCurrentEnvelope(parsed) ? parsed : undefined;
       const sourceVersion = detectSourceVersion(parsed);
       let state: AppStateV3;
       try {
-        state = await migrateAndValidate(parsed as AppState | AppStateEnvelopeV2 | AppStateEnvelopeV3 | AppStateEnvelopeV4, clock);
+        state = await migrateAndValidate(parsed, clock);
       } catch (error) {
         if (error instanceof StateRepositoryError) throw error;
         throw new StateRepositoryError("STATE_MIGRATION_FAILED", "State file could not be migrated safely; the source was left unchanged.", { cause: error });
@@ -120,12 +136,12 @@ export function createJsonStateRepository({ dataDirectory, clock, readonly = fal
   }
 }
 
-export async function migrateAndValidate(parsed: AppState | AppStateEnvelopeV2 | AppStateEnvelopeV3 | AppStateEnvelopeV4, clock: Clock): Promise<AppStateV3> {
+export async function migrateAndValidate(parsed: unknown, clock: Clock): Promise<AppStateV3> {
   if (!parsed || typeof parsed !== "object") throw new Error("state root must be an object");
-  const envelope = isEnvelopeV4(parsed) ? parsed : isEnvelopeV3(parsed) ? parsed : isEnvelopeV2(parsed) ? parsed : undefined;
+  const envelope = isStateEnvelope(parsed) ? parsed : undefined;
   const sourceVersion = detectSourceVersion(parsed);
-  if ("schemaVersion" in parsed && !envelope) throw new Error("unsupported state schema version");
-  const source = (envelope?.state ?? parsed) as Partial<AppState>;
+  if ("schemaVersion" in parsed && (!envelope || sourceVersion > CURRENT_SCHEMA_VERSION || sourceVersion < 2)) throw new Error("unsupported state schema version");
+  const source = (envelope?.state ?? parsed) as Partial<AppStateV3>;
   if (!Array.isArray(source.workspaces) || !Array.isArray(source.profiles) || !Array.isArray(source.sessions)) {
     throw new Error("state must contain workspaces, profiles, and sessions arrays");
   }
@@ -237,6 +253,8 @@ export async function migrateAndValidate(parsed: AppState | AppStateEnvelopeV2 |
         model: launchConfig.model ?? null,
         ...(launchConfig.branch !== undefined ? { branch: launchConfig.branch } : {})
       },
+      ...(nonEmpty(candidate.providerId) ? { providerId: candidate.providerId } : {}),
+      ...(nonEmpty(candidate.modelRouteId) ? { modelRouteId: candidate.modelRouteId } : {}),
       ...(chatContext !== undefined ? { chatContext } : {}),
       ...(terminalContext !== undefined ? { terminalContext } : {}),
       backendId,
@@ -261,11 +279,20 @@ export async function migrateAndValidate(parsed: AppState | AppStateEnvelopeV2 |
   for (const session of sessions) {
     if (session.parentSessionId !== undefined && (!sessionIds.has(session.parentSessionId) || session.parentSessionId === session.id)) throw new Error("session contains an invalid fork parent");
   }
-  return { workspaces, profiles, sessions };
+  return {
+    workspaces,
+    profiles,
+    sessions,
+    providers: sanitizeProviders(source.providers, sourceVersion, clock),
+    modelDeployments: sanitizeDeployments(source.modelDeployments, clock),
+    modelRoutes: sanitizeRoutes(source.modelRoutes, clock),
+    globalModelRouteId: nonEmpty(source.globalModelRouteId) ? source.globalModelRouteId : undefined,
+    workspaceModelRouteBindings: sanitizeWorkspaceBindings(source.workspaceModelRouteBindings)
+  };
 }
 
-export function migrateState(parsed: AppState | AppStateEnvelopeV2 | AppStateEnvelopeV3 | AppStateEnvelopeV4, clock: Clock): AppStateV3 {
-  const source = isEnvelopeV4(parsed) || isEnvelopeV3(parsed) || isEnvelopeV2(parsed) ? parsed.state : parsed;
+export function migrateState(parsed: AppState | AppStateEnvelopeV2 | AppStateEnvelopeV3 | AppStateEnvelopeV4 | AppStateEnvelopeV5 | AppStateEnvelopeV6 | AppStateEnvelopeV7 | AppStateEnvelopeV8, clock: Clock): AppStateV3 {
+  const source = (isStateEnvelope(parsed) ? parsed.state : parsed) as Partial<AppStateV3>;
   const profiles = source.profiles?.length ? source.profiles : [
     { id: "profile-codex", name: "Codex CLI", command: "codex", args: [], adapterId: "codex" as const, createdAt: clock.now() },
     { id: "profile-claude", name: "Claude CLI", command: "claude", args: [], adapterId: "claude-code" as const, createdAt: clock.now() }
@@ -285,7 +312,12 @@ export function migrateState(parsed: AppState | AppStateEnvelopeV2 | AppStateEnv
       launchConfig: session.launchConfig ?? { permission: null, mode: null, model: null },
       revision: session.revision ?? 1
       };
-    })
+    }),
+    providers: sanitizeProviders(source.providers, detectSourceVersion(parsed), clock),
+    modelDeployments: sanitizeDeployments(source.modelDeployments, clock),
+    modelRoutes: sanitizeRoutes(source.modelRoutes, clock),
+    globalModelRouteId: nonEmpty(source.globalModelRouteId) ? source.globalModelRouteId : undefined,
+    workspaceModelRouteBindings: sanitizeWorkspaceBindings(source.workspaceModelRouteBindings)
   } as AppStateV3;
 }
 
@@ -345,6 +377,7 @@ const knownSessionFields = new Set([
   "id", "workspaceId", "profileId", "name", "interactionMode", "activeView", "inputOwner",
   "runtimeStatus", "status", "organizationStatus", "pinned", "manualOrder", "launchConfig",
   "chatContext", "terminalContext", "backendId", "backendSessionRef", "adapterId", "resumeToken",
+  "providerId", "modelRouteId",
   "parentSessionId", "forkEventId", "forkSequence", "forkedAt", "createdAt", "lastActiveAt",
   "completedAt", "archivedAt", "exitCode", "error", "revision"
 ]);
@@ -371,7 +404,31 @@ function isEnvelopeV3(value: unknown): value is AppStateEnvelopeV3 {
 }
 
 function isEnvelopeV4(value: unknown): value is AppStateEnvelopeV4 {
-  return Boolean(value && typeof value === "object" && "schemaVersion" in value && (value as { schemaVersion?: unknown }).schemaVersion === CURRENT_SCHEMA_VERSION && "state" in value);
+  return Boolean(value && typeof value === "object" && "schemaVersion" in value && (value as { schemaVersion?: unknown }).schemaVersion === 4 && "state" in value);
+}
+
+function isEnvelopeV5(value: unknown): value is AppStateEnvelopeV5 {
+  return Boolean(value && typeof value === "object" && (value as { schemaVersion?: unknown }).schemaVersion === 5 && "state" in value);
+}
+
+function isEnvelopeV6(value: unknown): value is AppStateEnvelopeV6 {
+  return Boolean(value && typeof value === "object" && (value as { schemaVersion?: unknown }).schemaVersion === 6 && "state" in value);
+}
+
+function isEnvelopeV7(value: unknown): value is AppStateEnvelopeV7 {
+  return Boolean(value && typeof value === "object" && (value as { schemaVersion?: unknown }).schemaVersion === 7 && "state" in value);
+}
+
+function isEnvelopeV8(value: unknown): value is AppStateEnvelopeV8 {
+  return Boolean(value && typeof value === "object" && (value as { schemaVersion?: unknown }).schemaVersion === 8 && "state" in value);
+}
+
+function isStateEnvelope(value: unknown): value is AppStateEnvelopeV2 | AppStateEnvelopeV3 | AppStateEnvelopeV4 | AppStateEnvelopeV5 | AppStateEnvelopeV6 | AppStateEnvelopeV7 | AppStateEnvelopeV8 {
+  return isEnvelopeV2(value) || isEnvelopeV3(value) || isEnvelopeV4(value) || isEnvelopeV5(value) || isEnvelopeV6(value) || isEnvelopeV7(value) || isEnvelopeV8(value);
+}
+
+function isCurrentEnvelope(value: unknown): value is AppStateEnvelopeV8 {
+  return isEnvelopeV8(value);
 }
 
 function nonEmpty(value: unknown): value is string {
@@ -383,6 +440,89 @@ function sanitizeModelList(value: unknown): string[] | undefined {
   if (!Array.isArray(value)) return undefined;
   const models = value.filter(nonEmpty).map((model) => model.trim());
   return models.length ? [...new Set(models)] : undefined;
+}
+
+function sanitizeProviders(value: unknown, sourceVersion: number, clock: Clock): ModelProviderConfig[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => {
+    if (!entry || typeof entry !== "object") return [];
+    const candidate = entry as Partial<ModelProviderConfig>;
+    if (!nonEmpty(candidate.id) || !nonEmpty(candidate.name) || !["openai-compatible", "anthropic-compatible"].includes(String(candidate.protocol)) || !nonEmpty(candidate.baseUrl)) return [];
+    const rawRef = typeof candidate.credentialRef === "string" ? candidate.credentialRef.trim() : undefined;
+    const credentialRef = rawRef
+      ? rawRef.startsWith("env:") || rawRef.startsWith("keychain:")
+        ? rawRef
+        : sourceVersion < 6 && /^[A-Z][A-Z0-9_]*$/.test(rawRef) ? `env:${rawRef}`
+          : undefined
+      : undefined;
+    const now = clock.now();
+    return [{
+      id: candidate.id,
+      name: candidate.name,
+      protocol: candidate.protocol as ModelProviderConfig["protocol"],
+      baseUrl: candidate.baseUrl,
+      ...(credentialRef ? { credentialRef } : {}),
+      models: sanitizeModelList(candidate.models) ?? [],
+      supportedEngineIds: sanitizeModelList(candidate.supportedEngineIds) ?? [],
+      enabled: candidate.enabled !== false,
+      createdAt: typeof candidate.createdAt === "string" ? candidate.createdAt : now,
+      updatedAt: typeof candidate.updatedAt === "string" ? candidate.updatedAt : now
+    } satisfies ModelProviderConfig];
+  });
+}
+
+function sanitizeDeployments(value: unknown, clock: Clock): ModelDeploymentConfig[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => {
+    if (!entry || typeof entry !== "object") return [];
+    const candidate = entry as Partial<ModelDeploymentConfig>;
+    if (!nonEmpty(candidate.id) || !nonEmpty(candidate.name) || !nonEmpty(candidate.providerId) || !nonEmpty(candidate.profileId) || !nonEmpty(candidate.modelId)) return [];
+    const now = clock.now();
+    return [{
+      id: candidate.id,
+      name: candidate.name,
+      providerId: candidate.providerId,
+      profileId: candidate.profileId,
+      modelId: candidate.modelId,
+      enabled: candidate.enabled !== false,
+      createdAt: typeof candidate.createdAt === "string" ? candidate.createdAt : now,
+      updatedAt: typeof candidate.updatedAt === "string" ? candidate.updatedAt : now,
+      ...(typeof candidate.archivedAt === "string" ? { archivedAt: candidate.archivedAt } : {})
+    } satisfies ModelDeploymentConfig];
+  });
+}
+
+function sanitizeRoutes(value: unknown, clock: Clock): PriorityModelRoute[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => {
+    if (!entry || typeof entry !== "object") return [];
+    const candidate = entry as Partial<PriorityModelRoute>;
+    if (!nonEmpty(candidate.id) || !nonEmpty(candidate.name) || !Array.isArray(candidate.candidateDeploymentIds)) return [];
+    const ids = candidate.candidateDeploymentIds.filter(nonEmpty);
+    if (!ids.length || ids.length > 8 || new Set(ids).size !== ids.length) return [];
+    const now = clock.now();
+    return [{
+      id: candidate.id,
+      name: candidate.name,
+      enabled: candidate.enabled !== false,
+      candidateDeploymentIds: [...ids],
+      automaticTechnicalFallback: candidate.automaticTechnicalFallback === true,
+      createdAt: typeof candidate.createdAt === "string" ? candidate.createdAt : now,
+      updatedAt: typeof candidate.updatedAt === "string" ? candidate.updatedAt : now,
+      ...(typeof candidate.archivedAt === "string" ? { archivedAt: candidate.archivedAt } : {})
+    } satisfies PriorityModelRoute];
+  });
+}
+
+function sanitizeWorkspaceBindings(value: unknown): WorkspaceModelRouteBinding[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => {
+    if (!entry || typeof entry !== "object") return [];
+    const candidate = entry as Partial<WorkspaceModelRouteBinding>;
+    return nonEmpty(candidate.workspaceId) && (candidate.routeId === undefined || nonEmpty(candidate.routeId))
+      ? [{ workspaceId: candidate.workspaceId, ...(candidate.routeId ? { routeId: candidate.routeId } : {}) }]
+      : [];
+  });
 }
 
 function isRuntimeError(value: unknown): value is SessionRuntimeError {

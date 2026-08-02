@@ -1,4 +1,8 @@
-export const CURRENT_SCHEMA_VERSION = 4 as const;
+import type { ModelProviderConfig } from "./model-provider.js";
+import type { ModelDeploymentConfig } from "./model-deployment.js";
+import type { PriorityModelRoute, WorkspaceModelRouteBinding } from "./model-route.js";
+
+export const CURRENT_SCHEMA_VERSION = 8 as const;
 
 /** kimi / glm 为 Claude Code 兼容 CLI（协议同 claude-code，仅命令与版本检测不同）。 */
 export type CliAdapterId = "claude-code" | "codex" | "kimi" | "glm" | "generic";
@@ -97,6 +101,10 @@ export interface Session {
   pinned: boolean;
   manualOrder: number;
   launchConfig: SessionLaunchConfig;
+  /** Optional provider connection frozen at session creation. */
+  providerId?: string;
+  /** Optional route binding; absent preserves legacy profile/model behavior. */
+  modelRouteId?: string;
   chatContext?: SessionChatContext;
   terminalContext?: SessionTerminalContext;
   /** MVP02 Agent Engine identity; Profile remains advanced launch configuration. */
@@ -120,6 +128,12 @@ export interface AppStateV3 {
   workspaces: Workspace[];
   profiles: CliProfile[];
   sessions: Session[];
+  /** Optional in the TypeScript compatibility shape; normalized repositories always return arrays. */
+  providers?: ModelProviderConfig[];
+  modelDeployments?: ModelDeploymentConfig[];
+  modelRoutes?: PriorityModelRoute[];
+  globalModelRouteId?: string;
+  workspaceModelRouteBindings?: WorkspaceModelRouteBinding[];
 }
 
 export interface AppStateEnvelopeV3 {
@@ -130,9 +144,14 @@ export interface AppStateEnvelopeV3 {
 export type AppStateV4 = AppStateV3;
 
 export interface AppStateEnvelopeV4 {
-  schemaVersion: typeof CURRENT_SCHEMA_VERSION;
+  schemaVersion: 4;
   state: AppStateV4;
 }
+
+export interface AppStateEnvelopeV5 { schemaVersion: 5; state: AppStateV3; }
+export interface AppStateEnvelopeV6 { schemaVersion: 6; state: AppStateV3; }
+export interface AppStateEnvelopeV7 { schemaVersion: 7; state: AppStateV3; }
+export interface AppStateEnvelopeV8 { schemaVersion: 8; state: AppStateV3; }
 
 // ---------------------------------------------------------------------------
 // Legacy schema-v2 shapes（仅迁移输入使用；对应磁盘上的 v2 envelope）。

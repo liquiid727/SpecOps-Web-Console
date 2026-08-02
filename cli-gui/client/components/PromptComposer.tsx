@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { CliProfileCapabilities, PromptEnhanceAction, SessionLaunchConfig } from "../../shared/types";
+import type { RunRouteOverride } from "../../shared/model-route";
+import type { ModelDeploymentSummary } from "../../shared/model-deployment";
+import type { PriorityModelRoute, ResolvedRoute } from "../../shared/model-route";
 import { WORK_MODES, type ComposerWorkMode } from "../app/preferences";
 import { toFeedbackError } from "../feedback-errors";
 import { useI18n } from "../i18n";
@@ -9,16 +12,19 @@ import { Select } from "./ui/Select";
 import { useSpeechInput } from "./useSpeechInput";
 import { Button, IconButton, TextArea } from "./ui";
 import { useClientRuntime } from "../runtime/client-runtime";
+import { ResolvedRouteControl } from "./ResolvedRouteControl";
 
 interface PromptComposerProps {
   disabled: boolean;
-  onSend: (content: string, clientMessageId: string) => Promise<void>;
+  onSend: (content: string, clientMessageId: string, routeOverride?: RunRouteOverride) => Promise<void>;
   capabilities?: CliProfileCapabilities;
   launchConfig?: SessionLaunchConfig;
   onLaunchConfigChange?: (change: Partial<SessionLaunchConfig>) => void;
   /** chat 会话：模型选择器改走即时生效通道（PATCH activeModel，frontend-spec §5.3） */
   interactionMode?: "chat" | "terminal";
   activeModel?: string;
+  /** CLI configuration resolved model used by the implicit default option. */
+  defaultModel?: string;
   onActiveModelChange?: (model: string | null) => void;
   /** 轮次进行中：输入可编辑但提交禁用，提交按钮切为「停止」（frontend-spec §5.1/§5.2） */
   turnActive?: boolean;
@@ -38,9 +44,18 @@ interface PromptComposerProps {
   profiles?: { id: string; name: string }[];
   selectedProfileId?: string;
   onProfileChange?: (profileId: string) => void;
+  resolvedRoute?: ResolvedRoute;
+  routeOptions?: PriorityModelRoute[];
+  routeDeployments?: ModelDeploymentSummary[];
+  sessionRouteId?: string;
+  fixedDeploymentId?: string;
+  onSessionRouteChange?: (routeId: string | undefined) => void;
+  onFixedDeploymentChange?: (deploymentId: string | undefined) => void;
+  actualDeployment?: { name: string; modelId: string };
+  routeBlocked?: boolean;
 }
 
-export function PromptComposer({ disabled, onSend, capabilities, launchConfig, onLaunchConfigChange, interactionMode, activeModel, onActiveModelChange, turnActive = false, waitingApproval = false, onCancelTurn, workMode = "default", onWorkModeChange, profileId, enhanceSupported, autoFocus = false, profiles, selectedProfileId, onProfileChange }: PromptComposerProps) {
+export function PromptComposer({ disabled, onSend, capabilities, launchConfig, onLaunchConfigChange, interactionMode, activeModel, defaultModel, onActiveModelChange, turnActive = false, waitingApproval = false, onCancelTurn, workMode = "default", onWorkModeChange, profileId, enhanceSupported, autoFocus = false, profiles, selectedProfileId, onProfileChange, resolvedRoute, routeOptions, routeDeployments, sessionRouteId, fixedDeploymentId, onSessionRouteChange, onFixedDeploymentChange, actualDeployment, routeBlocked = false }: PromptComposerProps) {
   const { t, language } = useI18n();
   const feedback = useFeedback();
   const runtime = useClientRuntime();
@@ -76,7 +91,7 @@ export function PromptComposer({ disabled, onSend, capabilities, launchConfig, o
   const trimmed = content.trim();
   const tooLarge = new TextEncoder().encode(content).length > 65_536;
   const busy = sending || enhancing !== null;
-  const canSend = Boolean(trimmed) && !disabled && !busy && !tooLarge && !turnActive;
+  const canSend = Boolean(trimmed) && !disabled && !busy && !tooLarge && !turnActive && !routeBlocked;
   const chatMode = interactionMode === "chat";
   // 润色可用性：空输入/处理中/无 profile 禁用；capability 明确不支持时禁用并解释（project-quest SPEC §5.7）
   const enhanceDisabled = disabled || busy || !trimmed || !profileId || enhanceSupported === false;
@@ -87,7 +102,9 @@ export function PromptComposer({ disabled, onSend, capabilities, launchConfig, o
     if (!canSend) return;
     setSending(true);
     try {
-      await onSend(content, crypto.randomUUID());
+      const clientMessageId = crypto.randomUUID();
+      if (fixedDeploymentId) await onSend(content, clientMessageId, { fixedDeploymentId });
+      else await onSend(content, clientMessageId);
       setContent("");
       setUndoContent(null);
       // 成功静默：消息以 user_message 事件即时回显到 transcript，弹 toast 是冗余噪音
@@ -163,7 +180,7 @@ export function PromptComposer({ disabled, onSend, capabilities, launchConfig, o
           <span>{t("cliProfile")}</span>
           <Select ariaLabel={t("cliProfile")} value={selectedProfileId ?? ""} options={[...(selectedProfileId ? [] : [{ value: "", label: t("selectCliPlaceholder") }]), ...profiles.map((profile) => ({ value: profile.id, label: profile.name }))]} disabled={disabled} onChange={(next) => next && onProfileChange?.(next)} />
         </label>}
-        <CapabilitySelector label={t("model")} defaultLabel={t("modelDefault")} hint={profiles && !selectedProfileId ? t("selectCliFirst") : capabilities?.models?.length ? t("capabilityApplies") : t("capabilityUnavailable")} value={launchConfig?.model} options={profiles && !selectedProfileId ? undefined : capabilities?.models} disabled={disabled} onChange={(value) => onLaunchConfigChange?.({ model: value })} />
+        <CapabilitySelector label={t("model")} defaultLabel={t("modelDefault")} defaultValueLabel={defaultModel} hint={profiles && !selectedProfileId ? t("selectCliFirst") : capabilities?.models?.length ? t("capabilityApplies") : t("capabilityUnavailable")} value={launchConfig?.model} options={profiles && !selectedProfileId ? undefined : capabilities?.models} disabled={disabled} onChange={(value) => onLaunchConfigChange?.({ model: value })} />
         <CapabilitySelector label={t("permission")} defaultLabel={t("permissionDefault")} hint={capabilities?.permissions?.length ? t("capabilityApplies") : t("capabilityUnavailable")} value={launchConfig?.permission} options={capabilities?.permissions} disabled={disabled} onChange={(value) => onLaunchConfigChange?.({ permission: value })} />
         <WorkModeSelector mode={workMode} onChange={(mode) => onWorkModeChange?.(mode)} label={t("workModeLabel")} labels={workModeLabels} />
       </div>}
@@ -172,7 +189,8 @@ export function PromptComposer({ disabled, onSend, capabilities, launchConfig, o
         {chatMode
           ? <div className="composer-toolbar">
             <div className="composer-toolbar-group">
-              <CapabilitySelector label={t("model")} defaultLabel={t("modelDefault")} hint={capabilities?.models?.length ? t("modelNextTurn") : t("capabilityUnavailable")} value={activeModel} options={capabilities?.models} disabled={disabled} onChange={(value) => onActiveModelChange?.(value)} />
+              {resolvedRoute && <ResolvedRouteControl resolvedRoute={resolvedRoute} routes={routeOptions} deployments={routeDeployments} currentSessionRouteId={sessionRouteId} fixedDeploymentId={fixedDeploymentId} disabled={disabled || turnActive} onSessionRouteChange={onSessionRouteChange} onFixedDeploymentChange={onFixedDeploymentChange} actualDeployment={actualDeployment} />}
+              {!resolvedRoute && <CapabilitySelector label={t("model")} defaultLabel={t("modelDefault")} defaultValueLabel={defaultModel} hint={capabilities?.models?.length ? t("modelNextTurn") : t("capabilityUnavailable")} value={activeModel} options={capabilities?.models} disabled={disabled} onChange={(value) => onActiveModelChange?.(value)} />}
               <WorkModeSelector chip mode={workMode} onChange={(mode) => onWorkModeChange?.(mode)} label={t("workModeLabel")} labels={workModeLabels} />
             </div>
             <div className="composer-toolbar-group">
@@ -218,10 +236,11 @@ function WorkModeSelector({ mode, onChange, label, labels, chip = false }: { mod
   );
 }
 
-function CapabilitySelector({ label, defaultLabel, hint, value, options, disabled, onChange }: { label: string; defaultLabel: string; hint: string; value?: string | null; options?: CliProfileCapabilities["permissions"]; disabled: boolean; onChange: (value: string | null) => void }) {
+function CapabilitySelector({ label, defaultLabel, defaultValueLabel, hint, value, options, disabled, onChange }: { label: string; defaultLabel: string; defaultValueLabel?: string; hint: string; value?: string | null; options?: CliProfileCapabilities["permissions"]; disabled: boolean; onChange: (value: string | null) => void }) {
   const unavailable = !options || options.length === 0;
   // 适配器选项里的 "default" 与合成默认项语义重复（均映射为 null 不传参），过滤避免重复 key
-  const selectOptions = [{ value: "default", label: defaultLabel }, ...(options ?? []).filter((option) => option.id !== "default").map((option) => ({ value: option.id, label: option.id }))];
+  const resolvedDefaultLabel = defaultValueLabel && defaultValueLabel !== "default" ? defaultValueLabel : defaultLabel;
+  const selectOptions = [{ value: "default", label: resolvedDefaultLabel }, ...(options ?? []).filter((option) => option.id !== "default" && option.id !== defaultValueLabel).map((option) => ({ value: option.id, label: option.id }))];
   return <label className="capability-selector" title={hint}>
     <span>{label}</span>
     <Select ariaLabel={label} value={value ?? "default"} options={selectOptions} disabled={disabled || unavailable} onChange={(next) => onChange(next === "default" ? null : next)} />

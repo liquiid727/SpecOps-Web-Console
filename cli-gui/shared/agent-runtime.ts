@@ -1,5 +1,7 @@
 import type { CliProfileCapabilities } from "./capabilities.js";
 import type { BackendSessionRef, CliProfile } from "./state.js";
+import type { TranscriptStructuredComponent } from "./transcript.js";
+import type { AgentEffect, RoutingFailure, RoutingFailureClass } from "./execution-attempt.js";
 
 export type ApprovalDecision = "allow" | "deny";
 
@@ -10,6 +12,20 @@ export interface AgentInput {
   model?: string;
   permission?: string;
   mode?: string;
+  /** Server-only provider launch material; never serialized into transcript or API responses. */
+  launchArgs?: string[];
+  launchEnv?: Record<string, string>;
+}
+
+export type AgentTurnFailurePhase = "app-server" | "spawn" | "parse";
+
+export interface AgentTurnError {
+  code: string;
+  message: string;
+  phase?: AgentTurnFailurePhase;
+  fallbackAttempted?: boolean;
+  fallbackCode?: string;
+  failureClass?: RoutingFailureClass;
 }
 
 export interface AgentEvent {
@@ -30,6 +46,8 @@ export interface AgentEvent {
   occurredAt: string;
   text?: string;
   metadata?: Record<string, string | number | boolean>;
+  component?: TranscriptStructuredComponent;
+  effect?: AgentEffect;
 }
 
 export const AGENT_EVENT_KINDS = [
@@ -65,7 +83,7 @@ export interface AgentTurnResult {
   status: "completed" | "failed" | "cancelled";
   nativeSessionId?: string;
   usage?: { inputTokens?: number; outputTokens?: number };
-  error?: { code: string; message: string };
+  error?: AgentTurnError;
 }
 
 export interface AgentTurnHandle {

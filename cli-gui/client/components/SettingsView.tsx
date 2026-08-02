@@ -8,6 +8,7 @@ import { Icon } from "./ui/Icon";
 import { Badge, Button, Select, TextField, useFeedback } from "./ui";
 import { SettingsSection, ViewHeader } from "./patterns";
 import { useClientRuntime } from "../runtime/client-runtime";
+import { ModelRoutingSettings } from "./ModelRoutingSettings";
 
 type SettingsTab = "account" | "models" | "mcp" | "shortcuts" | "security";
 
@@ -80,6 +81,7 @@ export function SettingsView() {
               <SettingsSection title={t("qoderSettingsModels")}>
                 <p className="settings-description">{t("qoderModelsDescription")}</p>
                 <ModelsSettings />
+                <ModelRoutingSettings />
               </SettingsSection>
             </>
           )}

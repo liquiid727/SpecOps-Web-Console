@@ -1,0 +1,51 @@
+{
+  "standardVersion": "specos-test-standard/v1",
+  "qualityProfile": "backend-api",
+  "riskTier": "P0",
+  "specId": "CLI-GUI-027",
+  "specVersion": "1.0",
+  "testSpecPath": ".features/CLI-GUI-027-session-model-providers/test-spec.md",
+  "testSpecId": "CLI-GUI-027.test-spec",
+  "testSpecVersion": "1.0",
+  "testSpecHash": "04dcfef362350afb75a4a7f8e0097eec1e9a2536154659db04182f2d02a77382",
+  "testSpecStatus": "approved",
+  "testSpecApprovalEvidence": "local-independent-test-spec-review-2026-08-02",
+  "sourceFeatureSpecHash": "58adb167ab70d94016e3404d54e63862fa71523bbdb6d4f9e67077160f641319",
+  "changeId": "CLI-GUI-027",
+  "featureName": "Session Model Providers",
+  "source": "accepted-spec",
+  "flows": [
+    {
+      "name": "Provider configuration and session launch",
+      "stages": [
+        { "name": "Provider CRUD", "scenarioNames": ["CLI-GUI-027 happy", "CLI-GUI-027 error", "CLI-GUI-027 migration", "CLI-GUI-027 flow"], "stepNames": ["Create or update a provider"] },
+        { "name": "Protocol injection", "scenarioNames": ["CLI-GUI-027 happy", "CLI-GUI-027 limit", "CLI-GUI-027 security"], "stepNames": ["Launch isolated sessions with provider-specific inputs"] }
+      ]
+    }
+  ],
+  "endpoints": [
+    { "name": "Provider summaries", "method": "GET", "path": "/api/providers", "priority": "P0", "branches": ["happy", "limit", "error", "flow"], "preconditions": ["Local application is running"], "expectedResults": ["Summaries omit credential values", "Empty providers remain valid"], "relatedRule": "provider.summary-is-secret-free" },
+    { "name": "Create provider", "method": "POST", "path": "/api/providers", "priority": "P0", "branches": ["happy", "limit", "error", "flow"], "preconditions": ["Provider id is unique"], "expectedResults": ["Valid provider is persisted", "Invalid URL or protocol returns a stable validation error"], "relatedRule": "provider.validate-before-persist" }
+  ],
+  "scenarios": [
+    { "name": "CLI-GUI-027 happy", "priority": "P0", "branches": ["happy", "flow"], "preconditions": ["A valid provider and credential reference exist"], "expectedResults": ["Protocol-specific launch inputs are isolated per session"], "steps": ["Create provider", "Start two sessions", "Inspect spawn inputs"] },
+    { "name": "CLI-GUI-027 limit", "priority": "P0", "branches": ["limit"], "preconditions": ["Duplicate or invalid provider input"], "expectedResults": ["Validation rejects the input without state corruption"], "steps": ["Submit boundary input", "Inspect response and state"] },
+    { "name": "CLI-GUI-027 error", "priority": "P0", "branches": ["error"], "preconditions": ["Credential is absent or protocol mismatches"], "expectedResults": ["Spawn is blocked before process creation"], "steps": ["Attempt launch", "Inspect typed error"] },
+    { "name": "CLI-GUI-027 migration", "priority": "P0", "branches": ["error"], "preconditions": ["Schema v4 state is loaded"], "expectedResults": ["Provider defaults are added and malformed entries are discarded"], "steps": ["Load legacy state", "Inspect migrated state"] },
+    { "name": "CLI-GUI-027 security", "priority": "P0", "branches": ["error"], "preconditions": ["Credential canary is configured"], "expectedResults": ["Canary does not appear in state, API, logs, or snapshots"], "steps": ["Run launch path", "Scan persisted and returned data"] }
+  ],
+  "standardRequirements": [
+    { "id": "std.p0.unit.provider-contract", "layer": "unit", "appliesTo": ["Provider summaries"], "requiredFor": ["P0"], "ownerAgent": "unit-test-agent", "requiredEvidence": ["trace"], "gateImpact": "blocking" },
+    { "id": "std.p0.api.provider-contract", "layer": "api", "appliesTo": ["GET /api/providers", "POST /api/providers"], "requiredFor": ["P0"], "ownerAgent": "test-editor", "requiredEvidence": ["trace"], "gateImpact": "blocking" },
+    { "id": "std.p0.migration.provider-schema", "layer": "migration", "appliesTo": ["CLI-GUI-027 migration"], "requiredFor": ["P0"], "ownerAgent": "specialized-check-agent", "requiredEvidence": ["raw-report"], "gateImpact": "blocking" },
+    { "id": "std.p0.security.provider-secret", "layer": "security", "appliesTo": ["CLI-GUI-027 security"], "requiredFor": ["P0"], "ownerAgent": "test-editor", "requiredEvidence": ["raw-report"], "gateImpact": "blocking" },
+    { "id": "std.p0.concurrency.provider-isolation", "layer": "concurrency", "appliesTo": ["CLI-GUI-027 happy"], "requiredFor": ["P0"], "ownerAgent": "concurrency-test-agent", "requiredEvidence": ["trace"], "gateImpact": "blocking" }
+  ],
+  "releaseGates": [
+    { "id": "cli-gui-027-verification", "type": "change-verification", "requiredTestTypes": ["unit", "api", "migration", "security", "concurrency"], "blocking": true, "evidenceRequired": ["trace"] },
+    { "id": "cli-gui-027-browser-warning", "type": "pr-fast", "requiredTestTypes": ["scenario"], "blocking": false, "evidenceRequired": ["screenshot"] }
+  ],
+  "flakePolicy": { "allowedRetries": 1, "quarantineAllowed": false, "classificationRequired": true },
+  "dataPolicy": { "externalDependencyMode": "mocked", "piiAllowed": false, "secretsAllowed": false },
+  "securityPolicy": { "baseline": "owasp-api-top-10-2023", "requiredChecks": ["credential-redaction", "no-global-config-write", "provider-isolation"] }
+}

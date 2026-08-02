@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { Icon } from "../components/ui/Icon";
 import type { DowngradeReason, SessionLaunchConfig, SessionWithCompatibilityStatus } from "../../shared/types";
+import type { RunRouteOverride } from "../../shared/model-route";
 import { useI18n, type TranslationKey } from "../i18n";
 import { CHAT_ENABLED } from "../feature-flags";
 import { toFeedbackError } from "../feedback-errors";
@@ -109,7 +110,7 @@ export function App() {
     }
   }
 
-  async function createSession(input: { name: string; workspaceId: string; profileId: string; interactionMode?: "chat" | "terminal" }) {
+  async function createSession(input: { name: string; workspaceId: string; profileId: string; interactionMode?: "chat" | "terminal"; modelRouteId?: string }) {
     await runAction(async () => {
       // chat 功能开关关闭：无论入口传入什么，一律降级 terminal（console-gaps SPEC §1）
       // 优先使用最后使用模型（issue-055）
@@ -189,9 +190,9 @@ export function App() {
     }
   }
 
-  const sendPrompt = useCallback(async (content: string, clientMessageId: string) => {
+  const sendPrompt = useCallback(async (content: string, clientMessageId: string, routeOverride?: RunRouteOverride) => {
     if (!activeSession) return;
-    const result = await runtime.sessions.sendMessage(activeSession.id, { clientMessageId, content, startIfStopped: true, confirmedStart: true });
+    const result = await runtime.sessions.sendMessage(activeSession.id, { clientMessageId, content, startIfStopped: true, confirmedStart: true, ...(routeOverride ? { routeOverride } : {}) });
     await refresh();
     return result;
   }, [activeSession, refresh, runtime.sessions]);

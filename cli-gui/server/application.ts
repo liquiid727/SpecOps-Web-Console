@@ -1,5 +1,6 @@
 import type http from "node:http";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import { WebSocket } from "ws";
 import type {
   AgentInput,
@@ -16,17 +17,27 @@ import type {
   TranscriptPage,
   WorkspaceV3
 } from "../shared/types.js";
+import type { ModelProviderConfig, ModelProviderSummary, SecretRef, SecretStatus } from "../shared/model-provider.js";
+import type { ModelDeploymentConfig, ModelDeploymentSummary } from "../shared/model-deployment.js";
+import type { PriorityModelRoute, ResolvedRoute, WorkspaceModelRouteBinding } from "../shared/model-route.js";
+import type { ExecutionAttempt, ExecutionTask } from "../shared/execution-attempt.js";
 import type { CliAdapterId } from "../shared/state.js";
 import { ApiHttpError, sendJson } from "./api-errors.js";
 import { commandPreview, requireArgs, requireText } from "./domain.js";
 import { createRuntimeOrchestrator } from "./orchestrator.js";
+import { classifyAgentTurnFailure } from "./agent-backends.js";
 import { UnsupportedCliOptionError, mapDetectionFailureToDowngradeReason } from "./profile-adapters.js";
-import { builtinModelIds, mergeModelSources, readSyncedModels } from "./model-catalog.js";
+import { builtinModelIds, mergeModelSources, readConfiguredModels } from "./model-catalog.js";
 import { ENHANCE_INPUT_LIMIT, EnhanceExecutionError, buildEnhancePrompt, runEnhance } from "./prompt-enhance.js";
 import { listSkills, readSkillContent, type SkillScanOptions } from "./skills.js";
 import { discoverTerminalResumeToken } from "./terminal-resume.js";
 import { toEngineReadiness } from "./engine-readiness.js";
 import type { Application, ApplicationDependencies, PersistentTurnHandlers } from "./ports.js";
+import { createEnvironmentSecretStore, SecretStoreError } from "./secret-store.js";
+import { summarizeDeployment, validateDeploymentInput, providerProtocolMatchesAdapter } from "./deployment-registry.js";
+import { resolveModelRoute } from "./model-route-resolver.js";
+import { RouteExecutionCoordinator, RouteExecutionError } from "./route-execution-coordinator.js";
+import type { AttemptRunResult, RouteExecutionCandidate } from "./route-execution-coordinator.js";
 
 const MAX_FILE_DEPTH = 32;
 const MAX_FILE_PAGE = 500;
@@ -40,16 +51,68 @@ const MAX_EVENT_PENDING_BYTES = 1 * 1024 * 1024;
 const MAX_EVENT_BUFFERED_BYTES = 1 * 1024 * 1024;
 const DEFAULT_MAX_RUNNING_SESSIONS = 8;
 const MIN_MAX_RUNNING_SESSIONS = 4;
+const MODEL_AUTO_SYNC_TTL_MS = 5 * 60 * 1000;
 
 /** launchConfig 选项 → 常驻运行时参数："default"/空 → null（与 argv 路径 appendOption 跳过语义同源） */
 function normalizeOption(value: string | null | undefined): string | null {
   return value && value !== "default" ? value : null;
 }
 
+function nonEmptyText(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function isProviderProtocol(value: unknown): value is ModelProviderConfig["protocol"] {
+  return value === "openai-compatible" || value === "anthropic-compatible";
+}
+
+function validProviderUrl(value: unknown): value is string {
+  if (!nonEmptyText(value)) return false;
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "https:" || (parsed.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(parsed.hostname));
+  } catch {
+    return false;
+  }
+}
+
+function validateRouteCandidates(value: unknown): asserts value is string[] {
+  if (!Array.isArray(value) || value.length === 0 || value.some((candidate) => !nonEmptyText(candidate)) || new Set(value).size !== value.length) {
+    throw new ApiHttpError(400, "MODEL_ROUTE_INVALID", "A route must contain unique deployment ids.", { field: "candidateDeploymentIds" });
+  }
+}
+
+function validateRouteInput(value: unknown): asserts value is { id: string; name: string; candidateDeploymentIds: string[]; enabled?: boolean; automaticTechnicalFallback?: boolean } {
+  if (!value || typeof value !== "object") throw new ApiHttpError(400, "MODEL_ROUTE_INVALID", "Route must be an object.");
+  const input = value as Record<string, unknown>;
+  if (!nonEmptyText(input.id) || !nonEmptyText(input.name)) throw new ApiHttpError(400, "MODEL_ROUTE_INVALID", "Route id and name are required.");
+  validateRouteCandidates(input.candidateDeploymentIds);
+  if (input.enabled !== undefined && typeof input.enabled !== "boolean") throw new ApiHttpError(400, "MODEL_ROUTE_INVALID", "enabled must be a boolean.", { field: "enabled" });
+  if (input.automaticTechnicalFallback !== undefined && typeof input.automaticTechnicalFallback !== "boolean") throw new ApiHttpError(400, "MODEL_ROUTE_INVALID", "automaticTechnicalFallback must be a boolean.", { field: "automaticTechnicalFallback" });
+}
+
+function sameStringList(left: string[], right: string[]) {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
 type EventSubscriber = { client: WebSocket; ready: boolean; pending: TranscriptEvent[]; pendingBytes: number };
 
 export async function createApplication(dependencies: ApplicationDependencies): Promise<Application> {
   const state = await dependencies.stateRepository.load();
+  state.providers ??= [];
+  state.modelDeployments ??= [];
+  state.modelRoutes ??= [];
+  state.workspaceModelRouteBindings ??= [];
+  const secretStore = dependencies.secretStore ?? createEnvironmentSecretStore(dependencies.policy.processEnvironment);
+  const executionRepository = dependencies.executionRepository;
+  const routeExecutionCoordinator = executionRepository ? new RouteExecutionCoordinator(executionRepository, () => dependencies.clock.now()) : undefined;
+  const modelAutoSyncAt = new Map<string, number>();
+  const modelAutoSyncPending = new Map<string, Promise<void>>();
+  const configuredDefaultModelByProfile = new Map<string, string | undefined>();
+  const nowMilliseconds = () => {
+    const parsed = Date.parse(dependencies.clock.now());
+    return Number.isFinite(parsed) ? parsed : Date.now();
+  };
   // 全局并发上限（决策 D-6，runtime-orchestrator-spec §3.3）：默认 8、配置下限 4，非法值回落默认并告警
   const maxRunningSessions = resolveMaxRunningSessions(dependencies.policy.processEnvironment.SPECOS_MAX_RUNNING_SESSIONS, dependencies.logger);
   // terminal 原生 resume：记录本次 spawn 时刻（token 归因窗口起点）与本次启动使用的 token（失败兜底清除）
@@ -271,11 +334,62 @@ export async function createApplication(dependencies: ApplicationDependencies): 
     }
   }
 
+  const readProfileConfiguredModels = async (profile: AppStateV3["profiles"][number]) => dependencies.modelSyncReader
+    ? { models: await dependencies.modelSyncReader(profile) }
+    : await readConfiguredModels(profile.adapterId);
+
+  async function maybeAutoSync(profile: AppStateV3["profiles"][number]) {
+    const now = nowMilliseconds();
+    const lastSync = modelAutoSyncAt.get(profile.id);
+    if (lastSync !== undefined && now - lastSync < MODEL_AUTO_SYNC_TTL_MS) return;
+    if (profile.adapterId === "generic") {
+      modelAutoSyncAt.set(profile.id, now);
+      return;
+    }
+    const pending = modelAutoSyncPending.get(profile.id);
+    if (pending) return pending;
+
+    const operation = (async () => {
+      // Mark before the read so concurrent capability requests share one bounded attempt.
+      modelAutoSyncAt.set(profile.id, now);
+      try {
+        const snapshot = await readProfileConfiguredModels(profile);
+        if (!snapshot) {
+          dependencies.logger.warn("Automatic model sync skipped", { profileId: profile.id, adapterId: profile.adapterId, reason: "configuration-unavailable" });
+          return;
+        }
+        const previous = profile.syncedModels ?? [];
+        if (!sameStringList(previous, snapshot.models)) {
+          profile.syncedModels = snapshot.models;
+          await dependencies.stateRepository.save(state);
+        }
+        if (snapshot.defaultModel && snapshot.defaultModel !== "default") configuredDefaultModelByProfile.set(profile.id, snapshot.defaultModel);
+        else configuredDefaultModelByProfile.delete(profile.id);
+      } catch (error) {
+        dependencies.logger.warn("Automatic model sync failed", { profileId: profile.id, adapterId: profile.adapterId, error: String(error) });
+      }
+    })();
+    modelAutoSyncPending.set(profile.id, operation);
+    try {
+      await operation;
+    } finally {
+      if (modelAutoSyncPending.get(profile.id) === operation) modelAutoSyncPending.delete(profile.id);
+    }
+  }
+
+  function decorateCapabilities(profile: AppStateV3["profiles"][number], capabilities: CapabilityDetectionResult): CapabilityDetectionResult {
+    const defaultModel = configuredDefaultModelByProfile.get(profile.id) ?? capabilities.defaultModel;
+    return defaultModel && defaultModel !== "default" && capabilities.models.some((model) => model.id === defaultModel)
+      ? { ...capabilities, defaultModel }
+      : capabilities;
+  }
+
   async function resolveCapabilities(profile: SessionV3["profileId"] extends string ? AppStateV3["profiles"][number] : never): Promise<CapabilityDetectionResult> {
+    await maybeAutoSync(profile);
     const adapter = profile.adapterId;
-    if (dependencies.agentBackends) return dependencies.agentBackends.probe(profile);
-    if (dependencies.profileAdapters.capabilities) return dependencies.profileAdapters.capabilities(profile);
-    return { adapterId: adapter, compatibility: adapter === "generic" ? "supported" : "unknown-version", permissions: [], modes: [], models: [], supportsComposer: true, supportsStructuredRecognition: false, supportsHeadlessTurns: false, supportsResume: false, supportsApproval: false, supportsPromptEnhancement: false, guiMode: "unsupported" as const };
+    if (dependencies.agentBackends) return decorateCapabilities(profile, await dependencies.agentBackends.probe(profile));
+    if (dependencies.profileAdapters.capabilities) return decorateCapabilities(profile, await dependencies.profileAdapters.capabilities(profile));
+    return decorateCapabilities(profile, { adapterId: adapter, compatibility: adapter === "generic" ? "supported" : "unknown-version", permissions: [], modes: [], models: [], supportsComposer: true, supportsStructuredRecognition: false, supportsHeadlessTurns: false, supportsResume: false, supportsApproval: false, supportsPromptEnhancement: false, guiMode: "unsupported" as const });
   }
 
   const requireProfile = (id: string) => {
@@ -284,6 +398,143 @@ export async function createApplication(dependencies: ApplicationDependencies): 
     return profile;
   };
 
+  function normalizedSecretRef(provider: ModelProviderConfig): SecretRef | undefined {
+    const value = provider.credentialRef;
+    if (!value) return undefined;
+    if (value.startsWith("env:") || value.startsWith("keychain:")) return value as SecretRef;
+    return /^[A-Z][A-Z0-9_]*$/.test(value) ? `env:${value}` as SecretRef : undefined;
+  }
+
+  async function providerStatus(provider: ModelProviderConfig): Promise<SecretStatus> {
+    const ref = normalizedSecretRef(provider);
+    if (!ref) return "missing";
+    return secretStore.status(ref);
+  }
+
+  async function providerSummary(provider: ModelProviderConfig): Promise<ModelProviderSummary> {
+    const credentialStatus = await providerStatus(provider);
+    return {
+      id: provider.id,
+      name: provider.name,
+      protocol: provider.protocol,
+      baseUrl: provider.baseUrl,
+      models: [...provider.models],
+      supportedEngineIds: [...(provider.supportedEngineIds ?? [])],
+      enabled: provider.enabled !== false,
+      createdAt: provider.createdAt,
+      updatedAt: provider.updatedAt,
+      configured: credentialStatus === "configured" || credentialStatus === "legacy-environment",
+      credentialStatus,
+      hasCredential: credentialStatus === "configured" || credentialStatus === "legacy-environment"
+    };
+  }
+
+  function requireProvider(id: string) {
+    const provider = state.providers!.find((item) => item.id === id);
+    if (!provider) throw new ApiHttpError(404, "PROVIDER_NOT_FOUND", "Provider not found.");
+    return provider;
+  }
+
+  function validateProvider(value: unknown, partial = false) {
+    if (!value || typeof value !== "object") throw new ApiHttpError(400, "VALIDATION_FAILED", "Provider must be an object.", { field: "provider" });
+    const input = value as Record<string, unknown>;
+    if (!partial && (!nonEmptyText(input.id))) throw new ApiHttpError(400, "VALIDATION_FAILED", "id is required.", { field: "id" });
+    if (!partial && (!nonEmptyText(input.name))) throw new ApiHttpError(400, "VALIDATION_FAILED", "name is required.", { field: "name" });
+    if (!partial && !isProviderProtocol(input.protocol)) throw new ApiHttpError(400, "VALIDATION_FAILED", "protocol is invalid.", { field: "protocol" });
+    if (!partial && !nonEmptyText(input.baseUrl)) throw new ApiHttpError(400, "VALIDATION_FAILED", "baseUrl is required.", { field: "baseUrl" });
+    if (input.protocol !== undefined && !isProviderProtocol(input.protocol)) throw new ApiHttpError(400, "VALIDATION_FAILED", "protocol is invalid.", { field: "protocol" });
+    if (input.baseUrl !== undefined && !validProviderUrl(input.baseUrl)) throw new ApiHttpError(400, "PROVIDER_ENDPOINT_INVALID", "Provider endpoint must use HTTPS or localhost HTTP.", { field: "baseUrl" });
+    if (input.credentialRef !== undefined && (typeof input.credentialRef !== "string" || !(/^(?:env:)?[A-Z][A-Z0-9_]*$/.test(input.credentialRef) && !input.credentialRef.startsWith("keychain:")))) throw new ApiHttpError(400, "VALIDATION_FAILED", "credentialRef must be a SecretRef or environment variable name.", { field: "credentialRef" });
+    if (input.models !== undefined && (!Array.isArray(input.models) || input.models.some((item) => typeof item !== "string"))) throw new ApiHttpError(400, "VALIDATION_FAILED", "models must be a string array.", { field: "models" });
+    if (input.supportedEngineIds !== undefined && (!Array.isArray(input.supportedEngineIds) || input.supportedEngineIds.some((item) => typeof item !== "string"))) throw new ApiHttpError(400, "VALIDATION_FAILED", "supportedEngineIds must be a string array.", { field: "supportedEngineIds" });
+    if (input.enabled !== undefined && typeof input.enabled !== "boolean") throw new ApiHttpError(400, "VALIDATION_FAILED", "enabled must be a boolean.", { field: "enabled" });
+  }
+
+  async function deploymentSummaries(): Promise<ModelDeploymentSummary[]> {
+    const deployments = state.modelDeployments ?? [];
+    const summaries: ModelDeploymentSummary[] = [];
+    for (const deployment of deployments) {
+      const provider = state.providers?.find((item) => item.id === deployment.providerId);
+      const profile = state.profiles.find((item) => item.id === deployment.profileId);
+      const credentials = provider ? await providerStatus(provider) : "missing" as const;
+      let capabilities: CliProfileCapabilities | undefined;
+      let models: { id: string }[] | undefined;
+      if (profile) {
+        capabilities = await resolveCapabilities(profile).catch(() => undefined);
+        models = capabilities?.models ?? (profile.syncedModels ?? []).map((id) => ({ id }));
+      }
+      summaries.push(summarizeDeployment({ deployment, provider, providerStatus: credentials, profile, capabilities, models, now: dependencies.clock.now() }));
+    }
+    return summaries;
+  }
+
+  function requireDeployment(id: string) {
+    const deployment = state.modelDeployments!.find((item) => item.id === id);
+    if (!deployment) throw new ApiHttpError(404, "MODEL_DEPLOYMENT_NOT_FOUND", "Model deployment not found.");
+    return deployment;
+  }
+
+  async function resolveSessionRoute(session: SessionV3, fixedDeploymentId?: string): Promise<ResolvedRoute> {
+    const workspaceBinding = state.workspaceModelRouteBindings?.find((binding) => binding.workspaceId === session.workspaceId);
+    const resolved = resolveModelRoute({
+      routes: state.modelRoutes ?? [],
+      deployments: await deploymentSummaries(),
+      now: dependencies.clock.now(),
+      globalRouteId: state.globalModelRouteId,
+      projectRouteId: workspaceBinding?.routeId,
+      sessionRouteId: session.modelRouteId,
+      ...(fixedDeploymentId ? { routeOverride: { fixedDeploymentId } } : {}),
+      legacy: { profileId: session.profileId, modelId: session.chatContext?.activeModel ?? session.launchConfig.model, source: session.chatContext?.activeModel ? "active-model" : session.launchConfig.model ? "launch-config" : "profile-default" }
+    });
+    return resolved;
+  }
+
+  function requireBoundRoute(value: unknown): string {
+    if (!nonEmptyText(value)) throw new ApiHttpError(400, "ROUTE_BINDING_INVALID", "routeId must be a non-empty string.", { field: "routeId" });
+    const route = state.modelRoutes!.find((candidate) => candidate.id === value);
+    if (!route || !route.enabled || route.archivedAt) throw new ApiHttpError(400, "ROUTE_BINDING_INVALID", "The selected route is not active.", { routeId: value });
+    return value;
+  }
+
+  async function providerLaunchFor(providerId: string | undefined, profile: AppStateV3["profiles"][number]) {
+    if (!providerId) return { args: [] as string[], env: {} as Record<string, string> };
+    const provider = requireProvider(providerId);
+    if (!providerProtocolMatchesAdapter(provider.protocol, profile.adapterId)) throw new ApiHttpError(400, "VALIDATION_FAILED", "Provider protocol does not match the selected CLI profile.", { field: "providerId" });
+    const ref = normalizedSecretRef(provider);
+    if (!ref) throw new ApiHttpError(400, "PROVIDER_CREDENTIAL_MISSING", "Provider credential is missing.", { providerId: provider.id });
+    let secret: string;
+    try { secret = await secretStore.resolve(ref); }
+    catch (error) {
+      if (error instanceof SecretStoreError) throw new ApiHttpError(400, error.code === "SECRET_STORE_UNAVAILABLE" ? "SECRET_STORE_UNAVAILABLE" : "PROVIDER_CREDENTIAL_MISSING", error.message, { providerId: provider.id });
+      throw error;
+    }
+    if (provider.protocol === "anthropic-compatible") return { args: [] as string[], env: { ANTHROPIC_BASE_URL: provider.baseUrl, ANTHROPIC_AUTH_TOKEN: secret } };
+    const envKey = `SPECOS_PROVIDER_${provider.id.replace(/[^A-Za-z0-9]/g, "_").toUpperCase()}_KEY`;
+    return {
+      args: ["-c", `model_provider=${provider.id}`, "-c", `model_providers.${provider.id}.base_url=${provider.baseUrl}`, "-c", `model_providers.${provider.id}.api_key_env=${envKey}`],
+      env: { [envKey]: secret }
+    };
+  }
+
+  async function providerLaunch(session: SessionV3, profile: AppStateV3["profiles"][number]) {
+    return providerLaunchFor(session.providerId, profile);
+  }
+
+  async function routeForSession(session: SessionV3, fixedDeploymentId?: string) {
+    const resolved = await resolveSessionRoute(session, fixedDeploymentId);
+    if (fixedDeploymentId && resolved.kind !== "route") {
+      throw new ApiHttpError(409, "ROUTE_FIXED_DEPLOYMENT_UNAVAILABLE", "A fixed deployment requires an active model route.", { fixedDeploymentId });
+    }
+    if (!resolved.canSend) {
+      throw new ApiHttpError(409, resolved.errorCode ?? "ROUTE_NO_CANDIDATE", "The selected model route has no executable deployment.", { routeId: resolved.routeId, fixedDeploymentId: resolved.fixedDeploymentId });
+    }
+    const deployment = resolved.selectedDeploymentId ? requireDeployment(resolved.selectedDeploymentId) : undefined;
+    if (deployment && deployment.profileId !== session.profileId) {
+      throw new ApiHttpError(409, "ROUTE_UNSUPPORTED_ENGINE", "The selected deployment uses a different Agent Engine than this session.", { deploymentId: deployment.id, profileId: deployment.profileId, sessionProfileId: session.profileId });
+    }
+    return { resolved, deployment };
+  }
+
   /** 三层模型来源合并 + source 标注（console-gaps SPEC §2.4）：builtin 仅在探测 supported 时参与，同步/导入条目始终展示 */
   async function mergedProfileModels(profile: AppStateV3["profiles"][number]) {
     const capabilities = await resolveCapabilities(profile);
@@ -291,19 +542,22 @@ export async function createApplication(dependencies: ApplicationDependencies): 
     return mergeModelSources(builtin, profile.syncedModels ?? [], profile.customModels ?? []);
   }
 
-  const readProfileSyncedModels = dependencies.modelSyncReader ?? ((profile: AppStateV3["profiles"][number]) => readSyncedModels(profile.adapterId));
-
   /** 执行 CLI 命令发现模型并写入 synced 层（issue-053）：adapter 无 discoverModels 时保持原列表 */
   async function syncModels(profileId: string) {
     const profile = requireProfile(profileId);
     if (dependencies.profileAdapters.discoverModels) profile.syncedModels = await dependencies.profileAdapters.discoverModels(profile);
     await dependencies.stateRepository.save(state);
+    modelAutoSyncAt.set(profile.id, nowMilliseconds());
     return { models: await mergedProfileModels(profile), synced: profile.syncedModels ?? [] };
   }
 
   async function resolveLaunch(profile: AppStateV3["profiles"][number], config: SessionV3["launchConfig"], resumeToken?: string) {
     try {
-      if (dependencies.profileAdapters.resolveLaunch) return await dependencies.profileAdapters.resolveLaunch(profile, resumeToken ? { ...config, resumeToken } : config);
+      if (dependencies.profileAdapters.resolveLaunch) {
+        await maybeAutoSync(profile);
+        const launch = await dependencies.profileAdapters.resolveLaunch(profile, resumeToken ? { ...config, resumeToken } : config);
+        return { ...launch, capabilities: decorateCapabilities(profile, launch.capabilities) };
+      }
       const capabilities = await resolveCapabilities(profile);
       if (config.permission || config.mode || config.model) throw new UnsupportedCliOptionError(config.permission ?? config.mode ?? config.model ?? "option");
       return { command: profile.command, args: [...profile.args], capabilities };
@@ -343,7 +597,7 @@ export async function createApplication(dependencies: ApplicationDependencies): 
     await appendEvent(session, { occurredAt: dependencies.clock.now(), kind: "lifecycle", source: "session-manager", raw: "Native resume failed; the next start launches a fresh CLI session.", metadata: { resume: "cleared" } });
   }
 
-  async function startSession(sessionId: string, confirmed: boolean, cols = 100, rows = 30): Promise<SessionV3 | undefined> {
+  async function startSession(sessionId: string, confirmed: boolean, cols = 100, rows = 30, fixedDeploymentId?: string): Promise<SessionV3 | undefined> {
     if (dependencies.policy.readonly) throw new ApiHttpError(403, "READONLY_MODE", "Readonly mode disables local process startup.");
     if (!confirmed) throw new ApiHttpError(400, "VALIDATION_FAILED", "Session start requires explicit confirmation.", { field: "confirmed" });
     const chatSession = getSession(sessionId);
@@ -358,7 +612,9 @@ export async function createApplication(dependencies: ApplicationDependencies): 
       const profile = state.profiles.find((item) => item.id === chatSession.profileId);
       if (!workspace || !profile) throw new ApiHttpError(400, "VALIDATION_FAILED", "Session references a missing workspace or profile.");
       if (chatSession.organizationStatus !== "active") throw new ApiHttpError(409, "SESSION_NOT_ACTIVE", "Session must be active before it can start.");
-      await resolveLaunch(profile, chatSession.launchConfig);
+      const { deployment } = await routeForSession(chatSession, fixedDeploymentId);
+      await resolveLaunch(profile, { ...chatSession.launchConfig, ...(deployment ? { model: deployment.modelId } : {}) });
+      await providerLaunchFor(deployment?.providerId ?? chatSession.providerId, profile);
       if (chatSession.runtimeStatus !== "running") {
         chatSession.runtimeStatus = "running";
         chatSession.error = undefined;
@@ -378,12 +634,14 @@ export async function createApplication(dependencies: ApplicationDependencies): 
       if (session.organizationStatus !== "active") throw new ApiHttpError(409, "SESSION_NOT_ACTIVE", "Session must be active before it can start.");
       // 存在已捕获的 token 时以 CLI 原生 resume 启动（codex resume <id> / claude --resume <id>），续上上一次交互上下文
       const resumeToken = session.terminalContext?.resumeToken;
-      const launch = await resolveLaunch(profile, session.launchConfig, resumeToken);
+      const { deployment } = await routeForSession(session, fixedDeploymentId);
+      const launch = await resolveLaunch(profile, { ...session.launchConfig, ...(deployment ? { model: deployment.modelId } : {}) }, resumeToken);
+      const provider = await providerLaunchFor(deployment?.providerId ?? session.providerId, profile);
       if (resumeToken) terminalResumeAttempt.set(sessionId, resumeToken);
       else terminalResumeAttempt.delete(sessionId);
       // 归因窗口留 2s 宽容：避免 CLI 建档时间略早于本处记录时刻而漏捕
       terminalSpawnAt.set(sessionId, Date.parse(dependencies.clock.now()) - 2_000);
-      return { command: launch.command, args: launch.args, cwd: workspace.path, env: definedEnvironment(dependencies.policy.processEnvironment) };
+      return { command: launch.command, args: [...launch.args, ...provider.args], cwd: workspace.path, env: { ...definedEnvironment(dependencies.policy.processEnvironment), ...provider.env } };
     }, { cols, rows });
     return getSession(sessionId);
   }
@@ -631,6 +889,7 @@ export async function createApplication(dependencies: ApplicationDependencies): 
         source: event.source,
         raw: event.raw,
         metadata: event.metadata,
+        component: event.component,
         clientMessageId: event.clientMessageId,
         sequenceOffset: sequence
       });
@@ -641,6 +900,108 @@ export async function createApplication(dependencies: ApplicationDependencies): 
   async function findMessage(sessionId: string, clientMessageId: string) {
     if (dependencies.transcriptRepository.findByClientMessageId) return dependencies.transcriptRepository.findByClientMessageId(sessionId, clientMessageId);
     return (await readOwnTranscript(sessionId)).find((event) => event.clientMessageId === clientMessageId);
+  }
+
+  async function startRoutedExecution(session: SessionV3, content: string, clientMessageId: string, userEvent: TranscriptEvent, resolvedRoute: ResolvedRoute) {
+    if (!executionRepository || !routeExecutionCoordinator || resolvedRoute.kind !== "route" || !resolvedRoute.routeId) return undefined;
+    const route = state.modelRoutes!.find((candidate) => candidate.id === resolvedRoute.routeId);
+    if (!route) throw new ApiHttpError(409, "ROUTE_NO_CANDIDATE", "The selected model route no longer exists.");
+    const summaries = await deploymentSummaries();
+    const summaryById = new Map(summaries.map((deployment) => [deployment.id, deployment]));
+    const candidates: RouteExecutionCandidate[] = resolvedRoute.executableCandidates.flatMap((candidate) => {
+      const deployment = summaryById.get(candidate.deploymentId);
+      if (!deployment || !deployment.providerName || !deployment.profileName || !deployment.providerId || !deployment.profileId) return [];
+      return [{ deployment: { deploymentId: deployment.id, deploymentName: deployment.name, providerId: deployment.providerId, providerName: deployment.providerName, profileId: deployment.profileId, modelId: deployment.modelId } }];
+    });
+    if (!candidates.length) throw new ApiHttpError(409, "ROUTE_NO_CANDIDATE", "The selected model route has no executable deployment.");
+    const turnId = dependencies.idGenerator.create("turn");
+    const task: ExecutionTask = {
+      id: dependencies.idGenerator.create("task"),
+      sessionId: session.id,
+      turnId,
+      input: { transcriptEventId: userEvent.id, sha256: createHash("sha256").update(content, "utf8").digest("hex") },
+      resolvedRoute: structuredClone(resolvedRoute),
+      state: "created",
+      revision: 1,
+      createdAt: dependencies.clock.now()
+    };
+    const primaryAttempt: ExecutionAttempt = {
+      id: dependencies.idGenerator.create("attempt"),
+      taskId: task.id,
+      ordinal: 1,
+      trigger: "primary",
+      deployment: structuredClone(candidates[0].deployment),
+      state: "created",
+      revision: 1,
+      sideEffect: { state: "clean", evidenceEventIds: [] }
+    };
+    await executionRepository.createTask(task);
+    await executionRepository.createAttempt(primaryAttempt);
+    const runAttempt = async ({ attempt }: { attempt: ExecutionAttempt; signal: AbortSignal }): Promise<AttemptRunResult> => {
+      const workspace = state.workspaces.find((item) => item.id === session.workspaceId);
+      const profile = state.profiles.find((item) => item.id === attempt.deployment.profileId);
+      if (!workspace || !profile) return { status: "failed", failure: { code: "PROFILE_NOT_FOUND", class: "configuration", message: "The deployment profile is no longer available.", fallbackEligible: false }, sideEffect: { state: "clean", evidenceEventIds: [] } };
+      const provider = await providerLaunchFor(attempt.deployment.providerId, profile);
+      const attemptTurnId = `${task.turnId}:${attempt.ordinal}`;
+      const effectiveModel = attempt.deployment.modelId;
+      try {
+        if (dependencies.agentBackends) {
+          const backend = dependencies.agentBackends.forProfile(profile);
+          const backendSession = await backend.openSession({
+            sessionId: session.id,
+            workspacePath: workspace.path,
+            config: { profile },
+            resume: session.backendSessionRef?.backendId === backend.id ? session.backendSessionRef : undefined
+          });
+          const backendInput: AgentInput = {
+            turnId: attemptTurnId,
+            prompt: content,
+            ...(clientMessageId && attempt.ordinal === 1 ? { clientMessageId } : {}),
+            model: effectiveModel,
+            ...(normalizeOption(session.launchConfig.permission) ? { permission: normalizeOption(session.launchConfig.permission)! } : {}),
+            ...(normalizeOption(session.launchConfig.mode) ? { mode: normalizeOption(session.launchConfig.mode)! } : {}),
+            ...(Object.keys(provider.env).length ? { launchEnv: provider.env } : {}),
+            ...(provider.args.length ? { launchArgs: provider.args } : {})
+          };
+          await orchestrator.submitTurn(session.id, { turnId: attemptTurnId, prompt: content, userMessageEvent: userEvent, persistUserMessage: false, runBackend: () => backendSession.runTurn(backendInput) });
+          const result = await orchestrator.waitForTurn(session.id, attemptTurnId);
+          const failure = classifyAgentTurnFailure(result.error);
+          return {
+            status: result.status,
+            failure,
+            usage: result.usage,
+            sideEffect: result.status === "failed" && failure?.phase === "spawn" ? { state: "clean", evidenceEventIds: [] } : { state: result.status === "completed" ? "clean" : "unknown", evidenceEventIds: [] }
+          };
+        }
+        const registry = dependencies.profileAdapters;
+        if (!registry.buildTurn || !registry.parseEvents) return { status: "failed", failure: { code: "TURN_UNSUPPORTED", class: "configuration", message: "This profile does not support structured turns.", fallbackEligible: false }, sideEffect: { state: "clean", evidenceEventIds: [] } };
+        const capabilities = await resolveCapabilities(profile);
+        const persistentRuntime = dependencies.persistentChatRuntime;
+        const persistentWiring = persistentRuntime && profile.adapterId === "codex" && capabilities.supportsHeadlessTurns && provider.args.length === 0
+          ? { runPersistent: (handlers: PersistentTurnHandlers) => persistentRuntime.runTurn(session.id, { turnId: attemptTurnId, prompt: content, cwd: workspace.path, env: { ...definedEnvironment(dependencies.policy.processEnvironment), ...provider.env }, command: profile.command, model: effectiveModel, sandboxMode: normalizeOption(session.launchConfig.mode), approvalPolicy: normalizeOption(session.launchConfig.permission), resumeToken: session.chatContext?.resumeToken }, handlers) }
+          : {};
+        await orchestrator.submitTurn(session.id, {
+          turnId: attemptTurnId,
+          prompt: content,
+          userMessageEvent: userEvent,
+          persistUserMessage: false,
+          ...persistentWiring,
+          buildCommand: async () => {
+            const spec = await registry.buildTurn!(profile, { workspacePath: workspace.path, prompt: content, permission: session.launchConfig.permission, mode: session.launchConfig.mode, model: effectiveModel, resumeToken: session.chatContext?.resumeToken });
+            return { command: spec.command, args: [...spec.args, ...provider.args], cwd: workspace.path, env: { ...definedEnvironment(dependencies.policy.processEnvironment), ...provider.env, ...spec.env } };
+          },
+          parseOutput: (stdout, hooks) => registry.parseEvents!(profile, stdout, { turnId: attemptTurnId }, hooks)
+        });
+        const result = await orchestrator.waitForTurn(session.id, attemptTurnId);
+        const failure = classifyAgentTurnFailure(result.error);
+        return { status: result.status, failure, usage: result.usage, sideEffect: result.status === "failed" && failure?.phase === "spawn" ? { state: "clean", evidenceEventIds: [] } : { state: result.status === "completed" ? "clean" : "unknown", evidenceEventIds: [] } };
+      } catch (error) {
+        return { status: "failed", failure: { code: "TURN_SPAWN_FAILED", class: "startup", message: error instanceof Error ? error.message : String(error), fallbackEligible: true }, sideEffect: { state: "clean", evidenceEventIds: [] } };
+      }
+    };
+    const execution = routeExecutionCoordinator.execute({ task, candidates, automaticTechnicalFallback: route.automaticTechnicalFallback, runAttempt });
+    void execution.catch((error) => dependencies.logger.warn("Routed execution failed", { taskId: task.id, error: String(error) }));
+    return { task, primaryAttempt, resolvedDeployment: { id: primaryAttempt.deployment.deploymentId, name: primaryAttempt.deployment.deploymentName, modelId: primaryAttempt.deployment.modelId } };
   }
 
   async function handleApi(request: http.IncomingMessage, response: http.ServerResponse, url: URL) {
@@ -724,6 +1085,251 @@ export async function createApplication(dependencies: ApplicationDependencies): 
         if (error instanceof EnhanceExecutionError) throw new ApiHttpError(error.code === "ENHANCE_TIMEOUT" ? 504 : 502, error.code, error.message);
         throw error;
       }
+      return;
+    }
+
+    if (resource === "providers") {
+      if (method === "GET" && !id) {
+        sendJson(response, 200, { providers: await Promise.all((state.providers ?? []).map(providerSummary)) });
+        return;
+      }
+      if (method === "POST" && !id) {
+        validateProvider(body);
+        const providerId = body.id as string;
+        if (state.providers!.some((provider) => provider.id === providerId)) throw new ApiHttpError(400, "VALIDATION_FAILED", "Provider id already exists.", { field: "id" });
+        const now = dependencies.clock.now();
+        const provider: ModelProviderConfig = {
+          id: providerId,
+          name: body.name as string,
+          protocol: body.protocol,
+          baseUrl: body.baseUrl as string,
+          ...(typeof body.credentialRef === "string" ? { credentialRef: body.credentialRef.startsWith("env:") || body.credentialRef.startsWith("keychain:") ? body.credentialRef : `env:${body.credentialRef}` } : {}),
+          models: [...new Set((Array.isArray(body.models) ? body.models : []).map((model: unknown) => String(model).trim()).filter(Boolean))],
+          supportedEngineIds: [...new Set((Array.isArray(body.supportedEngineIds) ? body.supportedEngineIds : []).map((engine: unknown) => String(engine).trim()).filter(Boolean))],
+          enabled: body.enabled !== false,
+          createdAt: now,
+          updatedAt: now
+        };
+        state.providers!.push(provider);
+        await dependencies.stateRepository.save(state);
+        const summary = await providerSummary(provider);
+        sendJson(response, 201, { provider: summary, providers: [summary] });
+        return;
+      }
+      if (id && action === "credential" && method === "PUT") {
+        const provider = requireProvider(id);
+        if (typeof body.secret !== "string" || !body.secret) throw new ApiHttpError(400, "VALIDATION_FAILED", "secret is required.", { field: "secret" });
+        let ref: SecretRef;
+        try { ref = await secretStore.put({ providerId: provider.id }, body.secret); }
+        catch (error) {
+          if (error instanceof SecretStoreError) throw new ApiHttpError(503, error.code, error.message, { providerId: provider.id });
+          throw error;
+        }
+        provider.credentialRef = ref;
+        provider.updatedAt = dependencies.clock.now();
+        await dependencies.stateRepository.save(state);
+        sendJson(response, 200, { providerId: provider.id, credentialStatus: "configured" });
+        return;
+      }
+      if (id && action === "credential" && method === "DELETE") {
+        const provider = requireProvider(id);
+        const ref = normalizedSecretRef(provider);
+        try { if (ref) await secretStore.remove(ref); }
+        catch (error) {
+          if (error instanceof SecretStoreError) throw new ApiHttpError(503, error.code, error.message, { providerId: provider.id });
+          throw error;
+        }
+        provider.credentialRef = undefined;
+        provider.updatedAt = dependencies.clock.now();
+        await dependencies.stateRepository.save(state);
+        sendJson(response, 200, { providerId: provider.id, credentialStatus: "missing" });
+        return;
+      }
+      if (id && method === "PATCH") {
+        const provider = requireProvider(id);
+        validateProvider(body, true);
+        if (body.id !== undefined && body.id !== id) throw new ApiHttpError(400, "VALIDATION_FAILED", "Provider id cannot be changed.", { field: "id" });
+        for (const field of ["name", "protocol", "baseUrl", "models", "supportedEngineIds", "enabled"] as const) if (body[field] !== undefined) (provider as unknown as Record<string, unknown>)[field] = field === "models" || field === "supportedEngineIds" ? [...new Set((body[field] as unknown[]).map((value) => String(value).trim()).filter(Boolean))] : body[field];
+        if (body.credentialRef !== undefined) provider.credentialRef = typeof body.credentialRef === "string" ? (body.credentialRef.startsWith("env:") || body.credentialRef.startsWith("keychain:") ? body.credentialRef : `env:${body.credentialRef}`) : undefined;
+        provider.updatedAt = dependencies.clock.now();
+        await dependencies.stateRepository.save(state);
+        const summary = await providerSummary(provider);
+        sendJson(response, 200, { provider: summary, providers: [summary] });
+        return;
+      }
+      if (id && method === "DELETE") {
+        const provider = requireProvider(id);
+        if (state.sessions.some((session) => session.providerId === id) || state.modelDeployments?.some((deployment) => deployment.providerId === id && !deployment.archivedAt)) throw new ApiHttpError(409, "PROVIDER_IN_USE", "Provider is still in use.");
+        const ref = normalizedSecretRef(provider);
+        if (ref?.startsWith("keychain:")) await secretStore.remove(ref).catch((error) => { throw error instanceof SecretStoreError ? new ApiHttpError(503, error.code, error.message) : error; });
+        state.providers = state.providers!.filter((candidate) => candidate.id !== id);
+        await dependencies.stateRepository.save(state);
+        sendJson(response, 200, { deleted: id });
+        return;
+      }
+    }
+
+    if (resource === "model-deployments") {
+      if (method === "GET" && !id) { sendJson(response, 200, { deployments: await deploymentSummaries() }); return; }
+      if (method === "GET" && id) { requireDeployment(id); sendJson(response, 200, { deployment: (await deploymentSummaries()).find((item) => item.id === id) }); return; }
+      if (method === "POST" && !id) {
+        const validation = validateDeploymentInput(body);
+        if (!validation.ok) throw new ApiHttpError(400, "VALIDATION_FAILED", validation.message, { field: validation.field });
+        if (state.modelDeployments!.some((deployment) => deployment.id === body.id)) throw new ApiHttpError(409, "MODEL_DEPLOYMENT_DUPLICATE", "Model deployment id already exists.");
+        const provider = requireProvider(body.providerId);
+        const profile = requireProfile(body.profileId);
+        if (!providerProtocolMatchesAdapter(provider.protocol, profile.adapterId)) throw new ApiHttpError(400, "MODEL_DEPLOYMENT_INCOMPATIBLE", "Provider protocol does not match profile engine.");
+        const now = dependencies.clock.now();
+        const deployment: ModelDeploymentConfig = { id: body.id, name: body.name, providerId: body.providerId, profileId: body.profileId, modelId: body.modelId, enabled: body.enabled !== false, createdAt: now, updatedAt: now };
+        state.modelDeployments!.push(deployment);
+        await dependencies.stateRepository.save(state);
+        const deployments = await deploymentSummaries();
+        sendJson(response, 201, { deployment: deployments.find((item) => item.id === deployment.id), deployments });
+        return;
+      }
+      if (method === "PATCH" && id) {
+        const deployment = requireDeployment(id);
+        if (body.id !== undefined && body.id !== id) throw new ApiHttpError(400, "VALIDATION_FAILED", "Deployment id cannot be changed.", { field: "id" });
+        if (body.providerId !== undefined || body.profileId !== undefined) {
+          const provider = requireProvider(body.providerId ?? deployment.providerId);
+          const profile = requireProfile(body.profileId ?? deployment.profileId);
+          if (!providerProtocolMatchesAdapter(provider.protocol, profile.adapterId)) throw new ApiHttpError(400, "MODEL_DEPLOYMENT_INCOMPATIBLE", "Provider protocol does not match profile engine.");
+        }
+        Object.assign(deployment, { ...(typeof body.name === "string" ? { name: body.name } : {}), ...(typeof body.providerId === "string" ? { providerId: body.providerId } : {}), ...(typeof body.profileId === "string" ? { profileId: body.profileId } : {}), ...(typeof body.modelId === "string" ? { modelId: body.modelId } : {}), ...(typeof body.enabled === "boolean" ? { enabled: body.enabled } : {}), updatedAt: dependencies.clock.now() });
+        await dependencies.stateRepository.save(state);
+        const deployments = await deploymentSummaries();
+        sendJson(response, 200, { deployment: deployments.find((item) => item.id === id), deployments });
+        return;
+      }
+      if (method === "DELETE" && id) {
+        const deployment = requireDeployment(id);
+        if ((state.modelRoutes ?? []).some((route) => route.enabled && !route.archivedAt && route.candidateDeploymentIds.includes(id))) throw new ApiHttpError(409, "MODEL_DEPLOYMENT_IN_USE", "Deployment is referenced by an active route.");
+        deployment.enabled = false;
+        deployment.archivedAt = dependencies.clock.now();
+        deployment.updatedAt = dependencies.clock.now();
+        await dependencies.stateRepository.save(state);
+        const deployments = await deploymentSummaries();
+        sendJson(response, 200, { deployment: deployments.find((item) => item.id === id), deployments });
+        return;
+      }
+    }
+
+    if (resource === "model-routes") {
+      if (method === "GET" && !id) { sendJson(response, 200, { routes: state.modelRoutes ?? [] }); return; }
+      if (method === "GET" && id) { const route = state.modelRoutes!.find((candidate) => candidate.id === id); if (!route) throw new ApiHttpError(404, "MODEL_ROUTE_NOT_FOUND", "Model route not found."); sendJson(response, 200, route); return; }
+      if (method === "POST" && id && action === "resolve") {
+        const profile = requireProfile(requireText(body.profileId, "profileId"));
+        const workspace = await getWorkspace(requireText(body.workspaceId, "workspaceId"));
+        const routeId = body.routeId === undefined || body.routeId === null ? undefined : requireBoundRoute(body.routeId);
+        const workspaceBinding = state.workspaceModelRouteBindings?.find((binding) => binding.workspaceId === workspace.id);
+        const fixedDeploymentId = body.fixedDeploymentId === undefined ? undefined : requireText(body.fixedDeploymentId, "fixedDeploymentId");
+        const deployments = await deploymentSummaries();
+        const resolvedRoute = resolveModelRoute({
+          routes: state.modelRoutes ?? [],
+          deployments,
+          now: dependencies.clock.now(),
+          globalRouteId: state.globalModelRouteId,
+          projectRouteId: workspaceBinding?.routeId,
+          sessionRouteId: routeId,
+          ...(fixedDeploymentId ? { routeOverride: { fixedDeploymentId } } : {}),
+          legacy: { profileId: profile.id, modelId: null, source: "profile-default" }
+        });
+        sendJson(response, 200, { resolvedRoute, deployments });
+        return;
+      }
+      if (method === "POST" && !id) {
+        validateRouteInput(body);
+        if (state.modelRoutes!.some((route) => route.id === body.id)) throw new ApiHttpError(409, "MODEL_ROUTE_DUPLICATE", "Model route id already exists.");
+        const now = dependencies.clock.now();
+        const route: PriorityModelRoute = { id: body.id, name: body.name, enabled: body.enabled !== false, candidateDeploymentIds: [...body.candidateDeploymentIds], automaticTechnicalFallback: body.automaticTechnicalFallback === true, createdAt: now, updatedAt: now };
+        state.modelRoutes!.push(route);
+        await dependencies.stateRepository.save(state);
+        sendJson(response, 201, { route, routes: state.modelRoutes });
+        return;
+      }
+      if (method === "PATCH" && id) {
+        const route = state.modelRoutes!.find((candidate) => candidate.id === id);
+        if (!route) throw new ApiHttpError(404, "MODEL_ROUTE_NOT_FOUND", "Model route not found.");
+        if (body.id !== undefined && body.id !== id) throw new ApiHttpError(400, "MODEL_ROUTE_INVALID", "Route id cannot be changed.");
+        if (body.candidateDeploymentIds !== undefined) validateRouteCandidates(body.candidateDeploymentIds);
+        Object.assign(route, { ...(typeof body.name === "string" ? { name: body.name } : {}), ...(Array.isArray(body.candidateDeploymentIds) ? { candidateDeploymentIds: [...body.candidateDeploymentIds] } : {}), ...(typeof body.enabled === "boolean" ? { enabled: body.enabled } : {}), ...(typeof body.automaticTechnicalFallback === "boolean" ? { automaticTechnicalFallback: body.automaticTechnicalFallback } : {}), updatedAt: dependencies.clock.now() });
+        await dependencies.stateRepository.save(state);
+        sendJson(response, 200, { route, routes: state.modelRoutes });
+        return;
+      }
+      if (method === "DELETE" && id) {
+        const route = state.modelRoutes!.find((candidate) => candidate.id === id);
+        if (!route) throw new ApiHttpError(404, "MODEL_ROUTE_NOT_FOUND", "Model route not found.");
+        if (state.globalModelRouteId === id || state.workspaceModelRouteBindings!.some((binding) => binding.routeId === id) || state.sessions.some((session) => session.modelRouteId === id)) throw new ApiHttpError(409, "MODEL_ROUTE_IN_USE", "Route is still bound.");
+        route.enabled = false;
+        route.archivedAt = dependencies.clock.now();
+        route.updatedAt = dependencies.clock.now();
+        await dependencies.stateRepository.save(state);
+        sendJson(response, 200, route);
+        return;
+      }
+    }
+
+    if (resource === "model-routing" && id === "global" && method === "PUT") {
+      const routeId = body.routeId === null ? undefined : requireBoundRoute(body.routeId);
+      state.globalModelRouteId = routeId;
+      await dependencies.stateRepository.save(state);
+      sendJson(response, 200, { routeId });
+      return;
+    }
+
+    if (resource === "workspaces" && id && action === "model-route" && method === "PUT") {
+      await getWorkspace(id);
+      const routeId = body.routeId === null ? undefined : requireBoundRoute(body.routeId);
+      state.workspaceModelRouteBindings = state.workspaceModelRouteBindings!.filter((binding) => binding.workspaceId !== id);
+      if (routeId) state.workspaceModelRouteBindings.push({ workspaceId: id, routeId });
+      await dependencies.stateRepository.save(state);
+      sendJson(response, 200, { workspaceId: id, routeId });
+      return;
+    }
+
+    if (resource === "execution-tasks") {
+      if (!executionRepository) throw new ApiHttpError(503, "EXECUTION_HISTORY_CORRUPT", "Execution history is unavailable in this server build.");
+      if (method === "GET" && id && !action) {
+        const snapshot = await executionRepository.get(id);
+        if (!snapshot) throw new ApiHttpError(404, "EXECUTION_NOT_FOUND", "Execution task not found.");
+        sendJson(response, 200, snapshot);
+        return;
+      }
+      if (method === "POST" && id && action === "confirm-retry") {
+        if (!routeExecutionCoordinator) throw new ApiHttpError(503, "EXECUTION_NOT_FOUND", "Execution coordinator is unavailable.");
+        try {
+          const snapshot = await routeExecutionCoordinator.confirmRetry(id, Number(body.expectedRevision), requireText(body.confirmationToken, "confirmationToken"), requireText(body.inputSha256, "inputSha256"));
+          sendJson(response, 200, snapshot);
+        } catch (error) {
+          throw executionErrorToApi(error);
+        }
+        return;
+      }
+      if (method === "POST" && id && action === "cancel") {
+        if (!routeExecutionCoordinator) throw new ApiHttpError(503, "EXECUTION_NOT_FOUND", "Execution coordinator is unavailable.");
+        try {
+          sendJson(response, 200, await routeExecutionCoordinator.cancel(id, body.expectedRevision === undefined ? undefined : Number(body.expectedRevision)));
+        } catch (error) {
+          throw executionErrorToApi(error);
+        }
+        return;
+      }
+    }
+
+    if (resource === "sessions" && id && action === "model-route" && segments[3] === "resolve" && method === "POST") {
+      const session = requireSession(id);
+      const fixedDeploymentId = body.fixedDeploymentId === undefined ? undefined : requireText(body.fixedDeploymentId, "fixedDeploymentId");
+      sendJson(response, 200, { resolvedRoute: await resolveSessionRoute(session, fixedDeploymentId) });
+      return;
+    }
+
+    if (resource === "sessions" && id && action === "execution-tasks" && method === "GET") {
+      requireSession(id);
+      if (!executionRepository) { sendJson(response, 200, { tasks: [] }); return; }
+      const limit = url.searchParams.get("limit") === null ? undefined : Number(url.searchParams.get("limit"));
+      if (limit !== undefined && (!Number.isInteger(limit) || limit < 1 || limit > 100)) throw new ApiHttpError(400, "VALIDATION_FAILED", "Execution task limit is invalid.", { field: "limit" });
+      sendJson(response, 200, await executionRepository.list(id, { after: url.searchParams.get("after") ?? undefined, limit }));
       return;
     }
 
@@ -817,8 +1423,12 @@ export async function createApplication(dependencies: ApplicationDependencies): 
       }
       if (method === "POST" && id && action === "models" && segments[3] === "sync" && !segments[4]) {
         const profile = requireProfile(id);
-        // 配置缺失/解析失败容错为 []（model-catalog 内部吞异常），回写后合并列表自动含 synced 条目
-        profile.syncedModels = await readProfileSyncedModels(profile);
+        // 手动同步保持旧语义：配置缺失时清空 synced 层，并绕过自动同步 TTL。
+        const snapshot = await readProfileConfiguredModels(profile);
+        profile.syncedModels = snapshot?.models ?? [];
+        if (snapshot?.defaultModel && snapshot.defaultModel !== "default") configuredDefaultModelByProfile.set(profile.id, snapshot.defaultModel);
+        else configuredDefaultModelByProfile.delete(profile.id);
+        modelAutoSyncAt.set(profile.id, nowMilliseconds());
         await dependencies.stateRepository.save(state);
         sendJson(response, 200, { models: await mergedProfileModels(profile), synced: profile.syncedModels });
         return;
@@ -922,6 +1532,12 @@ export async function createApplication(dependencies: ApplicationDependencies): 
         if (!state.workspaces.some((item) => item.id === workspaceId)) throw new ApiHttpError(404, "WORKSPACE_NOT_FOUND", "Workspace not found.");
         const profile = state.profiles.find((item) => item.id === profileId);
         if (!profile) throw new ApiHttpError(404, "PROFILE_NOT_FOUND", "Profile not found.");
+        const providerId = body.providerId === undefined ? undefined : requireText(body.providerId, "providerId");
+        if (providerId) {
+          const provider = requireProvider(providerId);
+          if (!providerProtocolMatchesAdapter(provider.protocol, profile.adapterId)) throw new ApiHttpError(400, "VALIDATION_FAILED", "Provider protocol does not match the selected CLI profile.", { field: "providerId" });
+        }
+        const modelRouteId = body.modelRouteId === undefined ? undefined : requireBoundRoute(body.modelRouteId);
         const launchConfig = normalizeLaunchConfig(body.launchConfig);
         const requestedMode = body.interactionMode === undefined ? "chat" : body.interactionMode;
         if (requestedMode !== "chat" && requestedMode !== "terminal") throw new ApiHttpError(400, "VALIDATION_FAILED", "interactionMode must be \"chat\" or \"terminal\".", { field: "interactionMode" });
@@ -933,6 +1549,8 @@ export async function createApplication(dependencies: ApplicationDependencies): 
         const session: SessionV3 = {
           id: dependencies.idGenerator.create("session"), name: requireResourceName(body.name, "name"), workspaceId, profileId, interactionMode,
           runtimeStatus: "stopped", organizationStatus: "active", pinned: false, manualOrder: nextManualOrder(), launchConfig,
+          ...(providerId ? { providerId } : {}),
+          ...(modelRouteId ? { modelRouteId } : {}),
           backendId: dependencies.agentBackends?.forProfile(profile).id ?? backendIdForAdapter(profile.adapterId),
           backendSessionRef: {
             backendId: dependencies.agentBackends?.forProfile(profile).id ?? backendIdForAdapter(profile.adapterId),
@@ -984,6 +1602,9 @@ export async function createApplication(dependencies: ApplicationDependencies): 
           if (!capabilities.models.some((item) => item.id === activeModel)) throw new ApiHttpError(400, "CLI_OPTION_UNSUPPORTED", "The selected CLI option is not supported.", { option: activeModel });
           session.chatContext = { ...session.chatContext, activeModel };
         }
+        if (body.modelRouteId !== undefined) {
+          session.modelRouteId = body.modelRouteId === null ? undefined : requireBoundRoute(body.modelRouteId);
+        }
         session.revision += 1;
         await dependencies.stateRepository.save(state);
         publishSessionUpdate(session);
@@ -996,6 +1617,7 @@ export async function createApplication(dependencies: ApplicationDependencies): 
         await stopSession(id);
         state.sessions = state.sessions.filter((candidate) => candidate.id !== id);
         await dependencies.transcriptRepository.delete(id);
+        await executionRepository?.delete(id);
         await dependencies.stateRepository.save(state);
         sendJson(response, 204, null);
         return;
@@ -1071,10 +1693,26 @@ export async function createApplication(dependencies: ApplicationDependencies): 
             sendJson(response, 202, { event: existing, runtimeStatus: session.runtimeStatus, duplicate: true, ...duplicateTurn });
             return;
           }
+          const requestedOverride = body.routeOverride;
+          const fixedDeploymentId = requestedOverride === undefined
+            ? undefined
+            : requestedOverride && typeof requestedOverride === "object" && typeof requestedOverride.fixedDeploymentId === "string" && requestedOverride.fixedDeploymentId.trim()
+              ? requestedOverride.fixedDeploymentId
+              : (() => { throw new ApiHttpError(400, "MODEL_ROUTE_INVALID", "routeOverride.fixedDeploymentId is required.", { field: "routeOverride.fixedDeploymentId" }); })();
+          const { resolved: resolvedRoute, deployment } = await routeForSession(session, fixedDeploymentId);
           if (session.organizationStatus !== "active") throw new ApiHttpError(409, "SESSION_NOT_ACTIVE", "Session must be active before messages can be sent.");
           if (session.runtimeStatus !== "running") {
             if (body.startIfStopped !== true) throw new ApiHttpError(409, "SESSION_NOT_ACTIVE", "Session is not running.");
-            await startSession(id, body.confirmedStart === true);
+            await startSession(id, body.confirmedStart === true, 100, 30, fixedDeploymentId);
+          }
+          if (session.interactionMode === "chat" && resolvedRoute.kind === "route" && executionRepository && routeExecutionCoordinator) {
+            const event = await appendEvent(session, { occurredAt: dependencies.clock.now(), kind: "user_message", source: "composer", raw: content, clientMessageId });
+            if (!event) throw new ApiHttpError(500, "TRANSCRIPT_WRITE_FAILED", "Message could not be recorded.");
+            const routed = await startRoutedExecution(session, content, clientMessageId, event, resolvedRoute);
+            session.lastActiveAt = dependencies.clock.now();
+            await dependencies.stateRepository.save(state);
+            sendJson(response, 202, { event, runtimeStatus: session.runtimeStatus, duplicate: false, turnId: routed?.task.turnId, taskId: routed?.task.id, attemptId: routed?.primaryAttempt.id, resolvedDeployment: routed?.resolvedDeployment });
+            return;
           }
           // interactionMode 分流（api-spec §2.2）：chat → submitTurn；terminal → 现状 PTY write 不变
           if (session.interactionMode === "chat") {
@@ -1082,6 +1720,8 @@ export async function createApplication(dependencies: ApplicationDependencies): 
             const profile = state.profiles.find((item) => item.id === session.profileId);
             if (!workspace || !profile) throw new ApiHttpError(400, "VALIDATION_FAILED", "Session references a missing workspace or profile.");
             const turnId = dependencies.idGenerator.create("turn");
+            const provider = await providerLaunchFor(deployment?.providerId ?? session.providerId, profile);
+            const effectiveModel = deployment?.modelId ?? normalizeOption(session.chatContext?.activeModel ?? session.launchConfig.model) ?? undefined;
             if (dependencies.agentBackends) {
               const backend = dependencies.agentBackends.forProfile(profile);
               const backendSession = await backend.openSession({
@@ -1100,9 +1740,11 @@ export async function createApplication(dependencies: ApplicationDependencies): 
                 turnId,
                 prompt: content,
                 clientMessageId,
-                ...(normalizeOption(session.chatContext?.activeModel ?? session.launchConfig.model) ? { model: normalizeOption(session.chatContext?.activeModel ?? session.launchConfig.model)! } : {}),
+                ...(effectiveModel ? { model: effectiveModel } : {}),
                 ...(normalizeOption(session.launchConfig.permission) ? { permission: normalizeOption(session.launchConfig.permission)! } : {}),
-                ...(normalizeOption(session.launchConfig.mode) ? { mode: normalizeOption(session.launchConfig.mode)! } : {})
+                ...(normalizeOption(session.launchConfig.mode) ? { mode: normalizeOption(session.launchConfig.mode)! } : {}),
+                ...(Object.keys(provider.env).length ? { launchEnv: provider.env } : {}),
+                ...(provider.args.length ? { launchArgs: provider.args } : {})
               };
               const { event } = await orchestrator.submitTurn(id, {
                 turnId,
@@ -1112,7 +1754,7 @@ export async function createApplication(dependencies: ApplicationDependencies): 
               });
               session.lastActiveAt = dependencies.clock.now();
               await dependencies.stateRepository.save(state);
-              sendJson(response, 202, { event, runtimeStatus: session.runtimeStatus, duplicate: false, turnId });
+              sendJson(response, 202, { event, runtimeStatus: session.runtimeStatus, duplicate: false, turnId, ...(deployment ? { resolvedDeployment: { id: deployment.id, name: deployment.name, modelId: deployment.modelId } } : {}) });
               return;
             }
             const registry = dependencies.profileAdapters;
@@ -1124,15 +1766,15 @@ export async function createApplication(dependencies: ApplicationDependencies): 
               : {};
             // codex 常驻运行时注入（streaming-spec §3.5）：选项翻译与 argv 路径同源（default → 省略）
             const persistentRuntime = dependencies.persistentChatRuntime;
-            const persistentWiring = persistentRuntime && profile.adapterId === "codex" && capabilities.supportsHeadlessTurns
+            const persistentWiring = persistentRuntime && profile.adapterId === "codex" && capabilities.supportsHeadlessTurns && provider.args.length === 0
               ? {
                   runPersistent: (handlers: PersistentTurnHandlers) => persistentRuntime.runTurn(id, {
                     turnId,
                     prompt: content,
                     cwd: workspace.path,
-                    env: definedEnvironment(dependencies.policy.processEnvironment),
+                    env: { ...definedEnvironment(dependencies.policy.processEnvironment), ...provider.env },
                     command: profile.command,
-                    model: normalizeOption(session.chatContext?.activeModel ?? session.launchConfig.model),
+                    model: effectiveModel ?? null,
                     sandboxMode: normalizeOption(session.launchConfig.mode),
                     approvalPolicy: normalizeOption(session.launchConfig.permission),
                     resumeToken: session.chatContext?.resumeToken
@@ -1152,16 +1794,16 @@ export async function createApplication(dependencies: ApplicationDependencies): 
                   prompt: content,
                   permission: session.launchConfig.permission,
                   mode: session.launchConfig.mode,
-                  model: session.chatContext?.activeModel ?? session.launchConfig.model,
+                  model: effectiveModel ?? null,
                   resumeToken: session.chatContext?.resumeToken
                 });
-                return { command: spec.command, args: spec.args, cwd: workspace.path, env: { ...definedEnvironment(dependencies.policy.processEnvironment), ...spec.env } };
+                return { command: spec.command, args: [...spec.args, ...provider.args], cwd: workspace.path, env: { ...definedEnvironment(dependencies.policy.processEnvironment), ...provider.env, ...spec.env } };
               },
               parseOutput: (stdout, hooks) => registry.parseEvents!(profile, stdout, { turnId }, hooks)
             });
             session.lastActiveAt = dependencies.clock.now();
             await dependencies.stateRepository.save(state);
-            sendJson(response, 202, { event, runtimeStatus: session.runtimeStatus, duplicate: false, turnId });
+            sendJson(response, 202, { event, runtimeStatus: session.runtimeStatus, duplicate: false, turnId, ...(deployment ? { resolvedDeployment: { id: deployment.id, name: deployment.name, modelId: deployment.modelId } } : {}) });
             return;
           }
           const event = await appendEvent(session, { occurredAt: dependencies.clock.now(), kind: "user_message", source: "composer", raw: content, clientMessageId });
@@ -1288,6 +1930,9 @@ export async function createApplication(dependencies: ApplicationDependencies): 
       }
       orchestrator.attachTerminalClient(sessionId, client);
       client.send(JSON.stringify({ type: "runtime-status", status: getSession(sessionId)?.runtimeStatus ?? "stopped" }));
+      // 终端回放：客户端重连（session 切换）时发送缓冲的 PTY 输出，避免黑屏
+      const replay = orchestrator.getTerminalReplay(sessionId);
+      if (replay) client.send(JSON.stringify({ type: "terminal-output", data: replay }));
       client.on("message", (raw) => {
         try {
           const message = JSON.parse(raw.toString()) as { type: string; data?: string; cols?: number; rows?: number };
@@ -1336,7 +1981,7 @@ export async function createApplication(dependencies: ApplicationDependencies): 
         const failures: unknown[] = [];
         const shutdown = await Promise.allSettled([dependencies.ptyRuntime.shutdown(), changed && !dependencies.policy.readonly ? dependencies.stateRepository.save(state) : Promise.resolve()]);
         for (const result of shutdown) if (result.status === "rejected") failures.push(result.reason);
-        const drains = await Promise.allSettled([dependencies.stateRepository.drain(), dependencies.transcriptRepository.drain()]);
+        const drains = await Promise.allSettled([dependencies.stateRepository.drain(), dependencies.transcriptRepository.drain(), executionRepository?.drain() ?? Promise.resolve()]);
         for (const result of drains) if (result.status === "rejected") failures.push(result.reason);
         if (failures.length) throw new AggregateError(failures, "Application shutdown failed");
       })();
@@ -1358,9 +2003,43 @@ async function serveStatic(dependencies: ApplicationDependencies, response: http
   response.end(content);
 }
 
+function executionErrorToApi(error: unknown): ApiHttpError {
+  if (error instanceof RouteExecutionError) {
+    const status = error.code === "EXECUTION_NOT_FOUND" ? 404 : error.code === "TASK_REVISION_CONFLICT" ? 409 : 400;
+    return new ApiHttpError(status, error.code, error.message);
+  }
+  return error instanceof ApiHttpError ? error : new ApiHttpError(500, "INTERNAL_ERROR", "Execution operation failed.", undefined, { cause: error });
+}
+
 function isKnownApiRoute(method: string, resource: string | undefined, id: string | undefined, action: string | undefined, segments: string[]) {
   if (method === "GET" && resource === "state" && !id) return true;
   if (method === "GET" && resource === "engines" && id === "readiness" && !action) return true;
+  if (resource === "providers") {
+    if (method === "GET" && !id) return true;
+    if (method === "POST" && !id) return true;
+    if (id && action === "credential" && (method === "PUT" || method === "DELETE")) return true;
+    if (id && !action && (method === "PATCH" || method === "DELETE")) return true;
+    return false;
+  }
+  if (resource === "model-deployments") {
+    if (method === "GET" && (!id || Boolean(id) && !action)) return true;
+    if (method === "POST" && !id) return true;
+    if (id && !action && (method === "PATCH" || method === "DELETE")) return true;
+    return false;
+  }
+  if (resource === "model-routes") {
+    if (method === "GET" && (!id || Boolean(id) && !action)) return true;
+    if (method === "POST" && !id) return true;
+    if (method === "POST" && id && action === "resolve" && !segments[3]) return true;
+    if (id && !action && (method === "PATCH" || method === "DELETE")) return true;
+    return false;
+  }
+  if (resource === "model-routing") return method === "PUT" && id === "global" && !action;
+  if (resource === "execution-tasks") {
+    if (method === "GET" && id && !action) return true;
+    if (method === "POST" && id && ["confirm-retry", "cancel"].includes(action ?? "") && !segments[3]) return true;
+    return false;
+  }
   if (resource === "workspaces") {
     if (method === "POST" && ((id === "pick" && !action) || (!id && action === "pick"))) return true;
     if (method === "GET" && id && ["files", "preview", "languages"].includes(action ?? "")) return true;
@@ -1381,6 +2060,8 @@ function isKnownApiRoute(method: string, resource: string | undefined, id: strin
   if (method === "POST" && !id && !action) return true;
   if (!id) return false;
   if (method === "GET" && action === "transcript") return true;
+  if (method === "GET" && action === "execution-tasks" && !segments[3]) return true;
+  if (method === "POST" && action === "model-route" && segments[3] === "resolve" && !segments[4]) return true;
   if (method === "POST" && action === "turns" && segments[3] === "cancel") return true;
   if (method === "POST" && action === "approvals" && Boolean(segments[3])) return true;
   if (method === "PATCH" || method === "DELETE") return !action;

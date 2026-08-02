@@ -1,0 +1,50 @@
+{
+  "standardVersion": "specos-test-standard/v1",
+  "qualityProfile": "backend-api",
+  "riskTier": "P0",
+  "specId": "CLI-GUI-028",
+  "specVersion": "1.0",
+  "testSpecPath": ".features/CLI-GUI-028-secret-store-provider-connections/test-spec.md",
+  "testSpecId": "CLI-GUI-028.test-spec",
+  "testSpecVersion": "1.0",
+  "testSpecHash": "24a8db58286f5b2b065baa5b7c65181fbe2f0b72dcb32bc2b3bd1b9f0c9b115e",
+  "testSpecStatus": "approved",
+  "testSpecApprovalEvidence": "local-independent-test-spec-review-2026-08-02",
+  "sourceFeatureSpecHash": "6994d607565193b3799e9436990d4ff146921406bc73a0ecb36c70595fe06818",
+  "changeId": "CLI-GUI-028",
+  "featureName": "Secret Store and Provider Connections",
+  "source": "accepted-spec",
+  "flows": [
+    {
+      "name": "Secret reference lifecycle",
+      "stages": [
+        { "name": "Reference management", "scenarioNames": ["CLI-GUI-028 happy", "CLI-GUI-028 limit", "CLI-GUI-028 error", "CLI-GUI-028 flow"], "stepNames": ["Put, resolve, status, replace, and remove a secret reference"] },
+        { "name": "Launch safety", "scenarioNames": ["CLI-GUI-028 security", "CLI-GUI-028 concurrency"], "stepNames": ["Resolve only at the spawn boundary"] }
+      ]
+    }
+  ],
+  "endpoints": [
+    { "name": "Set provider credential", "method": "PUT", "path": "/api/providers/:id/credential", "priority": "P0", "branches": ["happy", "limit", "error", "flow"], "preconditions": ["Provider exists", "Secret store is available"], "expectedResults": ["Only status is returned", "Secret value is not persisted or logged"], "relatedRule": "secret-store.write-only" },
+    { "name": "Delete provider credential", "method": "DELETE", "path": "/api/providers/:id/credential", "priority": "P0", "branches": ["happy", "limit", "error", "flow"], "preconditions": ["Provider exists"], "expectedResults": ["Keychain reference is removed", "Environment references remain read-only"], "relatedRule": "secret-store.env-read-only" }
+  ],
+  "scenarios": [
+    { "name": "CLI-GUI-028 happy", "priority": "P0", "branches": ["happy", "flow"], "preconditions": ["A test SecretStore is available"], "expectedResults": ["Credential lifecycle and all launch paths share one resolver"], "steps": ["Put a secret", "Resolve at launch", "Remove the reference"] },
+    { "name": "CLI-GUI-028 limit", "priority": "P0", "branches": ["limit"], "preconditions": ["Environment or unavailable-store reference is selected"], "expectedResults": ["Writes are rejected and prior references remain intact"], "steps": ["Attempt replacement", "Inspect state"] },
+    { "name": "CLI-GUI-028 error", "priority": "P0", "branches": ["error"], "preconditions": ["SecretStore operation fails"], "expectedResults": ["Stable error is returned without spawning"], "steps": ["Inject store failure", "Attempt launch"] },
+    { "name": "CLI-GUI-028 security", "priority": "P0", "branches": ["error"], "preconditions": ["Unique canary secret exists"], "expectedResults": ["Zero canary hits across all serialized surfaces"], "steps": ["Run API and launch paths", "Scan output surfaces"] },
+    { "name": "CLI-GUI-028 concurrency", "priority": "P0", "branches": ["flow"], "preconditions": ["Concurrent replacement and deletion are requested"], "expectedResults": ["One serialized final reference is authoritative"], "steps": ["Run concurrent mutations", "Inspect final state"] }
+  ],
+  "standardRequirements": [
+    { "id": "std.p0.api.secret-store", "layer": "api", "appliesTo": ["PUT /api/providers/:id/credential", "DELETE /api/providers/:id/credential"], "requiredFor": ["P0"], "ownerAgent": "test-editor", "requiredEvidence": ["trace"], "gateImpact": "blocking" },
+    { "id": "std.p0.migration.secret-ref", "layer": "migration", "appliesTo": ["CLI-GUI-028 limit"], "requiredFor": ["P0"], "ownerAgent": "specialized-check-agent", "requiredEvidence": ["raw-report"], "gateImpact": "blocking" },
+    { "id": "std.p0.security.secret-canary", "layer": "security", "appliesTo": ["CLI-GUI-028 security"], "requiredFor": ["P0"], "ownerAgent": "test-editor", "requiredEvidence": ["raw-report"], "gateImpact": "blocking" },
+    { "id": "std.p0.concurrency.secret-mutation", "layer": "concurrency", "appliesTo": ["CLI-GUI-028 concurrency"], "requiredFor": ["P0"], "ownerAgent": "concurrency-test-agent", "requiredEvidence": ["trace"], "gateImpact": "blocking" }
+  ],
+  "releaseGates": [
+    { "id": "cli-gui-028-verification", "type": "change-verification", "requiredTestTypes": ["api", "migration", "security", "concurrency"], "blocking": true, "evidenceRequired": ["trace"] },
+    { "id": "cli-gui-028-platform-warning", "type": "release", "requiredTestTypes": ["specialized"], "blocking": false, "evidenceRequired": ["raw-report"] }
+  ],
+  "flakePolicy": { "allowedRetries": 1, "quarantineAllowed": false, "classificationRequired": true },
+  "dataPolicy": { "externalDependencyMode": "mocked", "piiAllowed": false, "secretsAllowed": false },
+  "securityPolicy": { "baseline": "owasp-api-top-10-2023", "requiredChecks": ["credential-canary-zero-hit", "no-file-secret-fallback", "pre-spawn-secret-resolution"] }
+}

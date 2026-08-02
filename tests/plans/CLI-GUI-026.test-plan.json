@@ -1,0 +1,47 @@
+{
+  "standardVersion": "specos-test-standard/v1",
+  "qualityProfile": "backend-api",
+  "riskTier": "P1",
+  "specId": "CLI-GUI-026",
+  "specVersion": "1.0",
+  "testSpecPath": ".features/CLI-GUI-026-model-auto-sync/test-spec.md",
+  "testSpecId": "CLI-GUI-026.test-spec",
+  "testSpecVersion": "1.0",
+  "testSpecHash": "2ea9d97dff4b9f9b5192acdc03ae42c6d96d9e9ee9dd298d0b229ec8136d4c71",
+  "testSpecStatus": "approved",
+  "testSpecApprovalEvidence": "local-independent-test-spec-review-2026-08-02",
+  "sourceFeatureSpecHash": "d45200a8455c2cce0da5e48b4f56e1ebcb7fc508b9d708ff34257c74fe03a4e9",
+  "changeId": "CLI-GUI-026",
+  "featureName": "Model Auto-Sync",
+  "source": "accepted-spec",
+  "flows": [
+    {
+      "name": "Automatic model sync",
+      "stages": [
+        { "name": "Capability probe", "scenarioNames": ["CLI-GUI-026 happy", "CLI-GUI-026 limit", "CLI-GUI-026 error", "CLI-GUI-026 flow"], "stepNames": ["Resolve profile capabilities"] },
+        { "name": "Persist model cache", "scenarioNames": ["CLI-GUI-026 happy", "CLI-GUI-026 error"], "stepNames": ["Read configured models and preserve prior cache on failure"] }
+      ]
+    }
+  ],
+  "endpoints": [
+    { "name": "Resolve profile capabilities", "method": "GET", "path": "/api/profiles/:id/capabilities", "priority": "P1", "branches": ["happy", "limit", "error", "flow"], "preconditions": ["Profile exists"], "expectedResults": ["Configured models are merged", "TTL suppresses duplicate reads", "Read failure preserves the prior cache"], "relatedRule": "model-sync.auto-read-only" },
+    { "name": "Manual model sync", "method": "POST", "path": "/api/profiles/:id/models/sync", "priority": "P1", "branches": ["happy", "limit", "error", "flow"], "preconditions": ["Profile exists"], "expectedResults": ["Manual sync bypasses the automatic TTL"], "relatedRule": "model-sync.manual-overrides-ttl" }
+  ],
+  "scenarios": [
+    { "name": "CLI-GUI-026 happy", "priority": "P1", "branches": ["happy", "flow"], "preconditions": ["Valid Codex/Claude configuration exists"], "expectedResults": ["Models are parsed and persisted"], "steps": ["Probe capabilities", "Inspect merged models"] },
+    { "name": "CLI-GUI-026 limit", "priority": "P1", "branches": ["limit"], "preconditions": ["The same profile is probed inside the TTL"], "expectedResults": ["At most one read occurs"], "steps": ["Probe twice", "Count reads"] },
+    { "name": "CLI-GUI-026 error", "priority": "P1", "branches": ["error"], "preconditions": ["Configuration is missing or malformed"], "expectedResults": ["Capability resolution remains available and prior models remain"], "steps": ["Probe with a failing reader", "Inspect state and feedback"] },
+    { "name": "CLI-GUI-026 flow", "priority": "P1", "branches": ["flow"], "preconditions": ["A profile is selected"], "expectedResults": ["Default ordering and provider ownership remain stable"], "steps": ["Resolve capabilities", "Merge builtin, synced, and custom models"] }
+  ],
+  "standardRequirements": [
+    { "id": "std.p1.unit.model-sync", "layer": "unit", "appliesTo": ["Resolve profile capabilities"], "requiredFor": ["P1"], "ownerAgent": "unit-test-agent", "requiredEvidence": ["trace"], "gateImpact": "blocking" },
+    { "id": "std.p1.api.model-sync", "layer": "api", "appliesTo": ["GET /api/profiles/:id/capabilities", "POST /api/profiles/:id/models/sync"], "requiredFor": ["P1"], "ownerAgent": "test-editor", "requiredEvidence": ["trace"], "gateImpact": "blocking" },
+    { "id": "std.p1.security.read-only-sync", "layer": "security", "appliesTo": ["Resolve profile capabilities"], "requiredFor": ["P1"], "ownerAgent": "test-editor", "requiredEvidence": ["raw-report"], "gateImpact": "blocking" }
+  ],
+  "releaseGates": [
+    { "id": "cli-gui-026-verification", "type": "change-verification", "requiredTestTypes": ["unit", "api", "security"], "blocking": true, "evidenceRequired": ["trace"] }
+  ],
+  "flakePolicy": { "allowedRetries": 1, "quarantineAllowed": false, "classificationRequired": true },
+  "dataPolicy": { "externalDependencyMode": "mocked", "piiAllowed": false, "secretsAllowed": false },
+  "securityPolicy": { "baseline": "owasp-api-top-10-2023", "requiredChecks": ["read-only-config-access", "no-secret-logging"] }
+}

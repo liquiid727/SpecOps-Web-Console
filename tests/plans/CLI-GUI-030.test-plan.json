@@ -1,0 +1,48 @@
+{
+  "standardVersion": "specos-test-standard/v1",
+  "qualityProfile": "backend-api",
+  "riskTier": "P0",
+  "specId": "CLI-GUI-030",
+  "specVersion": "1.0",
+  "testSpecPath": ".features/CLI-GUI-030-priority-model-routes/test-spec.md",
+  "testSpecId": "CLI-GUI-030.test-spec",
+  "testSpecVersion": "1.0",
+  "testSpecHash": "d303e095d87fbfa440676c1724eae988ea69cc0c8742e3d341472d8138c873be",
+  "testSpecStatus": "approved",
+  "testSpecApprovalEvidence": "local-independent-test-spec-review-2026-08-02",
+  "sourceFeatureSpecHash": "af25bd7d1a78990e88c9ef473aacbda6d9fe5465112412f502e7f68aba715c3e",
+  "changeId": "CLI-GUI-030",
+  "featureName": "Priority Model Routes and Configuration Resolution",
+  "source": "accepted-spec",
+  "flows": [
+    {
+      "name": "Route resolution",
+      "stages": [
+        { "name": "Precedence resolution", "scenarioNames": ["CLI-GUI-030 happy", "CLI-GUI-030 limit", "CLI-GUI-030 error", "CLI-GUI-030 flow"], "stepNames": ["Resolve the highest-priority active route"] },
+        { "name": "Fixed target preflight", "scenarioNames": ["CLI-GUI-030 happy", "CLI-GUI-030 error"], "stepNames": ["Reject unavailable fixed targets before send"] }
+      ]
+    }
+  ],
+  "endpoints": [
+    { "name": "Resolve model route", "method": "POST", "path": "/api/model-routes/:id/resolve", "priority": "P0", "branches": ["happy", "limit", "error", "flow"], "preconditions": ["Workspace and profile exist"], "expectedResults": ["Precedence and exclusions are returned", "Fixed unavailable target blocks without silent replacement"], "relatedRule": "route.resolve-precedence" },
+    { "name": "Model route CRUD", "method": "POST", "path": "/api/model-routes", "priority": "P0", "branches": ["happy", "limit", "error", "flow"], "preconditions": ["Candidate ids are unique"], "expectedResults": ["Candidate order and max eight limit are enforced"], "relatedRule": "route.ordered-candidates" }
+  ],
+  "scenarios": [
+    { "name": "CLI-GUI-030 happy", "priority": "P0", "branches": ["happy", "flow"], "preconditions": ["Multiple active route layers exist"], "expectedResults": ["Session/run precedence and source trace are deterministic"], "steps": ["Resolve route", "Inspect selected candidate and source"] },
+    { "name": "CLI-GUI-030 limit", "priority": "P0", "branches": ["limit"], "preconditions": ["Route has eight or more candidates"], "expectedResults": ["Order remains stable and only eight candidates are accepted"], "steps": ["Submit candidate boundary", "Inspect route"] },
+    { "name": "CLI-GUI-030 error", "priority": "P0", "branches": ["error"], "preconditions": ["Fixed target is disabled, missing, incompatible, or not a member"], "expectedResults": ["Preflight blocks send with an exclusion reason"], "steps": ["Resolve fixed target", "Inspect error chain"] },
+    { "name": "CLI-GUI-030 migration", "priority": "P0", "branches": ["error"], "preconditions": ["Schema v7 state is loaded"], "expectedResults": ["Schema v8 defaults and backup behavior are safe"], "steps": ["Load legacy state", "Inspect route state"] }
+  ],
+  "standardRequirements": [
+    { "id": "std.p0.unit.route-resolver", "layer": "unit", "appliesTo": ["Resolve model route"], "requiredFor": ["P0"], "ownerAgent": "unit-test-agent", "requiredEvidence": ["trace"], "gateImpact": "blocking" },
+    { "id": "std.p0.api.route-contract", "layer": "api", "appliesTo": ["POST /api/model-routes/:id/resolve", "POST /api/model-routes"], "requiredFor": ["P0"], "ownerAgent": "test-editor", "requiredEvidence": ["trace"], "gateImpact": "blocking" },
+    { "id": "std.p0.migration.route-schema", "layer": "migration", "appliesTo": ["CLI-GUI-030 migration"], "requiredFor": ["P0"], "ownerAgent": "specialized-check-agent", "requiredEvidence": ["raw-report"], "gateImpact": "blocking" },
+    { "id": "std.p0.compatibility.route-legacy", "layer": "compatibility", "appliesTo": ["CLI-GUI-030 happy"], "requiredFor": ["P0"], "ownerAgent": "specialized-check-agent", "requiredEvidence": ["trace"], "gateImpact": "blocking" }
+  ],
+  "releaseGates": [
+    { "id": "cli-gui-030-verification", "type": "change-verification", "requiredTestTypes": ["unit", "api", "migration", "compatibility"], "blocking": true, "evidenceRequired": ["trace"] }
+  ],
+  "flakePolicy": { "allowedRetries": 1, "quarantineAllowed": false, "classificationRequired": true },
+  "dataPolicy": { "externalDependencyMode": "mocked", "piiAllowed": false, "secretsAllowed": false },
+  "securityPolicy": { "baseline": "owasp-api-top-10-2023", "requiredChecks": ["fixed-target-no-fallback", "redacted-exclusion-reasons", "one-shot-override-isolation"] }
+}

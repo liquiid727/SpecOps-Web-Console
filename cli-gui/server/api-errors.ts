@@ -2,6 +2,7 @@ import type http from "node:http";
 import type { ApiErrorCode, ApiErrorResponse } from "../shared/api.js";
 import { TranscriptRepositoryError } from "./transcript-store.js";
 import { GitInspectorError } from "./ports.js";
+import { ExecutionRepositoryError } from "./execution-store.js";
 
 export class ApiHttpError extends Error {
   constructor(
@@ -51,6 +52,14 @@ export function toApiError(error: unknown, requestId: string): { status: number;
     return {
       status: error.code === "NOT_A_GIT_REPOSITORY" ? 409 : error.code === "GIT_TIMEOUT" ? 504 : 503,
       response: { error: { code: error.code, message: error.message, requestId } },
+      cause: error.cause ?? error
+    };
+  }
+  if (error instanceof ExecutionRepositoryError) {
+    const code = error.code === "EXECUTION_REVISION_CONFLICT" ? "TASK_REVISION_CONFLICT" : error.code === "EXECUTION_INVALID_TRANSITION" ? "VALIDATION_FAILED" : error.code;
+    return {
+      status: error.code === "EXECUTION_NOT_FOUND" ? 404 : error.code === "READONLY_MODE" ? 403 : error.code === "EXECUTION_REVISION_CONFLICT" ? 409 : 500,
+      response: { error: { code, message: error.message, requestId } },
       cause: error.cause ?? error
     };
   }

@@ -7,6 +7,7 @@ import pty from "node-pty";
 import { GitInspectorError, type ApplicationDependencies, type Clock, type GitInspector, type Logger, type PtyProcess, type PtyRuntime } from "./ports.js";
 import type { GitDiffResponse, GitFileStatus, GitStatusResponse } from "../shared/types.js";
 import { createJsonStateRepository } from "./store.js";
+import { createJsonExecutionRepository } from "./execution-store.js";
 import { createJsonTranscriptRepository } from "./transcript-store.js";
 import { createProfileAdapterRegistry } from "./profile-adapters.js";
 import { createCodexMcpRuntime } from "./codex-mcp-runtime.js";
@@ -26,6 +27,7 @@ export function createProductionDependencies(options: {
   return {
     stateRepository: createJsonStateRepository({ dataDirectory: options.dataDirectory, clock, readonly: options.readonly }),
     transcriptRepository: createJsonTranscriptRepository({ dataDirectory: options.dataDirectory, readonly: options.readonly }),
+    executionRepository: createJsonExecutionRepository({ dataDirectory: options.dataDirectory, clock, readonly: options.readonly }),
     ptyRuntime: createNodePtyRuntime(),
     filesystem: {
       stat: (target) => fs.stat(target),

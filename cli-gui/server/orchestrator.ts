@@ -3,7 +3,7 @@ import { WebSocket } from "ws";
 import { ApiHttpError } from "./api-errors.js";
 import { PersistentRuntimeUnavailableError } from "./ports.js";
 import type { Clock, Logger, OrchestratorCallbacks, PersistentTurnHandle, PreparedLaunch, PtyProcess, PtyRuntime, RuntimeOrchestrator, TurnInput, TurnParseResult } from "./ports.js";
-import type { AgentEvent, AgentTurnHandle, TranscriptEvent, TranscriptEventKind, TranscriptEventMetadataValue, TranscriptEventSource } from "../shared/types.js";
+import type { AgentEvent, AgentTurnHandle, AgentTurnResult, TranscriptEvent, TranscriptEventKind, TranscriptEventMetadataValue, TranscriptEventSource } from "../shared/types.js";
 
 export const MAX_TERMINAL_COLS = 500;
 export const MAX_TERMINAL_ROWS = 200;
@@ -12,6 +12,8 @@ const MAX_PTY_TRANSCRIPT_BYTES = 64 * 1024;
 const MAX_TERMINAL_BUFFERED_BYTES = 1 * 1024 * 1024;
 /** 崩溃诊断用：保留最近若干字符的 PTY 输出，作为进程异常退出时的错误信息（runtime-orchestrator-spec §5 失败透传） */
 const MAX_RECENT_OUTPUT_CHARS = 8_000;
+/** 终端回放缓冲：客户端重连（session 切换）时回放最近的 PTY 输出，避免黑屏 */
+const MAX_REPLAY_BUFFER_BYTES = 512 * 1024;
 const DEFAULT_TURN_TIMEOUT_MS = 600_000;
 const DEFAULT_APPROVAL_TIMEOUT_MS = 300_000;
 const DEFAULT_CANCEL_GRACE_MS = 2_000;
@@ -25,6 +27,8 @@ type TerminalWorker = {
   pendingTranscript: string;
   /** 最近 PTY 输出环形缓冲（崩溃诊断）；仅保留末尾，避免内存无限增长 */
   recentOutput: string;
+  /** 终端回放缓冲：客户端重连时回放，保留最近 MAX_REPLAY_BUFFER_BYTES 的输出 */
+  replayBuffer: string;
   terminatedByUs: boolean;
   transcriptTimer?: ReturnType<typeof setTimeout>;
   transcriptFlush: Promise<void>;
@@ -49,6 +53,7 @@ type ActiveTurn = {
   /** Adapter 声明的审批应答 stdin 格式；Orchestrator 不理解 CLI 语义 */
   approvalResponder?: (approvalId: string, decision: "allow" | "deny") => string;
   done: Promise<void>;
+  result?: AgentTurnResult;
 };
 
 /** chat Worker：轮次间空闲驻留，running ≠ 有子进程存活（runtime-orchestrator-spec §3） */
@@ -84,6 +89,7 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
   const approvalTimeoutMs = dependencies.approvalTimeoutMs ?? DEFAULT_APPROVAL_TIMEOUT_MS;
   const cancelGraceMs = dependencies.cancelGraceMs ?? DEFAULT_CANCEL_GRACE_MS;
   const workers = new Map<string, Worker>();
+  const completedTurns = new Map<string, Map<string, AgentTurnResult>>();
   const workerGenerations = new Map<string, number>();
   const startLocks = new Map<string, Promise<void>>();
   let closing = false;
@@ -93,6 +99,10 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
     worker.recentOutput += data;
     if (Buffer.byteLength(worker.recentOutput, "utf8") > MAX_RECENT_OUTPUT_CHARS) {
       worker.recentOutput = worker.recentOutput.slice(-MAX_RECENT_OUTPUT_CHARS);
+    }
+    worker.replayBuffer += data;
+    if (Buffer.byteLength(worker.replayBuffer, "utf8") > MAX_REPLAY_BUFFER_BYTES) {
+      worker.replayBuffer = worker.replayBuffer.slice(-MAX_REPLAY_BUFFER_BYTES);
     }
     if (Buffer.byteLength(worker.pendingTranscript, "utf8") >= MAX_PTY_TRANSCRIPT_BYTES) {
       if (worker.transcriptTimer !== undefined) clearTimeout(worker.transcriptTimer);
@@ -236,13 +246,21 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
     type TurnOutcome =
       | { status: "completed"; exitCode: number }
       | { status: "cancelled"; exitCode: number }
-      | { status: "failed"; code: "TURN_FAILED" | "TURN_TIMEOUT" | "TURN_SPAWN_FAILED"; message: string; exitCode: number };
+      | { status: "failed"; code: string; message: string; exitCode: number; metadata?: Record<string, TranscriptEventMetadataValue> };
     const finishTurn = async (outcome: TurnOutcome) => {
       if (turn.pendingApproval) { clearTimeout(turn.pendingApproval.timer); turn.pendingApproval = undefined; }
       if (turn.timeoutTimer !== undefined) clearTimeout(turn.timeoutTimer);
       if (turn.killTimer !== undefined) clearTimeout(turn.killTimer);
       turn.timeoutTimer = undefined;
       turn.killTimer = undefined;
+      turn.result = outcome.status === "completed"
+        ? { status: "completed" }
+        : outcome.status === "cancelled"
+          ? { status: "cancelled" }
+          : { status: "failed", error: { code: outcome.code, message: outcome.message } };
+      const completed = completedTurns.get(sessionId) ?? new Map<string, AgentTurnResult>();
+      completed.set(turn.turnId, turn.result);
+      completedTurns.set(sessionId, completed);
       if (worker.activeTurn === turn) worker.activeTurn = undefined;
       if (closing || !callbacks.hasSession(sessionId)) return;
       if (outcome.status === "completed") {
@@ -254,7 +272,7 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
         callbacks.onTurnStatus?.(sessionId, turn.turnId, "cancelled");
       } else {
         await callbacks.appendEvent(sessionId, { occurredAt: clock.now(), kind: "lifecycle", source: "session-manager", raw: "Turn failed.", metadata: { status: "turn-failed", turnId: turn.turnId, exitCode: outcome.exitCode } });
-        await callbacks.appendEvent(sessionId, { occurredAt: clock.now(), kind: "error", source: "session-manager", raw: outcome.message, metadata: { code: outcome.code, turnId: turn.turnId } });
+        await callbacks.appendEvent(sessionId, { occurredAt: clock.now(), kind: "error", source: "session-manager", raw: outcome.message, metadata: { ...outcome.metadata, code: outcome.code, turnId: turn.turnId } });
         callbacks.onTurnStatus?.(sessionId, turn.turnId, "failed");
       }
     };
@@ -308,9 +326,14 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
         const error = backendResult?.error;
         await finishTurn({
           status: "failed",
-          code: "TURN_FAILED",
+          code: error?.code ?? "TURN_FAILED",
           message: error?.message ?? (backendFailure instanceof Error ? backendFailure.message : backendFailure !== undefined ? String(backendFailure) : "Backend turn failed."),
-          exitCode: -1
+          exitCode: -1,
+          metadata: error ? {
+            ...(error.phase ? { phase: error.phase } : {}),
+            ...(error.fallbackAttempted !== undefined ? { fallbackAttempted: error.fallbackAttempted } : {}),
+            ...(error.fallbackCode ? { fallbackCode: error.fallbackCode } : {})
+          } : undefined
         });
         return;
       }
@@ -337,7 +360,7 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
         handle = input.runPersistent({
           async onEvent(event) {
             if (closing || turn.terminationReason !== undefined) return;
-            await callbacks.appendEvent(sessionId, { occurredAt: clock.now(), kind: event.kind, source: event.source, raw: event.raw, metadata: { ...event.metadata, turnId: turn.turnId } });
+            await callbacks.appendEvent(sessionId, { occurredAt: clock.now(), kind: event.kind, source: event.source, raw: event.raw, metadata: { ...event.metadata, turnId: turn.turnId }, component: event.component });
             callbacks.onActivity(sessionId);
           },
           onDelta(delta) {
@@ -430,7 +453,7 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
       while (!next.done) {
         if (!closing && turn.terminationReason === undefined) {
           const event = next.value;
-          await callbacks.appendEvent(sessionId, { occurredAt: clock.now(), kind: event.kind, source: event.source, raw: event.raw, metadata: { ...event.metadata, turnId: turn.turnId } });
+          await callbacks.appendEvent(sessionId, { occurredAt: clock.now(), kind: event.kind, source: event.source, raw: event.raw, metadata: { ...event.metadata, turnId: turn.turnId }, component: event.component });
           callbacks.onActivity(sessionId);
           // 审批挂起（§3.4）：仅当 Adapter 声明了应答通道才进入等待；无通道时事件照常透传、不挂起
           if (event.kind === "approval_request" && typeof event.metadata?.approvalId === "string" && input.buildApprovalResponse) {
@@ -493,7 +516,7 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
           });
           const generation = (workerGenerations.get(sessionId) ?? 0) + 1;
           workerGenerations.set(sessionId, generation);
-          const worker: TerminalWorker = { kind: "terminal", process, clients: new Set<WebSocket>(), generation, pendingTranscript: "", recentOutput: "", terminatedByUs: false, transcriptFlush: Promise.resolve() };
+          const worker: TerminalWorker = { kind: "terminal", process, clients: new Set<WebSocket>(), generation, pendingTranscript: "", recentOutput: "", replayBuffer: "", terminatedByUs: false, transcriptFlush: Promise.resolve() };
           workers.set(sessionId, worker);
           process.onData((data) => {
             const current = workers.get(sessionId);
@@ -565,7 +588,9 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
         await callbacks.onRuntimeStatus(sessionId, "running");
         await callbacks.appendEvent(sessionId, { occurredAt: clock.now(), kind: "lifecycle", source: "session-manager", raw: "Session running.", metadata: { status: "running" } });
       }
-      const event = await callbacks.appendEvent(sessionId, { occurredAt: clock.now(), kind: "user_message", source: "composer", raw: input.prompt, metadata: { turnId: input.turnId }, clientMessageId: input.clientMessageId });
+      const event = input.persistUserMessage === false
+        ? input.userMessageEvent
+        : await callbacks.appendEvent(sessionId, { occurredAt: clock.now(), kind: "user_message", source: "composer", raw: input.prompt, metadata: { turnId: input.turnId }, clientMessageId: input.clientMessageId });
       // 与 terminal messages 分支对齐：落盘失败则不启动轮次（单一事实源，回放可重建）
       if (!event) throw new ApiHttpError(500, "TRANSCRIPT_WRITE_FAILED", "Message could not be recorded.");
       const turn: ActiveTurn = { turnId: input.turnId, done: Promise.resolve() };
@@ -576,6 +601,15 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
         if (worker.activeTurn === turn) worker.activeTurn = undefined;
       });
       return { turnId: input.turnId, event };
+    },
+    async waitForTurn(sessionId: string, turnId: string) {
+      const worker = workers.get(sessionId);
+      const active = worker?.kind === "chat" && worker.activeTurn?.turnId === turnId ? worker.activeTurn : undefined;
+      if (active) await active.done;
+      const result = completedTurns.get(sessionId)?.get(turnId);
+      if (!result) throw new ApiHttpError(409, "TURN_NOT_ACTIVE", "The requested turn is not in progress.");
+      completedTurns.get(sessionId)?.delete(turnId);
+      return result;
     },
     async cancelTurn(sessionId: string, turnId: string): Promise<void> {
       const worker = workers.get(sessionId);
@@ -626,6 +660,11 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
       const worker = workers.get(sessionId);
       if (worker?.kind === "terminal") worker.clients.delete(client);
     },
+    getTerminalReplay(sessionId) {
+      const worker = workers.get(sessionId);
+      if (worker?.kind === "terminal" && worker.replayBuffer) return worker.replayBuffer;
+      return undefined;
+    },
     runningCount() {
       return workers.size;
     },
@@ -661,32 +700,33 @@ function toTranscriptEvent(event: AgentEvent, turnId: string): {
   source: TranscriptEventSource;
   raw: string;
   metadata?: Record<string, TranscriptEventMetadataValue>;
+  component?: AgentEvent["component"];
 } {
   const metadata = { ...event.metadata, turnId } as Record<string, TranscriptEventMetadataValue>;
   const raw = event.text ?? String(event.metadata?.vendorType ?? event.kind);
   switch (event.kind) {
     case "assistant_message":
-      return { occurredAt: event.occurredAt, kind: "assistant_message", source: "profile-adapter", raw, metadata };
+      return { occurredAt: event.occurredAt, kind: "assistant_message", source: "profile-adapter", raw, metadata, component: event.component };
     case "tool":
     case "command":
     case "progress":
     case "usage":
-      return { occurredAt: event.occurredAt, kind: "tool_activity", source: "profile-adapter", raw, metadata: { ...metadata, tool: String(event.metadata?.tool ?? event.metadata?.name ?? event.kind) } };
+      return { occurredAt: event.occurredAt, kind: "tool_activity", source: "profile-adapter", raw, metadata: { ...metadata, tool: String(event.metadata?.tool ?? event.metadata?.name ?? event.kind) }, component: event.component };
     case "file_change":
-      return { occurredAt: event.occurredAt, kind: "file_change", source: "profile-adapter", raw, metadata };
+      return { occurredAt: event.occurredAt, kind: "file_change", source: "profile-adapter", raw, metadata, component: event.component };
     case "approval_request":
-      return { occurredAt: event.occurredAt, kind: "approval_request", source: "profile-adapter", raw, metadata };
+      return { occurredAt: event.occurredAt, kind: "approval_request", source: "profile-adapter", raw, metadata, component: event.component };
     case "approval_result":
-      return { occurredAt: event.occurredAt, kind: "approval_response", source: "profile-adapter", raw, metadata };
+      return { occurredAt: event.occurredAt, kind: "approval_response", source: "profile-adapter", raw, metadata, component: event.component };
     case "error":
-      return { occurredAt: event.occurredAt, kind: "error", source: "profile-adapter", raw, metadata };
+      return { occurredAt: event.occurredAt, kind: "error", source: "profile-adapter", raw, metadata, component: event.component };
     case "completed":
     case "cancelled":
-      return { occurredAt: event.occurredAt, kind: "lifecycle", source: "profile-adapter", raw, metadata };
+      return { occurredAt: event.occurredAt, kind: "lifecycle", source: "profile-adapter", raw, metadata, component: event.component };
     case "diagnostic":
-      if (event.metadata?.compatibilityKind === "pty_output") return { occurredAt: event.occurredAt, kind: "pty_output", source: "pty", raw, metadata };
-      return { occurredAt: event.occurredAt, kind: "lifecycle", source: "profile-adapter", raw, metadata };
+      if (event.metadata?.compatibilityKind === "pty_output") return { occurredAt: event.occurredAt, kind: "pty_output", source: "pty", raw, metadata, component: event.component };
+      return { occurredAt: event.occurredAt, kind: "pty_output", source: "profile-adapter", raw, metadata, component: event.component ?? { type: "diagnostic", text: raw } };
     case "text_delta":
-      return { occurredAt: event.occurredAt, kind: "assistant_message", source: "profile-adapter", raw, metadata };
+      return { occurredAt: event.occurredAt, kind: "assistant_message", source: "profile-adapter", raw, metadata, component: event.component };
   }
 }

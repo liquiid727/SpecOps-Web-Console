@@ -1,12 +1,26 @@
 import type http from "node:http";
 import type { Readable } from "node:stream";
-import type { AgentTurnHandle, AppStateV3, CliProfileV3, CliProfileCapabilities, CapabilityDetectionResult, FilePreview, FileTreePage, GitDiffResponse, GitStatusResponse, LanguageSummaryResponse, SessionRuntimeStatus, TranscriptEvent, TranscriptEventKind, TranscriptEventMetadataValue, TranscriptEventSource, TranscriptPage, Workspace } from "../shared/types.js";
+import type { AgentTurnHandle, AppStateV3, CliProfileV3, CliProfileCapabilities, CapabilityDetectionResult, FilePreview, FileTreePage, GitDiffResponse, GitStatusResponse, LanguageSummaryResponse, SessionRuntimeStatus, TranscriptEvent, TranscriptEventKind, TranscriptEventMetadataValue, TranscriptEventSource, TranscriptPage, TranscriptStructuredComponent, Workspace } from "../shared/types.js";
 import type { WebSocket } from "ws";
 import type { AgentBackendRegistry } from "./agent-backends.js";
+import type { ExecutionAttempt, ExecutionRecord, ExecutionSnapshot, ExecutionTask, RoutingFailure, SideEffectObservation } from "../shared/execution-attempt.js";
+import type { SecretStore } from "../shared/model-provider.js";
 
 export interface StateRepository {
   load(): Promise<AppStateV3>;
   save(state: AppStateV3): Promise<void>;
+  drain(): Promise<void>;
+}
+
+export interface ExecutionRepository {
+  append(record: ExecutionRecord): Promise<void>;
+  createTask(task: ExecutionTask): Promise<void>;
+  createAttempt(attempt: ExecutionAttempt): Promise<void>;
+  transitionTask(taskId: string, expectedRevision: number, patch: { state: ExecutionTask["state"]; selectedAttemptId?: string; completedAt?: string; confirmationToken?: string; confirmationInputSha256?: string }, occurredAt: string): Promise<ExecutionTask>;
+  transitionAttempt(taskId: string, attemptId: string, expectedRevision: number, patch: { state: ExecutionAttempt["state"]; startedAt?: string; completedAt?: string; failure?: RoutingFailure; usage?: ExecutionAttempt["usage"]; latencyMs?: number; cost?: number; sideEffect?: SideEffectObservation }, occurredAt: string): Promise<ExecutionAttempt>;
+  list(sessionId: string, options?: { after?: string; limit?: number }): Promise<{ tasks: ExecutionSnapshot[]; nextAfter?: string }>;
+  get(taskId: string): Promise<ExecutionSnapshot | undefined>;
+  delete(sessionId: string): Promise<void>;
   drain(): Promise<void>;
 }
 
@@ -18,6 +32,7 @@ export interface TranscriptRepository {
     source: TranscriptEventSource;
     raw: string;
     metadata?: Record<string, TranscriptEventMetadataValue>;
+    component?: TranscriptStructuredComponent;
     clientMessageId?: string;
     sequenceOffset?: number;
     retentionFloorSequence?: number;
@@ -58,6 +73,7 @@ export interface AppendEventInput {
   source: TranscriptEventSource;
   raw: string;
   metadata?: Record<string, TranscriptEventMetadataValue>;
+  component?: TranscriptStructuredComponent;
   clientMessageId?: string;
 }
 
@@ -84,6 +100,9 @@ export interface TurnInput {
   turnId: string;
   prompt: string;
   clientMessageId?: string;
+  /** Application-owned user event for routed execution; prevents a fallback Attempt from duplicating it. */
+  userMessageEvent?: TranscriptEvent;
+  persistUserMessage?: boolean;
   model?: string;
   resumeToken?: string;
   /** CLI 语义注入（Adapter buildTurn 的应用侧包装）：Orchestrator 不理解任何 CLI 语义 */
@@ -153,6 +172,7 @@ export interface RuntimeOrchestrator {
   stop(sessionId: string): Promise<boolean>;
   /** 仅 chat 模式：提交一轮；违反互斥抛 TURN_IN_PROGRESS；返回已落盘的 user_message 事件（api-spec §2.2 响应需要） */
   submitTurn(sessionId: string, input: TurnInput): Promise<{ turnId: string; event: TranscriptEvent }>;
+  waitForTurn(sessionId: string, turnId: string): Promise<import("../shared/types.js").AgentTurnResult>;
   cancelTurn(sessionId: string, turnId: string): Promise<void>;
   respondApproval(sessionId: string, approvalId: string, decision: "allow" | "deny"): Promise<void>;
   isRunning(sessionId: string): boolean;
@@ -160,6 +180,8 @@ export interface RuntimeOrchestrator {
   resizeTerminal(sessionId: string, cols: unknown, rows: unknown): void;
   attachTerminalClient(sessionId: string, client: WebSocket): void;
   detachTerminalClient(sessionId: string, client: WebSocket): void;
+  /** 获取终端回放缓冲：客户端重连（session 切换）时回放，避免黑屏 */
+  getTerminalReplay(sessionId: string): string | undefined;
   runningCount(): number;
   /** 关停窗口内先行屏蔽 PTY 回调（现有 closing 语义保持） */
   beginShutdown(): void;
@@ -251,6 +273,8 @@ export interface ParsedTurnEvent {
   source: TranscriptEventSource;
   raw: string;
   metadata?: Record<string, string | number | boolean>;
+  component?: TranscriptStructuredComponent;
+  effect?: "none" | "read" | "write" | "external" | "unknown";
 }
 
 /** 轮次结束后由 Orchestrator 读取的解析结论 */
@@ -294,6 +318,10 @@ export interface ApplicationDependencies {
   profileAdapters: ProfileAdapterRegistry;
   /** MVP02 backend registry; legacy ProfileAdapterRegistry remains the turn translator during migration. */
   agentBackends?: AgentBackendRegistry;
+  /** Model routing persistence is optional during legacy runtime migration. */
+  executionRepository?: ExecutionRepository;
+  /** Secret resolution is server-only and never part of AppState or API summaries. */
+  secretStore?: SecretStore;
   /** 可选：terminal 原生 resume 的 token 归因发现（缺省扫描 CLI 本地会话目录；测试可注入假实现） */
   terminalResumeDiscovery?: (input: { adapterId: string; cwd: string; sinceMs: number; env?: Readonly<Record<string, string | undefined>> }) => Promise<string | undefined>;
   /** 可选：模型同步读取本机 CLI 配置（缺省读 ~/.codex/config.toml 与 ~/.claude/settings.json；测试可注入假实现，console-gaps SPEC §2.2） */

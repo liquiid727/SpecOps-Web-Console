@@ -1,6 +1,10 @@
 import type { CliProfileCapabilities, EngineReadiness, ProfileModelEntry } from "./capabilities.js";
 import type { Session, SessionActiveView, SessionLaunchConfig, SessionOrganizationStatus, SessionRuntimeStatus, Workspace } from "./state.js";
 import type { TranscriptEvent } from "./transcript.js";
+import type { ModelProviderConfig, ModelProviderSummary } from "./model-provider.js";
+import type { ModelDeploymentConfig, ModelDeploymentSummary } from "./model-deployment.js";
+import type { ExecutionSnapshot } from "./execution-attempt.js";
+import type { PriorityModelRoute, ResolvedRoute, RunRouteOverride } from "./model-route.js";
 
 export type ApiErrorCode =
   | "INVALID_JSON"
@@ -47,6 +51,35 @@ export type ApiErrorCode =
   | "ENHANCE_TIMEOUT"
   | "VIEW_UNSUPPORTED"
   | "ROUTE_NOT_FOUND"
+  | "PROVIDER_NOT_FOUND"
+  | "PROVIDER_CREDENTIAL_MISSING"
+  | "PROVIDER_SECRET_MISSING"
+  | "PROVIDER_ENDPOINT_INVALID"
+  | "PROVIDER_IN_USE"
+  | "SECRET_STORE_UNAVAILABLE"
+  | "SECRET_WRITE_FAILED"
+  | "SECRET_DELETE_FAILED"
+  | "MODEL_DEPLOYMENT_NOT_FOUND"
+  | "MODEL_DEPLOYMENT_DUPLICATE"
+  | "MODEL_DEPLOYMENT_IN_USE"
+  | "MODEL_DEPLOYMENT_INCOMPATIBLE"
+  | "MODEL_DEPLOYMENT_MODEL_UNKNOWN"
+  | "MODEL_DEPLOYMENT_CREDENTIAL_MISSING"
+  | "MODEL_DEPLOYMENT_ARCHIVED"
+  | "MODEL_ROUTE_NOT_FOUND"
+  | "MODEL_ROUTE_DUPLICATE"
+  | "MODEL_ROUTE_INVALID"
+  | "MODEL_ROUTE_IN_USE"
+  | "ROUTE_NO_CANDIDATE"
+  | "ROUTE_FIXED_DEPLOYMENT_UNAVAILABLE"
+  | "ROUTE_BINDING_INVALID"
+  | "ROUTE_UNSUPPORTED_ENGINE"
+  | "ROUTE_REPLAY_CONFIRMATION_REQUIRED"
+  | "ROUTE_FALLBACK_EXHAUSTED"
+  | "TASK_REVISION_CONFLICT"
+  | "TASK_CANCELLED"
+  | "EXECUTION_HISTORY_CORRUPT"
+  | "EXECUTION_NOT_FOUND"
   | "INTERNAL_ERROR";
 
 export interface ApiError {
@@ -68,6 +101,8 @@ export interface CreateSessionRequest {
   start: boolean;
   confirmed: boolean;
   terminal?: { cols: number; rows: number };
+  providerId?: string;
+  modelRouteId?: string;
 }
 
 export interface CreateSessionResponse {
@@ -85,6 +120,7 @@ export interface PatchSessionRequest {
   expectedRevision: number;
   name?: string;
   launchConfig?: Partial<SessionLaunchConfig>;
+  modelRouteId?: string | null;
 }
 
 export interface RuntimeAffectingActionRequest {
@@ -119,6 +155,7 @@ export interface SendMessageRequest {
   content: string;
   startIfStopped: boolean;
   confirmedStart: boolean;
+  routeOverride?: RunRouteOverride;
 }
 
 export interface SendMessageResponse {
@@ -127,7 +164,19 @@ export interface SendMessageResponse {
   duplicate: boolean;
   /** chat 分流响应携带本轮 turnId（api-spec §2.2）。 */
   turnId?: string;
+  taskId?: string;
+  attemptId?: string;
+  resolvedDeployment?: { id: string; name: string; modelId: string };
 }
+
+export interface ProviderListResponse { providers: ModelProviderSummary[]; }
+export interface ProviderMutationResponse { provider: ModelProviderSummary; providers?: ModelProviderSummary[]; }
+export interface ProviderCredentialResponse { providerId: string; credentialStatus: string; }
+export interface DeploymentListResponse { deployments: ModelDeploymentSummary[]; }
+export interface RouteListResponse { routes: PriorityModelRoute[]; }
+export interface RouteResolveResponse { resolvedRoute: ResolvedRoute; }
+export interface ExecutionTaskListResponse { tasks: ExecutionSnapshot[]; nextAfter?: string; }
+export interface ExecutionTaskResponse extends ExecutionSnapshot {}
 
 export interface PickWorkspaceRequest {
   intentToken: string;

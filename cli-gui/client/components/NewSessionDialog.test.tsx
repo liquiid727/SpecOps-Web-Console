@@ -27,15 +27,15 @@ describe("NewSessionDialog", () => {
     container.remove();
   });
 
-  it("defaults to chat mode when the engine supports structured turns", async () => {
+  it("defaults to terminal mode when the engine supports structured turns", async () => {
     const onCreate = vi.fn().mockResolvedValue(undefined);
     const loadCapabilities = vi.fn().mockResolvedValue(capabilitiesWith(true));
     await act(async () => root.render(<I18nProvider><NewSessionDialog workspaces={[workspace]} profiles={[profile]} readonly={false} onClose={() => undefined} onCreate={onCreate} onOpenSettings={() => undefined} loadCapabilities={loadCapabilities} /></I18nProvider>));
 
-    // Chat 开启（CHAT_ENABLED=true）：支持 headless 的 Profile 默认 chat，模式可选（issue-066 Chat-first）
+    // 默认 terminal 模式；模式可选（用户可手动改选 chat）
     const modeTrigger = container.querySelector<HTMLButtonElement>(".interaction-mode-field .custom-select-trigger")!;
     expect(modeTrigger.disabled).toBe(false);
-    expect(modeTrigger.textContent).toContain("Chat");
+    expect(modeTrigger.textContent).toContain("Terminal");
     expect(container.textContent).not.toContain("Chat is a future capability");
 
     const input = container.querySelector("input")!;
@@ -51,7 +51,7 @@ describe("NewSessionDialog", () => {
     expect(container.textContent).toContain("Project");
     expect(container.textContent).not.toContain("Workspace");
     expect(loadCapabilities).toHaveBeenCalledWith(profile.id, expect.anything());
-    expect(onCreate).toHaveBeenCalledWith({ name: "Backend refactor", workspaceId: workspace.id, profileId: profile.id, interactionMode: "chat" });
+    expect(onCreate).toHaveBeenCalledWith({ name: "Backend refactor", workspaceId: workspace.id, profileId: profile.id, interactionMode: "terminal" });
   });
 
   it("locks the mode to terminal when the profile cannot run chat turns", async () => {
@@ -86,7 +86,7 @@ describe("NewSessionDialog", () => {
     expect(onCreate).toHaveBeenCalledOnce();
     const payload = onCreate.mock.calls[0][0] as { name: string; workspaceId: string; profileId: string; interactionMode: string };
     expect(payload.name).toMatch(/^Payment Platform \d{2}-\d{2} \d{2}:\d{2}$/);
-    expect(payload).toMatchObject({ workspaceId: workspace.id, profileId: profile.id, interactionMode: "chat" });
+    expect(payload).toMatchObject({ workspaceId: workspace.id, profileId: profile.id, interactionMode: "terminal" });
   });
 
   it("directs incomplete setup to settings", () => {

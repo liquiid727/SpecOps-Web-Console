@@ -1,0 +1,49 @@
+{
+  "standardVersion": "specos-test-standard/v1",
+  "qualityProfile": "backend-api",
+  "riskTier": "P0",
+  "specId": "CLI-GUI-031",
+  "specVersion": "1.0",
+  "testSpecPath": ".features/CLI-GUI-031-execution-attempts-safe-fallback/test-spec.md",
+  "testSpecId": "CLI-GUI-031.test-spec",
+  "testSpecVersion": "1.0",
+  "testSpecHash": "b13b1ec1b8f4c19b2d7de05ab726831c9c00c85ee8a23d768f3cf2ad85b0d96e",
+  "testSpecStatus": "approved",
+  "testSpecApprovalEvidence": "local-independent-test-spec-review-2026-08-02",
+  "sourceFeatureSpecHash": "9a92056d7eda3aa1d1e6c499237ed5c5b2fd75469fa6e383839ef7ec684b82e8",
+  "changeId": "CLI-GUI-031",
+  "featureName": "Execution Attempts and Safe Technical Fallback",
+  "source": "accepted-spec",
+  "flows": [
+    {
+      "name": "Task and Attempt execution",
+      "stages": [
+        { "name": "Primary attempt", "scenarioNames": ["CLI-GUI-031 happy", "CLI-GUI-031 limit", "CLI-GUI-031 error", "CLI-GUI-031 flow"], "stepNames": ["Create and persist one execution attempt"] },
+        { "name": "Fallback safety", "scenarioNames": ["CLI-GUI-031 happy", "CLI-GUI-031 concurrency", "CLI-GUI-031 security"], "stepNames": ["Classify failure, gate side effects, and reconcile completion"] }
+      ]
+    }
+  ],
+  "endpoints": [
+    { "name": "Execution task history", "method": "GET", "path": "/api/sessions/:id/execution-tasks", "priority": "P0", "branches": ["happy", "limit", "error", "flow"], "preconditions": ["Session exists"], "expectedResults": ["Persisted task and attempt facts are recoverable"], "relatedRule": "execution.append-only-history" },
+    { "name": "Confirm fallback retry", "method": "POST", "path": "/api/execution-tasks/:id/confirm-retry", "priority": "P0", "branches": ["happy", "limit", "error", "flow"], "preconditions": ["Task is awaiting confirmation and token matches"], "expectedResults": ["Exactly one new Attempt is created", "Duplicate confirmation does not retry twice"], "relatedRule": "execution.confirmation-single-flight" }
+  ],
+  "scenarios": [
+    { "name": "CLI-GUI-031 happy", "priority": "P0", "branches": ["happy", "flow"], "preconditions": ["Primary candidate is executable"], "expectedResults": ["Success or one safe automatic fallback reaches a terminal state"], "steps": ["Start task", "Complete primary attempt", "Inspect persisted attempts"] },
+    { "name": "CLI-GUI-031 limit", "priority": "P0", "branches": ["limit"], "preconditions": ["Fallback is disabled or already exhausted"], "expectedResults": ["No second fallback is created"], "steps": ["Inject repeated failure", "Inspect attempt count"] },
+    { "name": "CLI-GUI-031 error", "priority": "P0", "branches": ["error"], "preconditions": ["Failure has possible, unknown, or forbidden side effect"], "expectedResults": ["User confirmation or terminal failure blocks automatic fallback"], "steps": ["Inject classified failure", "Inspect task state"] },
+    { "name": "CLI-GUI-031 concurrency", "priority": "P0", "branches": ["flow"], "preconditions": ["Cancel, completion, and confirmation race"], "expectedResults": ["One authoritative terminal outcome and no duplicate fallback"], "steps": ["Race transitions", "Fold execution history"] },
+    { "name": "CLI-GUI-031 security", "priority": "P0", "branches": ["error"], "preconditions": ["Secret canary is present only in a launch fixture"], "expectedResults": ["History, transcript, and error output contain no canary"], "steps": ["Complete attempt", "Scan serialized records"] }
+  ],
+  "standardRequirements": [
+    { "id": "std.p0.unit.execution-state", "layer": "unit", "appliesTo": ["Primary attempt"], "requiredFor": ["P0"], "ownerAgent": "unit-test-agent", "requiredEvidence": ["trace"], "gateImpact": "blocking" },
+    { "id": "std.p0.api.execution-contract", "layer": "api", "appliesTo": ["GET /api/sessions/:id/execution-tasks", "POST /api/execution-tasks/:id/confirm-retry"], "requiredFor": ["P0"], "ownerAgent": "test-editor", "requiredEvidence": ["trace"], "gateImpact": "blocking" },
+    { "id": "std.p0.security.execution-redaction", "layer": "security", "appliesTo": ["CLI-GUI-031 security"], "requiredFor": ["P0"], "ownerAgent": "test-editor", "requiredEvidence": ["raw-report"], "gateImpact": "blocking" },
+    { "id": "std.p0.concurrency.execution-race", "layer": "concurrency", "appliesTo": ["CLI-GUI-031 concurrency"], "requiredFor": ["P0"], "ownerAgent": "concurrency-test-agent", "requiredEvidence": ["trace"], "gateImpact": "blocking" }
+  ],
+  "releaseGates": [
+    { "id": "cli-gui-031-verification", "type": "change-verification", "requiredTestTypes": ["unit", "api", "security", "concurrency"], "blocking": true, "evidenceRequired": ["trace"] }
+  ],
+  "flakePolicy": { "allowedRetries": 1, "quarantineAllowed": false, "classificationRequired": true },
+  "dataPolicy": { "externalDependencyMode": "mocked", "piiAllowed": false, "secretsAllowed": false },
+  "securityPolicy": { "baseline": "owasp-api-top-10-2023", "requiredChecks": ["side-effect-gated-fallback", "append-only-recovery", "secret-redaction"] }
+}

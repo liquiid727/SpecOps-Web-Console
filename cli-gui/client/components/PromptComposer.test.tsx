@@ -81,6 +81,25 @@ describe("PromptComposer", () => {
     expect((container.querySelector("textarea") as HTMLTextAreaElement).value).toBe("");
   });
 
+  it("keeps the chat composer usable for a second message after the first send", async () => {
+    const onSend = vi.fn(async () => undefined);
+    act(() => root.render(<I18nProvider><FeedbackProvider><PromptComposer disabled={false} onSend={onSend} interactionMode="chat" /></FeedbackProvider></I18nProvider>));
+    const textarea = container.querySelector("textarea") as HTMLTextAreaElement;
+
+    act(() => setTextareaValue(textarea, "first message"));
+    await act(async () => { byLabel(container, "Send prompt").click(); });
+    expect(textarea.disabled).toBe(false);
+    expect(textarea.value).toBe("");
+
+    act(() => {
+      textarea.focus();
+      setTextareaValue(textarea, "second message");
+    });
+    await act(async () => { byLabel(container, "Send prompt").click(); });
+    expect(onSend).toHaveBeenNthCalledWith(2, "second message", expect.any(String));
+    expect(textarea.value).toBe("");
+  });
+
   it("keeps the composer disabled and blocks sending while loading or readonly", () => {
     const onSend = vi.fn(async () => undefined);
     act(() => root.render(<I18nProvider><FeedbackProvider><PromptComposer disabled onSend={onSend} /></FeedbackProvider></I18nProvider>));
@@ -119,6 +138,15 @@ describe("PromptComposer", () => {
     expect(onLaunchConfigChange).not.toHaveBeenCalledWith(expect.objectContaining({ model: "gpt-5" }));
   });
 
+  it("uses the CLI-resolved model for the implicit default option", () => {
+    const capabilities = { adapterId: "codex", compatibility: "supported", permissions: [], modes: [], models: [{ id: "default" }, { id: "gpt-5.6-luna" }, { id: "gpt-5" }], supportsComposer: true, supportsStructuredRecognition: true, supportsHeadlessTurns: true } as never;
+    act(() => root.render(<I18nProvider><FeedbackProvider><PromptComposer disabled={false} onSend={async () => undefined} capabilities={capabilities} defaultModel="gpt-5.6-luna" /></FeedbackProvider></I18nProvider>));
+    const modelSelector = container.querySelector<HTMLLabelElement>(".composer-controls .capability-selector:not(.cli-selector)")!;
+    act(() => (modelSelector.querySelector(".custom-select-trigger") as HTMLButtonElement).click());
+    const options = Array.from(modelSelector.querySelectorAll('[role="option"]')).map((option) => option.textContent);
+    expect(options).toEqual(["gpt-5.6-luna", "gpt-5"]);
+  });
+
   // —— Qoder 卡片式工具条（截图 1:1）：chat 模式无 permission/mode 选择器行 ——
   it("renders the Qoder chat toolbar without the launch controls row", () => {
     act(() => root.render(<I18nProvider><FeedbackProvider><PromptComposer disabled={false} onSend={async () => undefined} interactionMode="chat" /></FeedbackProvider></I18nProvider>));
@@ -132,6 +160,20 @@ describe("PromptComposer", () => {
     expect(chip.textContent).toBe("Default");
     act(() => chip.click());
     expect(container.querySelectorAll('[role="menuitemradio"]').length).toBe(2);
+  });
+
+  it("sends a selected deployment as a one-shot route override", async () => {
+    const onSend = vi.fn(async () => undefined);
+    const capabilities = { adapterId: "codex", compatibility: "supported", permissions: [], modes: [], models: [], supportsComposer: true, supportsStructuredRecognition: true, supportsHeadlessTurns: true } as never;
+    const resolvedRoute = { kind: "route", routeId: "route-1", resolvedAt: "2026-08-02T00:00:00Z", sourceTrace: [{ field: "routeId", source: "project", value: "route-1" }], candidates: [{ deploymentId: "deployment-1", position: 1, eligible: true, exclusionCodes: [] }], executableCandidates: [{ deploymentId: "deployment-1", position: 1, eligible: true, exclusionCodes: [] }], selectedDeploymentId: "deployment-1", canSend: true } as never;
+    act(() => root.render(<I18nProvider><FeedbackProvider><PromptComposer disabled={false} onSend={onSend} interactionMode="chat" capabilities={capabilities} resolvedRoute={resolvedRoute} routeDeployments={[{ id: "deployment-1", name: "Primary", providerId: "provider-1", profileId: "profile-1", modelId: "model-1", enabled: true, createdAt: "2026-08-02T00:00:00Z", updatedAt: "2026-08-02T00:00:00Z", credentialStatus: "configured", capability: { source: "configured", observedAt: "2026-08-02T00:00:00Z", modelPresent: true, nativeSession: true, toolCalling: true, codeEditing: true }, eligibility: "eligible", exclusionCodes: [] }]} onFixedDeploymentChange={() => undefined} /></FeedbackProvider></I18nProvider>));
+    const textarea = container.querySelector("textarea")!;
+    act(() => setTextareaValue(textarea, "use the backup"));
+    expect(container.querySelector("[aria-label='Fix deployment for this send']")).not.toBeNull();
+    act(() => root.render(<I18nProvider><FeedbackProvider><PromptComposer disabled={false} onSend={onSend} interactionMode="chat" capabilities={capabilities} resolvedRoute={resolvedRoute} fixedDeploymentId="deployment-1" /></FeedbackProvider></I18nProvider>));
+    act(() => setTextareaValue(container.querySelector("textarea")!, "use the backup"));
+    await act(async () => { byLabel(container, "Send prompt").click(); });
+    expect(onSend).toHaveBeenCalledWith("use the backup", expect.any(String), { fixedDeploymentId: "deployment-1" });
   });
 
   // —— console-gaps issue #5（project-quest SPEC §5.7）：润色/压缩与一步撤销 ——

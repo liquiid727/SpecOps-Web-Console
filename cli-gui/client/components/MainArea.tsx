@@ -1,4 +1,5 @@
 import type { CliProfile, SendMessageResponse, Session, SessionLaunchConfig, Workspace } from "../../shared/types";
+import type { RunRouteOverride } from "../../shared/model-route";
 import type { AppView, CenterView, ComposerWorkMode } from "../app/preferences";
 import { ChatView } from "./ChatView";
 import { KnowledgeView } from "./KnowledgeView";
@@ -22,7 +23,7 @@ interface MainAreaProps {
   centerView: CenterView;
   onCenterViewChange: (view: CenterView) => void;
   onLaunchConfigChange: (change: Partial<SessionLaunchConfig>) => void;
-  onSendPrompt: (content: string, clientMessageId: string) => Promise<SendMessageResponse | void>;
+  onSendPrompt: (content: string, clientMessageId: string, routeOverride?: RunRouteOverride) => Promise<SendMessageResponse | void>;
   /** Quest Home 一次提交创建流（frontend-spec §2、§6）；model 仅在显式选择时携带 */
   onQuickCreate: (input: { content: string; workspaceId: string; profileId: string; model?: string }) => Promise<void>;
   /** 新建 Quest 草稿态：Quest Home 隐藏周边区块，只保留干净的输入界面 */

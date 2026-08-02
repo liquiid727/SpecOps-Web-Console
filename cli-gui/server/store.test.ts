@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import type { AppStateEnvelopeV2, AppStateEnvelopeV4, AppStateV2, AppStateV3 } from "../shared/types.js";
+import type { AppStateEnvelopeV2, AppStateEnvelopeV8, AppStateV2, AppStateV3 } from "../shared/types.js";
 import { createJsonStateRepository, StateRepositoryError } from "./store.js";
 
 const roots: string[] = [];
@@ -56,8 +56,8 @@ describe("JSON state repository lifecycle", () => {
     state.workspaces[0].name = "Mutated after save";
     await Promise.all([first, second, repository.drain()]);
 
-    const written = JSON.parse(await fs.readFile(path.join(dataDirectory, "state.json"), "utf8")) as AppStateEnvelopeV4;
-    expect(written.schemaVersion).toBe(4);
+    const written = JSON.parse(await fs.readFile(path.join(dataDirectory, "state.json"), "utf8")) as AppStateEnvelopeV8;
+    expect(written.schemaVersion).toBe(8);
     expect(written.state.workspaces[0].name).toBe("Workspace");
   });
 
@@ -75,7 +75,7 @@ describe("JSON state repository lifecycle", () => {
     const state = await createJsonStateRepository({ dataDirectory, clock: { now: () => "2026-01-02T00:00:00Z" } }).load();
     expect(state.sessions[0]).toMatchObject({ id: "session-1", interactionMode: "terminal", runtimeStatus: "stopped", exitCode: 7, organizationStatus: "active", revision: 1 });
     expect(state.workspaces[0].kind).toBe("local-folder");
-    expect(JSON.parse(await fs.readFile(statePath, "utf8")).schemaVersion).toBe(4);
+    expect(JSON.parse(await fs.readFile(statePath, "utf8")).schemaVersion).toBe(8);
     expect(JSON.parse(await fs.readFile(`${statePath}.v1.bak`, "utf8")).sessions[0].id).toBe("session-1");
   });
 
@@ -118,8 +118,8 @@ describe("schema v2/v3 -> v4 migration", () => {
 
     // 写回后 envelope 升级为 v4，且源版本备份 state.json.v2.bak 保留原始内容。
     await repository.drain();
-    const written = JSON.parse(await fs.readFile(statePath, "utf8")) as AppStateEnvelopeV4;
-    expect(written.schemaVersion).toBe(4);
+    const written = JSON.parse(await fs.readFile(statePath, "utf8")) as AppStateEnvelopeV8;
+    expect(written.schemaVersion).toBe(8);
     expect(await fs.readFile(`${statePath}.v2.bak`, "utf8")).toBe(original);
 
     // 重复加载：已是 v4，备份不被覆盖。
@@ -180,7 +180,7 @@ describe("schema v2/v3 -> v4 migration", () => {
       }
     });
     expect(await fs.readFile(`${statePath}.v3.bak`, "utf8")).toBe(original);
-    expect((JSON.parse(await fs.readFile(statePath, "utf8")) as AppStateEnvelopeV4).schemaVersion).toBe(4);
+    expect((JSON.parse(await fs.readFile(statePath, "utf8")) as AppStateEnvelopeV8).schemaVersion).toBe(8);
   });
 
   it.each([
@@ -209,7 +209,7 @@ describe("schema v2/v3 -> v4 migration", () => {
   it("rejects unknown future schema versions without touching the source", async () => {
     const dataDirectory = await makeDataDirectory("cli-gui-state-future-");
     const statePath = path.join(dataDirectory, "state.json");
-    const original = JSON.stringify({ schemaVersion: 5, state: { workspaces: [], profiles: [], sessions: [] } });
+    const original = JSON.stringify({ schemaVersion: 9, state: { workspaces: [], profiles: [], sessions: [] } });
     await fs.writeFile(statePath, original, "utf8");
 
     const repository = createJsonStateRepository({ dataDirectory, clock: { now: () => "2026-02-01T00:00:00Z" } });

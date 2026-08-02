@@ -14,7 +14,7 @@ import type {
   SessionV3,
   TerminalServerFrame
 } from "./types.js";
-import { CURRENT_SCHEMA_VERSION, withCompatibilityState, withCompatibilityStatus } from "./types.js";
+import { CURRENT_SCHEMA_VERSION, withCompatibilityState, withCompatibilityStatus, type AppStateEnvelopeV8 } from "./types.js";
 
 const canonicalSession: SessionV3 = {
   id: "session-1",
@@ -40,13 +40,13 @@ const canonicalSession: SessionV3 = {
 
 describe("state schema contracts", () => {
   it("defines an exact version-four envelope while retaining v3 input", () => {
-    const envelope: AppStateEnvelopeV4 = {
+    const envelope: AppStateEnvelopeV8 = {
       schemaVersion: CURRENT_SCHEMA_VERSION,
       state: { workspaces: [], profiles: [], sessions: [canonicalSession] }
     };
 
-    expect(envelope.schemaVersion).toBe(4);
-    expectTypeOf(envelope.schemaVersion).toEqualTypeOf<4>();
+    expect(envelope.schemaVersion).toBe(8);
+    expectTypeOf(envelope.schemaVersion).toEqualTypeOf<8>();
     expectTypeOf<AppStateEnvelopeV3["schemaVersion"]>().toEqualTypeOf<3>();
     expectTypeOf<AppStateV3["sessions"][number]>().toEqualTypeOf<SessionV3>();
     expectTypeOf<AppStateEnvelopeV2["schemaVersion"]>().toEqualTypeOf<2>();

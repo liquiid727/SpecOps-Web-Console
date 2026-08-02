@@ -15,8 +15,18 @@ export type SessionPort = Pick<ApiFacade,
   "renameSession" | "updateLaunchConfig" | "pinSession" |
   "archiveSession" | "completeSession" | "restoreSession" |
   "forkSession" | "reorderSessions" | "sendMessage" | "cancelTurn" |
-  "respondApproval" | "updateActiveModel" | "deleteSession" | "switchView"
+  "respondApproval" | "updateActiveModel" | "deleteSession" | "switchView" | "updateSessionRoute"
 >;
+
+export type RoutingPort = Pick<ApiFacade,
+  "providers" | "createProvider" | "updateProvider" | "deleteProvider" |
+  "setProviderCredential" | "deleteProviderCredential" | "modelDeployments" |
+  "createModelDeployment" | "updateModelDeployment" | "deleteModelDeployment" |
+  "modelRoutes" | "createModelRoute" | "updateModelRoute" | "deleteModelRoute" |
+  "previewModelRoute" | "resolveSessionModelRoute"
+>;
+
+export type ExecutionPort = Pick<ApiFacade, "executionTasks" | "executionTask" | "confirmExecutionRetry" | "cancelExecution">;
 
 export interface EventPort {
   transcript: ApiFacade["transcript"];
@@ -50,6 +60,8 @@ export interface ClientRuntime {
   readonly events: EventPort;
   readonly terminal: TerminalPort;
   readonly workspace: WorkspacePort;
+  readonly routing: RoutingPort;
+  readonly execution: ExecutionPort;
   readonly platform: PlatformAdapter;
 }
 
@@ -60,6 +72,8 @@ export class LocalHttpRuntime implements ClientRuntime {
   readonly events: EventPort = { transcript: api.transcript, subscribe: openTranscriptSubscription };
   readonly terminal: TerminalPort = { subscribe: openTerminalSubscription };
   readonly workspace: WorkspacePort = api;
+  readonly routing: RoutingPort = api;
+  readonly execution: ExecutionPort = api;
   readonly platform = getPlatform();
 
   async capabilities(): Promise<ClientCapabilities> {
@@ -80,6 +94,8 @@ export interface RuntimePortSet {
   events: EventPort;
   terminal: TerminalPort;
   workspace: WorkspacePort;
+  routing?: RoutingPort;
+  execution?: ExecutionPort;
   platform?: PlatformAdapter;
 }
 
@@ -94,6 +110,8 @@ export class MockClientRuntime implements ClientRuntime {
   readonly events: EventPort;
   readonly terminal: TerminalPort;
   readonly workspace: WorkspacePort;
+  readonly routing: RoutingPort;
+  readonly execution: ExecutionPort;
   readonly platform: PlatformAdapter;
 
   constructor(ports: RuntimePortSet) {
@@ -102,6 +120,8 @@ export class MockClientRuntime implements ClientRuntime {
     this.events = ports.events;
     this.terminal = ports.terminal;
     this.workspace = ports.workspace;
+    this.routing = ports.routing ?? api;
+    this.execution = ports.execution ?? api;
     this.platform = ports.platform ?? new WebPlatformAdapter();
   }
 
@@ -121,6 +141,8 @@ export class RemoteRuntime implements ClientRuntime {
   readonly events: EventPort;
   readonly terminal: TerminalPort;
   readonly workspace: WorkspacePort;
+  readonly routing: RoutingPort;
+  readonly execution: ExecutionPort;
   readonly platform: PlatformAdapter;
 
   constructor(ports: RuntimePortSet) {
@@ -129,6 +151,8 @@ export class RemoteRuntime implements ClientRuntime {
     this.events = ports.events;
     this.terminal = ports.terminal;
     this.workspace = ports.workspace;
+    this.routing = ports.routing ?? api;
+    this.execution = ports.execution ?? api;
     this.platform = ports.platform ?? getPlatform();
   }
 
