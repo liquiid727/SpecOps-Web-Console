@@ -1,0 +1,284 @@
+{
+  "specId": "CLI-GUI-021",
+  "specVersion": "1.0",
+  "testSpecPath": ".features/CLI-GUI-021-engine-readiness-onboarding/test-spec.md",
+  "testSpecId": "CLI-GUI-021.test-spec",
+  "testSpecVersion": "1.0",
+  "testSpecHash": "b95ff1bd0e53e696ff073e5b74f2a19d1d5e976b59d64476873ce65a3a08763e",
+  "testSpecStatus": "approved",
+  "testSpecApprovalEvidence": "architecture-agent-mvp02-rebaseline-2026-08-04-approved-for-planning",
+  "sourceFeatureSpecHash": "33a9c69d4bb00ab68dc30096244616617ad076777745890c99760884163f212d",
+  "featureName": "CLI-GUI-021 Engine Readiness and First-Task Onboarding",
+  "changeId": "CLI-GUI-021-mvp02a-rebaseline",
+  "executionMode": "parallel",
+  "tracks": [
+    {
+      "id": "execution",
+      "agentRole": "execution-editor",
+      "isolation": "implementation-only",
+      "allowedInputs": [
+        ".features/CLI-GUI-021-engine-readiness-onboarding/spec.md",
+        "implementation/CLI-GUI-021-mvp02a-foundation.md",
+        "reviews/CLI-GUI-021/review-entry.md",
+        "current/cli-gui-mvp02-foundation-rebaseline.md",
+        "design/cli-gui-platform-design.md",
+        "cli-gui/DESIGN.md",
+        ".features/roadmap.md",
+        "cli-gui/doc/mvp02/spec/",
+        "cli-gui/doc/mvp02-check-qa/"
+      ],
+      "forbiddenInputs": [
+        "tests/results/",
+        "tests/bruno/",
+        "tests/scenarios/",
+        "tests/e2e/",
+        "tests/playwright/"
+      ]
+    },
+    {
+      "id": "testing",
+      "agentRole": "test-editor",
+      "isolation": "spec-and-contract-only",
+      "allowedInputs": [
+        ".features/CLI-GUI-021-engine-readiness-onboarding/test-spec.md",
+        "tests/plans/CLI-GUI-021.test-plan.json",
+        "cli-gui/doc/mvp02/verification-workflow.md",
+        "design/cli-gui-platform-design.md",
+        "cli-gui/DESIGN.md",
+        "current/cli-gui-mvp02-foundation-rebaseline.md",
+        "cli-gui/doc/mvp02/spec/",
+        "cli-gui/doc/mvp02-check-qa/"
+      ],
+      "forbiddenInputs": [
+        "implementation/",
+        "tests/results/"
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "implementation-handoff-021",
+      "trackId": "execution",
+      "agentRole": "execution-editor",
+      "type": "implementation",
+      "status": "blocked",
+      "reason": "Foundation implementation is already recorded; further product implementation stays blocked until independent evidence and review gaps are closed.",
+      "inputs": [
+        ".features/CLI-GUI-021-engine-readiness-onboarding/spec.md",
+        "implementation/CLI-GUI-021-mvp02a-foundation.md",
+        "reviews/CLI-GUI-021/review-entry.md",
+        "cli-gui/doc/mvp02/spec/",
+        "cli-gui/doc/mvp02-check-qa/"
+      ],
+      "outputs": [
+        "implementation/CLI-GUI-021-mvp02a-foundation.md",
+        ".issues/issue-065-engine-readiness-probes-and-remediation.md",
+        ".issues/issue-072-in-app-setup-terminal-fallback.md"
+      ],
+      "dependsOn": [
+        "architecture_reviewed",
+        "design_reviewed"
+      ],
+      "traceability": {
+        "scenarios": [
+          "CLI-GUI-021 Engine Readiness and First-Task Onboarding happy scenario",
+          "CLI-GUI-021 Engine Readiness and First-Task Onboarding limit scenario",
+          "CLI-GUI-021 Engine Readiness and First-Task Onboarding error scenario",
+          "CLI-GUI-021 Engine Readiness and First-Task Onboarding flow scenario",
+          "CLI-GUI-021 Engine Readiness and First-Task Onboarding edge scenario"
+        ],
+        "endpoints": [
+          "GET /api/profiles/:id/readiness",
+          "GET /api/profiles/:id/capabilities"
+        ]
+      }
+    },
+    {
+      "id": "independent-evidence-021",
+      "trackId": "testing",
+      "agentRole": "test-editor",
+      "type": "integration-test",
+      "status": "blocked",
+      "reason": "Independent fixtures, specialist runs, and normalized result adapters are not present; QA cannot accept raw local runner output.",
+      "inputs": [
+        ".features/CLI-GUI-021-engine-readiness-onboarding/test-spec.md",
+        "tests/plans/CLI-GUI-021.test-plan.json",
+        "cli-gui/doc/mvp02/verification-workflow.md",
+        "cli-gui/doc/mvp02/spec/",
+        "cli-gui/doc/mvp02-check-qa/"
+      ],
+      "outputs": [
+        "tests/results/CLI-GUI-021.*.json",
+        "reviews/CLI-GUI-021-mvp02a-rebaseline/gate-report.md"
+      ],
+      "dependsOn": [
+        "test_plan_ready"
+      ],
+      "traceability": {
+        "scenarios": [
+          "CLI-GUI-021 Engine Readiness and First-Task Onboarding happy scenario",
+          "CLI-GUI-021 Engine Readiness and First-Task Onboarding limit scenario",
+          "CLI-GUI-021 Engine Readiness and First-Task Onboarding error scenario",
+          "CLI-GUI-021 Engine Readiness and First-Task Onboarding flow scenario",
+          "CLI-GUI-021 Engine Readiness and First-Task Onboarding edge scenario"
+        ],
+        "endpoints": [
+          "GET /api/profiles/:id/readiness",
+          "GET /api/profiles/:id/capabilities"
+        ]
+      }
+    },
+    {
+      "id": "ui-gap-CLI-GUI-021 Engine Readiness and First-Task Onboarding happy scenario",
+      "trackId": "testing",
+      "agentRole": "playwright-test-agent",
+      "type": "ui-test-gap",
+      "status": "blocked",
+      "reason": "Browser execution, screenshot, focus, and trace assets are not yet normalized for this slice.",
+      "inputs": [
+        ".features/CLI-GUI-021-engine-readiness-onboarding/test-spec.md",
+        "tests/plans/CLI-GUI-021.test-plan.json",
+        "cli-gui/DESIGN.md"
+      ],
+      "outputs": [
+        "tests/scenarios/CLI-GUI-021/ui-gaps.md",
+        "tests/results/CLI-GUI-021.*.json"
+      ],
+      "dependsOn": [
+        "test_plan_ready"
+      ],
+      "traceability": {
+        "scenarios": [
+          "CLI-GUI-021 Engine Readiness and First-Task Onboarding happy scenario"
+        ],
+        "endpoints": [
+          "GET /api/profiles/:id/readiness",
+          "GET /api/profiles/:id/capabilities"
+        ]
+      }
+    },
+    {
+      "id": "ui-gap-CLI-GUI-021 Engine Readiness and First-Task Onboarding limit scenario",
+      "trackId": "testing",
+      "agentRole": "playwright-test-agent",
+      "type": "ui-test-gap",
+      "status": "blocked",
+      "reason": "Browser execution, screenshot, focus, and trace assets are not yet normalized for this slice.",
+      "inputs": [
+        ".features/CLI-GUI-021-engine-readiness-onboarding/test-spec.md",
+        "tests/plans/CLI-GUI-021.test-plan.json",
+        "cli-gui/DESIGN.md"
+      ],
+      "outputs": [
+        "tests/scenarios/CLI-GUI-021/ui-gaps.md",
+        "tests/results/CLI-GUI-021.*.json"
+      ],
+      "dependsOn": [
+        "test_plan_ready"
+      ],
+      "traceability": {
+        "scenarios": [
+          "CLI-GUI-021 Engine Readiness and First-Task Onboarding limit scenario"
+        ],
+        "endpoints": [
+          "GET /api/profiles/:id/readiness",
+          "GET /api/profiles/:id/capabilities"
+        ]
+      }
+    },
+    {
+      "id": "ui-gap-CLI-GUI-021 Engine Readiness and First-Task Onboarding error scenario",
+      "trackId": "testing",
+      "agentRole": "playwright-test-agent",
+      "type": "ui-test-gap",
+      "status": "blocked",
+      "reason": "Browser execution, screenshot, focus, and trace assets are not yet normalized for this slice.",
+      "inputs": [
+        ".features/CLI-GUI-021-engine-readiness-onboarding/test-spec.md",
+        "tests/plans/CLI-GUI-021.test-plan.json",
+        "cli-gui/DESIGN.md"
+      ],
+      "outputs": [
+        "tests/scenarios/CLI-GUI-021/ui-gaps.md",
+        "tests/results/CLI-GUI-021.*.json"
+      ],
+      "dependsOn": [
+        "test_plan_ready"
+      ],
+      "traceability": {
+        "scenarios": [
+          "CLI-GUI-021 Engine Readiness and First-Task Onboarding error scenario"
+        ],
+        "endpoints": [
+          "GET /api/profiles/:id/readiness",
+          "GET /api/profiles/:id/capabilities"
+        ]
+      }
+    },
+    {
+      "id": "ui-gap-CLI-GUI-021 Engine Readiness and First-Task Onboarding flow scenario",
+      "trackId": "testing",
+      "agentRole": "playwright-test-agent",
+      "type": "ui-test-gap",
+      "status": "blocked",
+      "reason": "Browser execution, screenshot, focus, and trace assets are not yet normalized for this slice.",
+      "inputs": [
+        ".features/CLI-GUI-021-engine-readiness-onboarding/test-spec.md",
+        "tests/plans/CLI-GUI-021.test-plan.json",
+        "cli-gui/DESIGN.md"
+      ],
+      "outputs": [
+        "tests/scenarios/CLI-GUI-021/ui-gaps.md",
+        "tests/results/CLI-GUI-021.*.json"
+      ],
+      "dependsOn": [
+        "test_plan_ready"
+      ],
+      "traceability": {
+        "scenarios": [
+          "CLI-GUI-021 Engine Readiness and First-Task Onboarding flow scenario"
+        ],
+        "endpoints": [
+          "GET /api/profiles/:id/readiness",
+          "GET /api/profiles/:id/capabilities"
+        ]
+      }
+    },
+    {
+      "id": "ui-gap-CLI-GUI-021 Engine Readiness and First-Task Onboarding edge scenario",
+      "trackId": "testing",
+      "agentRole": "playwright-test-agent",
+      "type": "ui-test-gap",
+      "status": "blocked",
+      "reason": "Browser execution, screenshot, focus, and trace assets are not yet normalized for this slice.",
+      "inputs": [
+        ".features/CLI-GUI-021-engine-readiness-onboarding/test-spec.md",
+        "tests/plans/CLI-GUI-021.test-plan.json",
+        "cli-gui/DESIGN.md"
+      ],
+      "outputs": [
+        "tests/scenarios/CLI-GUI-021/ui-gaps.md",
+        "tests/results/CLI-GUI-021.*.json"
+      ],
+      "dependsOn": [
+        "test_plan_ready"
+      ],
+      "traceability": {
+        "scenarios": [
+          "CLI-GUI-021 Engine Readiness and First-Task Onboarding edge scenario"
+        ],
+        "endpoints": [
+          "GET /api/profiles/:id/readiness",
+          "GET /api/profiles/:id/capabilities"
+        ]
+      }
+    }
+  ],
+  "gates": [
+    "test_spec_approved",
+    "implementation_handoff_present",
+    "independent_results_normalized",
+    "gate_report_generated",
+    "qa_acceptance"
+  ]
+}

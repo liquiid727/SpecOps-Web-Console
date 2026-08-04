@@ -18,3 +18,11 @@ Owns cross-layer end-to-end verification strategy for business journeys that com
 - Scenario-result normalization notes
 - Release-risk and blocking-gap list
 - Cross-layer evidence checklist for the production standard
+
+## CLI GUI MVP02 Handoff Contract
+
+- Inputs: business Test Spec journeys, runtime/API contracts, seeded workspace/engine fixtures, and cleanup policy.
+- Outputs: UI/API/data/cleanup matrix, environment checklist, execution result, and normalized scenario mapping.
+- Prohibited: duplicated runtime logic, bypassed cleanup, or treating unit/DOM fixtures as full journey proof.
+- Handoff fields: `journey`, `preconditions`, `actions`, `apiAssertions`, `dataState`, `cleanup`, `artifactRefs`, `blockers`.
+- Block: the journey cannot prove UI action, runtime/API result, persisted state, and cleanup together.

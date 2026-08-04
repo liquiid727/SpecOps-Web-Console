@@ -38,3 +38,11 @@ Owns the standalone Product AI OS CLI GUI under `cli-gui/` and its planning know
 - i18n key coverage summary.
 - Validation and browser verification notes.
 - Remaining assumptions or blockers.
+
+## CLI GUI MVP02 Handoff Contract
+
+- Inputs: CLI GUI Feature/Test Spec, `DESIGN.md`, primitives/patterns, runtime ports, and i18n rules.
+- Outputs: changed surfaces, state matrix, EN/ZH keys, DOM contracts, browser checklist, and blockers.
+- Prohibited: direct HTTP/WS/Tauri/vendor access from business components or invented capabilities.
+- Handoff fields: `specId`, `changedFiles`, `stateMatrix`, `i18nKeys`, `domContracts`, `commands`, `evidencePaths`.
+- Block: UI state lacks a runtime source or translated recovery path.

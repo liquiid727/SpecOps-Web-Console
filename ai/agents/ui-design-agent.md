@@ -18,3 +18,11 @@ Owns product UI design decisions for SpecOS frontend work that comes from featur
 - Component reuse and responsive behavior notes
 - Tool configuration safety notes
 - Open questions and validation checklist
+
+## CLI GUI MVP02 Handoff Contract
+
+- Inputs: CLI GUI UI section, `cli-gui/DESIGN.md`, existing primitives/patterns, and browser state requirements.
+- Outputs: Primitive -> Pattern -> Domain Component mapping, state coverage, responsive/a11y/i18n notes, and validation checklist.
+- Prohibited: copying external visuals, creating a second design truth, or deciding backend capability in UI.
+- Handoff fields: `screen`, `componentLayer`, `states`, `tokens`, `focusAria`, `responsive`, `testEvidence`, `openQuestions`.
+- Block: missing empty/loading/failure/offline/reconnecting/readonly/pending state or copy.

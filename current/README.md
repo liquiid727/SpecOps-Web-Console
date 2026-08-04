@@ -4,6 +4,11 @@
 
 Use it to record which spec, change package, or issue loop is in flight right now, so agents can load delivery context without re-deriving it from history.
 
+## Active Handoff
+
+- [CLI GUI MVP02 Foundation Rebaseline](./cli-gui-mvp02-foundation-rebaseline.md): current
+  scope, evidence vocabulary, slice status, missing artifacts, and the blocked release gate.
+
 ## Expected Content
 
 - Active project mode notes and the in-flight spec or change id.

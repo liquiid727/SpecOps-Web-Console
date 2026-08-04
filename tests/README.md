@@ -26,6 +26,14 @@ The report UI must consume normalized results instead of framework-specific outp
 
 Production runs must also include `standardVersion`, `qualityProfile`, item-level `requirementId`, `ownerAgent`, `evidenceQuality`, `attempts`, `flakeClassification`, and `artifactRefs`.
 
+## CLI GUI MVP02
+
+The CLI GUI foundation uses the same chain described in
+[`cli-gui/doc/mvp02/verification-workflow.md`](../cli-gui/doc/mvp02/verification-workflow.md):
+Feature Spec -> independent Test Spec -> Test Plan -> Schedule -> Test Run ->
+Normalized Result -> Gate Report -> QA Acceptance. Local Vitest/build/UI output is
+implementation evidence only; it must not be promoted to independent or release evidence.
+
 ## Production Standard
 
 `specos-test-standard/v1` is enforced for production test plans and gate reports. P0/P1 blocking evidence gaps stop release and merge readiness. P2 gaps remain visible as warning or informational evidence unless a gate marks them blocking.

@@ -1,10 +1,12 @@
-# MVP02 Check QA
+# MVP02-A Verification Gate
 
-状态：PRD/SPEC 就绪，准备执行
+状态：MVP02-A 本地桌面能力验证轨道；当前 Gate 需要独立 normalized evidence 和 packaged-host evidence
 
-`mvp02-check-qa` 是 MVP02-A 本地桌面能力完成后的体验加固和质量收口轨道，
-位于 MVP02-B 远程控制之前。它不改写 MVP02 现有 PRD、SPEC 或 roadmap，
-也不是新的产品 MVP。
+`mvp02-check-qa` 是 MVP02-A Desktop Terminal Replacement 的 Verification
+Gate。它不代表 Remote Control，也不占用 MVP02-B；Remote Control 是
+Deferred Remote。此 README 是索引语义更新，历史 `qa-gate.md`、QA issue 和
+体验记录仍保留其原始内容，并在当前 rebaseline 中按 historical/reference
+处理。
 
 ## 目标
 
@@ -27,6 +29,8 @@
 - [adapter-capability-matrix.md](./adapter-capability-matrix.md)：Adapter 能力矩阵与事件覆盖。
 - [experience-checklist.md](./experience-checklist.md)：体验、交互、设置、生命周期和性能检查清单。
 - [qa-gate.md](./qa-gate.md)：执行记录、证据、待人工验证项和门禁结论模板。
+- [../../../current/cli-gui-mvp02-foundation-rebaseline.md](../../../current/cli-gui-mvp02-foundation-rebaseline.md)：当前 slice、证据等级和阻断项。
+- [verification-workflow.md](../mvp02/verification-workflow.md)：Feature/Test Spec 到 QA Acceptance 的统一 evidence 流程。
 
 ## 范围边界
 

@@ -16,3 +16,11 @@ Owns the main architecture track for SpecOS work.
 - Specialist delegation map
 - Preconditions and open questions
 - False-positive or out-of-scope findings rejected by `pola`
+
+## CLI GUI MVP02 Handoff Contract
+
+- Inputs: current rebaseline matrix, canonical design, roadmap, legacy MVP02 sources, and rules.
+- Outputs: scope/ownership decision, bounded specialist dispatch, preconditions, and sync handoff.
+- Prohibited: promoting research, bridges, checkboxes, or placeholders to supported/release behavior.
+- Handoff fields: `sourceSpec`, `decision`, `affectedSlices`, `delegatedRoles`, `openQuestions`, `nextGate`.
+- Block: ambiguous MVP naming, domain ownership, or evidence class.

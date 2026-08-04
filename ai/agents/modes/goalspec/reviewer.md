@@ -1,3 +1,3 @@
 # GoalSpec Canonical Overlay: Reviewer
 
-- Review findings should cover correctness and traceability back to the originating issue, in a single feature-level review file.
+- Review findings should cover correctness, cross-rule traceability, normalized evidence references, and the originating `.issues/` record in the feature-level review entry.

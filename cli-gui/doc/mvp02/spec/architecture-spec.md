@@ -2,6 +2,12 @@
 
 > Derived from: `../client-platform-prd.md`, `../desktop-terminal-replacement-prd.md`, `../remote-prd.md`
 > Generated: 2026-07-29 | Target: MVP02-A then MVP02-B
+>
+> Compatibility note (2026-08-04): this document is retained as legacy/reference
+> input. The current GoalSpec scope names MVP02-B **Model Management**
+> (`CLI-GUI-026..032`); Remote Control is **Deferred Remote**. The canonical
+> delivery entry is `.features/` and the current platform truth is
+> `design/cli-gui-platform-design.md`.
 
 ## 1. Summary
 
@@ -104,4 +110,3 @@ message.
 MVP02-A passes only when locked Codex and Claude versions complete the complete
 local flow in `test-spec.md` without opening an external terminal. MVP02-B then
 passes the same Session/Event/Error contract suite through `RemoteRuntime`.
-

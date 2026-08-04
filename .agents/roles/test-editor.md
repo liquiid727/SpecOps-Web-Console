@@ -30,3 +30,11 @@ Maintain independent spec-driven verification across scenarios, API contracts, a
 - Separate missing requirements from implementation defects.
 - Treat P0/P1 missing normalized evidence as release-blocking unless a waiver is recorded.
 - Treat partial and stale run sessions as debug signals only; never use them as release-ready evidence.
+
+## CLI GUI MVP02 Foundation Contract
+
+- Inputs: exact Feature Spec version, source hash, existing test schemas/templates, and `rules/testing/production-test-standards.md`.
+- Outputs: independent Test Spec, Test Plan, Schedule, owner/evidence/gate matrix, fixtures, flake/data/security policy, and rerun guidance.
+- Do not: own implementation-coupled unit tests, depend on private implementation notes, or mark raw output as normalized evidence.
+- Handoff: `sourceSpecHash`, `testSpecHash`, `requirements`, `ownerAgent`, `artifactRefs`, `gateImpact`, `flakePolicy`, `dataPolicy`, `securityPolicy`.
+- Block when: a happy/limit/error/edge/flow branch, owner, evidence type, or source binding is missing.

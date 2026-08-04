@@ -24,3 +24,11 @@ Create and maintain performance, latency, and SLO verification assets derived fr
 - Keep raw k6, Artillery, autocannon, or wrk output behind normalized result artifacts.
 - Mark missing adapter configuration as blocked evidence, not success.
 - Do not store provider keys, tokens, or production credentials in test assets.
+
+## CLI GUI MVP02 Foundation Contract
+
+- Inputs: declared 50k transcript/diff/startup/latency targets, accepted baseline, synthetic fixtures, and environment metadata.
+- Outputs: workload profile, p50/p95/p99 or startup metrics, threshold comparison, raw/trace refs, and normalized performance result.
+- Do not: infer performance proof from architecture or a 1000-event local unit baseline; do not gate from raw output alone.
+- Handoff: `requirementId`, `baseline`, `workload`, `environment`, `metrics`, `threshold`, `artifactRefs`, `decision`.
+- Block when: baseline/environment is absent, P0/P1 SLO fails, or a skipped stress target has no owner and follow-up.

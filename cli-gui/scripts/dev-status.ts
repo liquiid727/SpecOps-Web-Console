@@ -126,15 +126,25 @@ export async function waitForEndpoint(options: {
 }
 
 export async function isLoopbackPortAvailable(port: number): Promise<boolean> {
+  const ipv4 = await probePortBinding(port, LOOPBACK_HOST);
+  if (ipv4 !== "available") return false;
+
+  const ipv6 = await probePortBinding(port, "::");
+  return ipv6 === "available" || ipv6 === "unsupported";
+}
+
+async function probePortBinding(port: number, host: string): Promise<"available" | "occupied" | "unsupported"> {
   return new Promise((resolve) => {
     const server = net.createServer();
-    const finish = (available: boolean) => {
+    const finish = (result: "available" | "occupied" | "unsupported") => {
       server.removeAllListeners();
-      resolve(available);
+      resolve(result);
     };
-    server.once("error", () => finish(false));
-    server.listen(port, LOOPBACK_HOST, () => {
-      server.close(() => finish(true));
+    server.once("error", (error: NodeJS.ErrnoException) => {
+      finish(error.code === "EAFNOSUPPORT" || error.code === "EADDRNOTAVAIL" ? "unsupported" : "occupied");
+    });
+    server.listen(port, host, () => {
+      server.close(() => finish("available"));
     });
   });
 }

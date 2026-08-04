@@ -23,6 +23,12 @@ Use this file as the only canonical index for epic grouping, release sequencing,
 - `CLI-GUI-024 Approval, recovery, Diff, monitor, and Session management`
 - `CLI-GUI-025 Tauri-managed TypeScript runtime sidecar`
 
+The current GoalSpec Feature/Test Spec entries for MVP02-A live under
+`.features/CLI-GUI-020..025-*`. Their source contracts remain in
+`cli-gui/doc/mvp02/spec/`, and their implementation issues are the existing
+`.issues/issue-061..075-*` files. MVP02-A is not release-ready until independent
+normalized evidence and the packaged-host gate are present.
+
 ### MVP02-B — Model Management
 
 - `CLI-GUI-026 Model Auto-Sync`
@@ -32,6 +38,11 @@ Use this file as the only canonical index for epic grouping, release sequencing,
 - `CLI-GUI-030 Priority Model Routes and Configuration Resolution`
 - `CLI-GUI-031 Execution Attempts and Safe Technical Fallback`
 - `CLI-GUI-032 Model Routing GUI and Recovery UX`
+
+Remote Control does not occupy MVP02-B. It is `Deferred Remote` and remains a
+reference-only product direction until a later roadmap entry explicitly promotes
+it. `cli-gui/doc/mvp02-check-qa/` is the `MVP02-A Verification Gate`, not a
+Remote Control pre-stage.
 
 ### MVP03 — App Replacement
 

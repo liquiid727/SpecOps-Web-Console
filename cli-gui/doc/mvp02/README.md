@@ -9,10 +9,11 @@ an external terminal.
 - **MVP02-A — Desktop Terminal Replacement:** local Workspace selection, Engine
   readiness, Chat-first Session creation, streaming execution, approval,
   cancellation, resume, transcript replay, and read-only Diff inspection.
-- **MVP02-B — Remote Control (descoped):** responsive Web clients control the
-  same local runtime through the Control Server and `agentd`. This slice has
-  been removed from the current roadmap; its Issues (#076-#089) were deleted.
-  The remote PRD/SPEC documents are retained for future reference only.
+- **MVP02-B — Model Management:** Provider, Secret, Deployment, Route, and
+  Attempt capabilities tracked by `CLI-GUI-026..032` in the root `.features/`
+  delivery chain.
+- **Deferred Remote:** responsive Web/device control through a Control Server
+  and `agentd`. Remote is not MVP02-B and is not enabled by the MVP02-A gate.
 - **MVP03 — App Replacement:** official Codex/Claude App replacement and
   differentiated features such as task timelines, reports, RepoWiki, generated
   Skills, and richer themes.
@@ -23,6 +24,7 @@ an external terminal.
 - [desktop-terminal-replacement-prd.md](./desktop-terminal-replacement-prd.md)
 - [remote-prd.md](./remote-prd.md)
 - [remote.md](./remote.md) — original human-authored concept, retained unchanged
+- [../../../current/cli-gui-mvp02-foundation-rebaseline.md](../../../current/cli-gui-mvp02-foundation-rebaseline.md) — current scope and evidence matrix
 
 ## Technical Specifications
 
@@ -37,10 +39,15 @@ Read [spec/architecture-spec.md](./spec/architecture-spec.md) first. It indexes:
 
 ## Delivery Rule
 
-MVP02-A is the completion gate for MVP02. Remote control (MVP02-B) has been
-descoped; if it returns to the roadmap it must reuse the local contracts proven
-by MVP02-A and must not introduce a second Session Manager, Agent Runtime, or
+MVP02-A is the verification gate for the local desktop foundation. MVP02-B is
+the Model Management release sequence and must use the same local Session
+Manager, Agent Runtime, and transcript contracts. Remote Control is deferred;
+if it returns to the roadmap it must reuse the local contracts proven by
+MVP02-A and must not introduce a second Session Manager, Agent Runtime, or
 transcript model.
+
+The historical remote PRD/spec set is retained as `reference`. It is not a
+current product scope and must not be used to infer MVP02-B ownership.
 
 ## Status Convention
 

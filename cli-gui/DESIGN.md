@@ -180,6 +180,122 @@ Tabs implement roving focus with Arrow keys, Home, and End. Menus implement rovi
 
 Maintain WCAG 2.2 AA contrast for normal text and visible keyboard focus. Interactive controls require accessible names. Honor `prefers-reduced-motion`: decorative transitions must be removed while state changes remain understandable.
 
+## CLI GUI Component Governance
+
+The CLI GUI uses three layers. Each layer has a narrower responsibility and a
+one-way dependency direction:
+
+```text
+Primitive -> Pattern -> Domain Component -> ClientRuntime port
+```
+
+- **Primitive**: accessible DOM behavior, semantic tokens, focus, sizing, and
+  native-compatible props. Primitives do not know Session, Workspace, Turn,
+  Attempt, API, WebSocket, Tauri, or vendor protocol types.
+- **Pattern**: reusable composition for async state, section headers, resource
+  rows, dialogs, settings sections, and action groups. Patterns own layout and
+  state presentation but not domain decisions.
+- **Domain Component**: Transcript, Message, Tool, Approval, Diff, Attempt,
+  Diagnostic, Session, Workspace, and Quest flows. Domain components consume
+  runtime ports and translated view models; they never implement transport logic.
+
+### Primitive Responsibilities
+
+| Primitive | Responsibility | Required behavior |
+|---|---|---|
+| Button/IconButton | Explicit commands and icon actions | loading/disabled/pending, accessible name, tooltip for unfamiliar icon |
+| TextField/TextArea | Text entry and validation | label/description/error association, IME-safe input, focus ring |
+| Select/Menu | Finite option and command lists | keyboard roving focus, Escape, outside dismissal, trigger restoration |
+| Tabs | Peer view navigation | `role=tablist/tab/tabpanel`, Arrow/Home/End, active-panel association |
+| Overlay | Dialog/drawer/backdrop boundary | focus trap, Escape policy, labelled title, focus return |
+| Feedback/AsyncState | Status and recovery presentation | empty/loading/success/failure/offline/reconnecting/readonly/pending |
+| Card/Badge | Framed repeated item or compact status | semantic status text/icon, bounded text, no business action policy |
+| Icon | Consistent visual symbol | use the existing icon library, no meaning by color alone |
+
+Business components must not add a local native `button`, `input`, `textarea`,
+`select`, Dialog, Menu, Tabs, Card, or EmptyState implementation when a primitive
+or pattern exists.
+
+### Domain Component Boundaries
+
+| Domain component | Reads | Owns | Does not own |
+|---|---|---|---|
+| Transcript/Message | projected TranscriptEvent | message grouping, markdown-safe display, scroll policy | vendor parsing, persistence, route choice |
+| Tool/Command/File | normalized tool/file projection | collapsed details, copy, bounded output | process execution, workspace writes |
+| Approval | approval view model | pending/decided/expired/replay affordance | authorization policy or duplicate settlement |
+| Diff/Diagnostic | read-only inspection/diagnostic projection | truncation, binary, error, and recovery copy | Git mutation, arbitrary paths, raw errors |
+| Attempt/Session | persisted Attempt/Session projection | lifecycle labels, retry/refresh affordance | fallback decision, execution state mutation policy |
+| Quest/Settings | readiness/provider/preferences projections | form state, translated feedback, focus | secret values, backend capability invention |
+
+### Required UI States
+
+Every primary domain component declares and tests the following state set:
+
+| State | Presentation rule |
+|---|---|
+| Empty | Explain the next valid action without losing surrounding navigation |
+| Loading | Preserve stable content; expose progress or skeleton and suppress duplicates |
+| Success | Show the server-backed fact and its source/status when useful |
+| Failure | Show translated error, stable recovery action, and no fake success state |
+| Offline | Make unavailable mutations explicit; keep readable cached facts |
+| Reconnecting | Show retry/reconnect progress without duplicating transcript items |
+| Readonly | Disable mutations and explain why; do not hide the data surface |
+| Pending | Freeze duplicate commands, retain focus, and expose completion/failure transition |
+
+Approval additionally supports `pending`, `submitting`, `decided`, `expired`, and
+`replay`. Attempt additionally supports `primary`, `fallback`, `confirmation`,
+`exhausted`, `cancelled`, and `completed`. Diff additionally supports `binary`,
+`truncated`, `non-git`, and `scope-error`.
+
+### Copy, Focus, And Responsive Rules
+
+- All visible copy is in `client/i18n.tsx`; EN and ZH keys are added together.
+  Dynamic text uses named placeholders and must wrap long paths, model names,
+  error codes, and translated labels without clipping or overlap.
+- Focus order follows the visual workflow. Dialogs and drawers restore focus to
+  their trigger; pending actions keep focus stable; destructive actions require
+  an explicit confirmation path.
+- Use semantic labels, `aria-describedby` for field errors, `aria-live` for
+  non-destructive status updates, and visible text/icon in addition to color.
+- `prefers-reduced-motion: reduce` removes decorative transitions while retaining
+  state visibility. No interaction may depend on animation completion.
+- At 1280px, keep the three-column workbench when enabled. At 900px, use focus-trapped
+  drawers; at 640px, stack actions and preserve a 44px touch target where possible.
+  Narrow screens use drill-in navigation and must not horizontally scroll.
+
+### Tokens And Layers
+
+Use semantic tokens from this file and the theme files. The baseline values are:
+
+| Token group | Contract |
+|---|---|
+| Spacing | 4px base scale: 4/8/12/16/20/24/32px |
+| Control size | 36px default height; 44px minimum touch target where space permits |
+| Radius | controls 6-8px; cards/panels use the existing 8-10px system; pills full |
+| Focus | `--color-focus` with a visible 2px ring and sufficient contrast |
+| Status | success `#22C55E`, warning `#F59E0B`, danger `#EF4444`, stopped/muted `#9CA3AF`; always pair with text/icon |
+| Layer | base 0, sticky shell 10, drawer 30, dialog 40, tooltip 50, toast 60 |
+| Text | body 13px, compact metadata 12px, mono for paths/commands/timestamps only |
+
+Do not create page-local z-index values, one-off colors, negative letter spacing,
+or viewport-scaled font sizes. Content containers must define a stable min/max
+dimension so pending labels, icons, and translated text do not shift the layout.
+
+### Component Evidence Contract
+
+| Contract | Evidence |
+|---|---|
+| Primitive behavior | Vitest/DOM contract: role, accessible name, keyboard path, disabled/pending behavior |
+| Pattern state | Component test: empty/loading/success/failure/offline/reconnecting/readonly/pending |
+| Domain behavior | Runtime fixture or port contract; no mocked transport hidden inside component |
+| Browser workflow | Chrome trace and screenshot for P0/P1 flow, second interaction, and responsive viewport |
+| Visual stability | Screenshot evidence tied to `requirementId`; no screenshot-only pass |
+| Performance | normalized performance result for 50k transcript/delta/diff targets when declared |
+
+Business components must call ClientRuntime ports or a domain hook. Direct imports
+of HTTP clients, WebSocket constructors, `window.__TAURI__`/Tauri invoke, raw
+browser controls, `child_process`, and vendor protocol types are prohibited.
+
 ## Do's and Don'ts
 
 Do reuse the library, use semantic tokens, preserve EN/ZH layouts, write keyboard and ARIA tests, and update this document together with tokens and component tests when the visual contract changes.

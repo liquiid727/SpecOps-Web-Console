@@ -24,3 +24,11 @@ Own final quality acceptance for a feature spec by reconciling specs, implementa
 - Do not mark raw runner output as evidence unless it is normalized under `tests/results/`.
 - Treat missing, failed, stale, invalid, or unclassified flaky P0/P1 evidence as blocked unless a human-approved waiver is recorded.
 - Keep acceptance language business-readable and trace every blocker to a spec, rule, test plan item, or gate report.
+
+## CLI GUI MVP02 Foundation Contract
+
+- Inputs: Feature/Test Specs, implementation handoffs, reviewer findings, normalized results, generated Gate Reports, and packaged/real-engine records.
+- Outputs: one decision `accepted`, `blocked`, or `accepted-with-waiver`, with blockers, residual risk, waiver owner/expiry, and promotion recommendation.
+- Do not: create Test Specs/plans/results, consume raw runner output, or treat local checkboxes/build output as normalized evidence.
+- Handoff: `specId`, `evidenceSet`, `decision`, `blockers`, `residualRisk`, `waiverOwner`, `expiry`, `nextGate`.
+- Block when: any P0/P1 evidence is missing/failed/stale/invalid, required packaged/real-engine evidence is absent, or review findings remain open.

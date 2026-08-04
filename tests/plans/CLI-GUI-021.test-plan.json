@@ -1,0 +1,486 @@
+{
+  "standardVersion": "specos-test-standard/v1",
+  "qualityProfile": "fullstack-flow",
+  "riskTier": "P0",
+  "specId": "CLI-GUI-021",
+  "specVersion": "1.0",
+  "testSpecPath": ".features/CLI-GUI-021-engine-readiness-onboarding/test-spec.md",
+  "testSpecId": "CLI-GUI-021.test-spec",
+  "testSpecVersion": "1.0",
+  "testSpecHash": "b95ff1bd0e53e696ff073e5b74f2a19d1d5e976b59d64476873ce65a3a08763e",
+  "testSpecStatus": "approved",
+  "testSpecApprovalEvidence": "architecture-agent-mvp02-rebaseline-2026-08-04-approved-for-planning",
+  "sourceFeatureSpecHash": "33a9c69d4bb00ab68dc30096244616617ad076777745890c99760884163f212d",
+  "featureName": "CLI-GUI-021 Engine Readiness and First-Task Onboarding",
+  "source": "accepted-spec",
+  "flows": [
+    {
+      "name": "Readiness-driven first task",
+      "stages": [
+        {
+          "name": "Detect configured Codex or Claude profile",
+          "scenarioNames": [
+            "CLI-GUI-021 Engine Readiness and First-Task Onboarding happy scenario",
+            "CLI-GUI-021 Engine Readiness and First-Task Onboarding limit scenario",
+            "CLI-GUI-021 Engine Readiness and First-Task Onboarding error scenario",
+            "CLI-GUI-021 Engine Readiness and First-Task Onboarding flow scenario",
+            "CLI-GUI-021 Engine Readiness and First-Task Onboarding edge scenario"
+          ],
+          "stepNames": [
+            "Detect configured Codex or Claude profile"
+          ]
+        },
+        {
+          "name": "Show loading readiness without erasing the task draft",
+          "scenarioNames": [
+            "CLI-GUI-021 Engine Readiness and First-Task Onboarding happy scenario",
+            "CLI-GUI-021 Engine Readiness and First-Task Onboarding limit scenario",
+            "CLI-GUI-021 Engine Readiness and First-Task Onboarding error scenario",
+            "CLI-GUI-021 Engine Readiness and First-Task Onboarding flow scenario",
+            "CLI-GUI-021 Engine Readiness and First-Task Onboarding edge scenario"
+          ],
+          "stepNames": [
+            "Show loading readiness without erasing the task draft"
+          ]
+        },
+        {
+          "name": "Enable Chat only for a supported structured transport",
+          "scenarioNames": [
+            "CLI-GUI-021 Engine Readiness and First-Task Onboarding happy scenario",
+            "CLI-GUI-021 Engine Readiness and First-Task Onboarding limit scenario",
+            "CLI-GUI-021 Engine Readiness and First-Task Onboarding error scenario",
+            "CLI-GUI-021 Engine Readiness and First-Task Onboarding flow scenario",
+            "CLI-GUI-021 Engine Readiness and First-Task Onboarding edge scenario"
+          ],
+          "stepNames": [
+            "Enable Chat only for a supported structured transport"
+          ]
+        },
+        {
+          "name": "Create a Chat session from the first task",
+          "scenarioNames": [
+            "CLI-GUI-021 Engine Readiness and First-Task Onboarding happy scenario",
+            "CLI-GUI-021 Engine Readiness and First-Task Onboarding limit scenario",
+            "CLI-GUI-021 Engine Readiness and First-Task Onboarding error scenario",
+            "CLI-GUI-021 Engine Readiness and First-Task Onboarding flow scenario",
+            "CLI-GUI-021 Engine Readiness and First-Task Onboarding edge scenario"
+          ],
+          "stepNames": [
+            "Create a Chat session from the first task"
+          ]
+        },
+        {
+          "name": "Offer a translated remediation action when Chat is unavailable",
+          "scenarioNames": [
+            "CLI-GUI-021 Engine Readiness and First-Task Onboarding happy scenario",
+            "CLI-GUI-021 Engine Readiness and First-Task Onboarding limit scenario",
+            "CLI-GUI-021 Engine Readiness and First-Task Onboarding error scenario",
+            "CLI-GUI-021 Engine Readiness and First-Task Onboarding flow scenario",
+            "CLI-GUI-021 Engine Readiness and First-Task Onboarding edge scenario"
+          ],
+          "stepNames": [
+            "Offer a translated remediation action when Chat is unavailable"
+          ]
+        }
+      ]
+    }
+  ],
+  "endpoints": [
+    {
+      "name": "Engine readiness",
+      "method": "GET",
+      "path": "/api/profiles/:id/readiness",
+      "priority": "P0",
+      "branches": [
+        "happy",
+        "limit",
+        "error",
+        "flow",
+        "edge"
+      ],
+      "preconditions": [
+        "Make Chat eligibility a capability/readiness result instead of a static feature flag.",
+        "Give missing, unsupported, timed-out, and auth-required engines typed recovery actions.",
+        "Keep setup Terminal as an explicit fallback, never the ready Chat default."
+      ],
+      "expectedResults": [
+        "happy branch is covered",
+        "error branch is covered",
+        "edge branch is covered",
+        "limit branch is covered",
+        "flow branch is covered"
+      ],
+      "relatedRule": "readiness.no-auto-install"
+    },
+    {
+      "name": "Capability snapshot",
+      "method": "GET",
+      "path": "/api/profiles/:id/capabilities",
+      "priority": "P0",
+      "branches": [
+        "happy",
+        "limit",
+        "error",
+        "flow",
+        "edge"
+      ],
+      "preconditions": [
+        "Make Chat eligibility a capability/readiness result instead of a static feature flag.",
+        "Give missing, unsupported, timed-out, and auth-required engines typed recovery actions.",
+        "Keep setup Terminal as an explicit fallback, never the ready Chat default."
+      ],
+      "expectedResults": [
+        "happy branch is covered",
+        "error branch is covered",
+        "edge branch is covered",
+        "limit branch is covered",
+        "flow branch is covered"
+      ],
+      "relatedRule": "readiness.no-auto-install"
+    }
+  ],
+  "scenarios": [
+    {
+      "name": "CLI-GUI-021 Engine Readiness and First-Task Onboarding happy scenario",
+      "priority": "P0",
+      "branches": [
+        "happy"
+      ],
+      "preconditions": [
+        "Make Chat eligibility a capability/readiness result instead of a static feature flag.",
+        "Give missing, unsupported, timed-out, and auth-required engines typed recovery actions.",
+        "Keep setup Terminal as an explicit fallback, never the ready Chat default."
+      ],
+      "expectedResults": [
+        "happy branch covered",
+        "error branch covered",
+        "edge branch covered",
+        "limit branch covered",
+        "flow branch covered"
+      ],
+      "steps": [
+        "Detect configured Codex or Claude profile",
+        "Show loading readiness without erasing the task draft",
+        "Enable Chat only for a supported structured transport",
+        "Create a Chat session from the first task",
+        "Offer a translated remediation action when Chat is unavailable"
+      ]
+    },
+    {
+      "name": "CLI-GUI-021 Engine Readiness and First-Task Onboarding limit scenario",
+      "priority": "P1",
+      "branches": [
+        "limit"
+      ],
+      "preconditions": [
+        "Make Chat eligibility a capability/readiness result instead of a static feature flag.",
+        "Give missing, unsupported, timed-out, and auth-required engines typed recovery actions.",
+        "Keep setup Terminal as an explicit fallback, never the ready Chat default."
+      ],
+      "expectedResults": [
+        "happy branch covered",
+        "error branch covered",
+        "edge branch covered",
+        "limit branch covered",
+        "flow branch covered"
+      ],
+      "steps": [
+        "Detect configured Codex or Claude profile",
+        "Show loading readiness without erasing the task draft",
+        "Enable Chat only for a supported structured transport",
+        "Create a Chat session from the first task",
+        "Offer a translated remediation action when Chat is unavailable"
+      ]
+    },
+    {
+      "name": "CLI-GUI-021 Engine Readiness and First-Task Onboarding error scenario",
+      "priority": "P1",
+      "branches": [
+        "error"
+      ],
+      "preconditions": [
+        "Make Chat eligibility a capability/readiness result instead of a static feature flag.",
+        "Give missing, unsupported, timed-out, and auth-required engines typed recovery actions.",
+        "Keep setup Terminal as an explicit fallback, never the ready Chat default."
+      ],
+      "expectedResults": [
+        "Executable is missing, incompatible, timed out, or returns an unknown auth state.",
+        "A profile supports PTY but not structured Chat.",
+        "Readiness changes while the Quest Home task draft is being edited.",
+        "The remediation action is unavailable in a browser or readonly client."
+      ],
+      "steps": [
+        "Detect configured Codex or Claude profile",
+        "Show loading readiness without erasing the task draft",
+        "Enable Chat only for a supported structured transport",
+        "Create a Chat session from the first task",
+        "Offer a translated remediation action when Chat is unavailable"
+      ]
+    },
+    {
+      "name": "CLI-GUI-021 Engine Readiness and First-Task Onboarding flow scenario",
+      "priority": "P0",
+      "branches": [
+        "flow"
+      ],
+      "preconditions": [
+        "Make Chat eligibility a capability/readiness result instead of a static feature flag.",
+        "Give missing, unsupported, timed-out, and auth-required engines typed recovery actions.",
+        "Keep setup Terminal as an explicit fallback, never the ready Chat default."
+      ],
+      "expectedResults": [
+        "happy branch covered",
+        "error branch covered",
+        "edge branch covered",
+        "limit branch covered",
+        "flow branch covered"
+      ],
+      "steps": [
+        "Detect configured Codex or Claude profile",
+        "Show loading readiness without erasing the task draft",
+        "Enable Chat only for a supported structured transport",
+        "Create a Chat session from the first task",
+        "Offer a translated remediation action when Chat is unavailable"
+      ]
+    },
+    {
+      "name": "CLI-GUI-021 Engine Readiness and First-Task Onboarding edge scenario",
+      "priority": "P1",
+      "branches": [
+        "edge"
+      ],
+      "preconditions": [
+        "Make Chat eligibility a capability/readiness result instead of a static feature flag.",
+        "Give missing, unsupported, timed-out, and auth-required engines typed recovery actions.",
+        "Keep setup Terminal as an explicit fallback, never the ready Chat default."
+      ],
+      "expectedResults": [
+        "happy branch covered",
+        "error branch covered",
+        "edge branch covered",
+        "limit branch covered",
+        "flow branch covered"
+      ],
+      "steps": [
+        "Detect configured Codex or Claude profile",
+        "Show loading readiness without erasing the task draft",
+        "Enable Chat only for a supported structured transport",
+        "Create a Chat session from the first task",
+        "Offer a translated remediation action when Chat is unavailable"
+      ]
+    }
+  ],
+  "standardRequirements": [
+    {
+      "id": "std.p0.api.contract",
+      "layer": "api",
+      "appliesTo": [
+        "GET /api/profiles/:id/readiness",
+        "GET /api/profiles/:id/capabilities"
+      ],
+      "requiredFor": [
+        "P0",
+        "P1"
+      ],
+      "ownerAgent": "test-editor",
+      "requiredEvidence": [
+        "trace"
+      ],
+      "gateImpact": "blocking"
+    },
+    {
+      "id": "std.p0.scenario.e2e",
+      "layer": "scenario",
+      "appliesTo": [
+        "CLI-GUI-021 Engine Readiness and First-Task Onboarding happy scenario",
+        "CLI-GUI-021 Engine Readiness and First-Task Onboarding limit scenario",
+        "CLI-GUI-021 Engine Readiness and First-Task Onboarding error scenario",
+        "CLI-GUI-021 Engine Readiness and First-Task Onboarding flow scenario",
+        "CLI-GUI-021 Engine Readiness and First-Task Onboarding edge scenario"
+      ],
+      "requiredFor": [
+        "P0",
+        "P1"
+      ],
+      "ownerAgent": "playwright-test-agent",
+      "requiredEvidence": [
+        "trace",
+        "screenshot"
+      ],
+      "gateImpact": "blocking"
+    },
+    {
+      "id": "std.p1.observability",
+      "layer": "observability",
+      "appliesTo": [
+        "GET /api/profiles/:id/readiness",
+        "GET /api/profiles/:id/capabilities",
+        "CLI-GUI-021 Engine Readiness and First-Task Onboarding happy scenario",
+        "CLI-GUI-021 Engine Readiness and First-Task Onboarding limit scenario",
+        "CLI-GUI-021 Engine Readiness and First-Task Onboarding error scenario",
+        "CLI-GUI-021 Engine Readiness and First-Task Onboarding flow scenario",
+        "CLI-GUI-021 Engine Readiness and First-Task Onboarding edge scenario"
+      ],
+      "requiredFor": [
+        "P0",
+        "P1"
+      ],
+      "ownerAgent": "test-editor",
+      "requiredEvidence": [
+        "trace",
+        "log"
+      ],
+      "gateImpact": "blocking"
+    },
+    {
+      "id": "cli-gui.021.unit",
+      "layer": "unit",
+      "appliesTo": [
+        "CLI-GUI-021 Engine Readiness and First-Task Onboarding happy scenario",
+        "CLI-GUI-021 Engine Readiness and First-Task Onboarding limit scenario",
+        "CLI-GUI-021 Engine Readiness and First-Task Onboarding error scenario",
+        "CLI-GUI-021 Engine Readiness and First-Task Onboarding flow scenario",
+        "CLI-GUI-021 Engine Readiness and First-Task Onboarding edge scenario"
+      ],
+      "requiredFor": [
+        "P0",
+        "P1"
+      ],
+      "ownerAgent": "unit-test-agent",
+      "requiredEvidence": [
+        "trace"
+      ],
+      "gateImpact": "blocking"
+    },
+    {
+      "id": "cli-gui.021.performance",
+      "layer": "performance",
+      "appliesTo": [
+        "CLI-GUI-021 Engine Readiness and First-Task Onboarding happy scenario",
+        "CLI-GUI-021 Engine Readiness and First-Task Onboarding limit scenario",
+        "CLI-GUI-021 Engine Readiness and First-Task Onboarding error scenario",
+        "CLI-GUI-021 Engine Readiness and First-Task Onboarding flow scenario",
+        "CLI-GUI-021 Engine Readiness and First-Task Onboarding edge scenario"
+      ],
+      "requiredFor": [
+        "P0",
+        "P1"
+      ],
+      "ownerAgent": "performance-test-agent",
+      "requiredEvidence": [
+        "raw-report",
+        "trace"
+      ],
+      "gateImpact": "blocking"
+    },
+    {
+      "id": "cli-gui.021.security",
+      "layer": "security",
+      "appliesTo": [
+        "CLI-GUI-021 Engine Readiness and First-Task Onboarding happy scenario",
+        "CLI-GUI-021 Engine Readiness and First-Task Onboarding limit scenario",
+        "CLI-GUI-021 Engine Readiness and First-Task Onboarding error scenario",
+        "CLI-GUI-021 Engine Readiness and First-Task Onboarding flow scenario",
+        "CLI-GUI-021 Engine Readiness and First-Task Onboarding edge scenario"
+      ],
+      "requiredFor": [
+        "P0",
+        "P1"
+      ],
+      "ownerAgent": "specialized-check-agent",
+      "requiredEvidence": [
+        "raw-report",
+        "trace"
+      ],
+      "gateImpact": "blocking"
+    },
+    {
+      "id": "cli-gui.021.compatibility",
+      "layer": "compatibility",
+      "appliesTo": [
+        "CLI-GUI-021 Engine Readiness and First-Task Onboarding happy scenario",
+        "CLI-GUI-021 Engine Readiness and First-Task Onboarding limit scenario",
+        "CLI-GUI-021 Engine Readiness and First-Task Onboarding error scenario",
+        "CLI-GUI-021 Engine Readiness and First-Task Onboarding flow scenario",
+        "CLI-GUI-021 Engine Readiness and First-Task Onboarding edge scenario"
+      ],
+      "requiredFor": [
+        "P0",
+        "P1"
+      ],
+      "ownerAgent": "specialized-check-agent",
+      "requiredEvidence": [
+        "raw-report"
+      ],
+      "gateImpact": "blocking"
+    }
+  ],
+  "flakePolicy": {
+    "allowedRetries": 1,
+    "quarantineAllowed": false,
+    "classificationRequired": true
+  },
+  "dataPolicy": {
+    "externalDependencyMode": "stubbed",
+    "piiAllowed": false,
+    "secretsAllowed": false
+  },
+  "securityPolicy": {
+    "baseline": "owasp-api-top-10-2023",
+    "requiredChecks": [
+      "broken-object-level-authorization",
+      "broken-authentication",
+      "broken-object-property-level-authorization",
+      "unrestricted-resource-consumption"
+    ]
+  },
+  "performanceTargets": [
+    {
+      "endpoint": "readiness probe and remediation",
+      "priority": "P1",
+      "slo": {
+        "p95Ms": 1000,
+        "errorRate": 0.05
+      },
+      "gateImpact": "warning"
+    }
+  ],
+  "concurrencyInvariants": [
+    {
+      "scenario": "repeated readiness probe",
+      "invariant": "probe cancellation and retry cannot create duplicate runtime sessions",
+      "actorProfile": "one workspace with two sequential probe attempts",
+      "expectedFinalState": "one classified readiness result and no leaked process",
+      "gateImpact": "blocking"
+    }
+  ],
+  "releaseGates": [
+    {
+      "id": "cli-gui-021-independent-verification",
+      "type": "change-verification",
+      "requiredTestTypes": [
+        "unit",
+        "scenario",
+        "performance",
+        "security",
+        "compatibility"
+      ],
+      "blocking": true,
+      "evidenceRequired": [
+        "trace"
+      ]
+    },
+    {
+      "id": "cli-gui-021-specialized-and-release-readiness",
+      "type": "release",
+      "requiredTestTypes": [
+        "security",
+        "compatibility"
+      ],
+      "blocking": true,
+      "evidenceRequired": [
+        "raw-report"
+      ]
+    }
+  ]
+}

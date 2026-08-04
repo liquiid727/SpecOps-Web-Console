@@ -31,3 +31,11 @@ Own the first-pass architecture judgment for a bounded request, then delegate sp
 - Do not route implementation details directly to test agents.
 - Do not promote draft assumptions into canonical design docs or accepted feature specs.
 - Treat `.agents/manifest.yaml` as the only role registry.
+
+## CLI GUI MVP02 Foundation Contract
+
+- Inputs: `current/cli-gui-mvp02-foundation-rebaseline.md`, canonical platform design, roadmap, legacy MVP02 specs, and applicable rules.
+- Outputs: scope decision, domain/ownership boundaries, specialist dispatch list, preconditions, and `Sync Handoff` fields.
+- Do not: promote research, checkboxes, bridges, or placeholders into support or release claims.
+- Handoff: `sourceSpec`, `decision`, `affectedSlices`, `delegatedRoles`, `openQuestions`, `nextGate`.
+- Block when: the MVP02 name/scope, Product Session/Backend Session ownership, or evidence class is ambiguous.

@@ -1,0 +1,516 @@
+{
+  "standardVersion": "specos-test-standard/v1",
+  "qualityProfile": "fullstack-flow",
+  "riskTier": "P0",
+  "specId": "CLI-GUI-023",
+  "specVersion": "1.0",
+  "testSpecPath": ".features/CLI-GUI-023-chat-composer-transcript-controls/test-spec.md",
+  "testSpecId": "CLI-GUI-023.test-spec",
+  "testSpecVersion": "1.0",
+  "testSpecHash": "898d2b6018ed394eb550b9a5695622cc49dc2d18fbe084145265adeb5bb03ba1",
+  "testSpecStatus": "approved",
+  "testSpecApprovalEvidence": "architecture-agent-mvp02-rebaseline-2026-08-04-approved-for-planning",
+  "sourceFeatureSpecHash": "51e0f1f9bfecf25cd02fa30abadcf7c8155f7b416425bf4065a7481123c6a53a",
+  "featureName": "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls",
+  "source": "accepted-spec",
+  "flows": [
+    {
+      "name": "First task to structured Chat",
+      "stages": [
+        {
+          "name": "Enter a task and choose Workspace/Profile/Model/Permission",
+          "scenarioNames": [
+            "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls happy scenario",
+            "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls limit scenario",
+            "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls error scenario",
+            "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls flow scenario",
+            "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls edge scenario"
+          ],
+          "stepNames": [
+            "Enter a task and choose Workspace/Profile/Model/Permission"
+          ]
+        },
+        {
+          "name": "Create a Chat Session when readiness permits",
+          "scenarioNames": [
+            "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls happy scenario",
+            "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls limit scenario",
+            "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls error scenario",
+            "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls flow scenario",
+            "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls edge scenario"
+          ],
+          "stepNames": [
+            "Create a Chat Session when readiness permits"
+          ]
+        },
+        {
+          "name": "Receive streaming deltas and a final persisted assistant message",
+          "scenarioNames": [
+            "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls happy scenario",
+            "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls limit scenario",
+            "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls error scenario",
+            "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls flow scenario",
+            "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls edge scenario"
+          ],
+          "stepNames": [
+            "Receive streaming deltas and a final persisted assistant message"
+          ]
+        },
+        {
+          "name": "Inspect tool, file, approval, usage, lifecycle, and diagnostic cards",
+          "scenarioNames": [
+            "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls happy scenario",
+            "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls limit scenario",
+            "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls error scenario",
+            "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls flow scenario",
+            "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls edge scenario"
+          ],
+          "stepNames": [
+            "Inspect tool, file, approval, usage, lifecycle, and diagnostic cards"
+          ]
+        },
+        {
+          "name": "Cancel, retry, approve, deny, or resume using explicit controls",
+          "scenarioNames": [
+            "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls happy scenario",
+            "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls limit scenario",
+            "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls error scenario",
+            "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls flow scenario",
+            "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls edge scenario"
+          ],
+          "stepNames": [
+            "Cancel, retry, approve, deny, or resume using explicit controls"
+          ]
+        }
+      ]
+    }
+  ],
+  "endpoints": [
+    {
+      "name": "Create Chat Session",
+      "method": "POST",
+      "path": "/api/sessions",
+      "priority": "P0",
+      "branches": [
+        "happy",
+        "limit",
+        "error",
+        "flow",
+        "edge"
+      ],
+      "preconditions": [
+        "Let a ready user create a Chat Session from a first task without an external terminal.",
+        "Render normalized streaming transcript events as stable domain cards and messages.",
+        "Provide explicit cancel, retry, approval, and resume controls with one terminal outcome."
+      ],
+      "expectedResults": [
+        "happy branch is covered",
+        "error branch is covered",
+        "edge branch is covered",
+        "limit branch is covered",
+        "flow branch is covered"
+      ],
+      "relatedRule": "chat.readiness-first"
+    },
+    {
+      "name": "Submit or control turn",
+      "method": "POST",
+      "path": "/api/sessions/:id/chat",
+      "priority": "P0",
+      "branches": [
+        "happy",
+        "limit",
+        "error",
+        "flow",
+        "edge"
+      ],
+      "preconditions": [
+        "Let a ready user create a Chat Session from a first task without an external terminal.",
+        "Render normalized streaming transcript events as stable domain cards and messages.",
+        "Provide explicit cancel, retry, approval, and resume controls with one terminal outcome."
+      ],
+      "expectedResults": [
+        "happy branch is covered",
+        "error branch is covered",
+        "edge branch is covered",
+        "limit branch is covered",
+        "flow branch is covered"
+      ],
+      "relatedRule": "chat.readiness-first"
+    }
+  ],
+  "scenarios": [
+    {
+      "name": "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls happy scenario",
+      "priority": "P0",
+      "branches": [
+        "happy"
+      ],
+      "preconditions": [
+        "Let a ready user create a Chat Session from a first task without an external terminal.",
+        "Render normalized streaming transcript events as stable domain cards and messages.",
+        "Provide explicit cancel, retry, approval, and resume controls with one terminal outcome."
+      ],
+      "expectedResults": [
+        "happy branch covered",
+        "error branch covered",
+        "edge branch covered",
+        "limit branch covered",
+        "flow branch covered"
+      ],
+      "steps": [
+        "Enter a task and choose Workspace/Profile/Model/Permission",
+        "Create a Chat Session when readiness permits",
+        "Receive streaming deltas and a final persisted assistant message",
+        "Inspect tool, file, approval, usage, lifecycle, and diagnostic cards",
+        "Cancel, retry, approve, deny, or resume using explicit controls"
+      ]
+    },
+    {
+      "name": "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls limit scenario",
+      "priority": "P1",
+      "branches": [
+        "limit"
+      ],
+      "preconditions": [
+        "Let a ready user create a Chat Session from a first task without an external terminal.",
+        "Render normalized streaming transcript events as stable domain cards and messages.",
+        "Provide explicit cancel, retry, approval, and resume controls with one terminal outcome."
+      ],
+      "expectedResults": [
+        "happy branch covered",
+        "error branch covered",
+        "edge branch covered",
+        "limit branch covered",
+        "flow branch covered"
+      ],
+      "steps": [
+        "Enter a task and choose Workspace/Profile/Model/Permission",
+        "Create a Chat Session when readiness permits",
+        "Receive streaming deltas and a final persisted assistant message",
+        "Inspect tool, file, approval, usage, lifecycle, and diagnostic cards",
+        "Cancel, retry, approve, deny, or resume using explicit controls"
+      ]
+    },
+    {
+      "name": "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls error scenario",
+      "priority": "P1",
+      "branches": [
+        "error"
+      ],
+      "preconditions": [
+        "Let a ready user create a Chat Session from a first task without an external terminal.",
+        "Render normalized streaming transcript events as stable domain cards and messages.",
+        "Provide explicit cancel, retry, approval, and resume controls with one terminal outcome."
+      ],
+      "expectedResults": [
+        "No profiles, readiness loading, all probes failed, or structured Chat is unavailable.",
+        "No delta arrives before final message, reconnect occurs during a turn, or final event is replayed.",
+        "User scrolls away while deltas arrive.",
+        "Approval expires, is replayed, or cancel races with approval settlement."
+      ],
+      "steps": [
+        "Enter a task and choose Workspace/Profile/Model/Permission",
+        "Create a Chat Session when readiness permits",
+        "Receive streaming deltas and a final persisted assistant message",
+        "Inspect tool, file, approval, usage, lifecycle, and diagnostic cards",
+        "Cancel, retry, approve, deny, or resume using explicit controls"
+      ]
+    },
+    {
+      "name": "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls flow scenario",
+      "priority": "P0",
+      "branches": [
+        "flow"
+      ],
+      "preconditions": [
+        "Let a ready user create a Chat Session from a first task without an external terminal.",
+        "Render normalized streaming transcript events as stable domain cards and messages.",
+        "Provide explicit cancel, retry, approval, and resume controls with one terminal outcome."
+      ],
+      "expectedResults": [
+        "happy branch covered",
+        "error branch covered",
+        "edge branch covered",
+        "limit branch covered",
+        "flow branch covered"
+      ],
+      "steps": [
+        "Enter a task and choose Workspace/Profile/Model/Permission",
+        "Create a Chat Session when readiness permits",
+        "Receive streaming deltas and a final persisted assistant message",
+        "Inspect tool, file, approval, usage, lifecycle, and diagnostic cards",
+        "Cancel, retry, approve, deny, or resume using explicit controls"
+      ]
+    },
+    {
+      "name": "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls edge scenario",
+      "priority": "P1",
+      "branches": [
+        "edge"
+      ],
+      "preconditions": [
+        "Let a ready user create a Chat Session from a first task without an external terminal.",
+        "Render normalized streaming transcript events as stable domain cards and messages.",
+        "Provide explicit cancel, retry, approval, and resume controls with one terminal outcome."
+      ],
+      "expectedResults": [
+        "happy branch covered",
+        "error branch covered",
+        "edge branch covered",
+        "limit branch covered",
+        "flow branch covered"
+      ],
+      "steps": [
+        "Enter a task and choose Workspace/Profile/Model/Permission",
+        "Create a Chat Session when readiness permits",
+        "Receive streaming deltas and a final persisted assistant message",
+        "Inspect tool, file, approval, usage, lifecycle, and diagnostic cards",
+        "Cancel, retry, approve, deny, or resume using explicit controls"
+      ]
+    }
+  ],
+  "standardRequirements": [
+    {
+      "id": "std.p0.api.contract",
+      "layer": "api",
+      "appliesTo": [
+        "POST /api/sessions",
+        "POST /api/sessions/:id/chat"
+      ],
+      "requiredFor": [
+        "P0",
+        "P1"
+      ],
+      "ownerAgent": "test-editor",
+      "requiredEvidence": [
+        "trace"
+      ],
+      "gateImpact": "blocking"
+    },
+    {
+      "id": "std.p0.scenario.e2e",
+      "layer": "scenario",
+      "appliesTo": [
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls happy scenario",
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls limit scenario",
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls error scenario",
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls flow scenario",
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls edge scenario"
+      ],
+      "requiredFor": [
+        "P0",
+        "P1"
+      ],
+      "ownerAgent": "playwright-test-agent",
+      "requiredEvidence": [
+        "trace",
+        "screenshot"
+      ],
+      "gateImpact": "blocking"
+    },
+    {
+      "id": "std.p1.observability",
+      "layer": "observability",
+      "appliesTo": [
+        "POST /api/sessions",
+        "POST /api/sessions/:id/chat",
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls happy scenario",
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls limit scenario",
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls error scenario",
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls flow scenario",
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls edge scenario"
+      ],
+      "requiredFor": [
+        "P0",
+        "P1"
+      ],
+      "ownerAgent": "test-editor",
+      "requiredEvidence": [
+        "trace",
+        "log"
+      ],
+      "gateImpact": "blocking"
+    },
+    {
+      "id": "cli-gui.023.unit",
+      "layer": "unit",
+      "appliesTo": [
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls happy scenario",
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls limit scenario",
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls error scenario",
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls flow scenario",
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls edge scenario"
+      ],
+      "requiredFor": [
+        "P0",
+        "P1"
+      ],
+      "ownerAgent": "unit-test-agent",
+      "requiredEvidence": [
+        "trace"
+      ],
+      "gateImpact": "blocking"
+    },
+    {
+      "id": "cli-gui.023.performance",
+      "layer": "performance",
+      "appliesTo": [
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls happy scenario",
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls limit scenario",
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls error scenario",
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls flow scenario",
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls edge scenario"
+      ],
+      "requiredFor": [
+        "P0",
+        "P1"
+      ],
+      "ownerAgent": "performance-test-agent",
+      "requiredEvidence": [
+        "raw-report",
+        "trace"
+      ],
+      "gateImpact": "blocking"
+    },
+    {
+      "id": "cli-gui.023.latency",
+      "layer": "latency",
+      "appliesTo": [
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls happy scenario",
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls limit scenario",
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls error scenario",
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls flow scenario",
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls edge scenario"
+      ],
+      "requiredFor": [
+        "P0",
+        "P1"
+      ],
+      "ownerAgent": "performance-test-agent",
+      "requiredEvidence": [
+        "raw-report",
+        "trace"
+      ],
+      "gateImpact": "blocking"
+    },
+    {
+      "id": "cli-gui.023.concurrency",
+      "layer": "concurrency",
+      "appliesTo": [
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls happy scenario",
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls limit scenario",
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls error scenario",
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls flow scenario",
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls edge scenario"
+      ],
+      "requiredFor": [
+        "P0",
+        "P1"
+      ],
+      "ownerAgent": "concurrency-test-agent",
+      "requiredEvidence": [
+        "raw-report",
+        "trace"
+      ],
+      "gateImpact": "blocking"
+    },
+    {
+      "id": "cli-gui.023.security",
+      "layer": "security",
+      "appliesTo": [
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls happy scenario",
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls limit scenario",
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls error scenario",
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls flow scenario",
+        "CLI-GUI-023 Capability-Driven Chat, Composer, and Transcript Controls edge scenario"
+      ],
+      "requiredFor": [
+        "P0",
+        "P1"
+      ],
+      "ownerAgent": "specialized-check-agent",
+      "requiredEvidence": [
+        "raw-report",
+        "trace"
+      ],
+      "gateImpact": "blocking"
+    }
+  ],
+  "flakePolicy": {
+    "allowedRetries": 1,
+    "quarantineAllowed": false,
+    "classificationRequired": true
+  },
+  "dataPolicy": {
+    "externalDependencyMode": "stubbed",
+    "piiAllowed": false,
+    "secretsAllowed": false
+  },
+  "securityPolicy": {
+    "baseline": "owasp-api-top-10-2023",
+    "requiredChecks": [
+      "broken-object-level-authorization",
+      "broken-authentication",
+      "broken-object-property-level-authorization",
+      "unrestricted-resource-consumption"
+    ]
+  },
+  "performanceTargets": [
+    {
+      "endpoint": "transcript projection and 50k event rendering",
+      "priority": "P0",
+      "slo": {
+        "p95Ms": 500,
+        "errorRate": 0.01
+      },
+      "gateImpact": "blocking"
+    },
+    {
+      "endpoint": "first delta to visible message",
+      "priority": "P0",
+      "slo": {
+        "p95Ms": 1000
+      },
+      "gateImpact": "blocking"
+    }
+  ],
+  "concurrencyInvariants": [
+    {
+      "scenario": "duplicate submit and cancel race",
+      "invariant": "one user action maps to one turn and cancellation is idempotent",
+      "actorProfile": "one composer with repeated submit and cancel clicks",
+      "expectedFinalState": "one turn, one terminal state, no duplicate request",
+      "gateImpact": "blocking"
+    }
+  ],
+  "releaseGates": [
+    {
+      "id": "cli-gui-023-independent-verification",
+      "type": "change-verification",
+      "requiredTestTypes": [
+        "unit",
+        "scenario",
+        "performance",
+        "latency",
+        "concurrency",
+        "security"
+      ],
+      "blocking": true,
+      "evidenceRequired": [
+        "trace"
+      ]
+    },
+    {
+      "id": "cli-gui-023-specialized-and-release-readiness",
+      "type": "release",
+      "requiredTestTypes": [
+        "security"
+      ],
+      "blocking": true,
+      "evidenceRequired": [
+        "raw-report"
+      ]
+    }
+  ]
+}

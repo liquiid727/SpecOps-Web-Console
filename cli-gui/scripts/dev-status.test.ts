@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from "vitest";
 import net from "node:net";
-import { buildDevUrls, createChildEnvironment, probeEndpoint, renderBanner, renderFailureSummary, resolvePreferredPorts, selectDevPorts, waitForEndpoint, type WaitResult } from "./dev-status.js";
+import { buildDevUrls, createChildEnvironment, isLoopbackPortAvailable, probeEndpoint, renderBanner, renderFailureSummary, resolvePreferredPorts, selectDevPorts, waitForEndpoint, type WaitResult } from "./dev-status.js";
 
 const readyFrontend: WaitResult = { name: "frontend", status: "ready", elapsedMs: 12 };
 const readyBackend: WaitResult = { name: "backend", status: "ready", elapsedMs: 18, payload: { status: "ok", readonly: false } };
@@ -30,6 +30,22 @@ describe("dev status probes", () => {
 });
 
 describe("development port selection", () => {
+  it("rejects a port occupied by an IPv6 wildcard listener", async () => {
+    const occupied = net.createServer();
+    await new Promise<void>((resolve, reject) => {
+      occupied.once("error", reject);
+      occupied.listen(0, "::", () => resolve());
+    });
+    const address = occupied.address();
+    if (!address || typeof address === "string") throw new Error("test server did not expose a port");
+
+    try {
+      await expect(isLoopbackPortAvailable(address.port)).resolves.toBe(false);
+    } finally {
+      await new Promise<void>((resolve, reject) => occupied.close((error) => error ? reject(error) : resolve()));
+    }
+  });
+
   it("moves past a port occupied on loopback", async () => {
     const occupied = net.createServer();
     await new Promise<void>((resolve) => occupied.listen(0, "127.0.0.1", () => resolve()));

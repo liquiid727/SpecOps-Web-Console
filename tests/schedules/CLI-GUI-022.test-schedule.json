@@ -1,0 +1,284 @@
+{
+  "specId": "CLI-GUI-022",
+  "specVersion": "1.0",
+  "testSpecPath": ".features/CLI-GUI-022-agent-backend-normalized-events/test-spec.md",
+  "testSpecId": "CLI-GUI-022.test-spec",
+  "testSpecVersion": "1.0",
+  "testSpecHash": "2d79cd0858b258c5ceb5ac3ff21fd7b2ab7c3a3610df121dd0eba2983e9a25b7",
+  "testSpecStatus": "approved",
+  "testSpecApprovalEvidence": "architecture-agent-mvp02-rebaseline-2026-08-04-approved-for-planning",
+  "sourceFeatureSpecHash": "5fd7cdf314d9ecdf7fa3981344d8a2de912c4cccf4d1f2d14e47b08445dd13e6",
+  "featureName": "CLI-GUI-022 AgentBackend and Normalized AgentEvent",
+  "changeId": "CLI-GUI-022-mvp02a-rebaseline",
+  "executionMode": "parallel",
+  "tracks": [
+    {
+      "id": "execution",
+      "agentRole": "execution-editor",
+      "isolation": "implementation-only",
+      "allowedInputs": [
+        ".features/CLI-GUI-022-agent-backend-normalized-events/spec.md",
+        "implementation/CLI-GUI-022-mvp02a-foundation.md",
+        "reviews/CLI-GUI-022/review-entry.md",
+        "current/cli-gui-mvp02-foundation-rebaseline.md",
+        "design/cli-gui-platform-design.md",
+        "cli-gui/DESIGN.md",
+        ".features/roadmap.md",
+        "cli-gui/doc/mvp02/spec/",
+        "cli-gui/doc/mvp02-check-qa/"
+      ],
+      "forbiddenInputs": [
+        "tests/results/",
+        "tests/bruno/",
+        "tests/scenarios/",
+        "tests/e2e/",
+        "tests/playwright/"
+      ]
+    },
+    {
+      "id": "testing",
+      "agentRole": "test-editor",
+      "isolation": "spec-and-contract-only",
+      "allowedInputs": [
+        ".features/CLI-GUI-022-agent-backend-normalized-events/test-spec.md",
+        "tests/plans/CLI-GUI-022.test-plan.json",
+        "cli-gui/doc/mvp02/verification-workflow.md",
+        "design/cli-gui-platform-design.md",
+        "cli-gui/DESIGN.md",
+        "current/cli-gui-mvp02-foundation-rebaseline.md",
+        "cli-gui/doc/mvp02/spec/",
+        "cli-gui/doc/mvp02-check-qa/"
+      ],
+      "forbiddenInputs": [
+        "implementation/",
+        "tests/results/"
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "implementation-handoff-022",
+      "trackId": "execution",
+      "agentRole": "execution-editor",
+      "type": "implementation",
+      "status": "blocked",
+      "reason": "Foundation implementation is already recorded; further product implementation stays blocked until independent evidence and review gaps are closed.",
+      "inputs": [
+        ".features/CLI-GUI-022-agent-backend-normalized-events/spec.md",
+        "implementation/CLI-GUI-022-mvp02a-foundation.md",
+        "reviews/CLI-GUI-022/review-entry.md",
+        "cli-gui/doc/mvp02/spec/",
+        "cli-gui/doc/mvp02-check-qa/"
+      ],
+      "outputs": [
+        "implementation/CLI-GUI-022-mvp02a-foundation.md",
+        ".issues/issue-062-agent-backend-normalized-events-and-schema-v4.md",
+        ".issues/issue-070-native-session-resume-and-recovery.md"
+      ],
+      "dependsOn": [
+        "architecture_reviewed",
+        "design_reviewed"
+      ],
+      "traceability": {
+        "scenarios": [
+          "CLI-GUI-022 AgentBackend and Normalized AgentEvent happy scenario",
+          "CLI-GUI-022 AgentBackend and Normalized AgentEvent limit scenario",
+          "CLI-GUI-022 AgentBackend and Normalized AgentEvent error scenario",
+          "CLI-GUI-022 AgentBackend and Normalized AgentEvent flow scenario",
+          "CLI-GUI-022 AgentBackend and Normalized AgentEvent edge scenario"
+        ],
+        "endpoints": [
+          "WS /ws/sessions/:id/events",
+          "POST /api/sessions/:id/chat"
+        ]
+      }
+    },
+    {
+      "id": "independent-evidence-022",
+      "trackId": "testing",
+      "agentRole": "test-editor",
+      "type": "integration-test",
+      "status": "blocked",
+      "reason": "Independent fixtures, specialist runs, and normalized result adapters are not present; QA cannot accept raw local runner output.",
+      "inputs": [
+        ".features/CLI-GUI-022-agent-backend-normalized-events/test-spec.md",
+        "tests/plans/CLI-GUI-022.test-plan.json",
+        "cli-gui/doc/mvp02/verification-workflow.md",
+        "cli-gui/doc/mvp02/spec/",
+        "cli-gui/doc/mvp02-check-qa/"
+      ],
+      "outputs": [
+        "tests/results/CLI-GUI-022.*.json",
+        "reviews/CLI-GUI-022-mvp02a-rebaseline/gate-report.md"
+      ],
+      "dependsOn": [
+        "test_plan_ready"
+      ],
+      "traceability": {
+        "scenarios": [
+          "CLI-GUI-022 AgentBackend and Normalized AgentEvent happy scenario",
+          "CLI-GUI-022 AgentBackend and Normalized AgentEvent limit scenario",
+          "CLI-GUI-022 AgentBackend and Normalized AgentEvent error scenario",
+          "CLI-GUI-022 AgentBackend and Normalized AgentEvent flow scenario",
+          "CLI-GUI-022 AgentBackend and Normalized AgentEvent edge scenario"
+        ],
+        "endpoints": [
+          "WS /ws/sessions/:id/events",
+          "POST /api/sessions/:id/chat"
+        ]
+      }
+    },
+    {
+      "id": "ui-gap-CLI-GUI-022 AgentBackend and Normalized AgentEvent happy scenario",
+      "trackId": "testing",
+      "agentRole": "playwright-test-agent",
+      "type": "ui-test-gap",
+      "status": "blocked",
+      "reason": "Browser execution, screenshot, focus, and trace assets are not yet normalized for this slice.",
+      "inputs": [
+        ".features/CLI-GUI-022-agent-backend-normalized-events/test-spec.md",
+        "tests/plans/CLI-GUI-022.test-plan.json",
+        "cli-gui/DESIGN.md"
+      ],
+      "outputs": [
+        "tests/scenarios/CLI-GUI-022/ui-gaps.md",
+        "tests/results/CLI-GUI-022.*.json"
+      ],
+      "dependsOn": [
+        "test_plan_ready"
+      ],
+      "traceability": {
+        "scenarios": [
+          "CLI-GUI-022 AgentBackend and Normalized AgentEvent happy scenario"
+        ],
+        "endpoints": [
+          "WS /ws/sessions/:id/events",
+          "POST /api/sessions/:id/chat"
+        ]
+      }
+    },
+    {
+      "id": "ui-gap-CLI-GUI-022 AgentBackend and Normalized AgentEvent limit scenario",
+      "trackId": "testing",
+      "agentRole": "playwright-test-agent",
+      "type": "ui-test-gap",
+      "status": "blocked",
+      "reason": "Browser execution, screenshot, focus, and trace assets are not yet normalized for this slice.",
+      "inputs": [
+        ".features/CLI-GUI-022-agent-backend-normalized-events/test-spec.md",
+        "tests/plans/CLI-GUI-022.test-plan.json",
+        "cli-gui/DESIGN.md"
+      ],
+      "outputs": [
+        "tests/scenarios/CLI-GUI-022/ui-gaps.md",
+        "tests/results/CLI-GUI-022.*.json"
+      ],
+      "dependsOn": [
+        "test_plan_ready"
+      ],
+      "traceability": {
+        "scenarios": [
+          "CLI-GUI-022 AgentBackend and Normalized AgentEvent limit scenario"
+        ],
+        "endpoints": [
+          "WS /ws/sessions/:id/events",
+          "POST /api/sessions/:id/chat"
+        ]
+      }
+    },
+    {
+      "id": "ui-gap-CLI-GUI-022 AgentBackend and Normalized AgentEvent error scenario",
+      "trackId": "testing",
+      "agentRole": "playwright-test-agent",
+      "type": "ui-test-gap",
+      "status": "blocked",
+      "reason": "Browser execution, screenshot, focus, and trace assets are not yet normalized for this slice.",
+      "inputs": [
+        ".features/CLI-GUI-022-agent-backend-normalized-events/test-spec.md",
+        "tests/plans/CLI-GUI-022.test-plan.json",
+        "cli-gui/DESIGN.md"
+      ],
+      "outputs": [
+        "tests/scenarios/CLI-GUI-022/ui-gaps.md",
+        "tests/results/CLI-GUI-022.*.json"
+      ],
+      "dependsOn": [
+        "test_plan_ready"
+      ],
+      "traceability": {
+        "scenarios": [
+          "CLI-GUI-022 AgentBackend and Normalized AgentEvent error scenario"
+        ],
+        "endpoints": [
+          "WS /ws/sessions/:id/events",
+          "POST /api/sessions/:id/chat"
+        ]
+      }
+    },
+    {
+      "id": "ui-gap-CLI-GUI-022 AgentBackend and Normalized AgentEvent flow scenario",
+      "trackId": "testing",
+      "agentRole": "playwright-test-agent",
+      "type": "ui-test-gap",
+      "status": "blocked",
+      "reason": "Browser execution, screenshot, focus, and trace assets are not yet normalized for this slice.",
+      "inputs": [
+        ".features/CLI-GUI-022-agent-backend-normalized-events/test-spec.md",
+        "tests/plans/CLI-GUI-022.test-plan.json",
+        "cli-gui/DESIGN.md"
+      ],
+      "outputs": [
+        "tests/scenarios/CLI-GUI-022/ui-gaps.md",
+        "tests/results/CLI-GUI-022.*.json"
+      ],
+      "dependsOn": [
+        "test_plan_ready"
+      ],
+      "traceability": {
+        "scenarios": [
+          "CLI-GUI-022 AgentBackend and Normalized AgentEvent flow scenario"
+        ],
+        "endpoints": [
+          "WS /ws/sessions/:id/events",
+          "POST /api/sessions/:id/chat"
+        ]
+      }
+    },
+    {
+      "id": "ui-gap-CLI-GUI-022 AgentBackend and Normalized AgentEvent edge scenario",
+      "trackId": "testing",
+      "agentRole": "playwright-test-agent",
+      "type": "ui-test-gap",
+      "status": "blocked",
+      "reason": "Browser execution, screenshot, focus, and trace assets are not yet normalized for this slice.",
+      "inputs": [
+        ".features/CLI-GUI-022-agent-backend-normalized-events/test-spec.md",
+        "tests/plans/CLI-GUI-022.test-plan.json",
+        "cli-gui/DESIGN.md"
+      ],
+      "outputs": [
+        "tests/scenarios/CLI-GUI-022/ui-gaps.md",
+        "tests/results/CLI-GUI-022.*.json"
+      ],
+      "dependsOn": [
+        "test_plan_ready"
+      ],
+      "traceability": {
+        "scenarios": [
+          "CLI-GUI-022 AgentBackend and Normalized AgentEvent edge scenario"
+        ],
+        "endpoints": [
+          "WS /ws/sessions/:id/events",
+          "POST /api/sessions/:id/chat"
+        ]
+      }
+    }
+  ],
+  "gates": [
+    "test_spec_approved",
+    "implementation_handoff_present",
+    "independent_results_normalized",
+    "gate_report_generated",
+    "qa_acceptance"
+  ]
+}

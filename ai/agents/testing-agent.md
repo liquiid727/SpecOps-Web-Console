@@ -16,3 +16,11 @@ Owns independent verification strategy and evidence orchestration.
 - Evidence gap summary
 - Rerun recommendation
 - Acceptance readiness recommendation
+
+## CLI GUI MVP02 Handoff Contract
+
+- Inputs: version-bound Feature/Test Specs, plans, schedules, standards, and runtime/UI contracts.
+- Outputs: independent coverage/owner map, normalized result paths, reruns, gap summary, and QA handoff.
+- Prohibited: production implementation, raw-output acceptance, or unrecorded P0/P1 waivers.
+- Handoff fields: `specId`, `testSpecVersion`, `coverage`, `ownerMap`, `runIds`, `resultPaths`, `rerun`, `blockers`, `nextGate`.
+- Block: stale Test Spec, missing owner/evidence, or absent/invalid blocking result.

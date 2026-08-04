@@ -1,0 +1,285 @@
+{
+  "specId": "CLI-GUI-020",
+  "specVersion": "1.0",
+  "testSpecPath": ".features/CLI-GUI-020-client-runtime-shared-ports/test-spec.md",
+  "testSpecId": "CLI-GUI-020.test-spec",
+  "testSpecVersion": "1.0",
+  "testSpecHash": "02dd8ebef268e53e4dc30161f08e65dc9cd0d3d1b16cd8b5e5935cbe86cd2bc3",
+  "testSpecStatus": "approved",
+  "testSpecApprovalEvidence": "architecture-agent-mvp02-rebaseline-2026-08-04-approved-for-planning",
+  "sourceFeatureSpecHash": "ed26ddf6beef387a2591f9d9c557f0a03b72171d1ab3febb0b56b2531c76770d",
+  "featureName": "CLI-GUI-020 ClientRuntime and Shared Client Ports",
+  "changeId": "CLI-GUI-020-mvp02a-rebaseline",
+  "executionMode": "parallel",
+  "tracks": [
+    {
+      "id": "execution",
+      "agentRole": "execution-editor",
+      "isolation": "implementation-only",
+      "allowedInputs": [
+        ".features/CLI-GUI-020-client-runtime-shared-ports/spec.md",
+        "implementation/CLI-GUI-020-mvp02a-foundation.md",
+        "reviews/CLI-GUI-020/review-entry.md",
+        "current/cli-gui-mvp02-foundation-rebaseline.md",
+        "design/cli-gui-platform-design.md",
+        "cli-gui/DESIGN.md",
+        ".features/roadmap.md",
+        "cli-gui/doc/mvp02/spec/",
+        "cli-gui/doc/mvp02-check-qa/"
+      ],
+      "forbiddenInputs": [
+        "tests/results/",
+        "tests/bruno/",
+        "tests/scenarios/",
+        "tests/e2e/",
+        "tests/playwright/"
+      ]
+    },
+    {
+      "id": "testing",
+      "agentRole": "test-editor",
+      "isolation": "spec-and-contract-only",
+      "allowedInputs": [
+        ".features/CLI-GUI-020-client-runtime-shared-ports/test-spec.md",
+        "tests/plans/CLI-GUI-020.test-plan.json",
+        "cli-gui/doc/mvp02/verification-workflow.md",
+        "design/cli-gui-platform-design.md",
+        "cli-gui/DESIGN.md",
+        "current/cli-gui-mvp02-foundation-rebaseline.md",
+        "cli-gui/doc/mvp02/spec/",
+        "cli-gui/doc/mvp02-check-qa/"
+      ],
+      "forbiddenInputs": [
+        "implementation/",
+        "tests/results/"
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "implementation-handoff-020",
+      "trackId": "execution",
+      "agentRole": "execution-editor",
+      "type": "implementation",
+      "status": "blocked",
+      "reason": "Foundation implementation is already recorded; further product implementation stays blocked until independent evidence and review gaps are closed.",
+      "inputs": [
+        ".features/CLI-GUI-020-client-runtime-shared-ports/spec.md",
+        "implementation/CLI-GUI-020-mvp02a-foundation.md",
+        "reviews/CLI-GUI-020/review-entry.md",
+        "cli-gui/doc/mvp02/spec/",
+        "cli-gui/doc/mvp02-check-qa/"
+      ],
+      "outputs": [
+        "implementation/CLI-GUI-020-mvp02a-foundation.md",
+        ".issues/issue-061-client-runtime-ports-and-context.md",
+        ".issues/issue-063-mock-client-runtime-contract-fixtures.md",
+        ".issues/issue-064-workspace-and-platform-port-migration.md"
+      ],
+      "dependsOn": [
+        "architecture_reviewed",
+        "design_reviewed"
+      ],
+      "traceability": {
+        "scenarios": [
+          "CLI-GUI-020 ClientRuntime and Shared Client Ports happy scenario",
+          "CLI-GUI-020 ClientRuntime and Shared Client Ports limit scenario",
+          "CLI-GUI-020 ClientRuntime and Shared Client Ports error scenario",
+          "CLI-GUI-020 ClientRuntime and Shared Client Ports flow scenario",
+          "CLI-GUI-020 ClientRuntime and Shared Client Ports edge scenario"
+        ],
+        "endpoints": [
+          "PORT client/runtime/ClientRuntime.sessions",
+          "PORT client/runtime/ClientRuntime.events"
+        ]
+      }
+    },
+    {
+      "id": "independent-evidence-020",
+      "trackId": "testing",
+      "agentRole": "test-editor",
+      "type": "integration-test",
+      "status": "blocked",
+      "reason": "Independent fixtures, specialist runs, and normalized result adapters are not present; QA cannot accept raw local runner output.",
+      "inputs": [
+        ".features/CLI-GUI-020-client-runtime-shared-ports/test-spec.md",
+        "tests/plans/CLI-GUI-020.test-plan.json",
+        "cli-gui/doc/mvp02/verification-workflow.md",
+        "cli-gui/doc/mvp02/spec/",
+        "cli-gui/doc/mvp02-check-qa/"
+      ],
+      "outputs": [
+        "tests/results/CLI-GUI-020.*.json",
+        "reviews/CLI-GUI-020-mvp02a-rebaseline/gate-report.md"
+      ],
+      "dependsOn": [
+        "test_plan_ready"
+      ],
+      "traceability": {
+        "scenarios": [
+          "CLI-GUI-020 ClientRuntime and Shared Client Ports happy scenario",
+          "CLI-GUI-020 ClientRuntime and Shared Client Ports limit scenario",
+          "CLI-GUI-020 ClientRuntime and Shared Client Ports error scenario",
+          "CLI-GUI-020 ClientRuntime and Shared Client Ports flow scenario",
+          "CLI-GUI-020 ClientRuntime and Shared Client Ports edge scenario"
+        ],
+        "endpoints": [
+          "PORT client/runtime/ClientRuntime.sessions",
+          "PORT client/runtime/ClientRuntime.events"
+        ]
+      }
+    },
+    {
+      "id": "ui-gap-CLI-GUI-020 ClientRuntime and Shared Client Ports happy scenario",
+      "trackId": "testing",
+      "agentRole": "playwright-test-agent",
+      "type": "ui-test-gap",
+      "status": "blocked",
+      "reason": "Browser execution, screenshot, focus, and trace assets are not yet normalized for this slice.",
+      "inputs": [
+        ".features/CLI-GUI-020-client-runtime-shared-ports/test-spec.md",
+        "tests/plans/CLI-GUI-020.test-plan.json",
+        "cli-gui/DESIGN.md"
+      ],
+      "outputs": [
+        "tests/scenarios/CLI-GUI-020/ui-gaps.md",
+        "tests/results/CLI-GUI-020.*.json"
+      ],
+      "dependsOn": [
+        "test_plan_ready"
+      ],
+      "traceability": {
+        "scenarios": [
+          "CLI-GUI-020 ClientRuntime and Shared Client Ports happy scenario"
+        ],
+        "endpoints": [
+          "PORT client/runtime/ClientRuntime.sessions",
+          "PORT client/runtime/ClientRuntime.events"
+        ]
+      }
+    },
+    {
+      "id": "ui-gap-CLI-GUI-020 ClientRuntime and Shared Client Ports limit scenario",
+      "trackId": "testing",
+      "agentRole": "playwright-test-agent",
+      "type": "ui-test-gap",
+      "status": "blocked",
+      "reason": "Browser execution, screenshot, focus, and trace assets are not yet normalized for this slice.",
+      "inputs": [
+        ".features/CLI-GUI-020-client-runtime-shared-ports/test-spec.md",
+        "tests/plans/CLI-GUI-020.test-plan.json",
+        "cli-gui/DESIGN.md"
+      ],
+      "outputs": [
+        "tests/scenarios/CLI-GUI-020/ui-gaps.md",
+        "tests/results/CLI-GUI-020.*.json"
+      ],
+      "dependsOn": [
+        "test_plan_ready"
+      ],
+      "traceability": {
+        "scenarios": [
+          "CLI-GUI-020 ClientRuntime and Shared Client Ports limit scenario"
+        ],
+        "endpoints": [
+          "PORT client/runtime/ClientRuntime.sessions",
+          "PORT client/runtime/ClientRuntime.events"
+        ]
+      }
+    },
+    {
+      "id": "ui-gap-CLI-GUI-020 ClientRuntime and Shared Client Ports error scenario",
+      "trackId": "testing",
+      "agentRole": "playwright-test-agent",
+      "type": "ui-test-gap",
+      "status": "blocked",
+      "reason": "Browser execution, screenshot, focus, and trace assets are not yet normalized for this slice.",
+      "inputs": [
+        ".features/CLI-GUI-020-client-runtime-shared-ports/test-spec.md",
+        "tests/plans/CLI-GUI-020.test-plan.json",
+        "cli-gui/DESIGN.md"
+      ],
+      "outputs": [
+        "tests/scenarios/CLI-GUI-020/ui-gaps.md",
+        "tests/results/CLI-GUI-020.*.json"
+      ],
+      "dependsOn": [
+        "test_plan_ready"
+      ],
+      "traceability": {
+        "scenarios": [
+          "CLI-GUI-020 ClientRuntime and Shared Client Ports error scenario"
+        ],
+        "endpoints": [
+          "PORT client/runtime/ClientRuntime.sessions",
+          "PORT client/runtime/ClientRuntime.events"
+        ]
+      }
+    },
+    {
+      "id": "ui-gap-CLI-GUI-020 ClientRuntime and Shared Client Ports flow scenario",
+      "trackId": "testing",
+      "agentRole": "playwright-test-agent",
+      "type": "ui-test-gap",
+      "status": "blocked",
+      "reason": "Browser execution, screenshot, focus, and trace assets are not yet normalized for this slice.",
+      "inputs": [
+        ".features/CLI-GUI-020-client-runtime-shared-ports/test-spec.md",
+        "tests/plans/CLI-GUI-020.test-plan.json",
+        "cli-gui/DESIGN.md"
+      ],
+      "outputs": [
+        "tests/scenarios/CLI-GUI-020/ui-gaps.md",
+        "tests/results/CLI-GUI-020.*.json"
+      ],
+      "dependsOn": [
+        "test_plan_ready"
+      ],
+      "traceability": {
+        "scenarios": [
+          "CLI-GUI-020 ClientRuntime and Shared Client Ports flow scenario"
+        ],
+        "endpoints": [
+          "PORT client/runtime/ClientRuntime.sessions",
+          "PORT client/runtime/ClientRuntime.events"
+        ]
+      }
+    },
+    {
+      "id": "ui-gap-CLI-GUI-020 ClientRuntime and Shared Client Ports edge scenario",
+      "trackId": "testing",
+      "agentRole": "playwright-test-agent",
+      "type": "ui-test-gap",
+      "status": "blocked",
+      "reason": "Browser execution, screenshot, focus, and trace assets are not yet normalized for this slice.",
+      "inputs": [
+        ".features/CLI-GUI-020-client-runtime-shared-ports/test-spec.md",
+        "tests/plans/CLI-GUI-020.test-plan.json",
+        "cli-gui/DESIGN.md"
+      ],
+      "outputs": [
+        "tests/scenarios/CLI-GUI-020/ui-gaps.md",
+        "tests/results/CLI-GUI-020.*.json"
+      ],
+      "dependsOn": [
+        "test_plan_ready"
+      ],
+      "traceability": {
+        "scenarios": [
+          "CLI-GUI-020 ClientRuntime and Shared Client Ports edge scenario"
+        ],
+        "endpoints": [
+          "PORT client/runtime/ClientRuntime.sessions",
+          "PORT client/runtime/ClientRuntime.events"
+        ]
+      }
+    }
+  ],
+  "gates": [
+    "test_spec_approved",
+    "implementation_handoff_present",
+    "independent_results_normalized",
+    "gate_report_generated",
+    "qa_acceptance"
+  ]
+}

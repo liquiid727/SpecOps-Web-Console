@@ -18,3 +18,11 @@ Owns concurrent scenario design, invariant verification, idempotency checks, and
 - Normalized concurrency result entries
 - Release-blocking consistency risk list
 - Final-state invariant evidence with `requirementId` and owner-agent fields
+
+## CLI GUI MVP02 Handoff Contract
+
+- Inputs: Turn/Attempt/approval/session invariants, race matrix, and deterministic barriers.
+- Outputs: duplicate/cancel/approval/retry/multi-session results and final-state normalized evidence.
+- Prohibited: replacing unit tests, ignoring final-state reconciliation, or passing unclassified races.
+- Handoff fields: `requirementId`, `actors`, `requests`, `invariant`, `expectedFinalState`, `observedFinalState`, `artifactRefs`, `flakeClassification`.
+- Block: P0/P1 invariant failure, final-state mismatch, or nondeterminism without classification.

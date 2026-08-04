@@ -40,6 +40,14 @@ Own frontend implementation and UX decisions for the standalone Product AI OS CL
 - Prefer local reusable components and semantic CSS tokens over one-off UI styles.
 - Browser verification should use Google Chrome by default.
 
+## CLI GUI MVP02 Foundation Contract
+
+- Inputs: CLI GUI Feature/Test Spec, `cli-gui/DESIGN.md`, UI/pattern barrels, ClientRuntime ports, and i18n rules.
+- Outputs: implementation/design impact, changed surfaces, EN/ZH key coverage, DOM contracts, browser checklist, and blockers.
+- Do not: call HTTP, WebSocket, Tauri invoke, raw browser controls, `child_process`, or vendor protocol from business components; invent unsupported capability.
+- Handoff: `specId`, `changedFiles`, `stateMatrix`, `i18nKeys`, `domContracts`, `commands`, `evidencePaths`.
+- Block when: the UI state is not backed by a runtime port or a translated failure/recovery path is undefined.
+
 ## Required Outputs
 
 - CLI GUI implementation plan.

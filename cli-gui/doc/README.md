@@ -16,6 +16,7 @@ doc/
 ├── qoder-ui/            # Qoder UI retrofit module (delivered)
 ├── console-gaps/        # MVP01 leftover/retrenchment gap-closing module
 ├── model-routing/       # multi-provider model routing execution entry
+├── research/            # external project analysis and adaptation learning
 └── design/              # cross-module design truth and idea notes
 ```
 
@@ -27,8 +28,9 @@ doc/
 
 ## mvp02/ — desktop terminal replacement
 
-- `README.md`: MVP02-A scope, delivery gate, and document index (MVP02-B remote
-  control is descoped; its Issues #076-#089 were deleted).
+- `README.md`: MVP02-A scope, delivery gate, and document index. MVP02-B is
+  Model Management (`CLI-GUI-026` through `CLI-GUI-032`); Remote Control is a
+  deferred reference direction.
 - `client-platform-prd.md`: shared Desktop/Remote client product contract.
 - `desktop-terminal-replacement-prd.md`: no-external-terminal user journey and acceptance criteria.
 - `remote-prd.md`, `remote.md`: remote-control PRD and retained original concept (reference only; descoped).
@@ -45,8 +47,8 @@ and differentiated product features; it is not the MVP02 completion gate.
   accessibility, i18n, lifecycle and performance checks.
 - `qa-gate.md`: execution evidence and gate decision template.
 
-This track supplements MVP02 without changing the existing MVP02 PRD/SPEC or
-including MVP03 product enhancements and MVP02-B remote implementation.
+This track supplements MVP02-A without changing the existing MVP02 PRD/SPEC or
+including MVP03 product enhancements and MVP02-B Model Management implementation.
 
 ## workbench/ — three-column workbench
 
@@ -75,6 +77,17 @@ including MVP03 product enhancements and MVP02-B remote implementation.
 
 - `README.md`: canonical PRD/SPEC/Issue links and delivery boundary.
 - `prompt-full-implementation.md`: dirty-worktree-safe local implementation and verification loop for `CLI-GUI-026` through `CLI-GUI-032`.
+
+## research/ — external project analysis and adaptation learning
+
+- [`codeg-acp-project-analysis.md`](./research/codeg-acp-project-analysis.md):
+  Codeg project analysis, ACP Agent adapter study, and a staged mapping to the
+  current CLI GUI runtime. This is research material, not a replacement for
+  the canonical platform design or Feature Specs.
+- [`codeg-ui-interaction-and-tooling-learning.md`](./research/codeg-ui-interaction-and-tooling-learning.md):
+  Codeg UI interaction, session-state, rendering-performance, development,
+  testing, and CLI GUI adaptation summary. This is the experience and delivery
+  companion to the ACP analysis above.
 
 ## design/ — cross-module design truth
 

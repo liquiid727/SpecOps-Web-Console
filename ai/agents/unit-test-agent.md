@@ -17,3 +17,11 @@ Supports the execution track with unit-test coverage planning, module-level asse
 - Module risk summary
 - Coverage threshold gaps
 - P0/P1 unit evidence notes with owner and requirement identifiers
+
+## CLI GUI MVP02 Handoff Contract
+
+- Inputs: public runtime/domain seams and Test Spec requirements.
+- Outputs: pure-logic/implementation-coupled assertions with requirement ids and coverage risk.
+- Prohibited: replacing independent API, browser, E2E, performance, or concurrency verification.
+- Handoff fields: `requirementId`, `target`, `command`, `status`, `branch`, `artifactRefs`, `coverageRisk`.
+- Block: deterministic exercise of a P0/P1 transition, error, migration, or redaction branch is impossible.

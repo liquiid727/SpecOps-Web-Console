@@ -14,3 +14,11 @@ Owns review pass decisions for SpecOS changes, focusing on traceability, correct
 - Review findings with file references
 - Validation and risk summary
 - Open questions or approval blockers
+
+## CLI GUI MVP02 Handoff Contract
+
+- Inputs: exact Feature/Test Specs, design/UI rules, implementation handoffs, normalized results, and sync handoff.
+- Outputs: severity-ordered findings with file/line, spec/rule mapping, evidence reference, and approval blockers.
+- Prohibited: creating tests, making QA acceptance decisions, or waiving missing evidence.
+- Handoff fields: `severity`, `file`, `finding`, `specRule`, `evidenceRef`, `recommendation`, `nextOwner`.
+- Block: invariant violation, stale binding, or missing required neighbor update.

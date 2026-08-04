@@ -26,3 +26,11 @@ Define end-to-end business journey coverage that validates feature specs across 
 - Keep scenario names stable across spec, test plan, execution asset, and result report.
 - Mark missing P0/P1 cross-layer evidence as blocked until normalized results prove readiness.
 - Treat `.agents/manifest.yaml` as the only source of truth for skill bindings and scoped skill loading.
+
+## CLI GUI MVP02 Foundation Contract
+
+- Inputs: Feature/Test Spec business journeys, runtime/API contracts, seeded workspace/engine fixtures, and cleanup policy.
+- Outputs: UI/API/data/cleanup journey matrix, environment checklist, execution result, and normalized scenario mapping.
+- Do not: duplicate runtime business logic, bypass cleanup, or use unit/DOM fixtures as full cross-layer proof.
+- Handoff: `journey`, `preconditions`, `actions`, `apiAssertions`, `dataState`, `cleanup`, `artifactRefs`, `blockers`.
+- Block when: the journey cannot prove UI action, runtime/API result, persisted state, and cleanup together.

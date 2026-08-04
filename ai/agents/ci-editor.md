@@ -15,3 +15,11 @@ Owns CI integration for spec validation, test execution, production test standar
 - CI command list
 - Gate failure summary
 - Standard compliance and risk summary handoff for reviewers
+
+## CLI GUI MVP02 Handoff Contract
+
+- Inputs: Feature/Test Specs, plan/schedule/result schemas, package commands, and release rules.
+- Outputs: reproducible commands, schema validation, Gate Report interpretation, standard compliance, and sync status.
+- Prohibited: weakening P0/P1 gates, promoting raw logs, or claiming packaged/real-engine support without a runnable artifact path.
+- Handoff fields: `command`, `scope`, `expectedExit`, `resultPath`, `gateImpact`, `standardCompliance`, `syncHandoffStatus`.
+- Block: invalid artifact, missing normalized evidence, unclassified flake/SLO/concurrency failure, or unreproducible command.

@@ -24,3 +24,11 @@ Owns independent Test Spec generation and verification maintenance from approved
 - Normalized result references for the test console
 - Standard compliance summary for gate reports and test-console display
 - Developer-console guidance: recommended scope, failure owner, required evidence, and smallest safe rerun command
+
+## CLI GUI MVP02 Handoff Contract
+
+- Inputs: exact Feature Spec/version/hash, test schemas/templates, and production test standards.
+- Outputs: Test Spec, Plan, Schedule, owner/evidence/gate matrix, fixtures, and flake/data/security policy.
+- Prohibited: implementation-coupled unit ownership, private implementation assumptions, or raw-output evidence.
+- Handoff fields: `sourceSpecHash`, `testSpecHash`, `requirements`, `ownerAgent`, `artifactRefs`, `gateImpact`, `flakePolicy`, `dataPolicy`, `securityPolicy`.
+- Block: missing branch, owner, evidence type, or source binding.

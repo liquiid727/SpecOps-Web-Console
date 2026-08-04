@@ -1,0 +1,442 @@
+{
+  "standardVersion": "specos-test-standard/v1",
+  "qualityProfile": "fullstack-flow",
+  "riskTier": "P0",
+  "specId": "CLI-GUI-020",
+  "specVersion": "1.0",
+  "testSpecPath": ".features/CLI-GUI-020-client-runtime-shared-ports/test-spec.md",
+  "testSpecId": "CLI-GUI-020.test-spec",
+  "testSpecVersion": "1.0",
+  "testSpecHash": "02dd8ebef268e53e4dc30161f08e65dc9cd0d3d1b16cd8b5e5935cbe86cd2bc3",
+  "testSpecStatus": "approved",
+  "testSpecApprovalEvidence": "architecture-agent-mvp02-rebaseline-2026-08-04-approved-for-planning",
+  "sourceFeatureSpecHash": "ed26ddf6beef387a2591f9d9c557f0a03b72171d1ab3febb0b56b2531c76770d",
+  "featureName": "CLI-GUI-020 ClientRuntime and Shared Client Ports",
+  "source": "accepted-spec",
+  "flows": [
+    {
+      "name": "Runtime-backed workspace and session flow",
+      "stages": [
+        {
+          "name": "Mount a ClientRuntime provider",
+          "scenarioNames": [
+            "CLI-GUI-020 ClientRuntime and Shared Client Ports happy scenario",
+            "CLI-GUI-020 ClientRuntime and Shared Client Ports limit scenario",
+            "CLI-GUI-020 ClientRuntime and Shared Client Ports error scenario",
+            "CLI-GUI-020 ClientRuntime and Shared Client Ports flow scenario",
+            "CLI-GUI-020 ClientRuntime and Shared Client Ports edge scenario"
+          ],
+          "stepNames": [
+            "Mount a ClientRuntime provider"
+          ]
+        },
+        {
+          "name": "Open or restore a workspace through PlatformPort",
+          "scenarioNames": [
+            "CLI-GUI-020 ClientRuntime and Shared Client Ports happy scenario",
+            "CLI-GUI-020 ClientRuntime and Shared Client Ports limit scenario",
+            "CLI-GUI-020 ClientRuntime and Shared Client Ports error scenario",
+            "CLI-GUI-020 ClientRuntime and Shared Client Ports flow scenario",
+            "CLI-GUI-020 ClientRuntime and Shared Client Ports edge scenario"
+          ],
+          "stepNames": [
+            "Open or restore a workspace through PlatformPort"
+          ]
+        },
+        {
+          "name": "Read and mutate session state through SessionPort",
+          "scenarioNames": [
+            "CLI-GUI-020 ClientRuntime and Shared Client Ports happy scenario",
+            "CLI-GUI-020 ClientRuntime and Shared Client Ports limit scenario",
+            "CLI-GUI-020 ClientRuntime and Shared Client Ports error scenario",
+            "CLI-GUI-020 ClientRuntime and Shared Client Ports flow scenario",
+            "CLI-GUI-020 ClientRuntime and Shared Client Ports edge scenario"
+          ],
+          "stepNames": [
+            "Read and mutate session state through SessionPort"
+          ]
+        },
+        {
+          "name": "Subscribe to ordered events through EventPort",
+          "scenarioNames": [
+            "CLI-GUI-020 ClientRuntime and Shared Client Ports happy scenario",
+            "CLI-GUI-020 ClientRuntime and Shared Client Ports limit scenario",
+            "CLI-GUI-020 ClientRuntime and Shared Client Ports error scenario",
+            "CLI-GUI-020 ClientRuntime and Shared Client Ports flow scenario",
+            "CLI-GUI-020 ClientRuntime and Shared Client Ports edge scenario"
+          ],
+          "stepNames": [
+            "Subscribe to ordered events through EventPort"
+          ]
+        },
+        {
+          "name": "Render empty, loading, success, failure, offline, and reconnecting states",
+          "scenarioNames": [
+            "CLI-GUI-020 ClientRuntime and Shared Client Ports happy scenario",
+            "CLI-GUI-020 ClientRuntime and Shared Client Ports limit scenario",
+            "CLI-GUI-020 ClientRuntime and Shared Client Ports error scenario",
+            "CLI-GUI-020 ClientRuntime and Shared Client Ports flow scenario",
+            "CLI-GUI-020 ClientRuntime and Shared Client Ports edge scenario"
+          ],
+          "stepNames": [
+            "Render empty, loading, success, failure, offline, and reconnecting states"
+          ]
+        }
+      ]
+    }
+  ],
+  "endpoints": [
+    {
+      "name": "ClientRuntime session port",
+      "method": "PORT",
+      "path": "client/runtime/ClientRuntime.sessions",
+      "priority": "P0",
+      "branches": [
+        "happy",
+        "limit",
+        "error",
+        "flow",
+        "edge"
+      ],
+      "preconditions": [
+        "Make the WebView UI depend on one transport-neutral ClientRuntime contract.",
+        "Keep HTTP, WebSocket, Tauri, mock, and future remote transport details behind ports.",
+        "Preserve workspace, session, transcript, and i18n behavior across local client forms."
+      ],
+      "expectedResults": [
+        "happy branch is covered",
+        "error branch is covered",
+        "edge branch is covered",
+        "limit branch is covered",
+        "flow branch is covered"
+      ],
+      "relatedRule": "runtime.ui-uses-ports"
+    },
+    {
+      "name": "ClientRuntime event port",
+      "method": "PORT",
+      "path": "client/runtime/ClientRuntime.events",
+      "priority": "P0",
+      "branches": [
+        "happy",
+        "limit",
+        "error",
+        "flow",
+        "edge"
+      ],
+      "preconditions": [
+        "Make the WebView UI depend on one transport-neutral ClientRuntime contract.",
+        "Keep HTTP, WebSocket, Tauri, mock, and future remote transport details behind ports.",
+        "Preserve workspace, session, transcript, and i18n behavior across local client forms."
+      ],
+      "expectedResults": [
+        "happy branch is covered",
+        "error branch is covered",
+        "edge branch is covered",
+        "limit branch is covered",
+        "flow branch is covered"
+      ],
+      "relatedRule": "runtime.ui-uses-ports"
+    }
+  ],
+  "scenarios": [
+    {
+      "name": "CLI-GUI-020 ClientRuntime and Shared Client Ports happy scenario",
+      "priority": "P0",
+      "branches": [
+        "happy"
+      ],
+      "preconditions": [
+        "Make the WebView UI depend on one transport-neutral ClientRuntime contract.",
+        "Keep HTTP, WebSocket, Tauri, mock, and future remote transport details behind ports.",
+        "Preserve workspace, session, transcript, and i18n behavior across local client forms."
+      ],
+      "expectedResults": [
+        "happy branch covered",
+        "error branch covered",
+        "edge branch covered",
+        "limit branch covered",
+        "flow branch covered"
+      ],
+      "steps": [
+        "Mount a ClientRuntime provider",
+        "Open or restore a workspace through PlatformPort",
+        "Read and mutate session state through SessionPort",
+        "Subscribe to ordered events through EventPort",
+        "Render empty, loading, success, failure, offline, and reconnecting states"
+      ]
+    },
+    {
+      "name": "CLI-GUI-020 ClientRuntime and Shared Client Ports limit scenario",
+      "priority": "P1",
+      "branches": [
+        "limit"
+      ],
+      "preconditions": [
+        "Make the WebView UI depend on one transport-neutral ClientRuntime contract.",
+        "Keep HTTP, WebSocket, Tauri, mock, and future remote transport details behind ports.",
+        "Preserve workspace, session, transcript, and i18n behavior across local client forms."
+      ],
+      "expectedResults": [
+        "happy branch covered",
+        "error branch covered",
+        "edge branch covered",
+        "limit branch covered",
+        "flow branch covered"
+      ],
+      "steps": [
+        "Mount a ClientRuntime provider",
+        "Open or restore a workspace through PlatformPort",
+        "Read and mutate session state through SessionPort",
+        "Subscribe to ordered events through EventPort",
+        "Render empty, loading, success, failure, offline, and reconnecting states"
+      ]
+    },
+    {
+      "name": "CLI-GUI-020 ClientRuntime and Shared Client Ports error scenario",
+      "priority": "P1",
+      "branches": [
+        "error"
+      ],
+      "preconditions": [
+        "Make the WebView UI depend on one transport-neutral ClientRuntime contract.",
+        "Keep HTTP, WebSocket, Tauri, mock, and future remote transport details behind ports.",
+        "Preserve workspace, session, transcript, and i18n behavior across local client forms."
+      ],
+      "expectedResults": [
+        "Mock and local runtimes return equivalent port-contract results.",
+        "Workspace picker is cancelled, unavailable, timed out, or rejected by the scope policy.",
+        "A reconnect receives a duplicate event, stale snapshot, or cursor gap.",
+        "A readonly client attempts a mutation."
+      ],
+      "steps": [
+        "Mount a ClientRuntime provider",
+        "Open or restore a workspace through PlatformPort",
+        "Read and mutate session state through SessionPort",
+        "Subscribe to ordered events through EventPort",
+        "Render empty, loading, success, failure, offline, and reconnecting states"
+      ]
+    },
+    {
+      "name": "CLI-GUI-020 ClientRuntime and Shared Client Ports flow scenario",
+      "priority": "P0",
+      "branches": [
+        "flow"
+      ],
+      "preconditions": [
+        "Make the WebView UI depend on one transport-neutral ClientRuntime contract.",
+        "Keep HTTP, WebSocket, Tauri, mock, and future remote transport details behind ports.",
+        "Preserve workspace, session, transcript, and i18n behavior across local client forms."
+      ],
+      "expectedResults": [
+        "happy branch covered",
+        "error branch covered",
+        "edge branch covered",
+        "limit branch covered",
+        "flow branch covered"
+      ],
+      "steps": [
+        "Mount a ClientRuntime provider",
+        "Open or restore a workspace through PlatformPort",
+        "Read and mutate session state through SessionPort",
+        "Subscribe to ordered events through EventPort",
+        "Render empty, loading, success, failure, offline, and reconnecting states"
+      ]
+    },
+    {
+      "name": "CLI-GUI-020 ClientRuntime and Shared Client Ports edge scenario",
+      "priority": "P1",
+      "branches": [
+        "edge"
+      ],
+      "preconditions": [
+        "Make the WebView UI depend on one transport-neutral ClientRuntime contract.",
+        "Keep HTTP, WebSocket, Tauri, mock, and future remote transport details behind ports.",
+        "Preserve workspace, session, transcript, and i18n behavior across local client forms."
+      ],
+      "expectedResults": [
+        "happy branch covered",
+        "error branch covered",
+        "edge branch covered",
+        "limit branch covered",
+        "flow branch covered"
+      ],
+      "steps": [
+        "Mount a ClientRuntime provider",
+        "Open or restore a workspace through PlatformPort",
+        "Read and mutate session state through SessionPort",
+        "Subscribe to ordered events through EventPort",
+        "Render empty, loading, success, failure, offline, and reconnecting states"
+      ]
+    }
+  ],
+  "standardRequirements": [
+    {
+      "id": "std.p0.api.contract",
+      "layer": "api",
+      "appliesTo": [
+        "PORT client/runtime/ClientRuntime.sessions",
+        "PORT client/runtime/ClientRuntime.events"
+      ],
+      "requiredFor": [
+        "P0",
+        "P1"
+      ],
+      "ownerAgent": "test-editor",
+      "requiredEvidence": [
+        "trace"
+      ],
+      "gateImpact": "blocking"
+    },
+    {
+      "id": "std.p0.scenario.e2e",
+      "layer": "scenario",
+      "appliesTo": [
+        "CLI-GUI-020 ClientRuntime and Shared Client Ports happy scenario",
+        "CLI-GUI-020 ClientRuntime and Shared Client Ports limit scenario",
+        "CLI-GUI-020 ClientRuntime and Shared Client Ports error scenario",
+        "CLI-GUI-020 ClientRuntime and Shared Client Ports flow scenario",
+        "CLI-GUI-020 ClientRuntime and Shared Client Ports edge scenario"
+      ],
+      "requiredFor": [
+        "P0",
+        "P1"
+      ],
+      "ownerAgent": "playwright-test-agent",
+      "requiredEvidence": [
+        "trace",
+        "screenshot"
+      ],
+      "gateImpact": "blocking"
+    },
+    {
+      "id": "std.p1.observability",
+      "layer": "observability",
+      "appliesTo": [
+        "PORT client/runtime/ClientRuntime.sessions",
+        "PORT client/runtime/ClientRuntime.events",
+        "CLI-GUI-020 ClientRuntime and Shared Client Ports happy scenario",
+        "CLI-GUI-020 ClientRuntime and Shared Client Ports limit scenario",
+        "CLI-GUI-020 ClientRuntime and Shared Client Ports error scenario",
+        "CLI-GUI-020 ClientRuntime and Shared Client Ports flow scenario",
+        "CLI-GUI-020 ClientRuntime and Shared Client Ports edge scenario"
+      ],
+      "requiredFor": [
+        "P0",
+        "P1"
+      ],
+      "ownerAgent": "test-editor",
+      "requiredEvidence": [
+        "trace",
+        "log"
+      ],
+      "gateImpact": "blocking"
+    },
+    {
+      "id": "cli-gui.020.unit",
+      "layer": "unit",
+      "appliesTo": [
+        "CLI-GUI-020 ClientRuntime and Shared Client Ports happy scenario",
+        "CLI-GUI-020 ClientRuntime and Shared Client Ports limit scenario",
+        "CLI-GUI-020 ClientRuntime and Shared Client Ports error scenario",
+        "CLI-GUI-020 ClientRuntime and Shared Client Ports flow scenario",
+        "CLI-GUI-020 ClientRuntime and Shared Client Ports edge scenario"
+      ],
+      "requiredFor": [
+        "P0",
+        "P1"
+      ],
+      "ownerAgent": "unit-test-agent",
+      "requiredEvidence": [
+        "trace"
+      ],
+      "gateImpact": "blocking"
+    },
+    {
+      "id": "cli-gui.020.concurrency",
+      "layer": "concurrency",
+      "appliesTo": [
+        "CLI-GUI-020 ClientRuntime and Shared Client Ports happy scenario",
+        "CLI-GUI-020 ClientRuntime and Shared Client Ports limit scenario",
+        "CLI-GUI-020 ClientRuntime and Shared Client Ports error scenario",
+        "CLI-GUI-020 ClientRuntime and Shared Client Ports flow scenario",
+        "CLI-GUI-020 ClientRuntime and Shared Client Ports edge scenario"
+      ],
+      "requiredFor": [
+        "P0",
+        "P1"
+      ],
+      "ownerAgent": "concurrency-test-agent",
+      "requiredEvidence": [
+        "raw-report",
+        "trace"
+      ],
+      "gateImpact": "blocking"
+    }
+  ],
+  "flakePolicy": {
+    "allowedRetries": 1,
+    "quarantineAllowed": false,
+    "classificationRequired": true
+  },
+  "dataPolicy": {
+    "externalDependencyMode": "stubbed",
+    "piiAllowed": false,
+    "secretsAllowed": false
+  },
+  "securityPolicy": {
+    "baseline": "owasp-api-top-10-2023",
+    "requiredChecks": [
+      "broken-object-level-authorization",
+      "broken-authentication",
+      "broken-object-property-level-authorization",
+      "unrestricted-resource-consumption"
+    ]
+  },
+  "performanceTargets": [
+    {
+      "endpoint": "ClientRuntime event replay and reconnect",
+      "priority": "P0",
+      "slo": {
+        "p95Ms": 250,
+        "errorRate": 0.01
+      },
+      "gateImpact": "blocking"
+    }
+  ],
+  "concurrencyInvariants": [
+    {
+      "scenario": "reconnect and live event race",
+      "invariant": "ordered projection is deduplicated and cursor-consistent",
+      "actorProfile": "one live subscriber plus one reconnecting subscriber",
+      "expectedFinalState": "one projection with no duplicate or skipped event",
+      "gateImpact": "blocking"
+    }
+  ],
+  "releaseGates": [
+    {
+      "id": "cli-gui-020-independent-verification",
+      "type": "change-verification",
+      "requiredTestTypes": [
+        "unit",
+        "scenario",
+        "concurrency"
+      ],
+      "blocking": true,
+      "evidenceRequired": [
+        "trace"
+      ]
+    },
+    {
+      "id": "cli-gui-020-specialized-and-release-readiness",
+      "type": "release",
+      "requiredTestTypes": [
+        "specialized"
+      ],
+      "blocking": true,
+      "evidenceRequired": [
+        "raw-report"
+      ]
+    }
+  ]
+}

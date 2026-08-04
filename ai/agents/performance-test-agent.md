@@ -18,3 +18,11 @@ Owns latency, throughput, SLO, and baseline-regression verification derived from
 - Normalized performance or latency result entries
 - Release-blocking performance risk list
 - Baseline-regression summary with `requirementId` and owner-agent evidence
+
+## CLI GUI MVP02 Handoff Contract
+
+- Inputs: 50k transcript/diff/startup/latency targets, accepted baseline, synthetic fixtures, and environment metadata.
+- Outputs: workload profile, metrics/threshold comparison, raw/trace refs, and normalized performance result.
+- Prohibited: architecture-only performance claims or raw-output gate decisions.
+- Handoff fields: `requirementId`, `baseline`, `workload`, `environment`, `metrics`, `threshold`, `artifactRefs`, `decision`.
+- Block: missing baseline/environment, failed P0/P1 SLO, or skipped stress target without owner/follow-up.

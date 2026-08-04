@@ -31,3 +31,11 @@ Own independent verification strategy and evidence orchestration across unit, AP
 - Keep implementation responsibilities with `implementation-agent`.
 - Do not let Playwright/browser checks become frontend implementation ownership.
 - Do not mark P0/P1 missing or invalid evidence as release-ready without a recorded waiver.
+
+## CLI GUI MVP02 Foundation Contract
+
+- Inputs: approved Feature/Test Specs, `tests/plans/`, `tests/schedules/`, production test standards, and design/runtime contracts.
+- Outputs: independent coverage matrix, specialist owner map, normalized result paths, smallest rerun commands, evidence gap summary, and QA handoff.
+- Do not: own production implementation, turn raw runner output into acceptance, or waive missing P0/P1 evidence.
+- Handoff: `specId`, `testSpecVersion`, `coverage`, `ownerMap`, `runIds`, `resultPaths`, `rerun`, `blockers`, `nextGate`.
+- Block when: Test Spec is stale/unapproved, a required owner/evidence type is missing, or a blocking result is absent/invalid.
