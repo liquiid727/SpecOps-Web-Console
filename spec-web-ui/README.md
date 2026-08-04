@@ -19,6 +19,7 @@
 - spec templates
 - test patterns
 - project conventions
+- engineering packs for Go, React, Python, and future stacks
 
 这些资产被组合成项目级 AI 配置骨架，并导出为可安装 bundle。目标是让开发人员不需要每次从零开始写规则、Agent 职责、技能说明或测试约定，而是基于已有资产快速构建一套结构化、可复用、可追踪的 AI 协作配置。
 
@@ -62,6 +63,7 @@
 当前实现以 catalog-first workspace 为主：
 
 - 浏览 catalog 中的规则、模板和 Agent 角色。
+- 在 `/engineering-packs` 浏览按技术栈组织的工程约束与 CLI 基座。
 - 创建配置工作区。
 - 组合项目所需资产。
 - 预览项目级 AI 配置、目录结构和 workflow 关系。

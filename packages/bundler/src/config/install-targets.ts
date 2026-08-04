@@ -4,6 +4,7 @@ export const INSTALL_TARGET_PRIORITY = [
   "skills/developer/",
   "agent-teams/",
   "ai/agents/",
+  "engineering-packs/",
   "current/",
   "design/",
   "docs/",

@@ -1,0 +1,48 @@
+{
+  "id": "engineering-pack-go",
+  "type": "engineering_pack",
+  "title": "Go Engineering Foundation",
+  "summary": "A reusable Go project baseline connecting layout, toolchain, build, test, CI/CD, release, security, observability, and CLI scaffolding.",
+  "summaryZh": "连接目录、版本、构建、测试、CI/CD、发布、安全、可观测性和 CLI 脚手架的 Go 工程包。",
+  "direction": "backend",
+  "categories": [
+    "backend",
+    "testing",
+    "deployment",
+    "operations"
+  ],
+  "stacks": [
+    "go"
+  ],
+  "tags": [
+    "go",
+    "cli",
+    "toolchain",
+    "ci-cd",
+    "security",
+    "observability",
+    "engineering-pack"
+  ],
+  "appliesTo": [
+    "backend"
+  ],
+  "dependsOn": [],
+  "conflictsWith": [],
+  "sourcePath": "assets/engineering-packs/go/constraints/go-engineering-base-2026.md",
+  "files": [
+    "engineering-packs/go/README.md",
+    "engineering-packs/go/pack.json",
+    "rules/go-engineering-base-2026.md"
+  ],
+  "contentFiles": {
+    "engineering-packs/go/README.md": "assets/engineering-packs/go/README.md",
+    "engineering-packs/go/pack.json": "assets/engineering-packs/go/pack.json",
+    "rules/go-engineering-base-2026.md": "assets/engineering-packs/go/constraints/go-engineering-base-2026.md"
+  },
+  "version": "2026.1.0",
+  "draftHints": [
+    "先选择项目 profile，再确认数据库、消息、部署和可观测性模块。",
+    "CLI 生成结果必须经过 goforge doctor、测试和 CI 门禁。"
+  ],
+  "sampleOutput": "生成一套带版本化工具链、质量门禁、发布回滚和 goforge CLI 约束的 Go 项目基线。"
+}

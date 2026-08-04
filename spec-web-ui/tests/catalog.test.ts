@@ -376,6 +376,20 @@ describe("loadCatalogAssets", () => {
     );
     expect(routingTemplate?.files).toEqual(["ai/templates/routing.md"]);
   });
+
+  it("loads the Go engineering pack from its dedicated pack directory", async () => {
+    const catalog = await loadCatalogAssets();
+    const engineeringPack = catalog.find((asset) => asset.id === "engineering-pack-go");
+
+    expect(engineeringPack?.type).toBe("engineering_pack");
+    expect(engineeringPack?.sourcePath).toBe(
+      "assets/engineering-packs/go/constraints/go-engineering-base-2026.md"
+    );
+    expect(engineeringPack?.files).toContain("rules/go-engineering-base-2026.md");
+    expect(engineeringPack?.contentFiles?.["rules/go-engineering-base-2026.md"]).toBe(
+      "assets/engineering-packs/go/constraints/go-engineering-base-2026.md"
+    );
+  });
 });
 
 describe("sortCatalogAssetsForWorkspace", () => {

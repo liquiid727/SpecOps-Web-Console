@@ -113,6 +113,7 @@ export function buildPresetBundlePreview(bundle: PresetBundle, catalog: CatalogA
       {
         agent_team: 0,
         agent_role: 0,
+        engineering_pack: 0,
         rule: 0,
         skill: 0,
         spec_template: 0

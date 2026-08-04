@@ -1,0 +1,38 @@
+{
+  "id": "engineering-pack-go",
+  "kind": "engineering_pack",
+  "version": "2026.1.0",
+  "stack": "go",
+  "title": "Go Engineering Foundation",
+  "titleZh": "Go 工程基座",
+  "profiles": [
+    "api",
+    "grpc",
+    "api-grpc",
+    "worker",
+    "scheduler",
+    "gateway",
+    "cli",
+    "library"
+  ],
+  "constraintPath": "assets/engineering-packs/go/constraints/go-engineering-base-2026.md",
+  "relatedAssets": [
+    "agent-go-pack-orchestrator",
+    "skill-go-backend-governance",
+    "skill-golang-cli-cobra-viper",
+    "skill-golang-observability-opentelemetry",
+    "skill-golang-testing-strategies"
+  ],
+  "cli": {
+    "name": "goforge",
+    "commands": [
+      "new",
+      "add",
+      "doctor",
+      "upgrade"
+    ]
+  },
+  "render": {
+    "route": "/engineering-packs/engineering-pack-go"
+  }
+}

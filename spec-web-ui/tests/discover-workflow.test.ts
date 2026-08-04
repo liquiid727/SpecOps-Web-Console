@@ -123,11 +123,12 @@ describe("buildPresetBundlePreview", () => {
 
     expect(preview.assetCount).toBe(3);
     expect(preview.assetTypeCounts).toEqual({
-      agent_role: 1,
-      agent_team: 0,
-      rule: 1,
-      skill: 0,
-      spec_template: 1
+        agent_role: 1,
+        agent_team: 0,
+        engineering_pack: 0,
+        rule: 1,
+        skill: 0,
+        spec_template: 1
     });
     expect(preview.exportDirectories).toEqual([".prd", "ai", "rules"]);
   });

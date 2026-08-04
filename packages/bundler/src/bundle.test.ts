@@ -94,6 +94,7 @@ describe("bundler interface", () => {
   });
 
   it("resolves GoalSpec install targets in priority order", () => {
+    expect(resolveInstallTarget("engineering-packs/go/pack.json")).toBe("engineering-packs/");
     expect(resolveInstallTarget(".prd/_template/feature/product-ui.template.md")).toBe(".prd/_template/");
     expect(resolveInstallTarget(".features/_rules/README.md")).toBe(".features/_rules/");
     expect(resolveInstallTarget(".features/_template/feature/spec.example.md")).toBe(".features/_template/");
@@ -101,12 +102,14 @@ describe("bundler interface", () => {
 
     expect(
       deriveInstallMappings([
+        { sourcePath: "pack", targetPath: "engineering-packs/go/pack.json" },
         { sourcePath: "prd", targetPath: ".prd/_template/feature/product-ui.template.md" },
         { sourcePath: "rules", targetPath: ".features/_rules/README.md" },
         { sourcePath: "feature", targetPath: ".features/_template/feature/spec.example.md" },
         { sourcePath: "issue", targetPath: ".issues/_template/issue.md" }
       ])
     ).toEqual([
+      { target: "engineering-packs/", from: "files/engineering-packs/" },
       { target: ".prd/_template/", from: "files/.prd/_template/" },
       { target: ".features/_rules/", from: "files/.features/_rules/" },
       { target: ".features/_template/", from: "files/.features/_template/" },

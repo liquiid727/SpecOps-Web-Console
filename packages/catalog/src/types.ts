@@ -1,4 +1,10 @@
-export type CatalogAssetType = "rule" | "spec_template" | "agent_role" | "agent_team" | "skill";
+export type CatalogAssetType =
+  | "rule"
+  | "spec_template"
+  | "agent_role"
+  | "agent_team"
+  | "skill"
+  | "engineering_pack";
 export type CatalogAgentTier = "main" | "specialist";
 export type CatalogDirection = "backend" | "frontend" | "ui" | "fullstack";
 export type CatalogCategory = "product" | "operations" | "testing" | "deployment" | "frontend" | "backend";

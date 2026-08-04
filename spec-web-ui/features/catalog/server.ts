@@ -17,7 +17,8 @@ const catalogRegistryPath = path.join(repoRoot, "packages", "catalog", "config",
 const catalogDirectories = [
   path.join(repoRoot, "assets", "templates", "specs"),
   path.join(repoRoot, "assets", "agents", "roles"),
-  path.join(repoRoot, "assets", "skills")
+  path.join(repoRoot, "assets", "skills"),
+  path.join(repoRoot, "assets", "engineering-packs")
 ];
 
 async function readCatalogAssetsFromDirectory(directoryPath: string) {
