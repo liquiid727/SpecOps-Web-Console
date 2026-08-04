@@ -20,6 +20,10 @@ const DEFAULT_APPROVAL_TIMEOUT_MS = 300_000;
 const DEFAULT_CANCEL_GRACE_MS = 2_000;
 const MAX_TURN_STDERR_CHARS = 2_000;
 
+function isTerminalTurnLifecycle(event: { kind: string; metadata?: Record<string, unknown> }) {
+  return event.kind === "lifecycle" && typeof event.metadata?.status === "string" && event.metadata.status.startsWith("turn-");
+}
+
 type TerminalWorker = {
   kind: "terminal";
   process: PtyProcess;
@@ -288,6 +292,8 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
 
     async function appendParsedEvent(event: ParsedTurnEvent) {
       if (closing || turn.terminationReason !== undefined) return;
+      // Adapter 终态帧只描述 CLI 协议；由 orchestrator 在 resumeToken 写回后发布唯一终态，避免观察者先看到不一致状态。
+      if (isTerminalTurnLifecycle(event)) return;
       const persisted = await callbacks.appendEvent(sessionId, { occurredAt: clock.now(), kind: event.kind, source: event.source, raw: event.raw, metadata: { ...event.metadata, turnId: turn.turnId }, component: event.component });
       recordEffect(event.kind, persisted, event.effect);
       callbacks.onActivity(sessionId);
@@ -296,6 +302,8 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
 
     async function appendAgentEvent(event: AgentEvent) {
       if (closing || turn.terminationReason !== undefined) return;
+      // Backend 也可能转发 adapter 的终态帧；终态由 orchestrator 统一收口。
+      if (isTerminalTurnLifecycle(event)) return;
       if (event.kind === "text_delta") {
         if (event.text) callbacks.onTurnDelta?.(sessionId, turn.turnId, event.text);
         return;
@@ -365,10 +373,10 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
         });
         return;
       }
-      await finishTurn({ status: "completed", exitCode: 0 });
       if (backendResult?.nativeSessionId && !closing && callbacks.hasSession(sessionId)) {
         await callbacks.onRuntimeStatus(sessionId, "running", { resumeToken: backendResult.nativeSessionId });
       }
+      await finishTurn({ status: "completed", exitCode: 0 });
       return;
     }
 
