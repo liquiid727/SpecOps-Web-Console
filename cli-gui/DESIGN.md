@@ -154,6 +154,7 @@ Responsive contracts:
 - At 1280px and above, keep sidebar, center, and inspector visible when enabled.
 - Below 900px, sidebar and inspector become focus-trapped drawers with dismiss backdrops.
 - Below 640px, stack headers/actions, preserve a minimum 44px touch target where space permits, and avoid horizontal page scrolling.
+- The settings drawer is left-anchored on desktop to match its sidebar entry; confirmation and session dialogs remain centered. Below 640px, the drawer becomes full viewport.
 
 Every user-facing data flow defines empty, loading, success, and failure states. Loading must not erase stable context; failures expose a translated recovery action when retry is possible.
 
@@ -170,6 +171,8 @@ Controls use 6–8px radii, cards use 10px, composer and larger containers may u
 Base components live in `client/components/ui/`: Button, IconButton, TextField, TextArea, Tabs, Menu, Badge, Card, EmptyState, Icon, Select, Overlay, and Feedback. Patterns live in `client/components/patterns/`: ViewHeader, SectionHeader, AsyncState, ResourceRow, SettingsSection, and DialogActions.
 
 Business components must use these exports instead of native interactive elements. Base components accept native properties, `ref`, `className`, and semantic variants, but must not import session, workspace, API, or other domain types. Visible labels are supplied by translated callers.
+
+Chat-mode transcript cards render the structured component payload when available, covering user/assistant messages, thinking, code blocks, tool and command activity, file changes, approvals, progress, usage, turn status, diagnostics, and terminal-output fallbacks. Terminal mode remains the raw replay contract.
 
 Button, IconButton, TextField, TextArea, Badge, Card, Tabs, and Menu expose an explicit transparent compatibility mode. In that mode they preserve caller DOM classes without injecting layout, size, padding, or display rules; use it while migrating established Qoder surfaces whose page CSS already owns the visual contract.
 

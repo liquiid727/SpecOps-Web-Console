@@ -12,6 +12,7 @@ import { createJsonTranscriptRepository } from "./transcript-store.js";
 import { createProfileAdapterRegistry } from "./profile-adapters.js";
 import { createCodexMcpRuntime } from "./codex-mcp-runtime.js";
 import { createAgentBackendRegistry, createProfileAdapterTurnExecutor } from "./agent-backends.js";
+import { createCompositeSecretStore, createEnvironmentSecretStore, createMacKeychainSecretStore } from "./secret-store.js";
 
 const clock: Clock = { now: () => new Date().toISOString() };
 const execFileAsync = promisify(execFile);
@@ -61,6 +62,7 @@ export function createProductionDependencies(options: {
       persistentChatRuntime,
       logger
     })),
+    secretStore: createCompositeSecretStore(createEnvironmentSecretStore(options.processEnvironment), createMacKeychainSecretStore()),
     clock,
     idGenerator: { create: (prefix) => `${prefix}-${randomUUID()}` },
     policy: { readonly: options.readonly, processEnvironment: { ...options.processEnvironment }, csrfCapability: options.processEnvironment.SPECOS_CSRF_CAPABILITY ?? randomBytes(24).toString("base64url") },

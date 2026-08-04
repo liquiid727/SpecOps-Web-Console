@@ -183,8 +183,8 @@ describe("CLI GUI workbench", () => {
     });
 
     await vi.waitFor(() => expect(sessionBodies.length).toBeGreaterThan(0));
-    // Chat-first（issue-066）：CHAT_ENABLED 时 Quest Home 快速创建默认 chat，不支持时由服务端降级
-    expect(JSON.parse(sessionBodies[0]).interactionMode).toBe("chat");
+    // 默认终端模式：Quest Home 快速创建默认 terminal
+    expect(JSON.parse(sessionBodies[0]).interactionMode).toBe("terminal");
   });
 
   it("enables the composer for a ready structured chat engine", async () => {
@@ -304,6 +304,23 @@ describe("CLI GUI workbench", () => {
 });
 
 async function screenText(element: HTMLElement, text: string) {
+  // Dismiss the splash screen if present
+  await dismissSplash(element);
   await vi.waitFor(() => expect(element.textContent).toContain(text));
   return element.textContent?.includes(text);
+}
+
+async function dismissSplash(element: HTMLElement) {
+  // Wait for either the enter banner (success) or splash absence (error path)
+  try {
+    await vi.waitFor(() => {
+      if (element.querySelector(".splash-enter-banner") || !element.querySelector(".splash-root")) return;
+      throw new Error("splash still loading");
+    }, { timeout: 3000 });
+  } catch { return; }
+  const enterBtn = element.querySelector<HTMLButtonElement>(".splash-enter-banner");
+  if (!enterBtn) return;
+  await act(async () => { enterBtn.click(); });
+  // Wait for warp animation + unmount (1000ms in component)
+  await vi.waitFor(() => expect(element.querySelector(".splash-root")).toBeNull(), { timeout: 3000 });
 }

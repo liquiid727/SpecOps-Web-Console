@@ -147,6 +147,24 @@ describe("PromptComposer", () => {
     expect(options).toEqual(["gpt-5.6-luna", "gpt-5"]);
   });
 
+  it("labels provider-contributed models while keeping the selector contract flat", () => {
+    const capabilities = {
+      adapterId: "codex",
+      compatibility: "supported",
+      permissions: [],
+      modes: [],
+      models: [{ id: "default" }, { id: "provider-model" }],
+      modelGroups: [{ providerId: "provider-1", providerName: "Primary Provider", models: [{ id: "provider-model", labelKey: "provider.model.provider-model", requiresRestart: true }] }],
+      supportsComposer: true,
+      supportsStructuredRecognition: true,
+      supportsHeadlessTurns: true
+    } as never;
+    act(() => root.render(<I18nProvider><FeedbackProvider><PromptComposer disabled={false} onSend={async () => undefined} capabilities={capabilities} /></FeedbackProvider></I18nProvider>));
+    const selector = container.querySelector<HTMLLabelElement>(".composer-controls .capability-selector:not(.cli-selector)")!;
+    act(() => (selector.querySelector(".custom-select-trigger") as HTMLButtonElement).click());
+    expect(Array.from(selector.querySelectorAll('[role="option"]')).map((option) => option.textContent)).toEqual(["Default model", "Primary Provider · provider-model"]);
+  });
+
   // —— Qoder 卡片式工具条（截图 1:1）：chat 模式无 permission/mode 选择器行 ——
   it("renders the Qoder chat toolbar without the launch controls row", () => {
     act(() => root.render(<I18nProvider><FeedbackProvider><PromptComposer disabled={false} onSend={async () => undefined} interactionMode="chat" /></FeedbackProvider></I18nProvider>));

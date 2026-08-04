@@ -77,8 +77,8 @@ function validProviderUrl(value: unknown): value is string {
 }
 
 function validateRouteCandidates(value: unknown): asserts value is string[] {
-  if (!Array.isArray(value) || value.length === 0 || value.some((candidate) => !nonEmptyText(candidate)) || new Set(value).size !== value.length) {
-    throw new ApiHttpError(400, "MODEL_ROUTE_INVALID", "A route must contain unique deployment ids.", { field: "candidateDeploymentIds" });
+  if (!Array.isArray(value) || value.length === 0 || value.length > 8 || value.some((candidate) => !nonEmptyText(candidate)) || new Set(value).size !== value.length) {
+    throw new ApiHttpError(400, "MODEL_ROUTE_INVALID", "A route must contain between 1 and 8 unique deployment ids.", { field: "candidateDeploymentIds" });
   }
 }
 
@@ -377,11 +377,35 @@ export async function createApplication(dependencies: ApplicationDependencies): 
     }
   }
 
+  function providerModelIds(profile: AppStateV3["profiles"][number]) {
+    return [...new Set((state.providers ?? [])
+      .filter((provider) => provider.enabled !== false && providerProtocolMatchesAdapter(provider.protocol, profile.adapterId))
+      .flatMap((provider) => provider.models))];
+  }
+
   function decorateCapabilities(profile: AppStateV3["profiles"][number], capabilities: CapabilityDetectionResult): CapabilityDetectionResult {
     const defaultModel = configuredDefaultModelByProfile.get(profile.id) ?? capabilities.defaultModel;
-    return defaultModel && defaultModel !== "default" && capabilities.models.some((model) => model.id === defaultModel)
-      ? { ...capabilities, defaultModel }
-      : capabilities;
+    const knownModels = new Set([
+      ...capabilities.models.map((model) => model.id),
+      ...builtinModelIds(profile.adapterId, capabilities.detectedVersion)
+    ]);
+    const seenProviderModels = new Set<string>();
+    const modelGroups = (state.providers ?? [])
+      .filter((provider) => provider.enabled !== false && providerProtocolMatchesAdapter(provider.protocol, profile.adapterId))
+      .map((provider) => ({
+        providerId: provider.id,
+        providerName: provider.name,
+        models: [...new Set(provider.models)].filter((id) => !knownModels.has(id) && !seenProviderModels.has(id)).map((id) => {
+          seenProviderModels.add(id);
+          return { id, labelKey: `provider.model.${id}`, requiresRestart: true };
+        })
+      }))
+      .filter((group) => group.models.length);
+    const providerModels = modelGroups.flatMap((group) => group.models);
+    const next = providerModels.length || modelGroups.length ? { ...capabilities, models: [...capabilities.models, ...providerModels], modelGroups } : capabilities;
+    return defaultModel && defaultModel !== "default" && next.models.some((model) => model.id === defaultModel)
+      ? { ...next, defaultModel }
+      : next;
   }
 
   async function resolveCapabilities(profile: SessionV3["profileId"] extends string ? AppStateV3["profiles"][number] : never): Promise<CapabilityDetectionResult> {
@@ -501,11 +525,16 @@ export async function createApplication(dependencies: ApplicationDependencies): 
     const provider = requireProvider(providerId);
     if (!providerProtocolMatchesAdapter(provider.protocol, profile.adapterId)) throw new ApiHttpError(400, "VALIDATION_FAILED", "Provider protocol does not match the selected CLI profile.", { field: "providerId" });
     const ref = normalizedSecretRef(provider);
-    if (!ref) throw new ApiHttpError(400, "PROVIDER_CREDENTIAL_MISSING", "Provider credential is missing.", { providerId: provider.id });
+    const envName = ref?.startsWith("env:") ? ref.slice(4) : undefined;
+    if (!ref) throw new ApiHttpError(400, "PROVIDER_CREDENTIAL_MISSING", `Provider credential is missing${envName ? ` (${envName})` : ""}.`, { providerId: provider.id });
     let secret: string;
     try { secret = await secretStore.resolve(ref); }
     catch (error) {
-      if (error instanceof SecretStoreError) throw new ApiHttpError(400, error.code === "SECRET_STORE_UNAVAILABLE" ? "SECRET_STORE_UNAVAILABLE" : "PROVIDER_CREDENTIAL_MISSING", error.message, { providerId: provider.id });
+      if (error instanceof SecretStoreError) {
+        const code = error.code === "SECRET_STORE_UNAVAILABLE" ? "SECRET_STORE_UNAVAILABLE" : "PROVIDER_CREDENTIAL_MISSING";
+        const message = code === "PROVIDER_CREDENTIAL_MISSING" && envName ? `Provider credential ${envName} is missing.` : error.message;
+        throw new ApiHttpError(400, code, message, { providerId: provider.id });
+      }
       throw error;
     }
     if (provider.protocol === "anthropic-compatible") return { args: [] as string[], env: { ANTHROPIC_BASE_URL: provider.baseUrl, ANTHROPIC_AUTH_TOKEN: secret } };
@@ -539,7 +568,7 @@ export async function createApplication(dependencies: ApplicationDependencies): 
   async function mergedProfileModels(profile: AppStateV3["profiles"][number]) {
     const capabilities = await resolveCapabilities(profile);
     const builtin = capabilities.compatibility === "supported" ? builtinModelIds(profile.adapterId, capabilities.detectedVersion) : [];
-    return mergeModelSources(builtin, profile.syncedModels ?? [], profile.customModels ?? []);
+    return mergeModelSources(builtin, [...(profile.syncedModels ?? []), ...providerModelIds(profile)], profile.customModels ?? []);
   }
 
   /** 执行 CLI 命令发现模型并写入 synced 层（issue-053）：adapter 无 discoverModels 时保持原列表 */
@@ -941,10 +970,12 @@ export async function createApplication(dependencies: ApplicationDependencies): 
       const workspace = state.workspaces.find((item) => item.id === session.workspaceId);
       const profile = state.profiles.find((item) => item.id === attempt.deployment.profileId);
       if (!workspace || !profile) return { status: "failed", failure: { code: "PROFILE_NOT_FOUND", class: "configuration", message: "The deployment profile is no longer available.", fallbackEligible: false }, sideEffect: { state: "clean", evidenceEventIds: [] } };
-      const provider = await providerLaunchFor(attempt.deployment.providerId, profile);
       const attemptTurnId = `${task.turnId}:${attempt.ordinal}`;
       const effectiveModel = attempt.deployment.modelId;
       try {
+        // Provider resolution is part of the Attempt transaction. A missing secret must
+        // settle the Attempt instead of escaping before the coordinator can transition it.
+        const provider = await providerLaunchFor(attempt.deployment.providerId, profile);
         if (dependencies.agentBackends) {
           const backend = dependencies.agentBackends.forProfile(profile);
           const backendSession = await backend.openSession({
@@ -970,7 +1001,7 @@ export async function createApplication(dependencies: ApplicationDependencies): 
             status: result.status,
             failure,
             usage: result.usage,
-            sideEffect: result.status === "failed" && failure?.phase === "spawn" ? { state: "clean", evidenceEventIds: [] } : { state: result.status === "completed" ? "clean" : "unknown", evidenceEventIds: [] }
+            sideEffect: result.sideEffect ?? (result.status === "failed" && failure?.phase === "spawn" ? { state: "clean", evidenceEventIds: [] } : { state: result.status === "completed" ? "clean" : "unknown", evidenceEventIds: [] })
           };
         }
         const registry = dependencies.profileAdapters;
@@ -988,15 +1019,17 @@ export async function createApplication(dependencies: ApplicationDependencies): 
           ...persistentWiring,
           buildCommand: async () => {
             const spec = await registry.buildTurn!(profile, { workspacePath: workspace.path, prompt: content, permission: session.launchConfig.permission, mode: session.launchConfig.mode, model: effectiveModel, resumeToken: session.chatContext?.resumeToken });
-            return { command: spec.command, args: [...spec.args, ...provider.args], cwd: workspace.path, env: { ...definedEnvironment(dependencies.policy.processEnvironment), ...provider.env, ...spec.env } };
+            return { command: spec.command, args: [...spec.args, ...provider.args], cwd: workspace.path, env: { ...definedEnvironment(dependencies.policy.processEnvironment), ...spec.env, ...provider.env } };
           },
           parseOutput: (stdout, hooks) => registry.parseEvents!(profile, stdout, { turnId: attemptTurnId }, hooks)
         });
         const result = await orchestrator.waitForTurn(session.id, attemptTurnId);
         const failure = classifyAgentTurnFailure(result.error);
-        return { status: result.status, failure, usage: result.usage, sideEffect: result.status === "failed" && failure?.phase === "spawn" ? { state: "clean", evidenceEventIds: [] } : { state: result.status === "completed" ? "clean" : "unknown", evidenceEventIds: [] } };
+        return { status: result.status, failure, usage: result.usage, sideEffect: result.sideEffect ?? (result.status === "failed" && failure?.phase === "spawn" ? { state: "clean", evidenceEventIds: [] } : { state: result.status === "completed" ? "clean" : "unknown", evidenceEventIds: [] }) };
       } catch (error) {
-        return { status: "failed", failure: { code: "TURN_SPAWN_FAILED", class: "startup", message: error instanceof Error ? error.message : String(error), fallbackEligible: true }, sideEffect: { state: "clean", evidenceEventIds: [] } };
+        const code = error instanceof ApiHttpError ? error.code : "TURN_SPAWN_FAILED";
+        const failureClass = code === "PROVIDER_CREDENTIAL_MISSING" || code === "PROVIDER_SECRET_MISSING" || code === "SECRET_STORE_UNAVAILABLE" ? "secret-missing" : error instanceof ApiHttpError ? "configuration" : "startup";
+        return { status: "failed", failure: { code, class: failureClass, message: error instanceof Error ? error.message : String(error), fallbackEligible: failureClass === "startup" }, sideEffect: { state: "clean", evidenceEventIds: [] } };
       }
     };
     const execution = routeExecutionCoordinator.execute({ task, candidates, automaticTechnicalFallback: route.automaticTechnicalFallback, runAttempt });
@@ -1797,7 +1830,7 @@ export async function createApplication(dependencies: ApplicationDependencies): 
                   model: effectiveModel ?? null,
                   resumeToken: session.chatContext?.resumeToken
                 });
-                return { command: spec.command, args: [...spec.args, ...provider.args], cwd: workspace.path, env: { ...definedEnvironment(dependencies.policy.processEnvironment), ...provider.env, ...spec.env } };
+                return { command: spec.command, args: [...spec.args, ...provider.args], cwd: workspace.path, env: { ...definedEnvironment(dependencies.policy.processEnvironment), ...spec.env, ...provider.env } };
               },
               parseOutput: (stdout, hooks) => registry.parseEvents!(profile, stdout, { turnId }, hooks)
             });

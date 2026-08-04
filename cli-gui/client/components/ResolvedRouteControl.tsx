@@ -51,8 +51,9 @@ export function ResolvedRouteControl({ resolvedRoute, routes = [], deployments =
   </section>;
 }
 
-function routeSource(resolvedRoute: ResolvedRoute | undefined): RouteBindingSource {
-  const trace = resolvedRoute?.sourceTrace.findLast((entry) => entry.field === "routeId");
+function routeSource(resolvedRoute: ResolvedRoute | undefined): RouteBindingSource | "run" {
+  if (resolvedRoute?.fixedDeploymentId) return "run";
+  const trace = [...(resolvedRoute?.sourceTrace ?? [])].reverse().find((entry) => entry.field === "routeId");
   if (trace?.source === "system" || trace?.source === "global" || trace?.source === "project" || trace?.source === "session") return trace.source;
   return "project";
 }

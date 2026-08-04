@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { CliProfileV2, ProfileModelEntry } from "../../shared/types";
 import { toFeedbackError } from "../feedback-errors";
-import { useI18n } from "../i18n";
+import { useI18n, type TranslationKey } from "../i18n";
 import { detectShortcutPlatform, formatShortcut, SHORTCUT_CATEGORY_LABEL, SHORTCUTS, type ShortcutCategory } from "../app/shortcuts";
 import { readPreferences, writePreferences, type CliMode } from "../app/preferences";
 import { Icon } from "./ui/Icon";
@@ -12,7 +12,7 @@ import { ModelRoutingSettings } from "./ModelRoutingSettings";
 
 type SettingsTab = "account" | "models" | "mcp" | "shortcuts" | "security";
 
-const tabs: { id: SettingsTab; label: string; icon: string }[] = [
+const tabs: { id: SettingsTab; label: TranslationKey; icon: string }[] = [
   { id: "account", label: "qoderSettingsAccount", icon: "user" },
   { id: "models", label: "qoderSettingsModels", icon: "bot" },
   { id: "mcp", label: "qoderSettingsMcp", icon: "settings" },

@@ -273,6 +273,19 @@ describe("chat turn interactions", () => {
     act(() => root.render(<I18nProvider><TranscriptMessage item={item} /></I18nProvider>));
     expect(container.querySelector(".retry-turn")).toBeNull();
   });
+
+  it("shows host-permission guidance when the CLI fallback is denied", () => {
+    const [item] = projectTranscriptEvents([makeEvent({
+      id: "e1",
+      kind: "error",
+      source: "session-manager",
+      raw: "app-server failed; fallback CLI failed",
+      metadata: { turnId: "turn-1", code: "CLI_PERMISSION_DENIED", phase: "spawn", fallbackAttempted: true, fallbackCode: "CLI_PERMISSION_DENIED" }
+    })]);
+    act(() => root.render(<I18nProvider><TranscriptMessage item={item} /></I18nProvider>));
+    expect(container.querySelector(".turn-failure-guidance")?.textContent).toContain("host permissions");
+    expect(container.querySelector(".turn-fallback-summary")?.textContent).toContain("fallback");
+  });
 });
 
 describe("scroll follow policy", () => {

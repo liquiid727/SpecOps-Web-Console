@@ -7,6 +7,21 @@ import { FeedbackProvider } from "./ui/Feedback";
 import { RightPanel } from "./RightPanel";
 
 vi.mock("../terminal", () => ({ TerminalView: ({ sessionId }: { sessionId: string }) => <div data-terminal={sessionId}>terminal</div> }));
+const runtimeControls = vi.hoisted(() => ({ resolveCapabilities: false }));
+const runtimeMock = vi.hoisted(() => ({
+  engines: { profileCapabilities: vi.fn(() => runtimeControls.resolveCapabilities ? Promise.resolve({ supportsHeadlessTurns: true, defaultModel: "gpt-5.6-luna" }) : new Promise<never>(() => undefined)) },
+  workspace: {
+    gitStatus: vi.fn(() => new Promise<never>(() => undefined)),
+    gitDiff: vi.fn(() => new Promise<never>(() => undefined)),
+    workspaceFiles: vi.fn(() => new Promise<never>(() => undefined)),
+    filePreview: vi.fn(() => new Promise<never>(() => undefined)),
+    languageSummary: vi.fn(() => new Promise<never>(() => undefined))
+  },
+  events: { transcript: vi.fn(() => new Promise<never>(() => undefined)) }
+}));
+vi.mock("../runtime/client-runtime", () => ({
+  useClientRuntime: () => runtimeMock
+}));
 vi.mock("../api", () => ({
   api: {
     gitStatus: vi.fn(() => Promise.resolve({ repository: true, branch: "main", clean: true, entries: [], truncated: false })),
@@ -30,6 +45,7 @@ describe("RightPanel", () => {
   let root: Root;
 
   beforeEach(() => {
+    runtimeControls.resolveCapabilities = false;
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
@@ -55,6 +71,13 @@ describe("RightPanel", () => {
     expect(container.querySelector(".runtime-monitor-warning")).toBeNull();
     render(root, stoppedSession, () => undefined, { runningCount: 7, runningLimit: 8 });
     expect(container.querySelector(".runtime-monitor-warning")?.textContent).toContain("Approaching the running session limit");
+  });
+
+  it("shows the profile's resolved default model until the session chooses another one", async () => {
+    runtimeControls.resolveCapabilities = true;
+    render(root, stoppedSession);
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    expect(container.querySelector(".summary-details")?.textContent).toContain("gpt-5.6-luna");
   });
 
   it("shows a stopped empty-state on the terminal tab when the session is not running", () => {

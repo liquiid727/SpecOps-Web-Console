@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { SkillContentResponse, SkillScope, SkillSummary, Workspace } from "../../shared/types";
-import { useI18n } from "../i18n";
+import { useI18n, type TranslationKey } from "../i18n";
 import { Icon, type IconName } from "./ui/Icon";
 import { Badge, Button, EmptyState, Select, Tabs, TextField } from "./ui";
 import { ViewHeader } from "./patterns";
@@ -19,7 +19,7 @@ const memoryItems = [
   { id: "preferences", key: "qoderMemoryPreferences" as const }
 ];
 
-const tabMeta: { id: KnowledgeTab; key: string; icon: IconName }[] = [
+const tabMeta: { id: KnowledgeTab; key: TranslationKey; icon: IconName }[] = [
   { id: "wiki", key: "qoderRepoWiki", icon: "book" },
   { id: "card", key: "qoderKnowledgeCard", icon: "file-code" },
   { id: "memory", key: "qoderMemory", icon: "sparkles" },

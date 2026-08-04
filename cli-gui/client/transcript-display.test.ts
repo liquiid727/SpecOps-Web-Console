@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TranscriptEvent } from "../shared/types";
-import { deriveSessionLifecycleStatus, isNearBottom, projectTranscriptEvents, reduceSessionEvents, deriveActiveTurnId, buildApprovalStates, cleanPtyPreview, sanitizePtyOutput } from "./transcript-display";
+import { deriveSessionLifecycleStatus, isNearBottom, projectTranscriptEvents, reduceSessionEvents, deriveActiveTurnId, isTurnStillActive, buildApprovalStates, cleanPtyPreview, sanitizePtyOutput } from "./transcript-display";
 
 function lifecycle(id: string, status: string, occurredAt = "2026-07-27T00:00:00Z"): TranscriptEvent {
   return { id, sessionId: "s", sequence: Number(id.replace(/\D/g, "")) || 0, occurredAt, kind: "lifecycle", source: "session-manager", raw: `Lifecycle ${status}`, rawBytes: 0, truncated: false, metadata: { status } };
@@ -192,21 +192,28 @@ describe("transcript-display", () => {
       ];
       // lifecycle with turn-* prefix terminates the turn (but has no turnId in metadata here)
       // Add turnId to metadata for proper detection
-      const eventsWithTurnId = [
+      const eventsWithTurnId: TranscriptEvent[] = [
         { ...assistantMsg("1", "reply", "turn-1"), metadata: { turnId: "turn-1" } },
         { ...lifecycle("2", "turn-completed"), metadata: { status: "turn-completed", turnId: "turn-1" } },
       ];
       expect(deriveActiveTurnId(eventsWithTurnId)).toBeUndefined();
+    });
+
+    it("does not reactivate a turn after an authoritative terminal frame", () => {
+      const terminalTurns = new Set(["turn-1"]);
+      expect(isTurnStillActive("turn-1", terminalTurns)).toBe(false);
+      expect(isTurnStillActive("turn-2", terminalTurns)).toBe(true);
+      expect(isTurnStillActive(undefined, terminalTurns)).toBe(false);
     });
   });
 
   describe("buildApprovalStates", () => {
     it("pairs request with response and marks expired approvals", () => {
       const events: TranscriptEvent[] = [
-        { id: "e1", sessionId: "s", sequence: 1, occurredAt: "2026-07-27T00:00:00Z", kind: "approval_request", source: "adapter", raw: "perm", rawBytes: 4, truncated: false, metadata: { approvalId: "a1", turnId: "t1" } },
-        { id: "e2", sessionId: "s", sequence: 2, occurredAt: "2026-07-27T00:00:01Z", kind: "approval_response", source: "manager", raw: "allow", rawBytes: 5, truncated: false, metadata: { approvalId: "a1", decision: "allow", turnId: "t1" } },
-        { id: "e3", sessionId: "s", sequence: 3, occurredAt: "2026-07-27T00:00:02Z", kind: "approval_request", source: "adapter", raw: "perm2", rawBytes: 5, truncated: false, metadata: { approvalId: "a2", turnId: "t2" } },
-        { id: "e4", sessionId: "s", sequence: 4, occurredAt: "2026-07-27T00:00:03Z", kind: "lifecycle", source: "manager", raw: "failed", rawBytes: 6, truncated: false, metadata: { status: "turn-failed", turnId: "t2" } },
+        { id: "e1", sessionId: "s", sequence: 1, occurredAt: "2026-07-27T00:00:00Z", kind: "approval_request", source: "profile-adapter", raw: "perm", rawBytes: 4, truncated: false, metadata: { approvalId: "a1", turnId: "t1" } },
+        { id: "e2", sessionId: "s", sequence: 2, occurredAt: "2026-07-27T00:00:01Z", kind: "approval_response", source: "session-manager", raw: "allow", rawBytes: 5, truncated: false, metadata: { approvalId: "a1", decision: "allow", turnId: "t1" } },
+        { id: "e3", sessionId: "s", sequence: 3, occurredAt: "2026-07-27T00:00:02Z", kind: "approval_request", source: "profile-adapter", raw: "perm2", rawBytes: 5, truncated: false, metadata: { approvalId: "a2", turnId: "t2" } },
+        { id: "e4", sessionId: "s", sequence: 4, occurredAt: "2026-07-27T00:00:03Z", kind: "lifecycle", source: "session-manager", raw: "failed", rawBytes: 6, truncated: false, metadata: { status: "turn-failed", turnId: "t2" } },
       ];
       const states = buildApprovalStates(events);
       expect(states.get("a1")).toEqual({ decision: "allow", expired: false });

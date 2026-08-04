@@ -104,7 +104,7 @@ describe("codex buildTurn argv snapshots (adapter-spec §3.1)", () => {
     const prompt = 'refactor "payments" module\nand run tests with  spaces';
     const spec = await registry.buildTurn!(headlessCodex(), { workspacePath: "/tmp/ws", prompt, permission: "never", mode: "workspace-write", model: "gpt-5", resumeToken: "thread-42" });
     expect(spec.command).toBe(process.execPath);
-    expect(spec.args).toEqual(["exec", "--json", "--model", "gpt-5", "--sandbox", "workspace-write", "--ask-for-approval", "never", "resume", "thread-42", prompt]);
+    expect(spec.args).toEqual(["--ask-for-approval", "never", "--sandbox", "workspace-write", "--model", "gpt-5", "exec", "--json", "resume", "thread-42", prompt]);
   });
 
   it("omits default options and resume on the first turn", async () => {

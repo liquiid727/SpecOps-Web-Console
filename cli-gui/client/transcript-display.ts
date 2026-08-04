@@ -233,7 +233,7 @@ export function projectTranscriptEvents(events: TranscriptEvent[], options: Proj
 
 /** chat 模式的终端噪音判定：PTY 原始输出与常规 lifecycle（Session starting/running/stopped、Turn completed 等） */
 function isChatNoise(event: TranscriptEvent) {
-  if (event.kind === "pty_output") return true;
+  if (event.kind === "pty_output") return event.component?.type !== "diagnostic";
   if (event.kind !== "lifecycle") return false;
   const status = typeof event.metadata?.status === "string" ? event.metadata.status : "";
   return !INTERRUPTED_LIFECYCLE_STATUSES.has(status);
@@ -300,6 +300,11 @@ export function deriveActiveTurnId(events: TranscriptEvent[]): string | undefine
     if (!terminalTurns.has(turnId)) candidate = turnId;
   }
   return candidate;
+}
+
+/** WebSocket terminal frames bridge the gap before the matching history event arrives. */
+export function isTurnStillActive(turnId: string | undefined, terminalTurns: ReadonlySet<string>) {
+  return Boolean(turnId && !terminalTurns.has(turnId));
 }
 
 /** 审批配对状态（frontend-spec §5.4）：approvalId → 决定/过期。悬挂审批（无 response 且所属轮次已终态）视为已过期 */

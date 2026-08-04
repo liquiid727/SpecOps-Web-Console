@@ -25,15 +25,16 @@ const profiles: CliProfile[] = [
   { id: "profile-1", name: "Codex CLI", command: "codex", args: [], createdAt: "2026-01-01T00:00:00Z" }
 ];
 
-function Harness({ ws = workspaces, ps = profiles, onQuickCreate = async () => undefined, onOpenSettings = () => undefined, onAdvancedCreate, draftMode }: {
+function Harness({ ws = workspaces, ps = profiles, onQuickCreate = async () => undefined, onOpenSettings = () => undefined, onAdvancedCreate, draftMode, initialWorkspaceId }: {
   ws?: Workspace[];
   ps?: CliProfile[];
   onQuickCreate?: (input: { content: string; workspaceId: string; profileId: string }) => Promise<void>;
   onOpenSettings?: () => void;
   onAdvancedCreate?: () => void;
   draftMode?: boolean;
+  initialWorkspaceId?: string;
 }) {
-  return <QuestHome workspaces={ws} profiles={ps} onQuickCreate={onQuickCreate} onOpenSettings={onOpenSettings} onAdvancedCreate={onAdvancedCreate} draftMode={draftMode} />;
+  return <QuestHome workspaces={ws} profiles={ps} onQuickCreate={onQuickCreate} onOpenSettings={onOpenSettings} onAdvancedCreate={onAdvancedCreate} draftMode={draftMode} initialWorkspaceId={initialWorkspaceId} />;
 }
 
 function render(root: Root, element: ReactElement) {
@@ -115,6 +116,15 @@ describe("QuestHome", () => {
     render(root, <Harness ws={ws} />);
     // 最近使用的工作区成为默认选中项（frontend-spec §6）
     expect(container.querySelector<HTMLButtonElement>(".context-chip[aria-label='Project']")!.textContent).toContain("Fresh Project");
+  });
+
+  it("honors the workspace context supplied by a folder new-session action", () => {
+    const ws: Workspace[] = [
+      { id: "w1", name: "Alpha", path: "/p/a", createdAt: "2026-01-01T00:00:00Z", lastOpenedAt: "2026-04-01T00:00:00Z" },
+      { id: "w2", name: "Beta", path: "/p/b", createdAt: "2026-01-02T00:00:00Z", lastOpenedAt: "2026-03-01T00:00:00Z" }
+    ];
+    render(root, <Harness ws={ws} draftMode initialWorkspaceId="w2" />);
+    expect(container.querySelector<HTMLButtonElement>(".context-chip[aria-label='Project']")!.textContent).toContain("Beta");
   });
 
   it("switches the workspace through the inline popover limited to the 3 most recent", () => {

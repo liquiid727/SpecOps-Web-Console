@@ -11,6 +11,8 @@
     "dev:client": "vite --host 127.0.0.1",
     "dev:tauri-client": "tsc -p tsconfig.server.json && vite --host 127.0.0.1",
     "build": "tsc -p tsconfig.server.json && vite build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "npm run ui:check",
     "design:lint": "designmd lint DESIGN.md",
     "ui:check": "npm run design:lint && tsx scripts/check-ui-governance.ts",
     "start": "node dist-server/server/index.js",

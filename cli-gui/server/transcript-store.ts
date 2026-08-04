@@ -145,6 +145,7 @@ export function createJsonTranscriptRepository({ dataDirectory, readonly = false
           rawBytes,
           truncated: originalBytes > rawBytes,
           metadata: input.metadata,
+          component: input.component,
           clientMessageId: input.clientMessageId
         };
         if (records.incompleteTail) {

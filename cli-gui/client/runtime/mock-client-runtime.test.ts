@@ -207,4 +207,21 @@ describe("MockClientRuntime scenarios", () => {
     expect(closed).toBe(true);
     expect(recovered).toEqual([2]);
   });
+
+  it("keeps routing and execution facts inside the deterministic fixture ports", async () => {
+    const fixture = createMockClientRuntimeFixture();
+    const [providers, deployments, routes, resolved, executions] = await Promise.all([
+      fixture.runtime.routing.providers(),
+      fixture.runtime.routing.modelDeployments(),
+      fixture.runtime.routing.modelRoutes(),
+      fixture.runtime.routing.resolveSessionModelRoute("mock-streaming-text", "mock-deployment"),
+      fixture.runtime.execution.executionTasks("mock-streaming-text")
+    ]);
+
+    expect(providers.providers[0]).toMatchObject({ id: "mock-provider", configured: true });
+    expect(deployments.deployments[0]).toMatchObject({ id: "mock-deployment", eligibility: "eligible" });
+    expect(routes.routes[0]).toMatchObject({ id: "mock-route", candidateDeploymentIds: ["mock-deployment"] });
+    expect(resolved.resolvedRoute).toMatchObject({ selectedDeploymentId: "mock-deployment", fixedDeploymentId: "mock-deployment" });
+    expect(executions.tasks).toEqual([]);
+  });
 });

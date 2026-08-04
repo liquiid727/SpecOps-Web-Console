@@ -45,10 +45,10 @@ h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 
 .workspace-error { display: flex; gap: 10px; align-items: center; padding: 9px 12px; border-bottom: 1px solid var(--danger-border); background: var(--danger-muted); color: var(--danger-text); font-size: 11px; }
 .workspace-error strong { color: var(--error); }
 .transcript-list { min-height: 0; flex: 1; overflow: auto; display: grid; align-content: start; gap: 10px; padding: 14px; }
-/* chat 模式类终端直显：用户右侧灰色气泡 + 助手左侧无框 Markdown 流，无名称/raw（参考 Qoder 对话布局） */
-.transcript-list.chat-mode { gap: 16px; padding: 18px 22px; }
+/* chat 模式文档流：用户全宽灰底块 + 助手无框 Markdown 流，无名称/raw（参考 Qoder 对话布局） */
+.transcript-list.chat-mode { gap: 14px; padding: 18px 22px; }
 .transcript-list.chat-mode .transcript-event.assistant_message { max-width: 100%; padding: 2px 0; border: none; background: transparent; }
-.transcript-list.chat-mode .transcript-event.user_message { justify-self: end; margin-left: 0; width: auto; max-width: 78%; padding: 10px 14px; border: none; background: var(--surface-hover); border-radius: var(--radius-xl); }
+.transcript-list.chat-mode .transcript-event.user_message { justify-self: stretch; margin-left: 0; width: 100%; max-width: 100%; padding: 12px 16px; border: none; background: var(--surface-hover); border-radius: var(--radius-md); }
 .transcript-list.chat-mode .transcript-event.assistant_message .raw-source { display: none; }
 .transcript-list.chat-mode .transcript-event.assistant_message .copy-button { justify-self: start; opacity: 0; transition: opacity .16s ease; }
 .transcript-list.chat-mode .transcript-event.assistant_message:hover .copy-button,
@@ -71,9 +71,10 @@ h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 
 .pty-replay-header { font-size: 10px; color: var(--muted); }
 .pty-replay-text { margin: 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); font: 11px/1.6 "SFMono-Regular", Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
 .transcript-event { position: relative; display: grid; gap: 8px; max-width: 880px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
-/* 用户消息：右侧中性圆角气泡；助手消息：左侧无框 Markdown 流（不带名称） */
+/* 用户消息：全宽灰底文档块 + 时间戳；助手消息：无框 Markdown 流（不带名称） */
 .transcript-event.user_input,
-.transcript-event.user_message { justify-self: end; margin-left: auto; width: auto; max-width: 78%; padding: 10px 14px; border: none; background: var(--surface-hover); border-radius: var(--radius-xl); }
+.transcript-event.user_message { justify-self: stretch; width: 100%; max-width: 100%; padding: 12px 16px; border: none; background: var(--surface-hover); border-radius: var(--radius-md); }
+.user-message-time { display: block; margin-top: 6px; text-align: right; color: var(--faint); font-size: 10px; font-weight: 400; letter-spacing: 0; text-transform: none; }
 .transcript-event.assistant_message { max-width: 100%; padding: 2px 0; border: none; background: transparent; }
 .transcript-event.lifecycle { justify-self: center; width: min(760px, 94%); text-align: center; background: transparent; border-style: dashed; color: var(--muted); }
 .transcript-event.lifecycle.interrupted { border-color: var(--danger-border); color: var(--danger); }
@@ -82,6 +83,7 @@ h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 
 .approval-actions { display: flex; gap: 8px; }
 .approval-decision { margin: 0; font-size: 12px; color: var(--muted); }
 .approval-fallback-hint { margin: 0; font-size: 11px; line-height: 1.6; color: var(--muted); border-top: 1px dashed var(--border); padding-top: 8px; }
+.turn-failure-guidance, .turn-fallback-summary { margin: 0; font-size: 11px; line-height: 1.6; color: var(--muted); border-top: 1px dashed var(--border); padding-top: 8px; }
 .transcript-event.file_change { border-color: var(--warning-border); }
 .transcript-event.unknown-kind { background: transparent; color: var(--muted); }
 .lifecycle-text, .error-text, .file-change-path { margin: 0; font-size: 12px; line-height: 1.55; overflow-wrap: anywhere; }
@@ -104,10 +106,35 @@ h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 
 .cli-output-actions button { min-height: 24px; padding: 0 8px; background: transparent; color: var(--muted); font-size: 10px; }
 .cli-output-actions button:hover { color: var(--text); }
 .cli-output-actions .cli-output-terminal-link { margin-left: auto; }
-.transcript-event.error, .transcript-event.permission_request { border-color: var(--danger-border); background: var(--danger-muted); }
-.transcript-event.tool_activity { border-color: var(--warning-border); }
+.transcript-event.error, .transcript-event.permission_request { border: none; border-left: 2px solid var(--error); background: var(--danger-muted); }
+.transcript-event.tool_activity { border: none; border-left: 2px solid var(--warning-border); }
 .transcript-event.retention_marker { border-color: var(--warning-border); background: transparent; }
 .transcript-event header { display: flex; justify-content: space-between; gap: 10px; color: var(--muted); font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+.card-message .card-inline-actions { display: flex; align-items: center; justify-content: flex-start; gap: 8px; color: var(--muted); font-size: 11px; }
+.card-thinking, .card-progress, .card-diagnostic { border: none; border-left: 2px solid var(--accent); background: color-mix(in srgb, var(--accent) 4%, transparent); color: var(--muted); }
+.card-thinking summary { display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--muted); font-size: 11px; font-weight: 700; }
+.card-thinking summary time { margin-left: auto; }
+.card-thinking .card-thinking-icon { color: var(--accent); flex-shrink: 0; }
+.card-code-block { max-width: 100%; background: var(--terminal); border-color: var(--border-strong); }
+.card-code-block .copy-button { justify-self: start; margin-top: 8px; color: var(--muted); }
+.card-turn-status { justify-self: stretch; width: 100%; max-width: 100%; text-align: left; background: transparent; border: none; border-left: 2px solid var(--border); color: var(--muted); }
+.card-turn-status.interrupted { border-left-color: var(--error); color: var(--danger); }
+.card-diagnostic .transcript-output summary { cursor: pointer; color: var(--muted); }
+/* 工具调用 / Shell 运行：橙色左边框 + 等宽字体 */
+.card-tool-use, .card-shell-run { border: none; border-left: 2px solid var(--warning-border); background: color-mix(in srgb, var(--warning-border) 4%, transparent); }
+.card-tool-use .card-badge, .card-shell-run .card-badge { color: var(--warning); }
+.card-tool-use .card-tool-icon, .card-shell-run .card-shell-icon { color: var(--warning); flex-shrink: 0; }
+.card-exit-badge { padding: 1px 5px; border-radius: var(--radius-sm); font: 9px/1.6 "SFMono-Regular", Consolas, monospace; }
+.card-exit-badge.success { color: var(--running); background: color-mix(in srgb, var(--running) 10%, transparent); }
+.card-exit-badge.failure { color: var(--error); background: color-mix(in srgb, var(--error) 10%, transparent); }
+/* 文件变更：绿色左边框 + 操作类型颜色 */
+.card-file-change { border: none; border-left: 2px solid var(--running); background: color-mix(in srgb, var(--running) 3%, transparent); }
+.card-file-change .card-badge { text-transform: lowercase; }
+.card-file-change .card-badge[data-action="created"], .card-file-change .card-badge[data-action="create"] { color: var(--running); }
+.card-file-change .card-badge[data-action="modified"], .card-file-change .card-badge[data-action="modify"] { color: var(--warning); }
+.card-file-change .card-badge[data-action="deleted"], .card-file-change .card-badge[data-action="delete"] { color: var(--error); }
+/* 用户消息卡片时间戳 */
+.card-user-message .user-message-time { display: block; margin-top: 6px; text-align: right; color: var(--faint); font-size: 10px; }
 .transcript-output { min-width: 0; color: var(--text-secondary); }
 .transcript-output summary { overflow: hidden; color: var(--muted); cursor: pointer; font: 11px/1.5 "SFMono-Regular", Consolas, monospace; text-overflow: ellipsis; white-space: nowrap; }
 .transcript-output[open] summary { margin-bottom: 8px; white-space: normal; }
@@ -231,7 +258,9 @@ h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 
 .overlay-backdrop { position: fixed; z-index: var(--z-modal); inset: 0; display: grid; place-items: center; padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left)); background: var(--backdrop); backdrop-filter: blur(3px); animation: overlay-in .14s ease-out; }
 .overlay-panel { width: min(560px, 100%); max-height: min(760px, calc(100dvh - 48px)); display: flex; flex-direction: column; border: 1px solid var(--border-strong); border-radius: var(--radius-xl); background: var(--overlay); box-shadow: var(--shadow-drawer); overflow: hidden; animation: panel-in .16s ease-out; }
 .overlay-panel.drawer { width: min(640px, 100%); height: calc(100dvh - 32px); margin-left: auto; }
+.overlay-panel.drawer-left { margin-left: 0; margin-right: auto; }
 .overlay-backdrop:has(.drawer) { place-items: center end; padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+.overlay-backdrop:has(.drawer-left) { place-items: center start; }
 .overlay-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding: 20px 20px 17px; border-bottom: 1px solid var(--border); }
 .overlay-header p { color: var(--muted); font-size: 11px; line-height: 1.55; margin: 7px 0 0; }
 .overlay-body { min-height: 0; overflow: auto; padding: 20px; }

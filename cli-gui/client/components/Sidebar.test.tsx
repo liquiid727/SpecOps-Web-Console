@@ -86,6 +86,24 @@ describe("Sidebar", () => {
     expect(container.querySelector(".quest-draft-row")).toBeNull();
   });
 
+  it("keeps empty workspace groups visible and passes their context to new quest", () => {
+    const emptyWorkspace: Workspace = { id: "workspace-2", name: "New Project", path: "/projects/new", createdAt: "2026-01-02T00:00:00Z" };
+    const onNewQuest = vi.fn();
+    const groups: SessionGroup[] = [
+      { id: `workspace:${workspace.id}`, labelKey: "project", workspace, sessions: [] },
+      { id: `workspace:${emptyWorkspace.id}`, labelKey: "project", workspace: emptyWorkspace, sessions: [] }
+    ];
+    act(() => root.render(<I18nProvider><Sidebar {...baseProps({ questGroups: groups, workspaces: [workspace, emptyWorkspace], grouping: "project", onNewQuest })} /></I18nProvider>));
+    expect(container.textContent).toContain("Payment Platform");
+    expect(container.textContent).toContain("New Project");
+    expect(container.querySelector(".quest-list .sidebar-empty")).toBeNull();
+
+    const emptyGroup = Array.from(container.querySelectorAll<HTMLElement>(".quest-group")).find((group) => group.textContent?.includes("New Project"))!;
+    const emptyGroupAdd = emptyGroup.querySelector<HTMLButtonElement>(".folder-action-btn")!;
+    act(() => emptyGroupAdd.click());
+    expect(onNewQuest).toHaveBeenCalledWith(emptyWorkspace.id);
+  });
+
   it("selects a quest and switches views from the bottom links", () => {
     const onSelectSession = vi.fn();
     const onViewChange = vi.fn();

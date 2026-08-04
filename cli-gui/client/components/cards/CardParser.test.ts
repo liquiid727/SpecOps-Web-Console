@@ -3,7 +3,7 @@ import type { TranscriptEvent } from "../../../shared/types";
 import type { TranscriptDisplayItem } from "../../transcript-display";
 import { classifyCard, parseToCards } from "./CardParser";
 
-function makeItem(id: string, kind: TranscriptEvent["kind"], metadata?: Record<string, any>): TranscriptDisplayItem {
+function makeItem(id: string, kind: TranscriptEvent["kind"], metadata?: Record<string, any>, component?: TranscriptEvent["component"], raw = `content-${id}`): TranscriptDisplayItem {
   const event: TranscriptEvent = {
     id,
     sessionId: "session-1",
@@ -11,12 +11,13 @@ function makeItem(id: string, kind: TranscriptEvent["kind"], metadata?: Record<s
     occurredAt: "2026-01-01T00:00:00Z",
     kind,
     source: "profile-adapter",
-    raw: `raw-${id}`,
+    raw,
     rawBytes: 8,
     truncated: false,
-    metadata
+    metadata,
+    component
   };
-  return { id, event, content: `content-${id}`, raw: event.raw, truncated: false };
+  return { id, event, content: raw, raw: event.raw, truncated: false };
 }
 
 describe("CardParser classification", () => {
@@ -42,8 +43,14 @@ describe("CardParser classification", () => {
   it("maps file_change / assistant_message / lifecycle / error", () => {
     expect(classifyCard("file_change", undefined)).toBe("file-change");
     expect(classifyCard("assistant_message", undefined)).toBe("message");
-    expect(classifyCard("lifecycle", undefined)).toBe("lifecycle");
-    expect(classifyCard("error", undefined)).toBe("error");
+    expect(classifyCard("lifecycle", undefined)).toBe("turn-status");
+    expect(classifyCard("error", undefined)).toBe("turn-status");
+  });
+
+  it("lets structured component type override the compatibility kind", () => {
+    expect(classifyCard("pty_output", { diagnostic: true }, "diagnostic")).toBe("diagnostic");
+    expect(classifyCard("assistant_message", undefined, "thinking")).toBe("thinking");
+    expect(classifyCard("tool_activity", undefined, "command")).toBe("command");
   });
 
   it("maps unrecognized kinds to unknown", () => {
@@ -67,7 +74,7 @@ describe("parseToCards", () => {
       turnId: "turn-1",
       timestamp: "2026-01-01T00:00:00Z",
       content: "content-event-2",
-      raw: "raw-event-2"
+      raw: "content-event-2"
     });
     expect(cards[1].metadata?.exitCode).toBe(0);
   });
@@ -76,5 +83,20 @@ describe("parseToCards", () => {
     const cards = parseToCards([makeItem("event-9", "assistant_message", { turnId: 42 })]);
     expect(cards[0].turnId).toBeUndefined();
     expect(cards[0].type).toBe("message");
+  });
+
+  it("splits assistant fenced code into message and code-block cards", () => {
+    const cards = parseToCards([makeItem("event-10", "assistant_message", { turnId: "turn-1" }, undefined, "Use this:\n\n```ts\nconst a = 1;\n```\n\nDone.")]);
+    expect(cards.map((card) => card.type)).toEqual(["message", "code-block", "message"]);
+    expect(cards[1]).toMatchObject({ id: "event-10:code-block-1", content: "const a = 1;\n", metadata: expect.objectContaining({ language: "ts" }) });
+  });
+
+  it("merges same-turn lifecycle and error into one turn-status card", () => {
+    const cards = parseToCards([
+      makeItem("event-11", "lifecycle", { turnId: "turn-1", status: "turn-failed" }, undefined, "Turn failed."),
+      makeItem("event-12", "error", { turnId: "turn-1", code: "TURN_FAILED" }, undefined, "boom")
+    ]);
+    expect(cards).toHaveLength(1);
+    expect(cards[0]).toMatchObject({ type: "turn-status", content: "Turn failed.\n\nboom", metadata: expect.objectContaining({ status: "turn-failed", code: "TURN_FAILED" }) });
   });
 });

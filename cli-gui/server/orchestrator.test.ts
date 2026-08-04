@@ -548,6 +548,39 @@ describe("runtime orchestrator persistent turns", () => {
     expect(events.some((event) => event.kind === "assistant_message")).toBe(false);
   });
 
+  it("preserves backend failure code and fallback metadata in the transcript", async () => {
+    const { orchestrator, events } = createHarness();
+    await orchestrator.submitTurn("backend-failure", {
+      turnId: "turn-1",
+      prompt: "hello",
+      runBackend: async () => ({
+        events: (async function* () {})(),
+        result: Promise.resolve({
+          status: "failed" as const,
+          error: {
+            code: "CLI_PERMISSION_DENIED",
+            message: "app-server failed; fallback CLI failed",
+            phase: "spawn" as const,
+            fallbackAttempted: true,
+            fallbackCode: "CLI_PERMISSION_DENIED"
+          }
+        }),
+        cancel: async () => undefined
+      })
+    });
+    await waitFor(() => turnEnded(events, "turn-1"));
+
+    const error = events.find((event) => event.kind === "error" && event.metadata?.turnId === "turn-1");
+    expect(error).toMatchObject({
+      metadata: {
+        code: "CLI_PERMISSION_DENIED",
+        phase: "spawn",
+        fallbackAttempted: true,
+        fallbackCode: "CLI_PERMISSION_DENIED"
+      }
+    });
+  });
+
   it("marks a rejected persistent turn as TURN_FAILED and keeps the session usable", async () => {
     const { orchestrator, events, statusCalls } = createHarness();
     const turn = makePersistentTurn("turn-1", "crash", async () => {

@@ -8,6 +8,7 @@ import type { AppStateV3, GitDiffResponse, GitStatusResponse, TranscriptEvent, T
 import { createApplication } from "./application.js";
 import { createServer } from "./http-server.js";
 import type { Application, ApplicationDependencies, PtyProcess } from "./ports.js";
+import { createMemorySecretStore } from "./secret-store.js";
 
 const emptyState: AppStateV3 = { workspaces: [], profiles: [], sessions: [] };
 
@@ -75,6 +76,9 @@ function createDependencies(overrides: Partial<ApplicationDependencies> = {}) {
     clock: { now: vi.fn(() => "2026-01-01T00:00:00Z") },
     idGenerator: { create: vi.fn((prefix) => `${prefix}-fixed`) },
     policy: { readonly: false, processEnvironment: {} },
+    // Keep application tests independent from the developer's real CLI config;
+    // auto-sync behavior is covered explicitly with a dedicated reader below.
+    modelSyncReader: vi.fn(async (profile) => profile.syncedModels ?? []),
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
     ...overrides
   };
@@ -451,6 +455,62 @@ describe("profile model catalog APIs (console-gaps SPEC §2)", () => {
     }
   });
 
+  it("automatically syncs models before capability detection and gates reads by TTL", async () => {
+    let now = "2026-01-01T00:00:00Z";
+    const modelSyncReader = vi.fn(async () => ["gpt-5.6-luna"]);
+    const capabilities = vi.fn(async (profile: AppStateV3["profiles"][number]) => ({
+      ...(await supportedCapabilities()),
+      models: (profile.syncedModels ?? []).map((id) => ({ id, labelKey: id, requiresRestart: true }))
+    }));
+    const { server, address, state, dependencies } = await boot({
+      clock: { now: vi.fn(() => now) },
+      modelSyncReader,
+      profileAdapters: { availableAdapterIds: ["codex"], capabilities }
+    });
+    pushCodexProfile(state, { syncedModels: ["cached-model"] });
+
+    try {
+      const first = await get(address.port, "/api/profiles/profile-1/capabilities");
+      expect(first.status).toBe(200);
+      expect(first.json.models).toContainEqual({ id: "gpt-5.6-luna", labelKey: "gpt-5.6-luna", requiresRestart: true });
+      expect(modelSyncReader).toHaveBeenCalledOnce();
+      expect(state.profiles[0].syncedModels).toEqual(["gpt-5.6-luna"]);
+
+      await get(address.port, "/api/profiles/profile-1/capabilities");
+      expect(modelSyncReader).toHaveBeenCalledOnce();
+
+      now = "2026-01-01T00:06:00Z";
+      await get(address.port, "/api/profiles/profile-1/capabilities");
+      expect(modelSyncReader).toHaveBeenCalledTimes(2);
+      expect(dependencies.stateRepository.save).toHaveBeenCalled();
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("keeps the previous synced models when automatic configuration reading fails", async () => {
+    const modelSyncReader = vi.fn(async () => { throw new Error("config unavailable"); });
+    const capabilities = vi.fn(async (profile: AppStateV3["profiles"][number]) => ({
+      ...(await supportedCapabilities()),
+      models: (profile.syncedModels ?? []).map((id) => ({ id, labelKey: id, requiresRestart: true }))
+    }));
+    const { server, address, state, dependencies } = await boot({
+      modelSyncReader,
+      profileAdapters: { availableAdapterIds: ["codex"], capabilities }
+    });
+    pushCodexProfile(state, { syncedModels: ["cached-model"] });
+
+    try {
+      const response = await get(address.port, "/api/profiles/profile-1/capabilities");
+      expect(response.status).toBe(200);
+      expect(response.json.models).toContainEqual({ id: "cached-model", labelKey: "cached-model", requiresRestart: true });
+      expect(state.profiles[0].syncedModels).toEqual(["cached-model"]);
+      expect(dependencies.logger.warn).toHaveBeenCalledWith("Automatic model sync failed", expect.any(Object));
+    } finally {
+      await server.close();
+    }
+  });
+
   it("validates custom model imports and removes them again", async () => {
     const { server, address, state } = await boot();
     pushCodexProfile(state);
@@ -495,6 +555,95 @@ describe("profile model catalog APIs (console-gaps SPEC §2)", () => {
       expect(sync.json.error.code).toBe("READONLY_MODE");
       expect((await post(address.port, "/api/profiles/profile-1/models/custom", { model: "m" })).status).toBe(403);
       expect((await send(address.port, "/api/profiles/profile-1/models/custom/m", "DELETE", {})).status).toBe(403);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("keeps provider credentials secret-free while exposing compatible provider models", async () => {
+    const secretStore = createMemorySecretStore();
+    const { server, address, state } = await boot({ secretStore });
+    pushCodexProfile(state);
+    const canary = "provider-secret-canary";
+
+    try {
+      const created = await post(address.port, "/api/providers", {
+        id: "provider-1",
+        name: "Primary",
+        protocol: "openai-compatible",
+        baseUrl: "https://provider.example/v1",
+        models: ["provider-model", "gpt-5"]
+      });
+      expect(created.status).toBe(201);
+      expect(JSON.stringify(created.json)).not.toContain(canary);
+      expect(created.json.provider).not.toHaveProperty("credentialRef");
+
+      const credential = await send(address.port, "/api/providers/provider-1/credential", "PUT", { secret: canary });
+      expect(credential.status).toBe(200);
+      expect(JSON.stringify(credential.json)).not.toContain(canary);
+
+      const providers = await get(address.port, "/api/providers");
+      expect(providers.json.providers[0]).toMatchObject({ id: "provider-1", configured: true, credentialStatus: "configured" });
+      expect(providers.json.providers[0]).not.toHaveProperty("credentialRef");
+      expect(JSON.stringify(providers.json)).not.toContain(canary);
+      expect(JSON.stringify(state)).not.toContain(canary);
+
+      const capabilities = await get(address.port, "/api/profiles/profile-1/capabilities");
+      expect(capabilities.json.modelGroups).toEqual([expect.objectContaining({ providerId: "provider-1", models: [expect.objectContaining({ id: "provider-model" })] })]);
+      const models = await get(address.port, "/api/profiles/profile-1/models");
+      expect(models.json.models).toContainEqual({ id: "provider-model", source: "synced" });
+      expect(models.json.models).toContainEqual({ id: "gpt-5", source: "builtin" });
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("injects provider credentials only at spawn time and preserves providerId across forks", async () => {
+    const secretStore = createMemorySecretStore();
+    let sequence = 0;
+    const { server, address, state, dependencies } = await boot({
+      secretStore,
+      idGenerator: { create: vi.fn((prefix) => `${prefix}-${++sequence}`) }
+    });
+    pushCodexProfile(state);
+    state.workspaces.push({ id: "workspace-1", name: "Workspace", path: "/tmp/workspace", kind: "local-folder", createdAt: "2026-01-01T00:00:00Z" });
+    const canary = "provider-spawn-canary";
+
+    try {
+      await post(address.port, "/api/providers", { id: "provider-1", name: "Primary", protocol: "openai-compatible", baseUrl: "https://provider.example/v1" });
+      await send(address.port, "/api/providers/provider-1/credential", "PUT", { secret: canary });
+      const created = await post(address.port, "/api/sessions", { name: "Provider session", workspaceId: "workspace-1", profileId: "profile-1", providerId: "provider-1", interactionMode: "terminal", start: true, confirmed: true });
+
+      expect(created.status).toBe(201);
+      const spawn = vi.mocked(dependencies.ptyRuntime.spawn).mock.calls[0]?.[0];
+      expect(spawn?.args).toContain("model_provider=provider-1");
+      expect(spawn?.env).toMatchObject({ SPECOS_PROVIDER_PROVIDER_1_KEY: canary });
+      expect(JSON.stringify(created.json)).not.toContain(canary);
+      expect(JSON.stringify(state)).not.toContain(canary);
+
+      const revision = created.json.session.revision as number;
+      const forked = await post(address.port, `/api/sessions/${created.json.session.id}/fork`, { expectedRevision: revision });
+      expect(forked.status).toBe(201);
+      expect(forked.json.session.providerId).toBe("provider-1");
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("blocks a provider session with a missing environment credential before PTY spawn", async () => {
+    const { server, address, state, dependencies } = await boot();
+    pushCodexProfile(state);
+    state.workspaces.push({ id: "workspace-1", name: "Workspace", path: "/tmp/workspace", kind: "local-folder", createdAt: "2026-01-01T00:00:00Z" });
+
+    try {
+      await post(address.port, "/api/providers", { id: "provider-1", name: "Primary", protocol: "openai-compatible", baseUrl: "https://provider.example/v1", credentialRef: "MISSING_PROVIDER_KEY" });
+      const created = await post(address.port, "/api/sessions", { name: "Stopped provider session", workspaceId: "workspace-1", profileId: "profile-1", providerId: "provider-1", interactionMode: "terminal", start: false, confirmed: false });
+      const started = await post(address.port, `/api/sessions/${created.json.session.id}/start`, { confirmed: true });
+
+      expect(started.status).toBe(400);
+      expect(started.json.error.code).toBe("PROVIDER_CREDENTIAL_MISSING");
+      expect(started.json.error.message).toContain("MISSING_PROVIDER_KEY");
+      expect(dependencies.ptyRuntime.spawn).not.toHaveBeenCalled();
     } finally {
       await server.close();
     }

@@ -23,6 +23,12 @@ const builtinCatalog: Partial<Record<CliAdapterId, { range?: string; models: str
   glm: [{ models: ["default"] }]
 };
 
+export interface ConfiguredModelSnapshot {
+  models: string[];
+  /** The model the CLI will use when no explicit --model is supplied. */
+  defaultModel?: string;
+}
+
 /** Claude Code 协议家族：kimi / glm 为兼容 fork（同步时同读 ~/.claude/settings.json） */
 export function isClaudeFamily(adapterId: string): boolean {
   return adapterId === "claude-code" || adapterId === "kimi" || adapterId === "glm";
@@ -48,9 +54,10 @@ export function mergeModelSources(builtin: string[], synced: string[], custom: s
   return [...entries.filter((entry) => entry.id === "default"), ...entries.filter((entry) => entry.id !== "default")];
 }
 
-/** codex `~/.codex/config.toml`：顶层 `model` 与 `[profiles.*].model`（容错行级解析，不引 TOML 依赖） */
-export function parseCodexConfigModels(source: string): string[] {
+/** codex `~/.codex/config.toml`：顶层、`[profiles.*]` 与 `[model_providers.*]` 的 model 键。 */
+export function parseCodexConfigSnapshot(source: string): ConfiguredModelSnapshot {
   const models: string[] = [];
+  let defaultModel: string | undefined;
   let section = "";
   for (const rawLine of source.split(/\r?\n/)) {
     const line = rawLine.trim();
@@ -62,31 +69,76 @@ export function parseCodexConfigModels(source: string): string[] {
     }
     const valueMatch = line.match(/^model\s*=\s*"([^"]+)"\s*(?:#.*)?$/) ?? line.match(/^model\s*=\s*'([^']+)'\s*(?:#.*)?$/);
     if (!valueMatch) continue;
-    if (section === "" || section.startsWith("profiles.")) models.push(valueMatch[1]);
+    const model = valueMatch[1].trim();
+    if (!model) continue;
+    if (section === "") {
+      defaultModel ??= model;
+      models.push(model);
+    } else if (section.startsWith("profiles.") || section.startsWith("model_providers.")) {
+      models.push(model);
+    }
   }
-  return [...new Set(models)];
+  return { models: [...new Set(models)], ...(defaultModel ? { defaultModel } : {}) };
 }
 
-/** claude 家族 `~/.claude/settings.json` 的 `model`；坏 JSON / 缺字段容错为空 */
-export function parseClaudeSettingsModels(source: string): string[] {
+export function parseCodexConfigModels(source: string): string[] {
+  return parseCodexConfigSnapshot(source).models;
+}
+
+/** claude 家族 `~/.claude/settings.json` 的 model 与 env 模型字段。 */
+export function parseClaudeSettingsSnapshot(source: string, adapterId: CliAdapterId = "claude-code"): ConfiguredModelSnapshot | undefined {
   try {
-    const parsed = JSON.parse(source) as { model?: unknown };
-    return typeof parsed?.model === "string" && parsed.model.trim() ? [parsed.model.trim()] : [];
+    const parsed = JSON.parse(source) as { model?: unknown; env?: unknown };
+    const env = parsed.env && typeof parsed.env === "object" ? parsed.env as Record<string, unknown> : {};
+    const baseUrl = typeof env.ANTHROPIC_BASE_URL === "string" ? env.ANTHROPIC_BASE_URL : undefined;
+    if (!matchesClaudeProvider(adapterId, baseUrl)) return { models: [] };
+    const configured = [
+      parsed.model,
+      env.ANTHROPIC_MODEL,
+      env.ANTHROPIC_SMALL_FAST_MODEL
+    ].filter((value): value is string => typeof value === "string" && value.trim().length > 0).map((value) => value.trim());
+    const models = [...new Set(configured)];
+    const defaultModel = models[0];
+    return { models, ...(defaultModel ? { defaultModel } : {}) };
   } catch {
-    return [];
+    return undefined;
   }
+}
+
+/** claude 家族配置模型；坏 JSON / 缺字段容错为空。 */
+export function parseClaudeSettingsModels(source: string, adapterId: CliAdapterId = "claude-code"): string[] {
+  return parseClaudeSettingsSnapshot(source, adapterId)?.models ?? [];
+}
+
+/** Read the local configuration without turning a missing or malformed file into a destructive empty sync. */
+export async function readConfiguredModels(adapterId: CliAdapterId, options: { homeDirectory?: string } = {}): Promise<ConfiguredModelSnapshot | undefined> {
+  const home = options.homeDirectory ?? os.homedir();
+  try {
+    if (adapterId === "codex") return parseCodexConfigSnapshot(await fs.readFile(path.join(home, ".codex", "config.toml"), "utf8"));
+    if (isClaudeFamily(adapterId)) return parseClaudeSettingsSnapshot(await fs.readFile(path.join(home, ".claude", "settings.json"), "utf8"), adapterId);
+  } catch {
+    // 文件缺失或不可读：自动同步保留已有缓存。
+  }
+  return undefined;
 }
 
 /** 本机 CLI 配置同步（SPEC §2.2 第 2 层）：只读、配置缺失/解析失败一律返回 []（不报错） */
 export async function readSyncedModels(adapterId: CliAdapterId, options: { homeDirectory?: string } = {}): Promise<string[]> {
-  const home = options.homeDirectory ?? os.homedir();
+  return (await readConfiguredModels(adapterId, options))?.models ?? [];
+}
+
+function matchesClaudeProvider(adapterId: CliAdapterId, baseUrl: string | undefined): boolean {
+  if (adapterId === "claude-code") return true;
+  if (!baseUrl) return false;
+  let hostname = baseUrl.trim().toLowerCase();
   try {
-    if (adapterId === "codex") return parseCodexConfigModels(await fs.readFile(path.join(home, ".codex", "config.toml"), "utf8"));
-    if (isClaudeFamily(adapterId)) return parseClaudeSettingsModels(await fs.readFile(path.join(home, ".claude", "settings.json"), "utf8"));
+    hostname = new URL(baseUrl).hostname.toLowerCase();
   } catch {
-    // 文件缺失或不可读：同步结果为空即可
+    // Keep a conservative string fallback for provider URLs with a missing scheme.
   }
-  return [];
+  if (adapterId === "kimi") return hostname.includes("moonshot");
+  if (adapterId === "glm") return hostname.includes("bigmodel");
+  return false;
 }
 
 /** 简单 semver 范围匹配：空格分隔的 >=|>|<=|<|= 比较器；无范围 = 不限制 */

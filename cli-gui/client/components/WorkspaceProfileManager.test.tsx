@@ -38,6 +38,7 @@ describe("WorkspaceProfileManager appearance settings", () => {
       </I18nProvider>
     ));
 
+    expect(document.body.querySelector(".overlay-panel.drawer-left")).toBeTruthy();
     await act(async () => document.body.querySelector<HTMLButtonElement>("[role='tab'][data-settings-category='appearance']")?.click());
     expect(document.body.querySelector("[aria-label='Theme']")).toBeTruthy();
     expect(document.body.querySelector("[data-theme-choice='qoder-light']")?.getAttribute("aria-checked")).toBe("true");

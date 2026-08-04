@@ -9,11 +9,17 @@ import type {
   TranscriptPage,
   WorkspaceV2
 } from "../../shared/types";
+import type { ModelDeploymentSummary } from "../../shared/model-deployment";
+import type { ModelProviderSummary } from "../../shared/model-provider";
+import type { ExecutionSnapshot } from "../../shared/execution-attempt";
+import type { PriorityModelRoute, ResolvedRoute } from "../../shared/model-route";
 import type { TurnStatus } from "../../shared/websocket";
 import {
   MockClientRuntime,
   type EnginePort,
   type EventPort,
+  type ExecutionPort,
+  type RoutingPort,
   type RuntimePortSet,
   type SessionPort,
   type TerminalPort,
@@ -23,6 +29,9 @@ import {
 const FIXED_TIME = "2026-07-29T00:00:00.000Z";
 const WORKSPACE_ID = "mock-workspace";
 const PROFILE_ID = "mock-profile";
+const PROVIDER_ID = "mock-provider";
+const DEPLOYMENT_ID = "mock-deployment";
+const ROUTE_ID = "mock-route";
 
 export type MockRuntimeScenarioName =
   | "streaming-text"
@@ -162,6 +171,64 @@ const capabilities: CliProfileCapabilities = {
   guiMode: "full"
 };
 
+const mockProvider = (): ModelProviderSummary => ({
+  id: PROVIDER_ID,
+  name: "Mock Provider",
+  protocol: "openai-compatible",
+  baseUrl: "https://provider.example/v1",
+  models: ["mock-model"],
+  supportedEngineIds: ["codex"],
+  enabled: true,
+  configured: true,
+  credentialStatus: "configured",
+  hasCredential: true,
+  createdAt: FIXED_TIME,
+  updatedAt: FIXED_TIME
+});
+
+const mockDeployment = (): ModelDeploymentSummary => ({
+  id: DEPLOYMENT_ID,
+  name: "Mock primary deployment",
+  providerId: PROVIDER_ID,
+  providerName: "Mock Provider",
+  providerProtocol: "openai-compatible",
+  providerEnabled: true,
+  profileId: PROFILE_ID,
+  profileName: "Mock Codex",
+  modelId: "mock-model",
+  enabled: true,
+  createdAt: FIXED_TIME,
+  updatedAt: FIXED_TIME,
+  credentialStatus: "configured",
+  capability: { source: "configured", observedAt: FIXED_TIME, modelPresent: true, nativeSession: true, toolCalling: true, codeEditing: true },
+  eligibility: "eligible",
+  exclusionCodes: []
+});
+
+const mockRoute = (): PriorityModelRoute => ({
+  id: ROUTE_ID,
+  name: "Mock priority route",
+  enabled: true,
+  candidateDeploymentIds: [DEPLOYMENT_ID],
+  automaticTechnicalFallback: true,
+  createdAt: FIXED_TIME,
+  updatedAt: FIXED_TIME
+});
+
+function resolvedMockRoute(fixedDeploymentId?: string): ResolvedRoute {
+  return {
+    kind: "route",
+    routeId: ROUTE_ID,
+    resolvedAt: FIXED_TIME,
+    sourceTrace: [{ field: "routeId", source: "project", value: ROUTE_ID }, ...(fixedDeploymentId ? [{ field: "fixedDeploymentId", source: "run" as const, value: fixedDeploymentId }] : [])],
+    candidates: [{ deploymentId: DEPLOYMENT_ID, position: 1, eligible: true, exclusionCodes: [] }],
+    executableCandidates: [{ deploymentId: DEPLOYMENT_ID, position: 1, eligible: true, exclusionCodes: [] }],
+    selectedDeploymentId: fixedDeploymentId ?? DEPLOYMENT_ID,
+    ...(fixedDeploymentId ? { fixedDeploymentId } : {}),
+    canSend: true
+  };
+}
+
 function fixtureSession(scenario: MockRuntimeScenario): SessionWithCompatibilityStatus {
   const nativeExpired = scenario.name === "native-session-expired";
   return {
@@ -226,6 +293,13 @@ export function createMockClientRuntimeFixture(): MockClientRuntimeFixture {
   let sessions = initialSessions.map((session) => ({ ...session }));
   let workspaces = [{ ...workspace }];
   let profiles = [{ ...profile }];
+  const initialProviders = [mockProvider()];
+  const initialDeployments = [mockDeployment()];
+  const initialRoutes = [mockRoute()];
+  let providers: ModelProviderSummary[] = initialProviders.map((provider) => ({ ...provider, models: [...provider.models], supportedEngineIds: [...(provider.supportedEngineIds ?? [])] }));
+  let deployments = initialDeployments.map((deployment) => ({ ...deployment, capability: { ...deployment.capability }, exclusionCodes: [...deployment.exclusionCodes] }));
+  let routes = initialRoutes.map((route) => ({ ...route, candidateDeploymentIds: [...route.candidateDeploymentIds] }));
+  let executionSnapshots: ExecutionSnapshot[] = [];
   const eventsBySession = new Map(Object.values(MOCK_RUNTIME_SCENARIOS).map((scenario) => [scenario.sessionId, [...scenario.persistedEvents]]));
   const subscriptionAttempts = new Map<string, number>();
 
@@ -270,7 +344,7 @@ export function createMockClientRuntimeFixture(): MockClientRuntimeFixture {
     createSession: async (input) => {
       const id = `mock-session-${sessions.length + 1}`;
       const created = fixtureSession({ name: "streaming-text", sessionId: id, persistedEvents: [], liveFrames: [] });
-      const next = { ...created, name: input.name, workspaceId: input.workspaceId, profileId: input.profileId, interactionMode: input.interactionMode ?? "chat", runtimeStatus: input.start === false ? "stopped" : "running", status: input.start === false ? "stopped" : "running", launchConfig: { permission: input.launchConfig?.permission ?? null, mode: input.launchConfig?.mode ?? null, model: input.launchConfig?.model ?? null } } satisfies SessionWithCompatibilityStatus;
+      const next = { ...created, name: input.name, workspaceId: input.workspaceId, profileId: input.profileId, interactionMode: input.interactionMode ?? "chat", runtimeStatus: input.start === false ? "stopped" : "running", status: input.start === false ? "stopped" : "running", launchConfig: { permission: input.launchConfig?.permission ?? null, mode: input.launchConfig?.mode ?? null, model: input.launchConfig?.model ?? null }, ...(input.providerId ? { providerId: input.providerId } : {}), ...(input.modelRouteId ? { modelRouteId: input.modelRouteId } : {}) } satisfies SessionWithCompatibilityStatus;
       sessions = [...sessions, next];
       eventsBySession.set(id, []);
       return { ...next };
@@ -302,6 +376,7 @@ export function createMockClientRuntimeFixture(): MockClientRuntimeFixture {
     cancelTurn: async (_id, turnId) => ({ turnId }),
     respondApproval: async (_id, approvalId, decision) => ({ approvalId, decision }),
     updateActiveModel: async (id, activeModel) => updateSession(id, (session) => ({ ...session, chatContext: { ...session.chatContext, activeModel }, revision: session.revision + 1 })),
+    updateSessionRoute: async (id, modelRouteId) => updateSession(id, (session) => ({ ...session, ...(modelRouteId ? { modelRouteId } : { modelRouteId: undefined }), revision: session.revision + 1 })),
     deleteSession: async (id) => { sessions = sessions.filter((item) => item.id !== id); eventsBySession.delete(id); },
     switchView: async (id, view) => updateSession(id, (session) => ({ ...session, activeView: view, inputOwner: view, revision: session.revision + 1 }))
   };
@@ -370,12 +445,109 @@ export function createMockClientRuntimeFixture(): MockClientRuntimeFixture {
     skillContent: async () => ({ content: "# Mock skill", truncated: false })
   };
 
+  const routing: RoutingPort = {
+    providers: async () => ({ providers: providers.map((provider) => ({ ...provider, models: [...provider.models], supportedEngineIds: [...(provider.supportedEngineIds ?? [])] })) }),
+    createProvider: async (input) => {
+      const provider: ModelProviderSummary = {
+        ...mockProvider(),
+        id: input.id,
+        name: input.name,
+        protocol: input.protocol as ModelProviderSummary["protocol"],
+        baseUrl: input.baseUrl,
+        models: [...(input.models ?? [])],
+        supportedEngineIds: [...(input.supportedEngineIds ?? [])],
+        configured: false,
+        credentialStatus: "missing",
+        hasCredential: false
+      };
+      providers = [...providers, provider];
+      return { providers: providers.map((item) => ({ ...item, models: [...item.models], supportedEngineIds: [...(item.supportedEngineIds ?? [])] })) };
+    },
+    updateProvider: async (id, input) => {
+      providers = providers.map((provider) => provider.id === id ? {
+        ...provider,
+        ...(input.name !== undefined ? { name: input.name } : {}),
+        ...(input.protocol !== undefined ? { protocol: input.protocol as ModelProviderSummary["protocol"] } : {}),
+        ...(input.baseUrl !== undefined ? { baseUrl: input.baseUrl } : {}),
+        ...(input.models ? { models: [...input.models] } : {}),
+        ...(input.supportedEngineIds ? { supportedEngineIds: [...input.supportedEngineIds] } : {}),
+        ...(input.enabled !== undefined ? { enabled: input.enabled } : {})
+      } : provider);
+      return { providers: providers.map((item) => ({ ...item, models: [...item.models], supportedEngineIds: [...(item.supportedEngineIds ?? [])] })) };
+    },
+    deleteProvider: async (id) => { providers = providers.filter((provider) => provider.id !== id); },
+    setProviderCredential: async (id) => {
+      providers = providers.map((provider) => provider.id === id ? { ...provider, configured: true, credentialStatus: "configured", hasCredential: true } : provider);
+      return { providerId: id, credentialStatus: "configured" };
+    },
+    deleteProviderCredential: async (id) => {
+      providers = providers.map((provider) => provider.id === id ? { ...provider, configured: false, credentialStatus: "missing", hasCredential: false } : provider);
+      return { providerId: id, credentialStatus: "missing" };
+    },
+    modelDeployments: async () => ({ deployments: deployments.map((deployment) => ({ ...deployment, capability: { ...deployment.capability }, exclusionCodes: [...deployment.exclusionCodes] })) }),
+    createModelDeployment: async (input) => {
+      const provider = providers.find((item) => item.id === input.providerId);
+      const profile = profiles.find((item) => item.id === input.profileId);
+      const deployment: ModelDeploymentSummary = {
+        ...mockDeployment(),
+        ...input,
+        providerName: provider?.name,
+        providerProtocol: provider?.protocol,
+        providerEnabled: provider?.enabled,
+        profileName: profile?.name,
+        credentialStatus: provider?.credentialStatus ?? "missing",
+        eligibility: "unknown",
+        exclusionCodes: []
+      };
+      deployments = [...deployments, deployment];
+      return { deployment, deployments: deployments.map((item) => ({ ...item, capability: { ...item.capability }, exclusionCodes: [...item.exclusionCodes] })) };
+    },
+    updateModelDeployment: async (id, input) => {
+      deployments = deployments.map((deployment) => deployment.id === id ? { ...deployment, ...input } : deployment);
+      return { deployment: deployments.find((deployment) => deployment.id === id), deployments: deployments.map((item) => ({ ...item, capability: { ...item.capability }, exclusionCodes: [...item.exclusionCodes] })) };
+    },
+    deleteModelDeployment: async (id) => { deployments = deployments.filter((deployment) => deployment.id !== id); },
+    modelRoutes: async () => ({ routes: routes.map((route) => ({ ...route, candidateDeploymentIds: [...route.candidateDeploymentIds] })) }),
+    createModelRoute: async (input) => {
+      routes = [...routes, { ...input, createdAt: FIXED_TIME, updatedAt: FIXED_TIME }];
+      return { routes: routes.map((route) => ({ ...route, candidateDeploymentIds: [...route.candidateDeploymentIds] })) };
+    },
+    updateModelRoute: async (id, input) => {
+      routes = routes.map((route) => route.id === id ? { ...route, ...input, ...(input.candidateDeploymentIds ? { candidateDeploymentIds: [...input.candidateDeploymentIds] } : {}) } : route);
+      return { routes: routes.map((route) => ({ ...route, candidateDeploymentIds: [...route.candidateDeploymentIds] })) };
+    },
+    deleteModelRoute: async (id) => { routes = routes.filter((route) => route.id !== id); },
+    previewModelRoute: async (input) => ({ resolvedRoute: resolvedMockRoute(input.fixedDeploymentId), deployments: deployments.map((deployment) => ({ ...deployment, capability: { ...deployment.capability }, exclusionCodes: [...deployment.exclusionCodes] })) }),
+    resolveSessionModelRoute: async (_id, fixedDeploymentId) => ({ resolvedRoute: resolvedMockRoute(fixedDeploymentId) })
+  };
+
+  const execution: ExecutionPort = {
+    executionTasks: async (sessionId) => ({ tasks: executionSnapshots.filter((snapshot) => snapshot.task.sessionId === sessionId).map((snapshot) => structuredClone(snapshot)) }),
+    executionTask: async (taskId) => {
+      const snapshot = executionSnapshots.find((item) => item.task.id === taskId);
+      if (!snapshot) throw new Error(`Unknown mock execution task: ${taskId}`);
+      return structuredClone(snapshot);
+    },
+    confirmExecutionRetry: async (taskId) => {
+      const snapshot = executionSnapshots.find((item) => item.task.id === taskId);
+      if (!snapshot) throw new Error(`Unknown mock execution task: ${taskId}`);
+      return structuredClone(snapshot);
+    },
+    cancelExecution: async (taskId) => {
+      const snapshot = executionSnapshots.find((item) => item.task.id === taskId);
+      if (!snapshot) throw new Error(`Unknown mock execution task: ${taskId}`);
+      return structuredClone(snapshot);
+    }
+  };
+
   const ports: RuntimePortSet = {
     engines,
     sessions: sessionsPort,
     events,
     terminal,
     workspace: workspacePort,
+    routing,
+    execution,
     platform: new WebPlatformAdapter()
   };
   const runtime = new MockClientRuntime(ports);
@@ -388,6 +560,10 @@ export function createMockClientRuntimeFixture(): MockClientRuntimeFixture {
       sessions = initialSessions.map((session) => ({ ...session }));
       workspaces = [{ ...workspace }];
       profiles = [{ ...profile }];
+      providers = initialProviders.map((provider) => ({ ...provider, models: [...provider.models], supportedEngineIds: [...(provider.supportedEngineIds ?? [])] }));
+      deployments = initialDeployments.map((deployment) => ({ ...deployment, capability: { ...deployment.capability }, exclusionCodes: [...deployment.exclusionCodes] }));
+      routes = initialRoutes.map((route) => ({ ...route, candidateDeploymentIds: [...route.candidateDeploymentIds] }));
+      executionSnapshots = [];
       subscriptionAttempts.clear();
       Object.values(MOCK_RUNTIME_SCENARIOS).forEach((scenario) => eventsBySession.set(scenario.sessionId, [...scenario.persistedEvents]));
     }

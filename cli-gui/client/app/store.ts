@@ -93,24 +93,29 @@ interface UiStore {
   newSessionDefaultMode: "chat" | "terminal";
   /** 新建 Quest 草稿态：侧栏展示虚线占位行，右侧进入干净输入界面；发送成功或切走时清除 */
   questDraftActive: boolean;
+  /** 新建草稿的 Workspace 上下文；未指定时由 Quest Home 按最近使用目录回退 */
+  questDraftWorkspaceId?: string;
   setOverlay: (overlay: OverlayState) => void;
   setPendingDelete: (pendingDelete: PendingDelete) => void;
   setPickerBusy: (pickerBusy: boolean) => void;
   setNewSessionDefaultMode: (mode: "chat" | "terminal") => void;
   setQuestDraftActive: (questDraftActive: boolean) => void;
+  setQuestDraftWorkspaceId: (workspaceId: string | undefined) => void;
 }
 
 export const useUiStore = create<UiStore>()((set) => ({
   overlay: undefined,
   pendingDelete: undefined,
   pickerBusy: false,
-  newSessionDefaultMode: "chat",
+  newSessionDefaultMode: "terminal",
   questDraftActive: false,
+  questDraftWorkspaceId: undefined,
   setOverlay: (overlay) => set({ overlay }),
   setPendingDelete: (pendingDelete) => set({ pendingDelete }),
   setPickerBusy: (pickerBusy) => set({ pickerBusy }),
   setNewSessionDefaultMode: (newSessionDefaultMode) => set({ newSessionDefaultMode }),
-  setQuestDraftActive: (questDraftActive) => set({ questDraftActive })
+  setQuestDraftActive: (questDraftActive) => set({ questDraftActive }),
+  setQuestDraftWorkspaceId: (questDraftWorkspaceId) => set({ questDraftWorkspaceId })
 }));
 
 /** 测试隔离：store 是模块级单例，每个用例前必须重置（client/test/setup.ts 调用） */
@@ -119,5 +124,5 @@ export function resetClientStores() {
   hasLoaded = false;
   useAppStore.setState({ state: emptyState, readonly: false, loading: true, loadError: false, activeSessionId: undefined, activeTurns: {} });
   usePreferencesStore.setState({ preferences: typeof window === "undefined" ? { ...defaultPreferences, centerViewBySession: {}, modelPreferences: { lastUsedModel: {} } } : readPreferences() });
-  useUiStore.setState({ overlay: undefined, pendingDelete: undefined, pickerBusy: false, newSessionDefaultMode: "chat", questDraftActive: false });
+  useUiStore.setState({ overlay: undefined, pendingDelete: undefined, pickerBusy: false, newSessionDefaultMode: "terminal", questDraftActive: false, questDraftWorkspaceId: undefined });
 }

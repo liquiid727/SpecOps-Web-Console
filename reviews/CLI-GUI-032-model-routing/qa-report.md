@@ -17,14 +17,15 @@ The following local gates passed:
 
 | Gate | Result |
 | --- | --- |
-| `npm test -- --run` | Passed: 54 files, 429 passed, 4 skipped |
-| `npm test -- --run --pool=threads --maxWorkers=1 --minWorkers=1` | Passed: 54 files, 429 passed, 4 skipped |
-| `npm run build` | Passed; existing Vite chunk-size warning remains |
-| `npm run ui:check` | Passed; designmd emitted informational output only |
+| `npm --prefix cli-gui run test -- --run` | Passed: 57 files, 446 passed, 4 skipped |
+| `npm --prefix cli-gui run test -- --run server/chat-api.test.ts` | Passed: 19 tests; rerun after one parallel timing failure |
+| `npm --prefix cli-gui run typecheck` | Passed |
+| `npm --prefix cli-gui run build` | Passed; existing Vite chunk-size warning remains |
+| `npm --prefix cli-gui run ui:check` | Passed; designmd emitted informational output only |
 | `npx specos check` | Passed |
 | `git diff --check` | Passed |
 
-One earlier default-parallel run exposed a timing-sensitive Claude resume assertion (`sess-1` versus `sess-2`). The focused test, the two-file server run, the single-worker suite, and the final default-parallel suite all passed. No production workaround was added for that non-reproducible test-runner timing symptom.
+One default-parallel run exposed a timing-sensitive Claude resume assertion (`sess-1` versus `undefined`). The focused test and the final default-parallel suite passed; no production workaround was added for that non-reproducible test-runner timing symptom.
 
 ## Traceability Artifacts
 
@@ -36,9 +37,11 @@ One earlier default-parallel run exposed a timing-sensitive Claude resume assert
 
 ## Blockers And Residual Evidence
 
-`validate-test-gates` parses all seven plans but reports `SPECOS_TEST_GATES_BLOCKED` because normalized unit/API/security/migration/concurrency/E2E result evidence has not been independently produced. The reports intentionally remain blocked rather than claiming local test output as independent evidence.
+All seven `node scripts/checks/spec-test-gates.mjs CLI-GUI-02x` commands were run and returned `SPECOS_TEST_GATES_BLOCKED`: `tests/results/` still has no normalized unit/API/security/migration/concurrency/scenario result records. The reports intentionally remain blocked rather than claiming local Vitest output as independent evidence.
 
-Browser acceptance was attempted against the listeners on ports `3000` and `3001`. The browser integration rejected navigation to the local URL because local-page permission was declined, so no browser screenshots, responsive checks, second-send checks, or browser secret-canary scan are claimed. The exact process command for the listeners was also unavailable because process inspection was restricted; listener cwd evidence was collected.
+The real local GUI URL is `http://127.0.0.1:3000/` (Vite PID `94863`, cwd `/Users/liquiid/code/specos-ai/cli-gui`), with the existing backend on `http://127.0.0.1:3001/` (Node PID `38911`, same cwd). Playwright launched its fixture/build but Chromium exited before the first assertion with `MachPortRendezvousServer ... Permission denied`. The ego-browser runner could not connect to its bootstrap. The Chrome extension connection then timed out while opening the local page. No screenshots, responsive checks, second-send checks, or browser secret-canary scan are claimed.
+
+The current host also only provides the macOS Keychain adapter; Windows/Linux credential-store evidence is not claimed.
 
 The remaining closeout work is therefore external to the implementation itself:
 

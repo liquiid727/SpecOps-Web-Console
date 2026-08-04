@@ -180,7 +180,7 @@ export function PromptComposer({ disabled, onSend, capabilities, launchConfig, o
           <span>{t("cliProfile")}</span>
           <Select ariaLabel={t("cliProfile")} value={selectedProfileId ?? ""} options={[...(selectedProfileId ? [] : [{ value: "", label: t("selectCliPlaceholder") }]), ...profiles.map((profile) => ({ value: profile.id, label: profile.name }))]} disabled={disabled} onChange={(next) => next && onProfileChange?.(next)} />
         </label>}
-        <CapabilitySelector label={t("model")} defaultLabel={t("modelDefault")} defaultValueLabel={defaultModel} hint={profiles && !selectedProfileId ? t("selectCliFirst") : capabilities?.models?.length ? t("capabilityApplies") : t("capabilityUnavailable")} value={launchConfig?.model} options={profiles && !selectedProfileId ? undefined : capabilities?.models} disabled={disabled} onChange={(value) => onLaunchConfigChange?.({ model: value })} />
+        <CapabilitySelector label={t("model")} defaultLabel={t("modelDefault")} defaultValueLabel={defaultModel} hint={profiles && !selectedProfileId ? t("selectCliFirst") : capabilities?.models?.length ? t("capabilityApplies") : t("capabilityUnavailable")} value={launchConfig?.model} options={profiles && !selectedProfileId ? undefined : capabilities?.models} groups={capabilities?.modelGroups} disabled={disabled} onChange={(value) => onLaunchConfigChange?.({ model: value })} />
         <CapabilitySelector label={t("permission")} defaultLabel={t("permissionDefault")} hint={capabilities?.permissions?.length ? t("capabilityApplies") : t("capabilityUnavailable")} value={launchConfig?.permission} options={capabilities?.permissions} disabled={disabled} onChange={(value) => onLaunchConfigChange?.({ permission: value })} />
         <WorkModeSelector mode={workMode} onChange={(mode) => onWorkModeChange?.(mode)} label={t("workModeLabel")} labels={workModeLabels} />
       </div>}
@@ -190,7 +190,7 @@ export function PromptComposer({ disabled, onSend, capabilities, launchConfig, o
           ? <div className="composer-toolbar">
             <div className="composer-toolbar-group">
               {resolvedRoute && <ResolvedRouteControl resolvedRoute={resolvedRoute} routes={routeOptions} deployments={routeDeployments} currentSessionRouteId={sessionRouteId} fixedDeploymentId={fixedDeploymentId} disabled={disabled || turnActive} onSessionRouteChange={onSessionRouteChange} onFixedDeploymentChange={onFixedDeploymentChange} actualDeployment={actualDeployment} />}
-              {!resolvedRoute && <CapabilitySelector label={t("model")} defaultLabel={t("modelDefault")} defaultValueLabel={defaultModel} hint={capabilities?.models?.length ? t("modelNextTurn") : t("capabilityUnavailable")} value={activeModel} options={capabilities?.models} disabled={disabled} onChange={(value) => onActiveModelChange?.(value)} />}
+              {!resolvedRoute && <CapabilitySelector label={t("model")} defaultLabel={t("modelDefault")} defaultValueLabel={defaultModel} hint={capabilities?.models?.length ? t("modelNextTurn") : t("capabilityUnavailable")} value={activeModel} options={capabilities?.models} groups={capabilities?.modelGroups} disabled={disabled} onChange={(value) => onActiveModelChange?.(value)} />}
               <WorkModeSelector chip mode={workMode} onChange={(mode) => onWorkModeChange?.(mode)} label={t("workModeLabel")} labels={workModeLabels} />
             </div>
             <div className="composer-toolbar-group">
@@ -236,11 +236,12 @@ function WorkModeSelector({ mode, onChange, label, labels, chip = false }: { mod
   );
 }
 
-function CapabilitySelector({ label, defaultLabel, defaultValueLabel, hint, value, options, disabled, onChange }: { label: string; defaultLabel: string; defaultValueLabel?: string; hint: string; value?: string | null; options?: CliProfileCapabilities["permissions"]; disabled: boolean; onChange: (value: string | null) => void }) {
+function CapabilitySelector({ label, defaultLabel, defaultValueLabel, hint, value, options, groups, disabled, onChange }: { label: string; defaultLabel: string; defaultValueLabel?: string; hint: string; value?: string | null; options?: CliProfileCapabilities["permissions"]; groups?: CliProfileCapabilities["modelGroups"]; disabled: boolean; onChange: (value: string | null) => void }) {
   const unavailable = !options || options.length === 0;
   // 适配器选项里的 "default" 与合成默认项语义重复（均映射为 null 不传参），过滤避免重复 key
   const resolvedDefaultLabel = defaultValueLabel && defaultValueLabel !== "default" ? defaultValueLabel : defaultLabel;
-  const selectOptions = [{ value: "default", label: resolvedDefaultLabel }, ...(options ?? []).filter((option) => option.id !== "default" && option.id !== defaultValueLabel).map((option) => ({ value: option.id, label: option.id }))];
+  const providerNames = new Map((groups ?? []).flatMap((group) => group.models.map((model) => [model.id, group.providerName] as const)));
+  const selectOptions = [{ value: "default", label: resolvedDefaultLabel }, ...(options ?? []).filter((option) => option.id !== "default" && option.id !== defaultValueLabel).map((option) => ({ value: option.id, label: providerNames.has(option.id) ? `${providerNames.get(option.id)} · ${option.id}` : option.id }))];
   return <label className="capability-selector" title={hint}>
     <span>{label}</span>
     <Select ariaLabel={label} value={value ?? "default"} options={selectOptions} disabled={disabled || unavailable} onChange={(next) => onChange(next === "default" ? null : next)} />

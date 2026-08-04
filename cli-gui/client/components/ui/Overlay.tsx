@@ -5,12 +5,13 @@ import { useI18n } from "../../i18n";
 interface OverlayProps {
   children: ReactNode;
   description?: string;
+  drawerSide?: "left" | "right";
   kind?: "dialog" | "drawer";
   onClose: () => void;
   title: string;
 }
 
-export function Overlay({ children, description, kind = "dialog", onClose, title }: OverlayProps) {
+export function Overlay({ children, description, drawerSide = "right", kind = "dialog", onClose, title }: OverlayProps) {
   const { t } = useI18n();
   const panelRef = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<number | undefined>(undefined);
@@ -61,8 +62,9 @@ export function Overlay({ children, description, kind = "dialog", onClose, title
     };
   }, [requestClose]);
 
-  return <div className={`overlay-backdrop ${closing ? "closing" : ""}`} onMouseDown={(event) => { if (event.target === event.currentTarget) requestClose(); }}>
-    <div className={`overlay-panel ${kind} ${closing ? "closing" : ""}`} ref={panelRef} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={description ? descriptionId : undefined} tabIndex={-1}>
+  const drawerPlacementClass = kind === "drawer" ? ` drawer-${drawerSide}` : "";
+  return <div className={`overlay-backdrop${drawerPlacementClass} ${closing ? "closing" : ""}`} onMouseDown={(event) => { if (event.target === event.currentTarget) requestClose(); }}>
+    <div className={`overlay-panel ${kind}${drawerPlacementClass} ${closing ? "closing" : ""}`} ref={panelRef} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={description ? descriptionId : undefined} tabIndex={-1}>
       <header className="overlay-header">
         <div><span className="eyebrow">{t("brandTitle").toUpperCase()}</span><h2 id={titleId}>{title}</h2>{description && <p id={descriptionId}>{description}</p>}</div>
         <button className="icon-button" onClick={requestClose} aria-label={t("close")}><Icon name="close" /></button>

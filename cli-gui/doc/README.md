@@ -15,6 +15,7 @@ doc/
 ├── project-quest/       # project entry & New Quest creation module
 ├── qoder-ui/            # Qoder UI retrofit module (delivered)
 ├── console-gaps/        # MVP01 leftover/retrenchment gap-closing module
+├── model-routing/       # multi-provider model routing execution entry
 └── design/              # cross-module design truth and idea notes
 ```
 
@@ -69,6 +70,11 @@ including MVP03 product enhancements and MVP02-B remote implementation.
 
 - `spec-cli-gui-console-gaps.md`: technical spec for the `doc/todo/0728.md` gap list — chat entry downgrade to terminal, model catalog sync/import, 4-state work mode (default/spec/goal/plan + Ctrl+Tab), centralized shortcuts + Settings table, language switch consolidation, read-only Skills management. Includes traceability back to MVP01 PRD §8/§11, workbench US-024, and project-quest US-B4/B5.
 - `issues-cli-gui-console-gaps.md`: 7-issue breakdown (issue #5 is a reference card that executes project-quest issue #8 for voice input & prompt polish).
+
+## model-routing/ — multi-provider model routing
+
+- `README.md`: canonical PRD/SPEC/Issue links and delivery boundary.
+- `prompt-full-implementation.md`: dirty-worktree-safe local implementation and verification loop for `CLI-GUI-026` through `CLI-GUI-032`.
 
 ## design/ — cross-module design truth
 

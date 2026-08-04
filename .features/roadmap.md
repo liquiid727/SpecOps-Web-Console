@@ -23,6 +23,16 @@ Use this file as the only canonical index for epic grouping, release sequencing,
 - `CLI-GUI-024 Approval, recovery, Diff, monitor, and Session management`
 - `CLI-GUI-025 Tauri-managed TypeScript runtime sidecar`
 
+### MVP02-B — Model Management
+
+- `CLI-GUI-026 Model Auto-Sync`
+- `CLI-GUI-027 Session Model Providers`
+- `CLI-GUI-028 Secret Store and Provider Connections`
+- `CLI-GUI-029 Model Deployment Registry`
+- `CLI-GUI-030 Priority Model Routes and Configuration Resolution`
+- `CLI-GUI-031 Execution Attempts and Safe Technical Fallback`
+- `CLI-GUI-032 Model Routing GUI and Recovery UX`
+
 ### MVP03 — App Replacement
 
 - Official Codex/Claude App-level experience and differentiated task timeline,
@@ -60,5 +70,11 @@ Use this file as the only canonical index for epic grouping, release sequencing,
 
 ## Dependency Notes
 
+- `CLI-GUI-027` depends on `CLI-GUI-026`
+- `CLI-GUI-028` depends on `CLI-GUI-027`
+- `CLI-GUI-029` depends on `CLI-GUI-026` and `CLI-GUI-028`
+- `CLI-GUI-030` depends on `CLI-GUI-029`
+- `CLI-GUI-031` depends on `CLI-GUI-030`
+- `CLI-GUI-032` depends on `CLI-GUI-028` through `CLI-GUI-031`
 - `RP-002` depends on `RP-003` and `RP-004`
 - `RP-010` depends on `RP-002`

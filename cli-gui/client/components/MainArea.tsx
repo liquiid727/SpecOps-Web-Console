@@ -28,6 +28,8 @@ interface MainAreaProps {
   onQuickCreate: (input: { content: string; workspaceId: string; profileId: string; model?: string }) => Promise<void>;
   /** 新建 Quest 草稿态：Quest Home 隐藏周边区块，只保留干净的输入界面 */
   questDraftMode?: boolean;
+  /** 从 Workspace 分组发起新建时，预选该目录 */
+  questDraftWorkspaceId?: string;
   onStatus: () => void;
   onOpenSettings: () => void;
   onResume?: (id: string) => void;
@@ -38,11 +40,11 @@ interface MainAreaProps {
   onWorkModeChange: (mode: ComposerWorkMode) => void;
 }
 
-export function MainArea({ currentView, activeSession, activeWorkspace, activeProfile, workspaces, profiles, sessions, onSelectSession, readonly, onNewSession, centerView, onCenterViewChange, onLaunchConfigChange, onSendPrompt, onQuickCreate, questDraftMode, onStatus, onOpenSettings, onResume, onStop, onTurnActivity, workMode, onWorkModeChange }: MainAreaProps) {
+export function MainArea({ currentView, activeSession, activeWorkspace, activeProfile, workspaces, profiles, sessions, onSelectSession, readonly, onNewSession, centerView, onCenterViewChange, onLaunchConfigChange, onSendPrompt, onQuickCreate, questDraftMode, questDraftWorkspaceId, onStatus, onOpenSettings, onResume, onStop, onTurnActivity, workMode, onWorkModeChange }: MainAreaProps) {
   if (currentView === "quests") return <QuestBoardView sessions={sessions} workspaces={workspaces} onSelectSession={onSelectSession} />;
   if (currentView === "knowledge") return <KnowledgeView workspaces={workspaces} activeWorkspaceId={activeWorkspace?.id} />;
   if (currentView === "marketplace") return <MarketplaceView />;
   if (currentView === "settings") return <SettingsView />;
   if (currentView === "chat" && activeSession) return <ChatView session={activeSession} workspace={activeWorkspace} profile={activeProfile} readonly={readonly} centerView={centerView} onCenterViewChange={onCenterViewChange} onLaunchConfigChange={onLaunchConfigChange} onSend={onSendPrompt} onStatus={onStatus} onResume={onResume} onStop={onStop} onTurnActivity={onTurnActivity} workMode={workMode} onWorkModeChange={onWorkModeChange} />;
-  return <QuestHome workspaces={workspaces} profiles={profiles} draftMode={questDraftMode} onQuickCreate={onQuickCreate} onOpenSettings={onOpenSettings} onAdvancedCreate={onNewSession} />;
+  return <QuestHome workspaces={workspaces} profiles={profiles} draftMode={questDraftMode} initialWorkspaceId={questDraftWorkspaceId} onQuickCreate={onQuickCreate} onOpenSettings={onOpenSettings} onAdvancedCreate={onNewSession} />;
 }

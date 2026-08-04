@@ -233,3 +233,64 @@ describe("schema v2/v3 -> v4 migration", () => {
     await expect(fs.access(`${statePath}.v2.bak`)).rejects.toThrow();
   });
 });
+
+describe("schema v5-v8 model routing migrations", () => {
+  it("migrates v5 provider env names to opaque env refs and drops malformed entries", async () => {
+    const dataDirectory = await makeDataDirectory("cli-gui-state-v5-");
+    const workspacePath = await fs.realpath(await fs.mkdtemp(path.join(dataDirectory, "workspace-")));
+    const envelope = buildV2Envelope(workspacePath) as unknown as { schemaVersion: number; state: Record<string, unknown> };
+    envelope.schemaVersion = 5;
+    envelope.state.providers = [
+      { id: "provider-1", name: "Primary", protocol: "openai-compatible", baseUrl: "https://provider.example/v1", credentialRef: "PROVIDER_KEY", models: ["model-1"] },
+      { id: "broken", protocol: "openai-compatible" }
+    ];
+    const statePath = path.join(dataDirectory, "state.json");
+    const original = JSON.stringify(envelope, null, 2);
+    await fs.writeFile(statePath, original, "utf8");
+
+    const repository = createJsonStateRepository({ dataDirectory, clock: { now: () => "2026-03-01T00:00:00Z" } });
+    const state = await repository.load();
+
+    expect(state.providers).toHaveLength(1);
+    expect(state.providers?.[0]).toMatchObject({ id: "provider-1", credentialRef: "env:PROVIDER_KEY", models: ["model-1"], enabled: true });
+    expect((JSON.parse(await fs.readFile(statePath, "utf8")) as AppStateEnvelopeV8).schemaVersion).toBe(8);
+    expect(await fs.readFile(`${statePath}.v5.bak`, "utf8")).toBe(original);
+  });
+
+  it("adds deployment defaults from v6 and preserves archived history", async () => {
+    const dataDirectory = await makeDataDirectory("cli-gui-state-v6-");
+    const workspacePath = await fs.realpath(await fs.mkdtemp(path.join(dataDirectory, "workspace-")));
+    const envelope = buildV2Envelope(workspacePath) as unknown as { schemaVersion: number; state: Record<string, unknown> };
+    envelope.schemaVersion = 6;
+    envelope.state.providers = [{ id: "provider-1", name: "Primary", protocol: "openai-compatible", baseUrl: "https://provider.example/v1", credentialRef: "env:PROVIDER_KEY", models: ["model-1"] }];
+    envelope.state.modelDeployments = [
+      { id: "deployment-1", name: "Archived", providerId: "provider-1", profileId: "profile-codex", modelId: "model-1", enabled: false, archivedAt: "2026-02-01T00:00:00Z" },
+      { id: "broken", name: "Missing model" }
+    ];
+    const statePath = path.join(dataDirectory, "state.json");
+    await fs.writeFile(statePath, JSON.stringify(envelope), "utf8");
+
+    const state = await createJsonStateRepository({ dataDirectory, clock: { now: () => "2026-03-01T00:00:00Z" } }).load();
+    expect(state.modelDeployments).toEqual([expect.objectContaining({ id: "deployment-1", enabled: false, archivedAt: "2026-02-01T00:00:00Z" })]);
+    await expect(fs.access(`${statePath}.v6.bak`)).resolves.toBeUndefined();
+  });
+
+  it("normalizes v7 route bindings and rejects routes outside the 1-8 candidate contract", async () => {
+    const dataDirectory = await makeDataDirectory("cli-gui-state-v7-");
+    const workspacePath = await fs.realpath(await fs.mkdtemp(path.join(dataDirectory, "workspace-")));
+    const envelope = buildV2Envelope(workspacePath) as unknown as { schemaVersion: number; state: Record<string, unknown> };
+    envelope.schemaVersion = 7;
+    envelope.state.modelRoutes = [
+      { id: "route-1", name: "Primary", candidateDeploymentIds: ["deployment-1", "deployment-2"], automaticTechnicalFallback: true },
+      { id: "route-broken", name: "Too many", candidateDeploymentIds: ["1", "2", "3", "4", "5", "6", "7", "8", "9"] }
+    ];
+    envelope.state.workspaceModelRouteBindings = [{ workspaceId: "workspace-1", routeId: "route-1" }, { workspaceId: "missing" }];
+    const statePath = path.join(dataDirectory, "state.json");
+    await fs.writeFile(statePath, JSON.stringify(envelope), "utf8");
+
+    const state = await createJsonStateRepository({ dataDirectory, clock: { now: () => "2026-03-01T00:00:00Z" } }).load();
+    expect(state.modelRoutes).toEqual([expect.objectContaining({ id: "route-1", enabled: true, candidateDeploymentIds: ["deployment-1", "deployment-2"] })]);
+    expect(state.workspaceModelRouteBindings).toEqual([{ workspaceId: "workspace-1", routeId: "route-1" }, { workspaceId: "missing" }]);
+    await expect(fs.access(`${statePath}.v7.bak`)).resolves.toBeUndefined();
+  });
+});

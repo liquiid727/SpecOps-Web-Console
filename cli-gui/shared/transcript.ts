@@ -39,12 +39,52 @@ export function normalizeTranscriptEventKind(kind: string): string {
 export type TranscriptEventSource = "composer" | "terminal" | "pty" | "session-manager" | "profile-adapter";
 export type TranscriptEventMetadataValue = string | number | boolean | null;
 
+export type TranscriptStructuredComponentKind =
+  | "message"
+  | "user_message"
+  | "thinking"
+  | "code_block"
+  | "tool"
+  | "command"
+  | "file_change"
+  | "approval"
+  | "progress"
+  | "usage"
+  | "turn_status"
+  | "diagnostic"
+  | "shell_output";
+
+export type TranscriptStructuredComponentValue =
+  | string
+  | number
+  | boolean
+  | null
+  | TranscriptStructuredComponentValue[]
+  | { [key: string]: TranscriptStructuredComponentValue };
+
+/**
+ * Optional GUI rendering payload. `kind`, `raw`, and scalar `metadata` remain
+ * the protocol compatibility layer; this field carries bounded nested vendor
+ * details that chat-mode cards can render without changing terminal replay.
+ */
+export interface TranscriptStructuredComponent {
+  type: TranscriptStructuredComponentKind;
+  title?: string;
+  text?: string;
+  language?: string;
+  status?: string;
+  data?: Record<string, TranscriptStructuredComponentValue>;
+}
+
 /**
  * Reserved metadata keys (event-protocol-spec §2.1):
  * - `turnId`      string  — chat-mode turn attribution (all chat events)
  * - `status`      string  — lifecycle transition target (starting/running/stopped/error/turn-completed)
  * - `exitCode`    number  — process exit code on lifecycle events (when available)
  * - `code`        string  — error code on error events
+ * - `phase`       string  — backend failure phase (app-server/spawn/parse)
+ * - `fallbackAttempted` boolean — whether the persistent path fell back to a CLI spawn
+ * - `fallbackCode` string — error code returned by the fallback path
  * - `approvalId`  string  — approval pairing key (approval_request/approval_response)
  * - `decision`    string  — approval decision: allow | deny | timeout
  * - `path`        string  — changed file relative path (file_change)
@@ -62,6 +102,7 @@ export interface TranscriptEvent {
   rawBytes: number;
   truncated: boolean;
   metadata?: Record<string, TranscriptEventMetadataValue>;
+  component?: TranscriptStructuredComponent;
   clientMessageId?: string;
 }
 

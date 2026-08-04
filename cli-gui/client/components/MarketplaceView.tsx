@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
-import { useI18n } from "../i18n";
+import { useI18n, type TranslationKey } from "../i18n";
 import { Button, Card, EmptyState, Icon, TextField } from "./ui";
 import { ViewHeader } from "./patterns";
 
 type Category = "all" | "productivity" | "devtools" | "agents" | "themes";
 
-const categories: { id: Category; key: string }[] = [
+const categories: { id: Category; key: TranslationKey }[] = [
   { id: "all", key: "qoderCategoryAll" },
   { id: "productivity", key: "qoderCategoryProductivity" },
   { id: "devtools", key: "qoderCategoryDevTools" },
@@ -15,8 +15,8 @@ const categories: { id: Category; key: string }[] = [
 
 interface Plugin {
   id: string;
-  nameKey: string;
-  descKey: string;
+  nameKey: TranslationKey;
+  descKey: TranslationKey;
   category: Exclude<Category, "all">;
 }
 

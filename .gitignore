@@ -74,6 +74,7 @@ runs/
 
 # local generated state
 .loop-state.json
+.model-routing-loop-state.json
 memory/context-db/
 tests/results/*.json
 cli-gui/.ccpanes/

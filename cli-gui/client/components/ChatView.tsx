@@ -234,6 +234,18 @@ export function ChatView({ session, profile, readonly, centerView, onCenterViewC
     }).catch((cause) => feedback.error(toFeedbackError(cause, t, "composerFailed", `model-route:${session.id}`)));
   }
 
+  function changeFixedDeployment(deploymentId: string | undefined) {
+    if (turnActive) return;
+    setRouteLoading(true);
+    void runtime.routing.resolveSessionModelRoute(session.id, deploymentId).then((result) => {
+      setResolvedRoute(result.resolvedRoute);
+      setFixedDeploymentId(deploymentId);
+    }).catch((cause) => {
+      setFixedDeploymentId(undefined);
+      feedback.error(toFeedbackError(cause, t, "composerFailed", `model-route-fixed:${session.id}`));
+    }).finally(() => setRouteLoading(false));
+  }
+
   // 失败轮次重试：原 prompt + 新 clientMessageId（api-spec §2.2，无 retry 端点）
   function retryTurn(content: string) {
     void handleSend(content, crypto.randomUUID()).catch((cause) => {
@@ -315,7 +327,7 @@ export function ChatView({ session, profile, readonly, centerView, onCenterViewC
           sessionRouteId={session.modelRouteId}
           fixedDeploymentId={fixedDeploymentId}
           onSessionRouteChange={chatSession ? changeSessionRoute : undefined}
-          onFixedDeploymentChange={chatSession ? setFixedDeploymentId : undefined}
+          onFixedDeploymentChange={chatSession ? changeFixedDeployment : undefined}
           actualDeployment={actualDeployment}
           routeBlocked={routeBlocked}
           turnActive={turnActive}

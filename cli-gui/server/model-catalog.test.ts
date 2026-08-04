@@ -3,7 +3,7 @@ import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { builtinModelIds, isClaudeFamily, mergeModelSources, parseClaudeSettingsModels, parseCodexConfigModels, readSyncedModels, versionWithinRange } from "./model-catalog.js";
+import { builtinModelIds, isClaudeFamily, mergeModelSources, parseClaudeSettingsModels, parseClaudeSettingsSnapshot, parseCodexConfigModels, parseCodexConfigSnapshot, readSyncedModels, versionWithinRange } from "./model-catalog.js";
 
 const temporaryDirectories: string[] = [];
 
@@ -87,6 +87,19 @@ describe("codex config.toml parsing", () => {
       "model = \"gpt-5.1-codex\""
     ].join("\n");
     expect(parseCodexConfigModels(source)).toEqual(["gpt-5.1-codex", "gpt-5.1-codex-mini"]);
+    expect(parseCodexConfigSnapshot(source)).toMatchObject({ defaultModel: "gpt-5.1-codex" });
+  });
+
+  it("collects models declared by model providers without treating them as the default", () => {
+    const source = [
+      "model = \"gpt-5.6-luna\"",
+      "[model_providers.OpenAI]",
+      "model = \"provider-model\"",
+      "[profiles.fast]",
+      "model = \"profile-model\""
+    ].join("\n");
+    expect(parseCodexConfigModels(source)).toEqual(["gpt-5.6-luna", "provider-model", "profile-model"]);
+    expect(parseCodexConfigSnapshot(source).defaultModel).toBe("gpt-5.6-luna");
   });
 
   it("returns nothing for malformed or unrelated content", () => {
@@ -98,6 +111,19 @@ describe("codex config.toml parsing", () => {
 describe("claude settings.json parsing", () => {
   it("reads the model field and trims it", () => {
     expect(parseClaudeSettingsModels(JSON.stringify({ model: " opus " }))).toEqual(["opus"]);
+  });
+
+  it("reads configured environment model aliases and provider models", () => {
+    const source = JSON.stringify({ model: "opus", env: { ANTHROPIC_MODEL: "gpt-5.5", ANTHROPIC_SMALL_FAST_MODEL: "gpt-5.5-mini", ANTHROPIC_BASE_URL: "https://api.anthropic.com" } });
+    expect(parseClaudeSettingsSnapshot(source)).toEqual({ models: ["opus", "gpt-5.5", "gpt-5.5-mini"], defaultModel: "opus" });
+  });
+
+  it("keeps Claude-compatible provider models scoped to their own endpoint", () => {
+    const kimi = JSON.stringify({ model: "kimi-default", env: { ANTHROPIC_MODEL: "kimi-k2", ANTHROPIC_BASE_URL: "https://api.moonshot.cn/v1" } });
+    const glm = JSON.stringify({ model: "glm-default", env: { ANTHROPIC_MODEL: "glm-4.5", ANTHROPIC_BASE_URL: "https://open.bigmodel.cn/api/paas/v4" } });
+    expect(parseClaudeSettingsModels(kimi, "kimi")).toEqual(["kimi-default", "kimi-k2"]);
+    expect(parseClaudeSettingsModels(kimi, "glm")).toEqual([]);
+    expect(parseClaudeSettingsModels(glm, "glm")).toEqual(["glm-default", "glm-4.5"]);
   });
 
   it("tolerates bad JSON and missing or non-string fields", () => {
@@ -115,9 +141,10 @@ describe("readSyncedModels", () => {
   });
 
   it("reads claude-family models from ~/.claude/settings.json", async () => {
-    const home = await makeHome({ ".claude/settings.json": JSON.stringify({ model: "opus" }) });
+    const home = await makeHome({ ".claude/settings.json": JSON.stringify({ model: "opus", env: { ANTHROPIC_BASE_URL: "https://api.moonshot.cn/v1" } }) });
     expect(await readSyncedModels("claude-code", { homeDirectory: home })).toEqual(["opus"]);
     expect(await readSyncedModels("kimi", { homeDirectory: home })).toEqual(["opus"]);
+    expect(await readSyncedModels("glm", { homeDirectory: home })).toEqual([]);
   });
 
   it("returns an empty list for missing files, bad content, and unsupported adapters", async () => {

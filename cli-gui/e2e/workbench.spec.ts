@@ -112,6 +112,30 @@ test("keeps mobile session controls inside the viewport and drawers focusable", 
   }
 });
 
+test("anchors settings to the sidebar on desktop and keeps it full-screen on mobile", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Open settings" }).click();
+
+  const desktopSettings = page.locator(".overlay-panel.drawer-left");
+  await expect(desktopSettings).toBeVisible();
+  const desktopBox = await desktopSettings.boundingBox();
+  expect(desktopBox?.x).toBeGreaterThanOrEqual(0);
+  expect(desktopBox?.x).toBeLessThanOrEqual(24);
+
+  await page.keyboard.press("Escape");
+  await expect(desktopSettings).toHaveCount(0);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: "Open settings" }).click();
+  const mobileSettings = page.locator(".overlay-panel.drawer-left");
+  await expect(mobileSettings).toBeVisible();
+  const mobileBox = await mobileSettings.boundingBox();
+  expect(mobileBox).toMatchObject({ x: 0, y: 0, width: 390, height: 844 });
+  const pageMetrics = await page.evaluate(() => ({ clientWidth: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth }));
+  expect(pageMetrics.scrollWidth).toBeLessThanOrEqual(pageMetrics.clientWidth);
+});
+
 test("runs the disposable session through transcript, terminal, inspector, and picker flows", async ({ page }) => {
   await page.goto("/");
   // Activate the fixture session.
@@ -266,10 +290,30 @@ test("runs the B-gate smoke chain: create, multi-turn, cancel, terminal replay, 
   await prompt.press("Enter");
   await expect(page.locator(".chat-messages")).toContainText("reply:smoke first turn", { timeout: 15_000 });
 
+  // The composer remains an interactive bottom region after transcript growth.
+  await expect(prompt).toBeVisible();
+  await expect(prompt).toBeEnabled();
+  await prompt.focus();
+  await expect(prompt).toBeFocused();
+  const firstComposerGeometry = await page.evaluate(() => {
+    const view = document.querySelector(".chat-view")?.getBoundingClientRect();
+    const composer = document.querySelector(".chat-composer")?.getBoundingClientRect();
+    return { viewBottom: view?.bottom ?? 0, composerBottom: composer?.bottom ?? 0 };
+  });
+  expect(firstComposerGeometry.composerBottom).toBeLessThanOrEqual(firstComposerGeometry.viewBottom);
+
   // 第二轮：同一会话多轮往返
   await prompt.fill("smoke second turn");
   await prompt.press("Enter");
   await expect(page.locator(".chat-messages")).toContainText("reply:smoke second turn", { timeout: 15_000 });
+  await expect(prompt).toBeVisible();
+  await expect(prompt).toBeEnabled();
+  const secondComposerGeometry = await page.evaluate(() => {
+    const view = document.querySelector(".chat-view")?.getBoundingClientRect();
+    const composer = document.querySelector(".chat-composer")?.getBoundingClientRect();
+    return { viewBottom: view?.bottom ?? 0, composerBottom: composer?.bottom ?? 0 };
+  });
+  expect(secondComposerGeometry.composerBottom).toBeLessThanOrEqual(secondComposerGeometry.viewBottom);
 
   // 取消一轮：slow: 前缀让假 CLI 挂起 20s，点击 Stop turn 中止本轮
   await prompt.fill("slow:hang turn");

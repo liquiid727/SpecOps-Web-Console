@@ -51,12 +51,18 @@ function SummaryTab({ session, workspace, profile, runningCount, runningLimit }:
   const runtime = useClientRuntime();
   const [branch, setBranch] = useState<string>();
   const [capabilityTransport, setCapabilityTransport] = useState<string>();
+  const [defaultModel, setDefaultModel] = useState<string>();
   const [recentEvents, setRecentEvents] = useState<TranscriptEvent[]>([]);
   const nearLimit = runningCount !== undefined && runningLimit !== undefined && runningLimit > 0 && runningCount >= runningLimit - 1;
   useEffect(() => {
     const controller = new AbortController();
+    setCapabilityTransport(undefined);
+    setDefaultModel(undefined);
     if (workspace) void runtime.workspace.gitStatus(workspace.id, controller.signal).then((status) => setBranch(status.branch ?? status.detachedHead)).catch(() => undefined);
-    if (profile) void runtime.engines.profileCapabilities(profile.id, controller.signal).then((capabilities) => setCapabilityTransport(capabilities.supportsHeadlessTurns ? "json-stream" : "pty")).catch(() => undefined);
+    if (profile) void runtime.engines.profileCapabilities(profile.id, controller.signal).then((capabilities) => {
+      setCapabilityTransport(capabilities.supportsHeadlessTurns ? "json-stream" : "pty");
+      setDefaultModel(capabilities.defaultModel);
+    }).catch(() => undefined);
     void runtime.events.transcript(session.id, 0, 200, controller.signal).then((page) => setRecentEvents(Array.isArray(page?.events) ? page.events : [])).catch(() => undefined);
     return () => controller.abort();
   }, [profile, runtime.engines, runtime.events, runtime.workspace, session.id, workspace]);
@@ -69,7 +75,7 @@ function SummaryTab({ session, workspace, profile, runningCount, runningLimit }:
     </div>}
     <div className="summary-details">
       <Detail label={t("engine")} value={profile?.adapterId === "claude-code" ? "Claude" : profile?.adapterId === "codex" ? "Codex" : profile?.name ?? t("unknownProfile")} />
-      <Detail label={t("model")} value={session.chatContext?.activeModel ?? session.launchConfig?.model ?? t("modelDefault")} />
+      <Detail label={t("model")} value={session.chatContext?.activeModel ?? session.launchConfig?.model ?? defaultModel ?? t("modelDefault")} />
       <Detail label={t("transport")} value={capabilityTransport ?? "—"} mono />
       <Detail label={t("workspace")} value={workspace?.name ?? t("unknownWorkspace")} />
       <Detail label={t("branch")} value={branch ?? "—"} mono />

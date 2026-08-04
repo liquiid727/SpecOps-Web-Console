@@ -26,7 +26,9 @@ export function groupSessions(sessions: Session[], workspaces: WorkspaceV2[], gr
   const visible = selectSessions(sessions, filter);
   const filtered = modeFilter ? filterByInteractionMode(visible, modeFilter) : visible;
   if (grouping === "project") {
-    return workspaces.map((workspace) => ({ id: `workspace:${workspace.id}`, labelKey: "project", workspace, sessions: sortSessions(filtered.filter((session) => session.workspaceId === workspace.id), "manual") })).filter((group) => group.sessions.length > 0 || visible.some((session) => session.workspaceId === group.workspace?.id));
+    // Workspace is the navigation boundary: keep empty folders visible so the
+    // user can start the first session in the intended directory.
+    return workspaces.map((workspace) => ({ id: `workspace:${workspace.id}`, labelKey: "project", workspace, sessions: sortSessions(filtered.filter((session) => session.workspaceId === workspace.id), "manual") }));
   }
   if (grouping === "time") {
     const groups = new Map<TimeBucket, Session[]>([["today", []], ["yesterday", []], ["previous7Days", []], ["older", []]]);

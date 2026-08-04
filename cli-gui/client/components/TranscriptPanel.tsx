@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ReactNode } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import type { TranscriptEvent } from "../../shared/types";
+import type { ExecutionSnapshot } from "../../shared/execution-attempt";
 import { toFeedbackError, toFeedbackWarning } from "../feedback-errors";
 import { useI18n } from "../i18n";
 import { Icon } from "./ui/Icon";
@@ -13,8 +11,10 @@ import { AsyncState } from "./patterns";
 import { Button } from "./ui";
 import { CliOutputCard, StructuredCardList } from "./cards";
 import { useClientRuntime } from "../runtime/client-runtime";
+import { MarkdownLite } from "./MarkdownLite";
+import { AttemptTimeline } from "./AttemptTimeline";
 
-const MAX_MARKDOWN_BYTES = 256 * 1024;
+export { MarkdownLite } from "./MarkdownLite";
 
 interface TranscriptPanelProps {
   sessionId: string;
@@ -59,6 +59,9 @@ export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerive
   const reconnectTimer = useRef<number | undefined>(undefined);
   const latestSequenceRef = useRef(0);
   const generationRef = useRef(0);
+  const [executionTasks, setExecutionTasks] = useState<ExecutionSnapshot[]>([]);
+  const [executionLoading, setExecutionLoading] = useState(false);
+  const [pendingExecutionTaskId, setPendingExecutionTaskId] = useState<string>();
 
   const mergeEvent = useCallback((event: TranscriptEvent) => {
     setEvents((current) => {
@@ -179,6 +182,50 @@ export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerive
     };
   }, [feedback, mergeEvent, onTurnStatus, retryKey, runtime, sessionId, t]);
 
+  const reloadExecutionTasks = useCallback(async (signal?: AbortSignal) => {
+    const page = await runtime.execution.executionTasks(sessionId, undefined, 100, signal);
+    setExecutionTasks(Array.isArray(page.tasks) ? page.tasks : []);
+  }, [runtime.execution, sessionId]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setExecutionLoading(true);
+    void reloadExecutionTasks(controller.signal).catch((cause) => {
+      if (cause?.name !== "AbortError") setExecutionTasks((current) => current);
+    }).finally(() => {
+      if (!controller.signal.aborted) setExecutionLoading(false);
+    });
+    return () => controller.abort();
+  }, [reloadExecutionTasks, retryKey]);
+
+  async function confirmExecutionRetry(snapshot: ExecutionSnapshot) {
+    if (!snapshot.task.confirmationToken || !snapshot.task.confirmationInputSha256 || pendingExecutionTaskId) return;
+    setPendingExecutionTaskId(snapshot.task.id);
+    try {
+      await runtime.execution.confirmExecutionRetry(snapshot.task.id, { expectedRevision: snapshot.task.revision ?? 1, confirmationToken: snapshot.task.confirmationToken, inputSha256: snapshot.task.confirmationInputSha256 });
+      await reloadExecutionTasks();
+    } catch (cause) {
+      feedback.error(toFeedbackError(cause, t, "composerFailed", `execution-confirm:${snapshot.task.id}`));
+      throw cause;
+    } finally {
+      setPendingExecutionTaskId(undefined);
+    }
+  }
+
+  async function cancelExecution(snapshot: ExecutionSnapshot) {
+    if (pendingExecutionTaskId) return;
+    setPendingExecutionTaskId(snapshot.task.id);
+    try {
+      await runtime.execution.cancelExecution(snapshot.task.id, snapshot.task.revision);
+      await reloadExecutionTasks();
+    } catch (cause) {
+      feedback.error(toFeedbackError(cause, t, "composerFailed", `execution-cancel:${snapshot.task.id}`));
+      throw cause;
+    } finally {
+      setPendingExecutionTaskId(undefined);
+    }
+  }
+
   // 发送响应中的 user_message 事件立即回显（mergeEvent 按 id 去重，WS 重复推送无双气泡）
   useEffect(() => {
     for (const event of localEvents ?? []) if (event.sessionId === sessionId) mergeEvent(event);
@@ -237,7 +284,7 @@ export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerive
 
   if (loading) return <AsyncState className="transcript-state" state="loading" title={t("loadingTranscript")} />;
   if (error) return <AsyncState className="transcript-state error" state="error" title={t("transcriptFailed")} actions={<Button variant="secondary" className="secondary-button" onClick={() => setRetryKey((value) => value + 1)}>{t("retry")}</Button>} />;
-  if (!displayEvents.length && !turnPending && !stream) return <AsyncState className="transcript-state" state="empty" icon={<Icon name="terminal" />} title={t("emptyTranscript")} description={t("emptyTranscriptDescription")} />;
+  if (!displayEvents.length && !turnPending && !stream && !executionTasks.length && !executionLoading) return <AsyncState className="transcript-state" state="empty" icon={<Icon name="terminal" />} title={t("emptyTranscript")} description={t("emptyTranscriptDescription")} />;
 
   return <div className={`transcript-list${chatMode ? " chat-mode" : ""}`} aria-label={t("transcript")} ref={listRef} onScroll={handleScroll}>
     <div className="transcript-status" aria-live="polite">
@@ -245,7 +292,17 @@ export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerive
       {connectionState === "reconnecting" && <span>{t("reconnecting")}</span>}
       {connectionState === "offline" && <span>{t("offlineMode")}</span>}
     </div>
-    <StructuredCardList items={displayEvents} chatMode={chatMode} onApprove={onApprove} onViewInTerminal={onViewInTerminal} renderFallback={(item) => {
+    {executionTasks.length > 0 && <AttemptTimeline snapshots={executionTasks} pendingTaskId={pendingExecutionTaskId} onConfirmRetry={confirmExecutionRetry} onCancel={cancelExecution} />}
+    <StructuredCardList
+      items={displayEvents}
+      chatMode={chatMode}
+      onApprove={onApprove}
+      approvalStates={approvalStates}
+      turnPrompts={turnPrompts}
+      onRetry={onRetry}
+      approvalFallback={approvalFallback}
+      onViewInTerminal={onViewInTerminal}
+      renderFallback={(item) => {
       const turnId = typeof item.event.metadata?.turnId === "string" ? item.event.metadata.turnId : undefined;
       const prompt = item.event.kind === "error" && turnId ? turnPrompts.get(turnId) : undefined;
       const approvalId = item.event.kind === "approval_request" && typeof item.event.metadata?.approvalId === "string" ? item.event.metadata.approvalId : undefined;
@@ -299,9 +356,10 @@ export function TranscriptMessage({ item, onRetry, approval, onRespondApproval, 
   const [locallyExpired, setLocallyExpired] = useState(false);
 
   if (kind === "user_message") {
-    // 右对齐纯文本气泡，不渲染 Markdown；不带名称/时间
+    // 全宽灰底文档块，不渲染 Markdown；带时间戳
     return <article className="transcript-event user_message">
       <pre className="transcript-plain">{item.content}</pre>
+      <time className="user-message-time">{formatTime(event.occurredAt)}</time>
     </article>;
   }
   if (kind === "assistant_message") {
@@ -339,10 +397,14 @@ export function TranscriptMessage({ item, onRetry, approval, onRespondApproval, 
   }
   if (kind === "error") {
     const code = typeof event.metadata?.code === "string" ? event.metadata.code : "";
+    const permissionDenied = code === "CLI_PERMISSION_DENIED";
+    const fallbackAttempted = event.metadata?.fallbackAttempted === true;
     return <article className="transcript-event error">
       <header><span>{t("errorEvent")}</span>{time}</header>
       <p className="error-text">{item.content}</p>
       {code && <code className="error-code">{code}</code>}
+      {permissionDenied && <p className="turn-failure-guidance">{t("chat.cliPermissionDeniedHint")}</p>}
+      {fallbackAttempted && <p className="turn-fallback-summary">{t("chat.fallbackAttempted")}</p>}
       {fallbackHint && <p className="approval-fallback-hint">{t("chat.approvalFallbackHint")}</p>}
       {onRetry && <Button variant="secondary" className="secondary-button retry-turn" onClick={onRetry}>{t("retry")}</Button>}
     </article>;
@@ -393,55 +455,6 @@ export function TranscriptMessage({ item, onRetry, approval, onRespondApproval, 
 function summarizeCliOutput(value: string) {
   const compact = value.replace(/\s+/g, " ").trim();
   return compact.length > 120 ? `${compact.slice(0, 117)}...` : compact;
-}
-
-export function MarkdownLite({ source, truncated = false }: { source: string; truncated?: boolean }) {
-  const { t } = useI18n();
-  const bytes = new TextEncoder().encode(source);
-  const bounded = bytes.length > MAX_MARKDOWN_BYTES;
-  const rendered = new TextDecoder().decode(bytes.subarray(0, MAX_MARKDOWN_BYTES));
-  return <div className="markdown-lite">
-    <ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml urlTransform={safeUrl} components={{
-      a: ({ href, children, ...props }) => <a {...props} href={safeUrl(href) || "#"} target={isExternalUrl(href) ? "_blank" : undefined} rel={isExternalUrl(href) ? "noreferrer noopener" : undefined}>{children}</a>,
-      // 图片不加载远程资源：渲染为链接文本（frontend-spec §4，避免 tracking/SSRF）
-      img: ({ src, alt }) => {
-        const href = safeUrl(typeof src === "string" ? src : undefined);
-        const label = alt || (typeof src === "string" ? src : "");
-        return href && isExternalUrl(href)
-          ? <a className="markdown-image-link" href={href} target="_blank" rel="noreferrer noopener">{label}</a>
-          : <span className="markdown-image-link">{label}</span>;
-      },
-      pre: ({ children }) => <CodeBlock>{children}</CodeBlock>
-    }}>{rendered}</ReactMarkdown>
-    {(bounded || truncated) && <p className="markdown-truncated">{t("truncatedMessage")}</p>}
-  </div>;
-}
-
-/** 代码块：保留空白与语言标注，复制内容为 raw 源码（frontend-spec §4） */
-function CodeBlock({ children }: { children?: ReactNode }) {
-  const { t } = useI18n();
-  const runtime = useClientRuntime();
-  const preRef = useRef<HTMLPreElement | null>(null);
-  return <div className="markdown-code-block">
-    <Button variant="ghost" className="copy-button code-copy" onClick={() => void runtime.platform.copyText(preRef.current?.textContent ?? "")}>{t("copy")}</Button>
-    <pre ref={preRef}>{children}</pre>
-  </div>;
-}
-
-function safeUrl(value: string | undefined) {
-  if (!value) return "";
-  if (value.startsWith("//")) return "";
-  if (value.startsWith("#") || value.startsWith("/") || value.startsWith("./") || value.startsWith("../")) return value;
-  try {
-    const parsed = new URL(value, "https://local.invalid");
-    return ["http:", "https:", "mailto:"].includes(parsed.protocol) ? value : "";
-  } catch {
-    return "";
-  }
-}
-
-function isExternalUrl(value: string | undefined) {
-  return Boolean(value && /^https?:\/\//i.test(value));
 }
 
 function formatTime(value: string) {

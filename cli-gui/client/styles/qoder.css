@@ -501,6 +501,7 @@
 .routing-resource-meta { overflow-wrap: anywhere; color: var(--text-secondary); font-size: var(--text-xs); line-height: 1.45; }
 .routing-resource-actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2); flex-wrap: wrap; max-width: min(100%, 560px); }
 .routing-resource-actions .ui-field { min-width: 180px; flex: 1 1 180px; }
+.routing-provider-edit-form { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2); min-width: 0; flex: 1; }
 .routing-route-status { display: flex; align-items: flex-start; gap: var(--space-2); flex-wrap: wrap; justify-content: flex-end; }
 .routing-create-form { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2); align-items: end; padding-top: var(--space-2); }
 .routing-create-form > .ui-field, .routing-create-form > .custom-select { min-width: 0; }
@@ -510,16 +511,23 @@
 .routing-candidate-list li > span:first-child { min-width: 0; overflow-wrap: anywhere; }
 .routing-candidate-actions { display: inline-flex; gap: 2px; flex: none; }
 .routing-candidate-actions .ui-icon-button { width: 26px; height: 26px; }
+.routing-drag-handle { display: inline-grid; flex: none; place-items: center; width: 26px; height: 26px; color: var(--text-tertiary); cursor: grab; }
+.routing-drag-handle:active { cursor: grabbing; }
+.routing-route-editor-controls { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-2); }
+.routing-route-editor-controls .custom-select { min-width: 210px; }
+.routing-route-announcement { min-height: 1.2em; color: var(--text-secondary); font-size: var(--text-2xs); }
 .routing-error { display: grid; justify-items: start; gap: var(--space-2); }
 
 @media (max-width: 900px) {
   .routing-create-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .routing-provider-edit-form { grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
   .routing-resource-row { flex-direction: column; }
   .routing-resource-actions, .routing-route-status { justify-content: flex-start; width: 100%; }
 }
 
 @media (max-width: 640px) {
   .routing-create-form { grid-template-columns: minmax(0, 1fr); }
+  .routing-provider-edit-form { grid-template-columns: minmax(0, 1fr); }
   .routing-header { flex-direction: column; }
   .routing-tabs { overflow-x: auto; }
   .routing-tabs button { flex: 0 0 auto; }

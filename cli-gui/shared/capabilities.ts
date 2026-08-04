@@ -30,6 +30,12 @@ export interface CliOptionDefinition {
   requiresRestart: boolean;
 }
 
+export interface ProviderModelGroup {
+  providerId: string;
+  providerName: string;
+  models: CliOptionDefinition[];
+}
+
 export interface CliProfileCapabilities {
   adapterId: CliAdapterId;
   detectedVersion?: string;
@@ -37,6 +43,10 @@ export interface CliProfileCapabilities {
   permissions: CliOptionDefinition[];
   modes: CliOptionDefinition[];
   models: CliOptionDefinition[];
+  /** Optional display grouping for models contributed by compatible providers. */
+  modelGroups?: ProviderModelGroup[];
+  /** Model resolved from the CLI configuration when no explicit model is selected. */
+  defaultModel?: string;
   supportsComposer: boolean;
   supportsStructuredRecognition: boolean;
   /** 是否支持 headless 单轮执行（决定可否创建 chat 会话，adapter-spec §2.2） */

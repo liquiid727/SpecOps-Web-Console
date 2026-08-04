@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useI18n } from "../../i18n";
 import { Button } from "../ui";
+import { Icon } from "../ui/Icon";
 import { formatCardTime } from "./CardParser";
 import type { StructuredCardData } from "./types";
 
@@ -20,6 +21,7 @@ export function ShellRunCard({ card, onViewInTerminal }: { card: StructuredCardD
 
   return <article className="transcript-event card-shell-run" data-card-type="shell-run">
     <header>
+      <Icon name="terminal" className="card-shell-icon" />
       <span className="card-badge">$</span>
       {command && <code className="card-command-inline">{command}</code>}
       {exitCode !== undefined && <span className={`card-exit-badge ${exitCode === 0 ? "success" : "failure"}`}>exit {exitCode}</span>}

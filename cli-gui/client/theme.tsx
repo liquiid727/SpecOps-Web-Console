@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { TranslationKey } from "./i18n";
 
-export type ThemeId = "qoder-light" | "classic" | "neo" | "zcode";
+export type ThemeId = "qoder-light" | "classic" | "neo" | "zcode" | "bubrail";
 
 export interface ThemeDefinition {
   id: ThemeId;
@@ -17,7 +17,8 @@ export const themeDefinitions = [
   { id: "qoder-light", labelKey: "themeQoderLight", descriptionKey: "themeQoderLightDescription", colorScheme: "light", rootClassName: "theme-qoder-light" },
   { id: "neo", labelKey: "themeNeo", descriptionKey: "themeNeoDescription", colorScheme: "light", rootClassName: "theme-neo" },
   { id: "classic", labelKey: "themeClassic", descriptionKey: "themeClassicDescription", colorScheme: "dark", rootClassName: "theme-classic" },
-  { id: "zcode", labelKey: "themeZcode", descriptionKey: "themeZcodeDescription", colorScheme: "dark", rootClassName: "theme-zcode" }
+  { id: "zcode", labelKey: "themeZcode", descriptionKey: "themeZcodeDescription", colorScheme: "dark", rootClassName: "theme-zcode" },
+  { id: "bubrail", labelKey: "themeBubrail", descriptionKey: "themeBubrailDescription", colorScheme: "dark", rootClassName: "theme-bubrail" }
 ] as const satisfies readonly ThemeDefinition[];
 
 const ThemeContext = createContext<{
@@ -27,7 +28,7 @@ const ThemeContext = createContext<{
 } | undefined>(undefined);
 
 export function normalizeTheme(value: unknown): ThemeId {
-  return value === "classic" || value === "neo" || value === "qoder-light" || value === "zcode" ? value : "qoder-light";
+  return value === "classic" || value === "neo" || value === "qoder-light" || value === "zcode" || value === "bubrail" ? value : "qoder-light";
 }
 
 export function readTheme(storage: Pick<Storage, "getItem"> | undefined = typeof window === "undefined" ? undefined : window.localStorage): ThemeId {

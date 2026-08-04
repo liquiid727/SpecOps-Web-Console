@@ -16,7 +16,7 @@
 ## Evidence
 
 - Resolver/store/coordinator focused tests: 8 passed.
-- Full `npm test -- --run`: 54 files, 429 passed, 4 skipped.
+- Full `npm --prefix cli-gui run test -- --run`: 57 files, 446 passed, 4 skipped.
 - `npm run build`: passed; existing chunk-size warning remains.
 - `npx specos check`: passed.
 

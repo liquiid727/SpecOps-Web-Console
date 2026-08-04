@@ -15,7 +15,7 @@
 
 ## Evidence
 
-- `npm test -- --run`: 54 files, 429 passed, 4 skipped.
+- `npm --prefix cli-gui run test -- --run`: 57 files, 446 passed, 4 skipped.
 - `npm run build`: passed; existing chunk-size warning remains.
 - `npm run ui:check`: passed.
 - `npx specos check`: passed.

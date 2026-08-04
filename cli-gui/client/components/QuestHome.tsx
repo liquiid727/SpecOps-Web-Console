@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CliProfile, CliProfileCapabilities, EngineReadiness, Workspace } from "../../shared/types";
 import { toFeedbackError } from "../feedback-errors";
 import { useI18n } from "../i18n";
@@ -18,9 +18,11 @@ interface QuestHomeProps {
   onAdvancedCreate?: () => void;
   /** 新建 Quest 草稿态：隐藏引擎就绪/安全横幅/最近工作区，只保留干净的输入界面 */
   draftMode?: boolean;
+  /** 由 Workspace 分组入口传入；缺省时按最近使用目录选择 */
+  initialWorkspaceId?: string;
 }
 
-export function QuestHome({ workspaces, profiles, onQuickCreate, onOpenSettings, onAdvancedCreate, draftMode }: QuestHomeProps) {
+export function QuestHome({ workspaces, profiles, onQuickCreate, onOpenSettings, onAdvancedCreate, draftMode, initialWorkspaceId }: QuestHomeProps) {
   const { t } = useI18n();
   const feedback = useFeedback();
   const runtime = useClientRuntime();
@@ -33,7 +35,9 @@ export function QuestHome({ workspaces, profiles, onQuickCreate, onOpenSettings,
     () => [...workspaces].sort((a, b) => (b.lastOpenedAt ?? b.createdAt).localeCompare(a.lastOpenedAt ?? a.createdAt)),
     [workspaces]
   );
-  const [workspaceChoice, setWorkspaceChoice] = useState("");
+  const [workspaceChoice, setWorkspaceChoice] = useState(initialWorkspaceId ?? "");
+  const previousDraftMode = useRef(draftMode);
+  const previousInitialWorkspaceId = useRef(initialWorkspaceId);
   const [profileChoice, setProfileChoice] = useState("");
   // CLI/模型联动（QA 调节）：模型列表来自所选 CLI 的 capabilities，切 CLI 即重置模型
   const [modelChoice, setModelChoice] = useState<string | null>(null);
@@ -46,6 +50,20 @@ export function QuestHome({ workspaces, profiles, onQuickCreate, onOpenSettings,
   const activeWorkspace = recentWorkspaces.find((workspace) => workspace.id === workspaceId);
   const ready = Boolean(workspaceId && profileId);
   const recommendedTasks = [t("qoderTaskSample1"), t("qoderTaskSample2"), t("qoderTaskSample3")];
+
+  useEffect(() => {
+    const enteredDraft = Boolean(draftMode && !previousDraftMode.current);
+    const contextChanged = initialWorkspaceId !== previousInitialWorkspaceId.current;
+    if (initialWorkspaceId && recentWorkspaces.some((workspace) => workspace.id === initialWorkspaceId)) {
+      setWorkspaceChoice(initialWorkspaceId);
+    } else if (draftMode && (enteredDraft || contextChanged)) {
+      // A global new-session action clears the prior folder selection. A folder
+      // action supplies initialWorkspaceId and takes the branch above.
+      setWorkspaceChoice("");
+    }
+    previousDraftMode.current = draftMode;
+    previousInitialWorkspaceId.current = initialWorkspaceId;
+  }, [draftMode, initialWorkspaceId, recentWorkspaces]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -180,6 +198,7 @@ export function QuestHome({ workspaces, profiles, onQuickCreate, onOpenSettings,
                 selectedProfileId={profileId || undefined}
                 onProfileChange={(next) => { setProfileChoice(next); setModelChoice(null); }}
                 capabilities={profileCapabilities}
+                defaultModel={profileCapabilities?.defaultModel}
                 launchConfig={{ permission: null, mode: null, model: modelChoice }}
                 onLaunchConfigChange={(change) => { if ("model" in change) setModelChoice(change.model ?? null); }}
                 onSend={async (content) => {

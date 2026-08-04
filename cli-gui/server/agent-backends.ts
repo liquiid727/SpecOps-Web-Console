@@ -156,6 +156,7 @@ export function createProfileAdapterTurnExecutor(options: ProfileAdapterTurnExec
         });
         void (async () => {
           let parseResult: TurnParseResult = {};
+          let parseFailure: unknown;
           try {
             const iterator = adapters.parseEvents!(profile, child!.stdout, { turnId: turn.turnId ?? turn.clientMessageId ?? "backend-turn" }, {
               onDelta(delta) {
@@ -169,6 +170,7 @@ export function createProfileAdapterTurnExecutor(options: ProfileAdapterTurnExec
             }
             parseResult = next.value ?? {};
           } catch (error) {
+            parseFailure = error;
             queue.push({ kind: "diagnostic", occurredAt: now(), text: error instanceof Error ? error.message : String(error), metadata: { code: "PARSER_FAILED" } });
           }
           if (parseResult.usage) {
@@ -190,6 +192,9 @@ export function createProfileAdapterTurnExecutor(options: ProfileAdapterTurnExec
             resolveResult({ status: "failed", error: fallbackFailure ? withFallbackFailure(fallbackFailure, failure) : failure });
           } else if (outcome.exitCode !== 0) {
             const failure = classifySpawnFailure(stderrSummary.trim() || `Turn failed with exit code ${outcome.exitCode}.`);
+            resolveResult({ status: "failed", error: fallbackFailure ? withFallbackFailure(fallbackFailure, failure) : failure });
+          } else if (parseFailure !== undefined) {
+            const failure: AgentTurnError = { code: "TURN_FAILED", message: parseFailure instanceof Error ? parseFailure.message : String(parseFailure), phase: "parse" };
             resolveResult({ status: "failed", error: fallbackFailure ? withFallbackFailure(fallbackFailure, failure) : failure });
           } else {
             resolveResult({ status: "completed", nativeSessionId: parseResult.resumeToken, usage: parseResult.usage });

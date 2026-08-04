@@ -2,8 +2,9 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { WebSocket } from "ws";
 import { ApiHttpError } from "./api-errors.js";
 import { PersistentRuntimeUnavailableError } from "./ports.js";
-import type { Clock, Logger, OrchestratorCallbacks, PersistentTurnHandle, PreparedLaunch, PtyProcess, PtyRuntime, RuntimeOrchestrator, TurnInput, TurnParseResult } from "./ports.js";
-import type { AgentEvent, AgentTurnHandle, AgentTurnResult, TranscriptEvent, TranscriptEventKind, TranscriptEventMetadataValue, TranscriptEventSource } from "../shared/types.js";
+import type { Clock, Logger, OrchestratorCallbacks, ParsedTurnEvent, PersistentTurnHandle, PreparedLaunch, PtyProcess, PtyRuntime, RuntimeOrchestrator, TurnInput, TurnParseResult } from "./ports.js";
+import type { AgentEvent, AgentTurnFailurePhase, AgentTurnHandle, AgentTurnResult, TranscriptEvent, TranscriptEventKind, TranscriptEventMetadataValue, TranscriptEventSource } from "../shared/types.js";
+import { observeSideEffect, type AgentEffect } from "../shared/execution-attempt.js";
 
 export const MAX_TERMINAL_COLS = 500;
 export const MAX_TERMINAL_ROWS = 200;
@@ -54,6 +55,8 @@ type ActiveTurn = {
   approvalResponder?: (approvalId: string, decision: "allow" | "deny") => string;
   done: Promise<void>;
   result?: AgentTurnResult;
+  effectEvents: Array<{ id?: string; effect?: AgentEffect }>;
+  protocolComplete: boolean;
 };
 
 /** chat Worker：轮次间空闲驻留，running ≠ 有子进程存活（runtime-orchestrator-spec §3） */
@@ -246,18 +249,19 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
     type TurnOutcome =
       | { status: "completed"; exitCode: number }
       | { status: "cancelled"; exitCode: number }
-      | { status: "failed"; code: string; message: string; exitCode: number; metadata?: Record<string, TranscriptEventMetadataValue> };
+      | { status: "failed"; code: string; message: string; exitCode: number; phase?: AgentTurnFailurePhase; fallbackAttempted?: boolean; fallbackCode?: string; metadata?: Record<string, TranscriptEventMetadataValue> };
     const finishTurn = async (outcome: TurnOutcome) => {
       if (turn.pendingApproval) { clearTimeout(turn.pendingApproval.timer); turn.pendingApproval = undefined; }
       if (turn.timeoutTimer !== undefined) clearTimeout(turn.timeoutTimer);
       if (turn.killTimer !== undefined) clearTimeout(turn.killTimer);
       turn.timeoutTimer = undefined;
       turn.killTimer = undefined;
+      const sideEffect = observeSideEffect(turn.effectEvents, turn.protocolComplete);
       turn.result = outcome.status === "completed"
-        ? { status: "completed" }
+        ? { status: "completed", sideEffect }
         : outcome.status === "cancelled"
-          ? { status: "cancelled" }
-          : { status: "failed", error: { code: outcome.code, message: outcome.message } };
+          ? { status: "cancelled", sideEffect }
+          : { status: "failed", sideEffect, error: { code: outcome.code, message: outcome.message, ...(outcome.phase ? { phase: outcome.phase } : {}), ...(outcome.fallbackAttempted !== undefined ? { fallbackAttempted: outcome.fallbackAttempted } : {}), ...(outcome.fallbackCode ? { fallbackCode: outcome.fallbackCode } : {}) } };
       const completed = completedTurns.get(sessionId) ?? new Map<string, AgentTurnResult>();
       completed.set(turn.turnId, turn.result);
       completedTurns.set(sessionId, completed);
@@ -277,6 +281,19 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
       }
     };
 
+    function recordEffect(kind: TranscriptEventKind, persisted: TranscriptEvent | undefined, effect: AgentEffect | undefined) {
+      if (kind === "tool_activity" || kind === "file_change") turn.effectEvents.push({ id: persisted?.id, ...(effect ? { effect } : {}) });
+      if (!persisted) turn.protocolComplete = false;
+    }
+
+    async function appendParsedEvent(event: ParsedTurnEvent) {
+      if (closing || turn.terminationReason !== undefined) return;
+      const persisted = await callbacks.appendEvent(sessionId, { occurredAt: clock.now(), kind: event.kind, source: event.source, raw: event.raw, metadata: { ...event.metadata, turnId: turn.turnId }, component: event.component });
+      recordEffect(event.kind, persisted, event.effect);
+      callbacks.onActivity(sessionId);
+      if (event.kind === "approval_request" && typeof event.metadata?.approvalId === "string" && turn.backendHandle?.approve) enterWaitingApproval(sessionId, turn, event.metadata.approvalId);
+    }
+
     async function appendAgentEvent(event: AgentEvent) {
       if (closing || turn.terminationReason !== undefined) return;
       if (event.kind === "text_delta") {
@@ -284,7 +301,8 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
         return;
       }
       const mapped = toTranscriptEvent(event, turn.turnId);
-      await callbacks.appendEvent(sessionId, mapped);
+      const persisted = await callbacks.appendEvent(sessionId, mapped);
+      recordEffect(mapped.kind, persisted, event.effect);
       callbacks.onActivity(sessionId);
       if (event.kind === "approval_request" && typeof event.metadata?.approvalId === "string" && turn.backendHandle?.approve) {
         enterWaitingApproval(sessionId, turn, event.metadata.approvalId);
@@ -296,7 +314,7 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
       try {
         handle = await input.runBackend();
       } catch (error) {
-        await finishTurn({ status: "failed", code: "TURN_SPAWN_FAILED", message: `Failed to open the backend turn: ${error instanceof Error ? error.message : String(error)}`, exitCode: -1 });
+        await finishTurn({ status: "failed", code: "TURN_SPAWN_FAILED", message: `Failed to open the backend turn: ${error instanceof Error ? error.message : String(error)}`, phase: "spawn", exitCode: -1 });
         return;
       }
       turn.backendHandle = handle;
@@ -313,13 +331,20 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
         backendFailure = error;
       }
       await eventPump;
-      if (eventFailure !== undefined) logger.warn("Backend event stream failed", { sessionId, turnId: turn.turnId, error: String(eventFailure) });
+      if (eventFailure !== undefined) {
+        turn.protocolComplete = false;
+        logger.warn("Backend event stream failed", { sessionId, turnId: turn.turnId, error: String(eventFailure) });
+      }
       if (turn.terminationReason === "cancelled" || backendResult?.status === "cancelled") {
         await finishTurn({ status: "cancelled", exitCode: -1 });
         return;
       }
       if (turn.terminationReason === "timeout") {
         await finishTurn({ status: "failed", code: "TURN_TIMEOUT", message: `Turn timed out after ${turnTimeoutMs}ms.`, exitCode: -1 });
+        return;
+      }
+      if (eventFailure !== undefined && backendFailure === undefined && backendResult?.status === "completed") {
+        await finishTurn({ status: "failed", code: "TURN_FAILED", message: String(eventFailure), phase: "parse", exitCode: -1 });
         return;
       }
       if (backendFailure !== undefined || backendResult?.status === "failed") {
@@ -329,6 +354,9 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
           code: error?.code ?? "TURN_FAILED",
           message: error?.message ?? (backendFailure instanceof Error ? backendFailure.message : backendFailure !== undefined ? String(backendFailure) : "Backend turn failed."),
           exitCode: -1,
+          phase: error?.phase,
+          fallbackAttempted: error?.fallbackAttempted,
+          fallbackCode: error?.fallbackCode,
           metadata: error ? {
             ...(error.phase ? { phase: error.phase } : {}),
             ...(error.fallbackAttempted !== undefined ? { fallbackAttempted: error.fallbackAttempted } : {}),
@@ -349,7 +377,7 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
       if (!input.buildCommand || !input.parseOutput) throw new Error("Turn input is missing legacy command execution callbacks.");
       plan = await input.buildCommand();
     } catch (error) {
-      await finishTurn({ status: "failed", code: "TURN_SPAWN_FAILED", message: `Failed to build the turn command: ${error instanceof Error ? error.message : String(error)}`, exitCode: -1 });
+      await finishTurn({ status: "failed", code: "TURN_SPAWN_FAILED", message: `Failed to build the turn command: ${error instanceof Error ? error.message : String(error)}`, phase: "spawn", exitCode: -1 });
       return;
     }
 
@@ -360,8 +388,7 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
         handle = input.runPersistent({
           async onEvent(event) {
             if (closing || turn.terminationReason !== undefined) return;
-            await callbacks.appendEvent(sessionId, { occurredAt: clock.now(), kind: event.kind, source: event.source, raw: event.raw, metadata: { ...event.metadata, turnId: turn.turnId }, component: event.component });
-            callbacks.onActivity(sessionId);
+            await appendParsedEvent(event);
           },
           onDelta(delta) {
             if (closing || turn.terminationReason !== undefined) return;
@@ -370,7 +397,7 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
         });
       } catch (error) {
         if (!(error instanceof PersistentRuntimeUnavailableError)) {
-          await finishTurn({ status: "failed", code: "TURN_SPAWN_FAILED", message: error instanceof Error ? error.message : String(error), exitCode: -1 });
+          await finishTurn({ status: "failed", code: "TURN_SPAWN_FAILED", message: error instanceof Error ? error.message : String(error), phase: "spawn", exitCode: -1 });
           return;
         }
         logger.info("Persistent runtime unavailable; falling back to spawn path", { sessionId, turnId: turn.turnId, reason: error.message });
@@ -406,6 +433,7 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
               status: "failed",
               code: "TURN_FAILED",
               message: persistentFailure instanceof Error ? persistentFailure.message : String(persistentFailure),
+              phase: "app-server",
               exitCode: -1
             });
             return;
@@ -442,6 +470,7 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
     armTurnTimeout(turn, turnTimeoutMs);
 
     let parseResult: TurnParseResult = {};
+    let parseFailure: unknown;
     try {
       const iterator = input.parseOutput!(child.stdout!, {
         onDelta(delta) {
@@ -453,8 +482,7 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
       while (!next.done) {
         if (!closing && turn.terminationReason === undefined) {
           const event = next.value;
-          await callbacks.appendEvent(sessionId, { occurredAt: clock.now(), kind: event.kind, source: event.source, raw: event.raw, metadata: { ...event.metadata, turnId: turn.turnId }, component: event.component });
-          callbacks.onActivity(sessionId);
+          await appendParsedEvent(event);
           // 审批挂起（§3.4）：仅当 Adapter 声明了应答通道才进入等待；无通道时事件照常透传、不挂起
           if (event.kind === "approval_request" && typeof event.metadata?.approvalId === "string" && input.buildApprovalResponse) {
             enterWaitingApproval(sessionId, turn, event.metadata.approvalId);
@@ -464,6 +492,8 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
       }
       parseResult = next.value ?? {};
     } catch (error) {
+      parseFailure = error;
+      turn.protocolComplete = false;
       logger.warn("Turn output parsing failed", { sessionId, turnId: turn.turnId, error: String(error) });
     }
 
@@ -478,7 +508,11 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
       return;
     }
     if (outcome.type === "spawn-error") {
-      await finishTurn({ status: "failed", code: "TURN_SPAWN_FAILED", message: outcome.error.message || String(outcome.error), exitCode: -1 });
+      await finishTurn({ status: "failed", code: "TURN_SPAWN_FAILED", message: outcome.error.message || String(outcome.error), phase: "spawn", exitCode: -1 });
+      return;
+    }
+    if (parseFailure !== undefined) {
+      await finishTurn({ status: "failed", code: "TURN_FAILED", message: parseFailure instanceof Error ? parseFailure.message : String(parseFailure), phase: "parse", exitCode });
       return;
     }
     if (outcome.exitCode !== 0) {
@@ -593,7 +627,7 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
         : await callbacks.appendEvent(sessionId, { occurredAt: clock.now(), kind: "user_message", source: "composer", raw: input.prompt, metadata: { turnId: input.turnId }, clientMessageId: input.clientMessageId });
       // 与 terminal messages 分支对齐：落盘失败则不启动轮次（单一事实源，回放可重建）
       if (!event) throw new ApiHttpError(500, "TRANSCRIPT_WRITE_FAILED", "Message could not be recorded.");
-      const turn: ActiveTurn = { turnId: input.turnId, done: Promise.resolve() };
+      const turn: ActiveTurn = { turnId: input.turnId, done: Promise.resolve(), effectEvents: [], protocolComplete: true };
       worker.activeTurn = turn;
       callbacks.onTurnStatus?.(sessionId, input.turnId, "running");
       turn.done = runTurn(sessionId, worker, turn, input).catch((error) => {

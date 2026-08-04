@@ -46,7 +46,7 @@ export function WorkspaceProfileManager(props: WorkspaceProfileManagerProps) {
     ["about", t("settingsAbout")]
   ] as const;
 
-  return <Overlay kind="drawer" title={t("workspaceSettings")} description={t("workspaceSettingsDescription")} onClose={props.onClose}>
+  return <Overlay kind="drawer" drawerSide="left" title={t("workspaceSettings")} description={t("workspaceSettingsDescription")} onClose={props.onClose}>
     <div className="settings-layout">
       <Tabs className="settings-nav" ariaLabel={t("settingsCategory")} value={category} onChange={setCategory} items={categories.map(([id, label]) => ({ id, label, buttonProps: { "data-settings-category": id } }))} />
       <div className="settings-content">

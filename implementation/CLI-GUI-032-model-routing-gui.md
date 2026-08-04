@@ -10,13 +10,14 @@
 ## Delivered
 
 - Added routing settings for Providers, Deployments, and Routes using existing UI primitives and bilingual feedback.
+- Added destructive confirmation dialogs for Provider, Deployment, and Route deletion with failure-safe dialog retention.
 - Added server-resolved session/composer route controls, fixed-once clearing, Attempt timeline, confirmation, cancel, and persisted-history refresh.
 - Added stable DOM contracts and responsive styling; route creation now honors the selected primary deployment and eight-candidate cap.
 
 ## Evidence
 
-- Focused UI tests: 18 passed.
-- Full `npm test -- --run`: 54 files, 429 passed, 4 skipped.
+- Focused UI tests: 19 passed, including Route and Deployment destructive-confirm coverage.
+- Full `npm --prefix cli-gui run test -- --run`: 57 files, 446 passed, 4 skipped.
 - `npm run ui:check`: passed.
 - `npm run build`: passed; existing chunk-size warning remains.
 

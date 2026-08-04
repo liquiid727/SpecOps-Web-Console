@@ -4,6 +4,8 @@
 @import "./themes/classic.css";
 @import "./themes/neo.css";
 @import "./themes/zcode.css";
+@import "./themes/bubrail.css";
+@import "./splash.css";
 @import "./base.css";
 @import "./components.css";
 @import "./qoder.css";

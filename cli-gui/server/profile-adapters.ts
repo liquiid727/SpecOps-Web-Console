@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { delimiter, sep } from "node:path";
 import type { Readable } from "node:stream";
 import { promisify } from "node:util";
-import type { CliProfileV2, CliProfileCapabilities, CapabilityDetectionResult, CapabilityDetectionFailure, DowngradeReason } from "../shared/types.js";
+import type { CliProfileV2, CliProfileCapabilities, CapabilityDetectionResult, CapabilityDetectionFailure, DowngradeReason, TranscriptStructuredComponentValue } from "../shared/types.js";
 import type { CliOptionDefinition } from "../shared/capabilities.js";
 import type { Logger, ParseContext, ParsedTurnEvent, ProfileAdapterRegistry, TurnParseResult, TurnStreamHooks } from "./ports.js";
 import { builtinModelIds, isClaudeFamily, mergeModelSources, versionWithinRange } from "./model-catalog.js";
@@ -15,12 +15,24 @@ const execFileAsync = promisify(execFile);
 /**
  * npm run 会把每一级祖先目录的 node_modules/.bin 前置到 PATH，可能让同名的陈旧本地包
  * （如残留的旧版 codex）遮蔽全局安装的 CLI；探测与启动 CLI 前剔除这些注入项（issue：新建会话降级报错）。
+ * 同时剔除父级 Codex 沙箱会话变量（CODEX_SANDBOX / CODEX_THREAD_ID 等），避免 GUI 服务端
+ * 在 Codex 沙箱内运行时，子进程 CLI 继承沙箱约束导致 "attempt to write a readonly database"。
  */
 export function sanitizeCliEnvironment(environment: Readonly<Record<string, string | undefined>>): Record<string, string | undefined> {
-  const path = environment.PATH;
-  if (!path) return { ...environment };
+  const result = { ...environment };
+  // 剔除父级 Codex 运行时会话变量：这些变量会让子 CLI 误认为自己处于沙箱/线程上下文中
+  delete result.CODEX_SANDBOX;
+  delete result.CODEX_THREAD_ID;
+  delete result.CODEX_SESSION_ID;
+  delete result.CODEX_ROLLOUT_ID;
+  delete result.CODEX_EXEC_SESSION_ID;
+  const path = result.PATH;
+  if (!path) return result;
   const npmInjected = (entry: string) => entry.endsWith(`${sep}node_modules${sep}.bin`) || entry.includes(`${sep}node-gyp-bin`);
-  return { ...environment, PATH: path.split(delimiter).filter((entry) => !npmInjected(entry)).join(delimiter) };
+  // 同时剔除父级 Codex 注入的临时 arg0 PATH 项
+  const codexArg0 = (entry: string) => entry.includes(`${sep}.codex${sep}tmp${sep}arg0${sep}`);
+  result.PATH = path.split(delimiter).filter((entry) => !npmInjected(entry) && !codexArg0(entry)).join(delimiter);
+  return result;
 }
 
 /** CLI 版本范围环境变量覆盖：`SPECOS_CLI_VERSION_OVERRIDE=codex@0.50.0,claude-code@2.0.30` */
@@ -150,10 +162,13 @@ export function createProfileAdapterRegistry(options: { logger?: Logger } = {}):
         return { command: profile.command, args };
       }
       if (profile.adapterId !== "codex") throw new HeadlessTurnUnsupportedError(profile.adapterId);
-      const args = [...profile.args, "exec", "--json"];
-      appendOption(args, config.model, "--model", detected.models);
-      appendOption(args, config.mode, "--sandbox", detected.modes);
+      // Codex 0.146 keeps --ask-for-approval as a top-level option. Put all
+      // shared options before exec so the same argv also works for exec resume.
+      const args = [...profile.args];
       appendOption(args, config.permission, "--ask-for-approval", detected.permissions);
+      appendOption(args, config.mode, "--sandbox", detected.modes);
+      appendOption(args, config.model, "--model", detected.models);
+      args.push("exec", "--json");
       if (config.resumeToken) args.push("resume", config.resumeToken);
       args.push(config.prompt);
       return { command: profile.command, args };
@@ -262,20 +277,20 @@ function* mapCodexLine(line: string, ctx: ParseContext, result: TurnParseResult)
     const errObj = event.error as { message?: unknown; code?: unknown } | undefined;
     const message = typeof errObj?.message === "string" ? errObj.message : typeof event.error === "string" ? event.error : line;
     const code = typeof errObj?.code === "string" ? errObj.code : undefined;
-    yield { kind: "error", source: "profile-adapter", raw: message, metadata: { turnId: ctx.turnId, ...(code ? { errorCode: code } : {}) } };
+    yield { kind: "error", source: "profile-adapter", raw: message, metadata: { turnId: ctx.turnId, ...(code ? { errorCode: code } : {}) }, component: { type: "turn_status", status: "error", text: message, data: componentData(event) } };
     return;
   }
   // §7 approval request/result：codex 审批事件
   if (event.type === "approval.requested" || event.type === "approval_requested") {
     const approvalId = typeof event.approval_id === "string" ? event.approval_id : ctx.turnId;
     const description = typeof event.description === "string" ? event.description : "Approval requested";
-    yield { kind: "approval_request", source: "profile-adapter", raw: description, metadata: { turnId: ctx.turnId, approvalId } };
+    yield { kind: "approval_request", source: "profile-adapter", raw: description, metadata: { turnId: ctx.turnId, approvalId }, component: { type: "approval", title: "Approval requested", text: description, data: componentData(event) } };
     return;
   }
   if (event.type === "approval.resolved" || event.type === "approval_resolved") {
     const approvalId = typeof event.approval_id === "string" ? event.approval_id : ctx.turnId;
     const decision = typeof event.decision === "string" ? event.decision : "recorded";
-    yield { kind: "approval_response", source: "profile-adapter", raw: decision, metadata: { turnId: ctx.turnId, approvalId, decision } };
+    yield { kind: "approval_response", source: "profile-adapter", raw: decision, metadata: { turnId: ctx.turnId, approvalId, decision }, component: { type: "turn_status", status: decision, text: decision, data: componentData(event) } };
     return;
   }
   // §7 completion + usage：turn.completed → lifecycle completion 事件 + usage 提取
@@ -287,44 +302,44 @@ function* mapCodexLine(line: string, ctx: ParseContext, result: TurnParseResult)
         outputTokens: typeof usage.output_tokens === "number" ? usage.output_tokens : undefined
       };
     }
-    yield { kind: "lifecycle", source: "profile-adapter", raw: "Turn completed.", metadata: { turnId: ctx.turnId, status: "turn-completed" } };
+    yield { kind: "lifecycle", source: "profile-adapter", raw: "Turn completed.", metadata: { turnId: ctx.turnId, status: "turn-completed" }, component: { type: "turn_status", status: "turn-completed", text: "Turn completed." } };
     return;
   }
   // §7 cancellation：turn.cancelled → lifecycle 事件
   if (event.type === "turn.cancelled") {
-    yield { kind: "lifecycle", source: "profile-adapter", raw: "Turn cancelled.", metadata: { turnId: ctx.turnId, status: "turn-cancelled" } };
+    yield { kind: "lifecycle", source: "profile-adapter", raw: "Turn cancelled.", metadata: { turnId: ctx.turnId, status: "turn-cancelled" }, component: { type: "turn_status", status: "turn-cancelled", text: "Turn cancelled." } };
     return;
   }
   if (event.type === "item.completed" && event.item && typeof event.item === "object") {
     const item = event.item as { type?: unknown; text?: unknown; command?: unknown; exit_code?: unknown; tool?: unknown; server?: unknown; changes?: unknown };
     if (item.type === "agent_message" && typeof item.text === "string") {
-      yield { kind: "assistant_message", source: "profile-adapter", raw: item.text, metadata: { turnId: ctx.turnId } };
+      yield { kind: "assistant_message", source: "profile-adapter", raw: item.text, metadata: { turnId: ctx.turnId }, component: { type: "message", text: item.text } };
       return;
     }
     if (item.type === "command_execution" && typeof item.command === "string") {
       const metadata: Record<string, string | number | boolean> = { turnId: ctx.turnId, tool: "command_execution" };
       if (typeof item.exit_code === "number") metadata.exitCode = item.exit_code;
-      yield { kind: "tool_activity", source: "profile-adapter", raw: item.command, metadata };
+      yield { kind: "tool_activity", source: "profile-adapter", raw: item.command, metadata, component: { type: "command", title: item.command, text: item.command, status: typeof item.exit_code === "number" ? String(item.exit_code) : undefined, data: componentData(item) } };
       return;
     }
     if (item.type === "mcp_tool_call" && typeof item.tool === "string") {
       const tool = typeof item.server === "string" ? `${item.server}.${item.tool}` : item.tool;
-      yield { kind: "tool_activity", source: "profile-adapter", raw: tool, metadata: { turnId: ctx.turnId, tool } };
+      yield { kind: "tool_activity", source: "profile-adapter", raw: tool, metadata: { turnId: ctx.turnId, tool }, component: { type: "tool", title: tool, text: tool, data: componentData(item) } };
       return;
     }
     if (item.type === "file_change" && Array.isArray(item.changes)) {
       const paths = item.changes.filter((change): change is { path: string } => Boolean(change) && typeof (change as { path?: unknown }).path === "string");
       if (paths.length) {
-        for (const change of paths) yield { kind: "file_change", source: "profile-adapter", raw: change.path, metadata: { turnId: ctx.turnId, path: change.path } };
+        for (const change of paths) yield { kind: "file_change", source: "profile-adapter", raw: change.path, metadata: { turnId: ctx.turnId, path: change.path }, component: { type: "file_change", title: change.path, text: change.path, data: componentData(change) } };
         return;
       }
     }
     // item.completed 未识别子类型 → diagnostic 降级（§7：never crash the turn stream）
-    yield { kind: "pty_output", source: "profile-adapter", raw: line, metadata: { turnId: ctx.turnId, diagnostic: true } };
+    yield { kind: "pty_output", source: "profile-adapter", raw: line, metadata: { turnId: ctx.turnId, diagnostic: true }, component: { type: "diagnostic", title: "Unrecognized Codex item", text: line, data: componentData(event) } };
     return;
   }
   // 未识别事件类型 → diagnostic 降级（§7：unknown vendor events become diagnostic）
-  yield { kind: "pty_output", source: "profile-adapter", raw: line, metadata: { turnId: ctx.turnId, diagnostic: true } };
+  yield { kind: "pty_output", source: "profile-adapter", raw: line, metadata: { turnId: ctx.turnId, diagnostic: true }, component: { type: "diagnostic", title: "Unrecognized Codex event", text: line, data: componentData(event) } };
 }
 
 /** Claude `-p --output-format stream-json` JSONL → 规范事件；容错映射表，未识别降级 pty_output（adapter-spec §3.2、§4） */
@@ -380,20 +395,20 @@ function* mapClaudeLine(line: string, ctx: ParseContext, result: TurnParseResult
     const errObj = event.error as { message?: unknown; type?: unknown } | undefined;
     const message = typeof errObj?.message === "string" ? errObj.message : typeof event.error === "string" ? event.error : line;
     const errorType = typeof errObj?.type === "string" ? errObj.type : undefined;
-    yield { kind: "error", source: "profile-adapter", raw: message, metadata: { turnId: ctx.turnId, ...(errorType ? { errorCode: errorType } : {}) } };
+    yield { kind: "error", source: "profile-adapter", raw: message, metadata: { turnId: ctx.turnId, ...(errorType ? { errorCode: errorType } : {}) }, component: { type: "turn_status", status: "error", text: message, data: componentData(event) } };
     return;
   }
   // §7 approval request/result：claude permission/approval 帧
   if (event.type === "approval_requested" || event.type === "permission_requested") {
     const approvalId = typeof event.approval_id === "string" ? event.approval_id : ctx.turnId;
     const description = typeof event.description === "string" ? event.description : "Permission requested";
-    yield { kind: "approval_request", source: "profile-adapter", raw: description, metadata: { turnId: ctx.turnId, approvalId } };
+    yield { kind: "approval_request", source: "profile-adapter", raw: description, metadata: { turnId: ctx.turnId, approvalId }, component: { type: "approval", title: "Permission requested", text: description, data: componentData(event) } };
     return;
   }
   if (event.type === "approval_resolved" || event.type === "permission_resolved") {
     const approvalId = typeof event.approval_id === "string" ? event.approval_id : ctx.turnId;
     const decision = typeof event.decision === "string" ? event.decision : "recorded";
-    yield { kind: "approval_response", source: "profile-adapter", raw: decision, metadata: { turnId: ctx.turnId, approvalId, decision } };
+    yield { kind: "approval_response", source: "profile-adapter", raw: decision, metadata: { turnId: ctx.turnId, approvalId, decision }, component: { type: "turn_status", status: decision, text: decision, data: componentData(event) } };
     return;
   }
   // user 帧为 tool_result 回显：tool_use 已产 tool_activity，且 Adapter 不得产出 user_message（adapter-spec §4）
@@ -406,7 +421,7 @@ function* mapClaudeLine(line: string, ctx: ParseContext, result: TurnParseResult
         const block = item as { type?: unknown; text?: unknown; name?: unknown; input?: unknown };
         if (block?.type === "text" && typeof block.text === "string") {
           emitted = true;
-          yield { kind: "assistant_message", source: "profile-adapter", raw: block.text, metadata: { turnId: ctx.turnId } };
+          yield { kind: "assistant_message", source: "profile-adapter", raw: block.text, metadata: { turnId: ctx.turnId }, component: { type: "message", text: block.text } };
         } else if (block?.type === "tool_use" && typeof block.name === "string") {
           emitted = true;
           // §7 tool + file change：识别文件操作工具产出 file_change 事件
@@ -415,16 +430,16 @@ function* mapClaudeLine(line: string, ctx: ParseContext, result: TurnParseResult
             const path = typeof (block.input as { path?: unknown }).path === "string" ? (block.input as { path: string }).path
               : typeof (block.input as { file_path?: unknown }).file_path === "string" ? (block.input as { file_path: string }).file_path : undefined;
             if (path) {
-              yield { kind: "file_change", source: "profile-adapter", raw: path, metadata: { turnId: ctx.turnId, path, tool: block.name } };
+              yield { kind: "file_change", source: "profile-adapter", raw: path, metadata: { turnId: ctx.turnId, path, tool: block.name }, component: { type: "file_change", title: path, text: path, data: componentData(block.input) } };
               continue;
             }
           }
-          yield { kind: "tool_activity", source: "profile-adapter", raw: block.name, metadata: { turnId: ctx.turnId, tool: block.name } };
+          yield { kind: "tool_activity", source: "profile-adapter", raw: block.name, metadata: { turnId: ctx.turnId, tool: block.name }, component: { type: "tool", title: block.name, text: block.name, data: componentData(block.input) } };
         }
       }
       if (emitted) return;
     }
-    yield { kind: "pty_output", source: "profile-adapter", raw: line, metadata: { turnId: ctx.turnId, diagnostic: true } };
+    yield { kind: "pty_output", source: "profile-adapter", raw: line, metadata: { turnId: ctx.turnId, diagnostic: true }, component: { type: "diagnostic", title: "Unrecognized Claude message", text: line, data: componentData(event) } };
     return;
   }
   // §7 completion + usage：result 帧 → lifecycle 事件 + usage
@@ -440,13 +455,39 @@ function* mapClaudeLine(line: string, ctx: ParseContext, result: TurnParseResult
     const resultError = (parsed as { error?: unknown }).error;
     if (resultError && typeof resultError === "object") {
       const errMsg = typeof (resultError as { message?: unknown }).message === "string" ? (resultError as { message: string }).message : JSON.stringify(resultError);
-      yield { kind: "error", source: "profile-adapter", raw: errMsg, metadata: { turnId: ctx.turnId } };
+      yield { kind: "error", source: "profile-adapter", raw: errMsg, metadata: { turnId: ctx.turnId }, component: { type: "turn_status", status: "error", text: errMsg, data: componentData(resultError) } };
     }
-    yield { kind: "lifecycle", source: "profile-adapter", raw: "Turn completed.", metadata: { turnId: ctx.turnId, status: "turn-completed" } };
+    yield { kind: "lifecycle", source: "profile-adapter", raw: "Turn completed.", metadata: { turnId: ctx.turnId, status: "turn-completed" }, component: { type: "turn_status", status: "turn-completed", text: "Turn completed." } };
     return;
   }
   // 未识别事件类型 → diagnostic 降级（§7：unknown vendor events become diagnostic）
-  yield { kind: "pty_output", source: "profile-adapter", raw: line, metadata: { turnId: ctx.turnId, diagnostic: true } };
+  yield { kind: "pty_output", source: "profile-adapter", raw: line, metadata: { turnId: ctx.turnId, diagnostic: true }, component: { type: "diagnostic", title: "Unrecognized Claude event", text: line, data: componentData(event) } };
+}
+
+function componentData(value: unknown): Record<string, TranscriptStructuredComponentValue> | undefined {
+  const record = safeComponentValue(value);
+  return record && typeof record === "object" && !Array.isArray(record) ? record as Record<string, TranscriptStructuredComponentValue> : undefined;
+}
+
+function safeComponentValue(value: unknown, depth = 0): TranscriptStructuredComponentValue | undefined {
+  if (value === null || typeof value === "boolean" || typeof value === "number") return value;
+  if (typeof value === "string") return value.slice(0, 4096);
+  if (depth >= 4) return undefined;
+  if (Array.isArray(value)) {
+    const items = value.slice(0, 20)
+      .map((item) => safeComponentValue(item, depth + 1))
+      .filter((item): item is TranscriptStructuredComponentValue => item !== undefined);
+    return items;
+  }
+  if (value && typeof value === "object") {
+    const output: Record<string, TranscriptStructuredComponentValue> = {};
+    for (const [key, item] of Object.entries(value).slice(0, 30)) {
+      const safe = safeComponentValue(item, depth + 1);
+      if (safe !== undefined) output[key] = safe;
+    }
+    return output;
+  }
+  return undefined;
 }
 
 async function detectCapabilities(profile: CliProfileV2, options: { logger?: Logger; envVersionOverride?: Record<string, string> } = {}): Promise<CapabilityDetectionResult> {

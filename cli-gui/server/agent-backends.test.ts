@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import type { CliProfileV3 } from "../shared/types";
-import type { ProfileAdapterRegistry } from "./ports";
-import { createAgentBackendRegistry } from "./agent-backends";
+import type { ProfileAdapterRegistry, PersistentChatRuntime } from "./ports";
+import { PersistentRuntimeUnavailableError } from "./ports";
+import { createAgentBackendRegistry, createProfileAdapterTurnExecutor } from "./agent-backends";
 
 const profile: CliProfileV3 = {
   id: "profile-codex",
@@ -42,7 +43,7 @@ describe("Agent Backend migration seam", () => {
     const backend = registry.forProfile(profile);
     const session = await backend.openSession({
       sessionId: "session-1",
-      workspacePath: "/tmp/project",
+      workspacePath: process.cwd(),
       config: { profile }
     });
 
@@ -54,6 +55,48 @@ describe("Agent Backend migration seam", () => {
     expect(run).toHaveBeenCalledWith(expect.objectContaining({ backendId: "codex" }));
     await session.close();
     await expect(session.runTurn({ prompt: "again" })).rejects.toThrow("closed");
+  });
+
+  it("resolves a classified error after both app-server and CLI fallback fail", async () => {
+    const adapters: ProfileAdapterRegistry = {
+      availableAdapterIds: ["codex"],
+      buildTurn: vi.fn(async () => ({
+        command: process.execPath,
+        args: ["-e", "process.stderr.write('Operation not permitted\\n'); process.exit(1);"]
+      })),
+      parseEvents: async function* () {
+        return {};
+      }
+    };
+    const persistentChatRuntime: PersistentChatRuntime = {
+      runTurn() {
+        return {
+          result: Promise.reject(new PersistentRuntimeUnavailableError("failed to initialize in-process app-server client: Operation not permitted")),
+          kill() {}
+        };
+      },
+      release() {},
+      async shutdown() {}
+    };
+    const executor = createProfileAdapterTurnExecutor({ processEnvironment: { PATH: process.env.PATH ?? "" }, persistentChatRuntime });
+    const handle = await executor.run({
+      backendId: "codex",
+      session: { sessionId: "session-1", workspacePath: process.cwd(), config: { profile } },
+      turn: { prompt: "hello" },
+      adapters
+    });
+
+    await expect(handle.result).resolves.toMatchObject({
+      status: "failed",
+      error: {
+        code: "CLI_PERMISSION_DENIED",
+        phase: "spawn",
+        fallbackAttempted: true,
+        fallbackCode: "CLI_PERMISSION_DENIED"
+      }
+    });
+    const result = await handle.result;
+    expect(result.error?.message).toContain("app-server");
   });
 
   it("registers backend boundaries without advertising unimplemented native SDK or ACP transports", () => {
@@ -93,7 +136,7 @@ describe("Agent Backend migration seam", () => {
         cancel: vi.fn(async () => undefined)
       })
     });
-    const session = await registry.forProfile(profile).openSession({ sessionId: "session-1", workspacePath: "/tmp/project", config: { profile } });
+    const session = await registry.forProfile(profile).openSession({ sessionId: "session-1", workspacePath: process.cwd(), config: { profile } });
     const handle = await session.runTurn({ prompt: "Review this project" });
     const events = [];
     for await (const event of handle.events) events.push(event);

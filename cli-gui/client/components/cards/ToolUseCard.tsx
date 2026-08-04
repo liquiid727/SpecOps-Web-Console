@@ -1,4 +1,5 @@
 import { useI18n } from "../../i18n";
+import { Icon } from "../ui/Icon";
 import { formatCardTime } from "./CardParser";
 import type { StructuredCardData } from "./types";
 
@@ -9,6 +10,7 @@ export function ToolUseCard({ card }: { card: StructuredCardData }) {
   const exitCode = typeof card.metadata?.exitCode === "number" ? card.metadata.exitCode : undefined;
   return <article className="transcript-event card-tool-use" data-card-type="tool-use">
     <header>
+      <Icon name="terminal" className="card-tool-icon" />
       <span className="card-badge">{tool}</span>
       {exitCode !== undefined && <span className={`card-exit-badge ${exitCode === 0 ? "success" : "failure"}`}>exit {exitCode}</span>}
       <time>{formatCardTime(card.timestamp)}</time>

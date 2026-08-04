@@ -15,7 +15,7 @@ interface SessionLifecycleStatusBarProps {
  */
 export function SessionLifecycleStatusBar({ status, interactionMode }: SessionLifecycleStatusBarProps) {
   const { t } = useI18n();
-  if (status === "idle") return null;
+  if (status === "idle" || status === "running") return null;
 
   const labels: Record<Exclude<SessionLifecycleStatus, "idle">, string> = {
     starting: t("lifecycleSessionStarting"),

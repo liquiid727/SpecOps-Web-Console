@@ -1,7 +1,7 @@
 import { useId, useRef, type ButtonHTMLAttributes, type KeyboardEvent, type ReactNode } from "react";
 import { cn } from "../../lib/utils";
 
-export interface TabItem<T extends string> { id: T; label: ReactNode; disabled?: boolean; panelId?: string; buttonProps?: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children" | "disabled" | "onClick" | "role">; }
+export interface TabItem<T extends string> { id: T; label: ReactNode; disabled?: boolean; panelId?: string; buttonProps?: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children" | "disabled" | "onClick" | "role"> & { [key: `data-${string}`]: string | undefined }; }
 
 export function Tabs<T extends string>({ ariaLabel, className, itemClassName, items, onChange, unstyled = false, value }: { ariaLabel: string; className?: string; itemClassName?: string | ((item: TabItem<T>) => string | undefined); items: readonly TabItem<T>[]; onChange: (value: T) => void; unstyled?: boolean; value: T }) {
   const generatedId = useId();

@@ -1,7 +1,7 @@
 import type { CliProfileCapabilities } from "./capabilities.js";
 import type { BackendSessionRef, CliProfile } from "./state.js";
 import type { TranscriptStructuredComponent } from "./transcript.js";
-import type { AgentEffect, RoutingFailure, RoutingFailureClass } from "./execution-attempt.js";
+import type { AgentEffect, RoutingFailure, RoutingFailureClass, SideEffectObservation } from "./execution-attempt.js";
 
 export type ApprovalDecision = "allow" | "deny";
 
@@ -84,6 +84,8 @@ export interface AgentTurnResult {
   nativeSessionId?: string;
   usage?: { inputTokens?: number; outputTokens?: number };
   error?: AgentTurnError;
+  /** Collected by the orchestrator from persisted tool/file events. */
+  sideEffect?: SideEffectObservation;
 }
 
 export interface AgentTurnHandle {

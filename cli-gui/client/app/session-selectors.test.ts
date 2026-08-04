@@ -12,6 +12,13 @@ describe("session selectors", () => {
     expect(groupSessions(sessions, [workspace], "project", "completed")[0].sessions.map((session) => session.id)).toEqual(["done"]);
   });
 
+  it("keeps empty workspaces available as project groups", () => {
+    const emptyWorkspace: WorkspaceV2 = { id: "empty-workspace", name: "New Project", path: "/tmp/new-project", createdAt: "2026-01-02T00:00:00Z" };
+    const groups = groupSessions([makeSession("active", "active", "2026-07-20T10:00:00Z")], [workspace, emptyWorkspace], "project", "active");
+    expect(groups.map((group) => group.workspace?.id)).toEqual([workspace.id, emptyWorkspace.id]);
+    expect(groups[1].sessions).toEqual([]);
+  });
+
   it("creates manual pinned sections and time buckets", () => {
     const now = new Date("2026-07-20T12:00:00Z");
     expect(groupSessions([makeSession("p", "active", "2026-07-20T09:00:00Z", true), makeSession("u", "active", "2026-07-18T09:00:00Z")], [workspace], "manual", "active").map((group) => group.labelKey)).toEqual(["pinned", "unpinned"]);

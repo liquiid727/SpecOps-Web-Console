@@ -1,0 +1,72 @@
+/*
+ * BubRail Theme — "编码：漏洞轨道"
+ * A dark cyberpunk-inspired workspace evoking vulnerability scanning rails.
+ * Visual direction: deep indigo-black canvas, violet-magenta accent, neon rail lines.
+ */
+:root[data-theme="bubrail"],
+:root.theme-bubrail {
+  color-scheme: dark;
+
+  --bg-page: #0a0a12;
+  --bg-panel: #13131f;
+  --bg-sidebar: #0e0e18;
+  --bg-hover: #1a1a2a;
+  --bg-active: #222236;
+  --bg-info: #141024;
+  --border: #262640;
+  --border-subtle: #1e1e32;
+  --border-strong: #3a3a5c;
+  --text: #eae8f5;
+  --text-secondary: #9d99b8;
+  --text-tertiary: #6b6788;
+  --text-quaternary: #4a4666;
+  --accent: #a855f7;
+  --accent-hover: #c084fc;
+  --accent-contrast: #0f0518;
+  --blue: #818cf8;
+  --green: #34d399;
+  --green-bg: #0d1f1a;
+  --red: #fb7185;
+  --yellow: #fbbf24;
+  --running: #a855f7;
+  --starting: #fbbf24;
+  --stopped: #6b6788;
+  --error: #fb7185;
+  --warning: #fbbf24;
+  --focus: #a855f7;
+  --danger: #fb7185;
+  --danger-muted: rgba(251, 113, 133, .14);
+  --danger-border: rgba(251, 113, 133, .38);
+  --danger-text: #fda4af;
+  --success-muted: rgba(52, 211, 153, .14);
+  --success-border: rgba(52, 211, 153, .36);
+  --warning-muted: rgba(251, 191, 36, .12);
+  --warning-border: rgba(251, 191, 36, .34);
+  --info-muted: rgba(129, 140, 248, .14);
+  --info-border: rgba(129, 140, 248, .34);
+  --info-icon: #a5b4fc;
+  --diff-add-bg: rgba(52, 211, 153, .12);
+  --diff-add-text: #6ee7b7;
+  --diff-del-bg: rgba(251, 113, 133, .13);
+  --diff-del-text: #fda4af;
+  --diff-header-bg: rgba(168, 85, 247, .14);
+  --diff-header-text: #d8b4fe;
+  --bubble-user-bg: #171228;
+  --bubble-user-border: #3b2d63;
+
+  --canvas: var(--bg-page);
+  --rail: #08080e;
+  --navigator: var(--bg-sidebar);
+  --surface: var(--bg-panel);
+  --surface-raised: #1a1a2c;
+  --surface-hover: var(--bg-hover);
+  --surface-selected: var(--bg-active);
+  --terminal: #0b0b14;
+  --overlay: #12121e;
+  --muted: var(--text-secondary);
+  --faint: var(--text-tertiary);
+  --neo-shadow: 0 4px 16px rgba(0, 0, 0, .6);
+  --shadow-lg: 0 16px 60px rgba(0, 0, 0, .6);
+  --shadow-pop: 0 16px 48px rgba(0, 0, 0, .65);
+  --shadow-drawer: 0 28px 100px rgba(0, 0, 0, .7);
+}

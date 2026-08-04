@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import type { CliProfile, CliProfileCapabilities, Workspace } from "../../shared/types";
+import type { ModelProviderSummary } from "../../shared/model-provider";
 import type { ModelDeploymentSummary } from "../../shared/model-deployment";
 import type { PriorityModelRoute, ResolvedRoute } from "../../shared/model-route";
 import { useClientRuntime } from "../runtime/client-runtime";
@@ -16,7 +17,7 @@ interface NewSessionDialogProps {
   readonly: boolean;
   workspaces: Workspace[];
   onClose: () => void;
-  onCreate: (input: { name: string; workspaceId: string; profileId: string; interactionMode: "chat" | "terminal"; modelRouteId?: string }) => Promise<void>;
+  onCreate: (input: { name: string; workspaceId: string; profileId: string; interactionMode: "chat" | "terminal"; modelRouteId?: string; providerId?: string }) => Promise<void>;
   onOpenSettings: () => void;
   /** 新建入口默认 terminal（终端模式）；用户可手动改选 chat */
   defaultMode?: "chat" | "terminal";
@@ -28,11 +29,12 @@ export function NewSessionDialog({ profiles, readonly, workspaces, onClose, onCr
   const { t } = useI18n();
   const runtime = useClientRuntime();
   const capabilityLoader = loadCapabilities ?? runtime.engines.profileCapabilities;
-  const [form, setForm] = useState({ name: "", workspaceId: workspaces[0]?.id ?? "", profileId: profiles[0]?.id ?? "" });
+  const [form, setForm] = useState({ name: "", workspaceId: workspaces[0]?.id ?? "", profileId: profiles[0]?.id ?? "", providerId: "" });
   const [mode, setMode] = useState<"chat" | "terminal">(CHAT_ENABLED ? defaultMode : "terminal");
   const [capabilities, setCapabilities] = useState<CliProfileCapabilities>();
   const [routes, setRoutes] = useState<PriorityModelRoute[]>([]);
   const [deployments, setDeployments] = useState<ModelDeploymentSummary[]>([]);
+  const [providers, setProviders] = useState<ModelProviderSummary[]>([]);
   const [routeId, setRouteId] = useState("");
   const [routePreview, setRoutePreview] = useState<ResolvedRoute>();
   const [routeLoading, setRouteLoading] = useState(false);
@@ -50,6 +52,25 @@ export function NewSessionDialog({ profiles, readonly, workspaces, onClose, onCr
     capabilityLoader(form.profileId, controller.signal).then((next) => { if (!controller.signal.aborted) setCapabilities(next); }).catch(() => undefined);
     return () => controller.abort();
   }, [capabilityLoader, form.profileId]);
+
+  useEffect(() => {
+    let active = true;
+    void runtime.routing.providers().then((response) => {
+      if (active) setProviders(response.providers);
+    }).catch(() => {
+      if (active) setProviders([]);
+    });
+    return () => { active = false; };
+  }, [runtime.routing]);
+
+  const selectedProfile = profiles.find((profile) => profile.id === form.profileId);
+  const providerOptions = providers
+    .filter((provider) => provider.enabled && provider.configured && selectedProfile && providerMatchesProfile(provider, selectedProfile.adapterId))
+    .map((provider) => ({ value: provider.id, label: provider.name }));
+
+  useEffect(() => {
+    if (form.providerId && !providerOptions.some((option) => option.value === form.providerId)) setForm((current) => ({ ...current, providerId: "" }));
+  }, [form.providerId, providerOptions]);
 
   useEffect(() => {
     if (effectiveMode !== "chat") {
@@ -86,7 +107,7 @@ export function NewSessionDialog({ profiles, readonly, workspaces, onClose, onCr
     const workspaceName = workspaces.find((item) => item.id === form.workspaceId)?.name;
     const name = form.name.trim() || generateSessionName(workspaceName || t("newCliSession"));
     setSubmitting(true);
-    try { await onCreate({ ...form, name, interactionMode: effectiveMode, ...(routeId ? { modelRouteId: routeId } : {}) }); } finally { setSubmitting(false); }
+    try { await onCreate({ name, workspaceId: form.workspaceId, profileId: form.profileId, interactionMode: effectiveMode, ...(form.providerId ? { providerId: form.providerId } : {}), ...(routeId ? { modelRouteId: routeId } : {}) }); } finally { setSubmitting(false); }
   }
 
   return <Overlay title={t("newCliSession")} description={t("newSessionDescription")} onClose={onClose}>
@@ -96,6 +117,8 @@ export function NewSessionDialog({ profiles, readonly, workspaces, onClose, onCr
         <label><span>{t("workspace")}</span><Select ariaLabel={t("workspace")} value={form.workspaceId} options={workspaces.map((workspace) => ({ value: workspace.id, label: workspace.name }))} onChange={(workspaceId) => setForm({ ...form, workspaceId })} /></label>
         <label><span>{t("cliProfile")}</span><Select ariaLabel={t("cliProfile")} value={form.profileId} options={profiles.map((profile) => ({ value: profile.id, label: profile.name }))} onChange={(profileId) => setForm({ ...form, profileId })} /></label>
       </div>
+      <label className="session-provider-field"><span>{t("routingProviderSelection")}</span><Select ariaLabel={t("routingProviderSelection")} value={form.providerId || "inherit"} options={[{ value: "inherit", label: t("routingProviderInherit") }, ...providerOptions]} onChange={(providerId) => setForm({ ...form, providerId: providerId === "inherit" ? "" : providerId })} /></label>
+      {!providerOptions.length && <small className="interaction-mode-locked">{t("routingProviderUnavailable")}</small>}
       <label className="interaction-mode-field"><span>{t("interactionModeLabel")}</span><Select ariaLabel={t("interactionModeLabel")} value={effectiveMode} disabled={chatLocked} options={[{ value: "chat", label: t("interactionModeChat") }, { value: "terminal", label: t("interactionModeTerminal") }]} onChange={(next) => setMode(next as "chat" | "terminal")} /></label>
       {chatLocked && <small className="interaction-mode-locked">{CHAT_ENABLED ? t("interactionModeLocked") : t("chatComingSoonHint")}</small>}
       {effectiveMode === "chat" && <RoutePreview routes={routes} deployments={deployments} routeId={routeId} preview={routePreview} loading={routeLoading} onChange={setRouteId} />}
@@ -112,6 +135,11 @@ function generateSessionName(prefix: string) {
   return `${prefix} ${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
 }
 
+function providerMatchesProfile(provider: ModelProviderSummary, adapterId: CliProfile["adapterId"]) {
+  if (provider.protocol === "openai-compatible") return adapterId === "codex";
+  return adapterId === "claude-code" || adapterId === "kimi" || adapterId === "glm";
+}
+
 function LaunchPreview({ workspace, profile }: { workspace?: Workspace; profile?: CliProfile }) {
   const { t } = useI18n();
   const command = profile ? [profile.command, ...profile.args].map((part) => JSON.stringify(part)).join(" ") : "—";
@@ -121,7 +149,7 @@ function LaunchPreview({ workspace, profile }: { workspace?: Workspace; profile?
 function RoutePreview({ routes, deployments, routeId, preview, loading, onChange }: { routes: PriorityModelRoute[]; deployments: ModelDeploymentSummary[]; routeId: string; preview?: ResolvedRoute; loading: boolean; onChange: (routeId: string) => void }) {
   const { t } = useI18n();
   const preferred = deployments.find((deployment) => deployment.id === preview?.selectedDeploymentId);
-  const source = preview?.sourceTrace.findLast((entry) => entry.field === "routeId")?.source;
+  const source = [...(preview?.sourceTrace ?? [])].reverse().find((entry) => entry.field === "routeId")?.source;
   return <section className="new-session-route" data-route-source={source ?? "project"} aria-label={t("routeControlLabel")}>
     <label><span>{t("routeControlLabel")}</span><Select ariaLabel={t("routeControlLabel")} value={routeId || "inherit"} options={[{ value: "inherit", label: t("routeInherit") }, ...routes.filter((route) => route.enabled && !route.archivedAt).map((route) => ({ value: route.id, label: route.name }))]} onChange={(value) => onChange(value === "inherit" ? "" : value)} /></label>
     <div className="new-session-route-summary" aria-live="polite">
