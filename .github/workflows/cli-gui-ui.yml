@@ -36,7 +36,7 @@ jobs:
           cache-dependency-path: cli-gui/package-lock.json
       - run: npm ci
       - run: npm run ui:check
-      - run: npm run test
+      - run: npm run test -- --no-file-parallelism
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e:playwright
