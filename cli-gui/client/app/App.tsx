@@ -121,7 +121,7 @@ export function App() {
       // chat 功能开关关闭：无论入口传入什么，一律降级 terminal（console-gaps SPEC §1）
       // 优先使用最后使用模型（issue-055）
       const lastModel = preferences.modelPreferences.lastUsedModel[input.profileId] || undefined;
-      const result = await runtime.sessions.createSession({ ...input, interactionMode: CHAT_ENABLED ? input.interactionMode ?? "terminal" : "terminal", start: true, confirmed: true, ...(lastModel ? { launchConfig: { model: lastModel } } : {}) });
+      const result = await runtime.sessions.createSession({ ...input, interactionMode: CHAT_ENABLED ? input.interactionMode ?? "chat" : "terminal", start: true, confirmed: true, ...(lastModel ? { launchConfig: { model: lastModel } } : {}) });
       // profile 不支持 headless → 服务端降级 terminal，一次性说明（api-spec §2.6 / frontend-spec 降级说明）
       if (result.interactionModeDowngraded) feedback.warning({ title: t("sessionDowngradedToTerminal"), description: result.downgradeReason ? t(DOWNGRADE_REASON_KEY[result.downgradeReason]) : undefined });
       setActiveSessionId(result.session?.id ?? result.id);
@@ -131,29 +131,26 @@ export function App() {
     }, true, false);
   }
 
-  // Quest Home 一次提交创建流：默认创建 terminal 会话，启动 PTY 后等待 CLI 就绪再写入初始输入
+  // Quest Home 一次提交创建流：Chat-first；不支持 headless 的 profile 由服务端显式降级 terminal
   // 创建失败直接 reject：composer 保留输入并提示错误码文案；创建成功但首轮失败仍进入会话（可在会话内重发）
   const quickCreateSession = useCallback(async (input: { content: string; workspaceId: string; profileId: string; model?: string }) => {
     const name = input.content.replace(/\s+/g, " ").trim().slice(0, 48) || t("newCliSession");
     // 模型优先级：本次显式选择 > 最后使用模型（issue-055）；显式选择同时写回记忆
     const model = input.model || preferences.modelPreferences.lastUsedModel[input.profileId] || undefined;
     if (input.model) updatePreferences({ modelPreferences: { lastUsedModel: { ...preferences.modelPreferences.lastUsedModel, [input.profileId]: input.model } } });
-    const result = await runtime.sessions.createSession({ name, workspaceId: input.workspaceId, profileId: input.profileId, interactionMode: "terminal", start: true, confirmed: true, ...(model ? { launchConfig: { model } } : {}) });
+    const result = await runtime.sessions.createSession({ name, workspaceId: input.workspaceId, profileId: input.profileId, interactionMode: CHAT_ENABLED ? "chat" : "terminal", start: true, confirmed: true, ...(model ? { launchConfig: { model } } : {}) });
     if (result.interactionModeDowngraded) feedback.warning({ title: t("sessionDowngradedToTerminal"), description: result.downgradeReason ? t(DOWNGRADE_REASON_KEY[result.downgradeReason]) : undefined });
     const sessionId = result.session?.id ?? result.id;
-    // 先导航到新会话（用户立即看到终端启动过程）
-    setActiveSessionId(sessionId);
-    setQuestDraftActive(false);
-    setQuestDraftWorkspaceId(undefined);
-    updatePreferences({ currentView: "chat" });
-    await refresh();
-    // 等待 CLI 初始化就绪（加载 DB、渲染 TUI），再将初始输入写入 PTY
-    await new Promise((resolve) => setTimeout(resolve, 3000));
     try {
       await runtime.sessions.sendMessage(sessionId, { clientMessageId: crypto.randomUUID(), content: input.content, startIfStopped: true, confirmedStart: true });
     } catch (cause) {
       feedback.error(toFeedbackError(cause, t));
     }
+    setActiveSessionId(sessionId);
+    setQuestDraftActive(false);
+    setQuestDraftWorkspaceId(undefined);
+    updatePreferences({ currentView: "chat" });
+    await refresh();
   }, [feedback, preferences.modelPreferences.lastUsedModel, refresh, runtime.sessions, setQuestDraftActive, setQuestDraftWorkspaceId, t, updatePreferences]);
 
   async function resumeSession(id: string) {
@@ -218,7 +215,7 @@ export function App() {
 
   const showRightPanel = preferences.currentView === "quest-home" || preferences.currentView === "chat";
   // 单一 header 行（参考 Qoder 桌面壳）：chat 视图的会话操作上移到标题栏，ChatView 不再渲染自己的头部
-  const centerView = activeSession ? preferences.centerViewBySession[activeSession.id] ?? "terminal" : "terminal";
+  const centerView = activeSession ? preferences.centerViewBySession[activeSession.id] ?? "transcript" : "transcript";
   const sessionStatus = activeSession ? activeSession.runtimeStatus ?? activeSession.status ?? "stopped" : "stopped";
   const sessionRunning = sessionStatus === "running" || sessionStatus === "starting";
   // terminal 会话持有归因捕获的 resume 凭据时，恢复将续上上一次 CLI 会话而非全新启动
@@ -243,7 +240,7 @@ export function App() {
       </div>}
     </TitleBar>
     <main className={`qoder-body ${preferences.navigatorOpen ? "sidebar-open" : ""} ${showRightPanel && preferences.inspectorOpen ? "right-open" : ""}`}>
-      {preferences.navigatorOpen && <Sidebar questGroups={questGroups} chatGroups={chatGroups} workspaces={state.workspaces} activeSessionId={activeSessionId} activeTurns={activeTurns} currentView={preferences.currentView} grouping={preferences.sessionGrouping} filter={preferences.sessionFilter} readonly={readonly} openFolderBusy={pickerBusy} questDraftActive={questDraftActive} questDraftWorkspaceId={questDraftWorkspaceId} onViewChange={handleViewChange} onNewQuest={startQuestDraft} onSelectSession={selectSession} onGroupingChange={(sessionGrouping) => updatePreferences({ sessionGrouping })} onFilterChange={(sessionFilter) => updatePreferences({ sessionFilter })} onReorder={reorderSessions} onOpenFolder={openFolder} onOpenSettings={() => setOverlay("settings")} onRename={(session, newName) => void runAction(() => runtime.sessions.renameSession(session.id, newName, session.revision ?? 1), false)} onPin={(session) => void runAction(() => runtime.sessions.pinSession(session.id, !session.pinned, session.revision ?? 1), false)} onComplete={(session) => void runAction(() => session.organizationStatus === "completed" ? runtime.sessions.restoreSession(session.id, session.revision ?? 1) : runtime.sessions.completeSession(session.id, session.revision ?? 1, true), false)} onArchive={(session) => void runAction(() => session.organizationStatus === "archived" ? runtime.sessions.restoreSession(session.id, session.revision ?? 1) : runtime.sessions.archiveSession(session.id, session.revision ?? 1, true), false)} onFork={(session) => void runAction(async () => { const fork = await runtime.sessions.forkSession(session.id, session.revision ?? 1); setActiveSessionId(fork.session.id); }, false)} onDelete={(session) => void runAction(() => runtime.sessions.deleteSession(session.id), false)} onClose={() => updatePreferences({ navigatorOpen: false })} />}
+      {preferences.navigatorOpen && <Sidebar questGroups={questGroups} chatGroups={chatGroups} workspaces={state.workspaces} activeSessionId={activeSessionId} activeTurns={activeTurns} currentView={preferences.currentView} grouping={preferences.sessionGrouping} filter={preferences.sessionFilter} readonly={readonly} openFolderBusy={pickerBusy} questDraftActive={questDraftActive} questDraftWorkspaceId={questDraftWorkspaceId} onViewChange={handleViewChange} onNewQuest={startQuestDraft} onSelectSession={selectSession} onGroupingChange={(sessionGrouping) => updatePreferences({ sessionGrouping })} onFilterChange={(sessionFilter) => updatePreferences({ sessionFilter })} onReorder={reorderSessions} onOpenFolder={openFolder} onOpenSettings={() => setOverlay("settings")} onRename={(session, newName) => void runAction(() => runtime.sessions.renameSession(session.id, newName, session.revision ?? 1), false)} onPin={(session) => void runAction(() => runtime.sessions.pinSession(session.id, !session.pinned, session.revision ?? 1), false)} onComplete={(session) => void runAction(() => session.organizationStatus === "completed" ? runtime.sessions.restoreSession(session.id, session.revision ?? 1) : runtime.sessions.completeSession(session.id, session.revision ?? 1, true), false)} onArchive={(session) => { setActiveSessionId(session.id); if (session.organizationStatus === "archived") void runAction(() => runtime.sessions.restoreSession(session.id, session.revision ?? 1), false); else setOverlay("archive-session"); }} onFork={(session) => void runAction(async () => { const fork = await runtime.sessions.forkSession(session.id, session.revision ?? 1); setActiveSessionId(fork.session.id); }, false)} onDelete={(session) => void runAction(() => runtime.sessions.deleteSession(session.id), false)} onClose={() => updatePreferences({ navigatorOpen: false })} />}
       {preferences.navigatorOpen && <Button unstyled className="drawer-backdrop navigator-backdrop" aria-label={t("closeSessionList")} onClick={() => updatePreferences({ navigatorOpen: false })} />}
       <div className="qoder-main-column">
         <MainArea currentView={preferences.currentView} activeSession={activeSession} activeWorkspace={activeWorkspace} activeProfile={activeProfile} workspaces={state.workspaces} profiles={state.profiles} sessions={state.sessions} onSelectSession={selectSession} readonly={readonly} centerView={centerView} questDraftMode={questDraftActive} questDraftWorkspaceId={questDraftWorkspaceId} onCenterViewChange={(view) => activeSession && updatePreferences({ centerViewBySession: { ...preferences.centerViewBySession, [activeSession.id]: view } })} onLaunchConfigChange={updateLaunchConfig} onNewSession={() => { setNewSessionDefaultMode("terminal"); setOverlay("new-session"); }} onSendPrompt={sendPrompt} onQuickCreate={quickCreateSession} onStatus={refreshStatus} onOpenSettings={() => handleViewChange("settings")} onResume={resumeSession} onStop={stopSession} onTurnActivity={reportTurnActivity} workMode={preferences.composerWorkMode} onWorkModeChange={(mode) => updatePreferences({ composerWorkMode: mode })} />

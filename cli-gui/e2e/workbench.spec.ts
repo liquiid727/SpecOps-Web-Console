@@ -1,8 +1,21 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 const NAVIGATOR = "#session-navigator";
 const INSPECTOR = "#session-inspector";
 const SESSION_ROW = ":is(.quest-row-main, .chat-row)";
+const NEW_QUEST = "button.new-quest-button";
+
+async function dismissSplash(page: Page) {
+  const splash = page.locator(".splash-root");
+  await expect(splash).toBeVisible();
+  await page.locator(".splash-enter-banner").click();
+  await expect(splash).toHaveCount(0);
+}
+
+async function openWorkbench(page: Page) {
+  await page.goto("/");
+  await dismissSplash(page);
+}
 
 // 产品默认语言为中文（i18n.tsx QA 调节）；E2E 断言基于英文 label，显式预置英文偏好。
 test.beforeEach(async ({ page }) => {
@@ -12,7 +25,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("loads the disposable workbench shell", async ({ page }) => {
-  await page.goto("/");
+  await openWorkbench(page);
   await expect(page.locator(".utility-rail")).toHaveCount(0);
   await expect(page.locator(NAVIGATOR)).toBeVisible();
   await expect(page.locator(NAVIGATOR).getByText("Quests", { exact: true })).toBeVisible();
@@ -21,7 +34,7 @@ test("loads the disposable workbench shell", async ({ page }) => {
 
 test("keeps the Qoder desktop shell in one full-height row", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 2048, height: 1024 });
-  await page.goto("/");
+  await openWorkbench(page);
   const sidebar = await page.locator(NAVIGATOR).boundingBox();
   const main = await page.locator(".qoder-main-column").boundingBox();
   expect(sidebar).toMatchObject({ x: 0, y: 0, width: 286, height: 1024 });
@@ -47,7 +60,7 @@ test("keeps the Qoder desktop shell in one full-height row", async ({ page }, te
 });
 
 test("supports the accessible session context menu", async ({ page }) => {
-  await page.goto("/");
+  await openWorkbench(page);
   const row = page.locator(`${NAVIGATOR} ${SESSION_ROW}`).filter({ hasText: "Fixture session" }).first();
   await row.click({ button: "right" });
   const menu = page.getByRole("menu", { name: "Session actions" });
@@ -62,7 +75,7 @@ test("supports the accessible session context menu", async ({ page }) => {
 
 test("keeps the navigator usable on a mobile viewport", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
+  await openWorkbench(page);
   const toggle = page.getByRole("button", { name: "Toggle sidebar" });
   await expect(toggle).toHaveAttribute("aria-pressed", "true");
   await toggle.click();
@@ -75,9 +88,10 @@ test("keeps the navigator usable on a mobile viewport", async ({ page }) => {
 test("keeps mobile session controls inside the viewport and drawers focusable", async ({ page }) => {
   for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }]) {
     await page.setViewportSize(viewport);
-    await page.goto("/");
+    await openWorkbench(page);
     await page.evaluate(() => localStorage.clear());
     await page.reload();
+    await dismissSplash(page);
 
     // Activating the fixture session on a narrow viewport closes the navigator; the inspector stays hidden by default.
     await page.locator(SESSION_ROW).filter({ hasText: "Fixture session" }).first().click();
@@ -114,7 +128,7 @@ test("keeps mobile session controls inside the viewport and drawers focusable", 
 
 test("anchors settings to the sidebar on desktop and keeps it full-screen on mobile", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/");
+  await openWorkbench(page);
   await page.getByRole("button", { name: "Open settings" }).click();
 
   const desktopSettings = page.locator(".overlay-panel.drawer-left");
@@ -130,14 +144,16 @@ test("anchors settings to the sidebar on desktop and keeps it full-screen on mob
   await page.getByRole("button", { name: "Open settings" }).click();
   const mobileSettings = page.locator(".overlay-panel.drawer-left");
   await expect(mobileSettings).toBeVisible();
-  const mobileBox = await mobileSettings.boundingBox();
-  expect(mobileBox).toMatchObject({ x: 0, y: 0, width: 390, height: 844 });
+  await expect.poll(async () => {
+    const box = await mobileSettings.boundingBox();
+    return box && { x: Math.round(box.x), y: Math.round(box.y), width: Math.round(box.width), height: Math.round(box.height) };
+  }).toEqual({ x: 0, y: 0, width: 390, height: 844 });
   const pageMetrics = await page.evaluate(() => ({ clientWidth: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth }));
   expect(pageMetrics.scrollWidth).toBeLessThanOrEqual(pageMetrics.clientWidth);
 });
 
 test("runs the disposable session through transcript, terminal, inspector, and picker flows", async ({ page }) => {
-  await page.goto("/");
+  await openWorkbench(page);
   // Activate the fixture session.
   await page.locator(SESSION_ROW).filter({ hasText: "Fixture session" }).first().click();
 
@@ -177,7 +193,7 @@ test("runs the disposable session through transcript, terminal, inspector, and p
   await expect(page.locator(INSPECTOR)).toHaveCount(0);
 
   // Open folder (workspace actions menu → Open folder).
-  await page.getByRole("button", { name: "Workspace actions" }).click();
+  await page.getByRole("button", { name: "Workspace actions", exact: true }).click();
   await page.getByRole("menuitem", { name: "Open folder" }).click();
   await expect(page.locator(".alert")).toHaveCount(0);
 
@@ -190,18 +206,19 @@ test("runs the disposable session through transcript, terminal, inspector, and p
 });
 
 test("persists the appearance theme after reload", async ({ page }) => {
-  await page.goto("/");
+  await openWorkbench(page);
   await page.getByRole("button", { name: "Open settings" }).click();
   await page.getByRole("tab", { name: "Appearance" }).click();
   await page.getByRole("radio", { name: /Classic/ }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "classic");
   await page.reload();
+  await dismissSplash(page);
   await expect(page.locator("html")).toHaveAttribute("data-theme", "classic");
 });
 
 // issue-011：多会话冒烟（2 chat + 1 terminal 并行，内容互不串台；test-spec §4.2）
 test("keeps concurrent chat and terminal sessions isolated (multi-session smoke)", async ({ page }) => {
-  await page.goto("/");
+  await openWorkbench(page);
   await page.evaluate(async () => {
     const state = await (await fetch("/api/state")).json();
     const headers = { "content-type": "application/json", "x-specos-csrf-capability": state.csrfCapability } as Record<string, string>;
@@ -214,6 +231,7 @@ test("keeps concurrent chat and terminal sessions isolated (multi-session smoke)
     if (terminal.status !== 201) throw new Error(`create failed: ${terminal.status}`);
   });
   await page.reload();
+  await dismissSplash(page);
 
   // 终端 fixture 会话与两个 chat 会话同时运行（此前用例可能已把 fixture 会话置为运行中，按需 Resume）
   await page.locator(SESSION_ROW).filter({ hasText: "Fixture session" }).first().click();
@@ -249,9 +267,9 @@ test("keeps concurrent chat and terminal sessions isolated (multi-session smoke)
 
 // issue-015：Quest Home 一次提交创建流 happy path（frontend-spec §2/§6；test-spec §3.7）
 test("creates and runs a chat session from Quest Home in one submit", async ({ page }) => {
-  await page.goto("/");
+  await openWorkbench(page);
   // 偏好已服务端持久化（issue-031）；用 New Quest 按钮显式进入 Quest Home，与真实用户路径一致。
-  await page.getByRole("button", { name: /New Quest/ }).click();
+  await page.locator(NEW_QUEST).click();
   // Quest Home 默认视图：选择支持 headless 的 profile（selector 在 PromptComposer 内）
   await page.locator(".quest-home-input").getByRole("button", { name: "CLI profile" }).click();
   await page.getByRole("option", { name: "Fixture headless" }).click();
@@ -266,8 +284,8 @@ test("creates and runs a chat session from Quest Home in one submit", async ({ p
 
 // issue-015：Quest Home 降级路径（generic profile → 服务端降级 terminal + 一次性说明）
 test("explains the downgrade when creating from Quest Home with a terminal-only profile", async ({ page }) => {
-  await page.goto("/");
-  await page.getByRole("button", { name: /New Quest/ }).click();
+  await openWorkbench(page);
+  await page.locator(NEW_QUEST).click();
   await page.locator(".quest-home-input").getByRole("button", { name: "CLI profile" }).click();
   await page.getByRole("option", { name: "Fixture PTY" }).click();
   const prompt = page.getByRole("textbox", { name: "Prompt" });
@@ -281,8 +299,8 @@ test("explains the downgrade when creating from Quest Home with a terminal-only 
 // issue-017：B 段门禁 E2E 冒烟链路（test-spec §4.2；PRD §9.2）
 // Quest Home 创建 → 多轮 → 取消一轮 → chat Terminal tab 原始输出 → 刷新回放 → 归档
 test("runs the B-gate smoke chain: create, multi-turn, cancel, terminal replay, reload, archive", async ({ page }) => {
-  await page.goto("/");
-  await page.getByRole("button", { name: /New Quest/ }).click();
+  await openWorkbench(page);
+  await page.locator(NEW_QUEST).click();
   await page.locator(".quest-home-input").getByRole("button", { name: "CLI profile" }).click();
   await page.getByRole("option", { name: "Fixture headless" }).click();
   const prompt = page.getByRole("textbox", { name: "Prompt" });
@@ -330,6 +348,7 @@ test("runs the B-gate smoke chain: create, multi-turn, cancel, terminal replay, 
 
   // 刷新回放：transcript 从磁盘重放后依旧完整
   await page.reload();
+  await dismissSplash(page);
   await page.locator(`${NAVIGATOR} ${SESSION_ROW}`).filter({ hasText: "smoke first turn" }).first().click();
   await expect(page.locator(".chat-messages")).toContainText("reply:smoke first turn", { timeout: 15_000 });
   await expect(page.locator(".chat-messages")).toContainText("reply:smoke second turn");

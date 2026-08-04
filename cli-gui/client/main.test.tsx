@@ -183,8 +183,8 @@ describe("CLI GUI workbench", () => {
     });
 
     await vi.waitFor(() => expect(sessionBodies.length).toBeGreaterThan(0));
-    // 默认终端模式：Quest Home 快速创建默认 terminal
-    expect(JSON.parse(sessionBodies[0]).interactionMode).toBe("terminal");
+    // Chat-first（issue-066）：CHAT_ENABLED 时 Quest Home 快速创建默认 chat，不支持时由服务端降级
+    expect(JSON.parse(sessionBodies[0]).interactionMode).toBe("chat");
   });
 
   it("enables the composer for a ready structured chat engine", async () => {
