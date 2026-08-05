@@ -33,6 +33,8 @@ This repository currently contains three main product surfaces:
 - `packages/cli`: CLI scaffolding, validation, bundle install, and workflow entrypoints
 - `spec-web-ui`: catalog, export preview, and bundle composition workbench
 - `test-console`: normalized test-plan and result console
+- `bugrail/`: Code: Bugrail fork of CodeG, pinned as a Git submodule for independent UI/runtime development
+- `cli-gui/`: existing standalone Product AI OS CLI workspace launcher, retained until Bugrail reaches functional parity
 
 It also includes reusable project assets:
 
@@ -121,6 +123,21 @@ npm run dev
 ```
 
 Then open [http://localhost:3000](http://localhost:3000).
+
+### 4. Run Code: Bugrail
+
+Initialize the submodule and start the independent Bugrail web preview:
+
+```bash
+git submodule update --init --recursive bugrail
+pnpm --dir bugrail install --frozen-lockfile
+make bugrail-dev
+```
+
+Then open [http://127.0.0.1:3011](http://127.0.0.1:3011). Override the port
+when needed with `make bugrail-dev BUGRAIL_PORT=3022`. Use
+`make bugrail-test`, `make bugrail-build`, and
+`make bugrail-upstream-status` for the bootstrap verification loop.
 
 ## Repository Shape
 

@@ -8,6 +8,28 @@ Use this file as the only canonical index for epic grouping, release sequencing,
 
 - `SPECOS-001 Repository Modularization`
 
+## Code: Bugrail
+
+### Fork Bootstrap
+
+- `BUGRAIL-001 Fork Bootstrap` - active implementation for the pinned
+  `liquiid727/bugrail` submodule fork of `xintaofei/codeg` `v0.23.2`, including
+  product manifests, independent bundle/data/keyring/update identity, and
+  immutable upstream release discovery; release remains blocked pending full
+  validation and independent evidence.
+
+### Deferred Product Migration
+
+- `BUGRAIL-002 Full UI Identity And Experience` - deferred; no active Feature
+  Spec.
+- `BUGRAIL-003 Runtime And Distribution Compatibility` - deferred; no active
+  Feature Spec.
+- `BUGRAIL-004 Data Migration And Legacy Interop` - deferred; no active Feature
+  Spec for importing or coexisting with existing CodeG/legacy data.
+
+The existing `cli-gui/` product coexists independently. Its legacy `Bugrail`
+theme does not define Code: Bugrail product scope or evidence.
+
 ## CLI GUI
 
 ### MVP01 — Foundation
@@ -81,6 +103,10 @@ Remote Control pre-stage.
 
 ## Dependency Notes
 
+- `BUGRAIL-002` depends on `BUGRAIL-001`
+- `BUGRAIL-003` depends on `BUGRAIL-001` and the accepted product-identity outputs
+  from `BUGRAIL-002`
+- `BUGRAIL-004` depends on `BUGRAIL-003`
 - `CLI-GUI-027` depends on `CLI-GUI-026`
 - `CLI-GUI-028` depends on `CLI-GUI-027`
 - `CLI-GUI-029` depends on `CLI-GUI-026` and `CLI-GUI-028`

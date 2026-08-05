@@ -1,9 +1,12 @@
 .DEFAULT_GOAL := help
 
 CLI_GUI_DIR := cli-gui
+BUGRAIL_DIR := bugrail
+BUGRAIL_PORT ?= 3011
 FRONTEND_URL := http://127.0.0.1:3000
 BACKEND_URL := http://127.0.0.1:3001
 HEALTH_URL := $(BACKEND_URL)/health
+BUGRAIL_URL := http://127.0.0.1:$(BUGRAIL_PORT)
 
 BLUE := \033[1;34m
 CYAN := \033[1;36m
@@ -12,7 +15,7 @@ YELLOW := \033[1;33m
 DIM := \033[2m
 RESET := \033[0m
 
-.PHONY: help dev dev-all dev-frontend dev-backend dev-web frontend backend
+.PHONY: help dev dev-all dev-frontend dev-backend dev-web frontend backend bugrail-dev bugrail-test bugrail-build bugrail-upstream-status
 
 help: ## 显示可用的开发命令
 	@printf "\n$(BLUE)🧚 SpecOS CLI GUI · Development Commands$(RESET)\n"
@@ -25,6 +28,11 @@ help: ## 显示可用的开发命令
 	@printf "  make frontend      → make dev-frontend\n"
 	@printf "  make backend       → make dev-backend\n"
 	@printf "  make dev-web       → make dev-all（兼容旧命令）\n"
+	@printf "\n  $(YELLOW)Code: Bugrail$(RESET)\n"
+	@printf "  $(CYAN)make bugrail-dev$(RESET)              启动 Web 预览 · $(BUGRAIL_URL)\n"
+	@printf "  $(CYAN)make bugrail-test$(RESET)             运行 Bugrail 前端测试\n"
+	@printf "  $(CYAN)make bugrail-build$(RESET)            构建 Bugrail 静态前端\n"
+	@printf "  $(CYAN)make bugrail-upstream-status$(RESET)  检查 CodeG 最新 release tag\n"
 	@printf "\n$(DIM)💡 独立启动时，请分别打开两个终端运行前端和后端命令。$(RESET)\n"
 	@printf "$(DIM)🛑 使用 Ctrl+C 停止当前进程。首次运行请先在 cli-gui 安装依赖。$(RESET)\n\n"
 
@@ -55,3 +63,15 @@ dev-web: dev-all ## 兼容旧的前后端联合启动命令
 frontend: dev-frontend ## 前端快捷别名
 
 backend: dev-backend ## 后端快捷别名
+
+bugrail-dev: ## 启动 Code: Bugrail Web 预览
+	@pnpm --dir $(BUGRAIL_DIR) exec next dev --turbopack --hostname 127.0.0.1 --port $(BUGRAIL_PORT)
+
+bugrail-test: ## 运行 Code: Bugrail 前端测试
+	@pnpm --dir $(BUGRAIL_DIR) test
+
+bugrail-build: ## 构建 Code: Bugrail 静态前端
+	@pnpm --dir $(BUGRAIL_DIR) build
+
+bugrail-upstream-status: ## 检查 CodeG 最新 release tag
+	@pnpm --dir $(BUGRAIL_DIR) upstream:status

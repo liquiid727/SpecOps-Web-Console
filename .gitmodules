@@ -1,0 +1,4 @@
+[submodule "bugrail"]
+	path = bugrail
+	url = https://github.com/liquiid727/bugrail.git
+	branch = main
