@@ -25,12 +25,12 @@
 - UI。
 
 ## Acceptance Criteria
-- [ ] Resolver 不导入 filesystem、repository、CLI、network 或 UI
-- [ ] 全 precedence 组合产生稳定 sourceTrace
-- [ ] 每个 candidate 保留原位置并返回全部 exclusion codes
-- [ ] fixed invalid 不静默改选
-- [ ] no-route 与 no-candidate 语义严格区分
-- [ ] pure unit matrix 全绿
+- [x] Resolver 不导入 filesystem、repository、CLI、network 或 UI
+- [x] 全 precedence 组合产生稳定 sourceTrace
+- [x] 每个 candidate 保留原位置并返回全部 exclusion codes
+- [x] fixed invalid 不静默改选
+- [x] no-route 与 no-candidate 语义严格区分
+- [x] pure unit matrix 全绿
 
 ## Inputs
 - issue-095 contracts、issue-093 summaries、issue-094 legacy resolver
@@ -46,3 +46,7 @@ implementation-agent（backend-agent + unit-test-agent）
 
 ## Gate Impact
 - blocking
+
+## Local loop status
+
+Accepted locally after independent resolver verification. Evidence: `tests/results/cli-gui-030.issue-096.local.json`, `tests/results/cli-gui-030.issue-096.route.raw.json`, and `reviews/CLI-GUI-030-issue-096/qa-report.md`. This does not claim API/preflight, packaged-host, cross-process, real Provider/engine, or browser verification.

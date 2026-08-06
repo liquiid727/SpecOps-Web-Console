@@ -15,7 +15,7 @@ import type {
   TranscriptStructuredComponent,
   TranscriptStructuredComponentValue
 } from "../shared/types.js";
-import type { AgentEffect, RoutingFailure, RoutingFailureClass } from "../shared/execution-attempt.js";
+import { redactSensitiveText, redactSensitiveValue, type AgentEffect, type RoutingFailure, type RoutingFailureClass } from "../shared/execution-attempt.js";
 import { AGENT_EVENT_KINDS } from "../shared/agent-runtime.js";
 import { PersistentRuntimeUnavailableError, type ParsedTurnEvent, type PersistentChatRuntime, type PersistentTurnHandle, type TurnParseResult } from "./ports.js";
 import type { Logger, ProfileAdapterRegistry } from "./ports.js";
@@ -52,7 +52,7 @@ export interface ProfileAdapterTurnExecutorOptions {
 const MAX_BACKEND_STDERR_CHARS = 2_000;
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  return redactSensitiveText(error instanceof Error ? error.message : String(error));
 }
 
 function isPermissionFailure(message: string): boolean {
@@ -73,8 +73,9 @@ function isAgentEffect(value: unknown): value is AgentEffect {
 
 function failureClassForCode(code: string): RoutingFailureClass {
   if (["PROVIDER_RATE_LIMITED", "RATE_LIMITED", "HTTP_429"].includes(code)) return "rate-limited";
-  if (["PROVIDER_UNAVAILABLE", "CONNECTION_FAILED", "HTTP_502", "HTTP_503", "HTTP_504"].includes(code)) return "provider-unavailable";
-  if (["MODEL_TEMPORARILY_UNAVAILABLE", "MODEL_OVERLOADED"].includes(code)) return "model-temporarily-unavailable";
+  if (["PROVIDER_UNAVAILABLE", "HTTP_502", "HTTP_503", "HTTP_504"].includes(code)) return "provider-unavailable";
+  if (["CONNECTION_FAILED", "CONNECTION_REFUSED", "NETWORK_ERROR"].includes(code)) return "connection";
+  if (["MODEL_TEMPORARILY_UNAVAILABLE", "MODEL_OVERLOADED", "CAPACITY_EXCEEDED", "TEMPORARY_CAPACITY"].includes(code)) return "model-temporarily-unavailable";
   if (["TURN_TIMEOUT", "REQUEST_TIMEOUT"].includes(code)) return "timeout";
   if (["CLI_PERMISSION_DENIED", "APPROVAL_DENIED"].includes(code)) return code === "APPROVAL_DENIED" ? "approval-denied" : "policy";
   if (["PROVIDER_SECRET_MISSING", "PROVIDER_CREDENTIAL_MISSING", "SECRET_STORE_UNAVAILABLE"].includes(code)) return "secret-missing";
@@ -87,11 +88,11 @@ function failureClassForCode(code: string): RoutingFailureClass {
 
 export function classifyAgentTurnFailure(error: AgentTurnError | undefined): RoutingFailure | undefined {
   if (!error) return undefined;
-  const className = error.failureClass ?? failureClassForCode(error.code);
+  const className = failureClassForCode(error.code);
   return {
     code: error.code,
     class: className,
-    message: error.message,
+    message: redactSensitiveText(error.message),
     phase: error.phase,
     fallbackEligible: ["startup", "connection", "timeout", "rate-limited", "provider-unavailable", "model-temporarily-unavailable"].includes(className)
   };
@@ -109,7 +110,7 @@ function classifyPersistentFailure(error: unknown): AgentTurnError {
 function withFallbackFailure(initial: AgentTurnError, fallback: AgentTurnError): AgentTurnError {
   return {
     ...fallback,
-    message: `App-server failed (${initial.code}): ${initial.message}\nFallback CLI failed (${fallback.code}): ${fallback.message}`,
+    message: redactSensitiveText(`App-server failed (${initial.code}): ${initial.message}\nFallback CLI failed (${fallback.code}): ${fallback.message}`),
     fallbackAttempted: true,
     fallbackCode: fallback.code
   };
@@ -171,7 +172,7 @@ export function createProfileAdapterTurnExecutor(options: ProfileAdapterTurnExec
             parseResult = next.value ?? {};
           } catch (error) {
             parseFailure = error;
-            queue.push({ kind: "diagnostic", occurredAt: now(), text: error instanceof Error ? error.message : String(error), metadata: { code: "PARSER_FAILED" } });
+            queue.push({ kind: "diagnostic", occurredAt: now(), text: errorMessage(error), metadata: { code: "PARSER_FAILED" } });
           }
           if (parseResult.usage) {
             queue.push({
@@ -194,7 +195,7 @@ export function createProfileAdapterTurnExecutor(options: ProfileAdapterTurnExec
             const failure = classifySpawnFailure(stderrSummary.trim() || `Turn failed with exit code ${outcome.exitCode}.`);
             resolveResult({ status: "failed", error: fallbackFailure ? withFallbackFailure(fallbackFailure, failure) : failure });
           } else if (parseFailure !== undefined) {
-            const failure: AgentTurnError = { code: "TURN_FAILED", message: parseFailure instanceof Error ? parseFailure.message : String(parseFailure), phase: "parse" };
+            const failure: AgentTurnError = { code: "TURN_FAILED", message: errorMessage(parseFailure), phase: "parse" };
             resolveResult({ status: "failed", error: fallbackFailure ? withFallbackFailure(fallbackFailure, failure) : failure });
           } else {
             resolveResult({ status: "completed", nativeSessionId: parseResult.resumeToken, usage: parseResult.usage });
@@ -252,7 +253,7 @@ export function createProfileAdapterTurnExecutor(options: ProfileAdapterTurnExec
         }).catch(async (error) => {
           if (error instanceof PersistentRuntimeUnavailableError) {
             const initialFailure = classifyPersistentFailure(error);
-            options.logger?.info("Persistent backend unavailable; falling back to adapter spawn", { sessionId: session.sessionId, reason: error.message });
+            options.logger?.info("Persistent backend unavailable; falling back to adapter spawn", { sessionId: session.sessionId, reason: errorMessage(error) });
             try {
               await startSpawn(initialFailure);
             } catch (fallbackError) {
@@ -471,9 +472,9 @@ export function normalizeVendorEvent(input: unknown, backendId: string, now = ()
   return {
     kind: "diagnostic",
     occurredAt,
-    text: safePreview(input),
+    text: redactSensitiveText(safePreview(input)),
     metadata: { ...metadata, code: "UNKNOWN_VENDOR_EVENT" },
-    component: { type: "diagnostic", title: vendorType ?? "Unknown vendor event", text: safePreview(input), data: componentData(record ?? input) }
+    component: { type: "diagnostic", title: redactSensitiveText(vendorType ?? "Unknown vendor event"), text: redactSensitiveText(safePreview(input)), data: componentData(record ?? input) }
   };
 }
 
@@ -507,10 +508,11 @@ function readEventText(record: Record<string, unknown> | undefined): string | un
   if (!record) return undefined;
   for (const key of ["text", "message", "command", "path", "name", "tool", "raw"]) {
     const value = readString(record, key);
-    if (value) return value;
+    if (value) return redactSensitiveText(value);
   }
   const delta = asRecord(record.delta);
-  return readString(delta, "text");
+  const text = readString(delta, "text");
+  return text ? redactSensitiveText(text) : undefined;
 }
 
 function readStructuredComponent(value: unknown): TranscriptStructuredComponent | undefined {
@@ -520,8 +522,8 @@ function readStructuredComponent(value: unknown): TranscriptStructuredComponent 
   const data = componentData(record?.data);
   return {
     type: type as TranscriptStructuredComponent["type"],
-    ...(readString(record, "title") ? { title: readString(record, "title") } : {}),
-    ...(readString(record, "text") ? { text: readString(record, "text") } : {}),
+    ...(readString(record, "title") ? { title: redactSensitiveText(readString(record, "title")!) } : {}),
+    ...(readString(record, "text") ? { text: redactSensitiveText(readString(record, "text")!) } : {}),
     ...(readString(record, "language") ? { language: readString(record, "language") } : {}),
     ...(readString(record, "status") ? { status: readString(record, "status") } : {}),
     ...(data ? { data } : {})
@@ -600,33 +602,35 @@ class AsyncEventQueue<T> implements AsyncIterable<T> {
 
 function parsedEventToAgentEvent(event: ParsedTurnEvent): AgentEvent {
   const metadata = compactTranscriptMetadata(event.metadata);
+  const text = redactSensitiveText(event.raw);
+  const component = redactSensitiveValue(event.component) as AgentEvent["component"];
   if (event.source) metadata.source = event.source;
   switch (event.kind) {
     case "assistant_message":
-      return { kind: "assistant_message", occurredAt: now(), text: event.raw, metadata, ...(event.effect ? { effect: event.effect } : {}), component: event.component };
+      return { kind: "assistant_message", occurredAt: now(), text, metadata, ...(event.effect ? { effect: event.effect } : {}), component };
     case "tool_activity":
-      return { kind: metadata.tool === "command_execution" ? "command" : "tool", occurredAt: now(), text: event.raw, metadata, ...(event.effect ? { effect: event.effect } : {}), component: event.component };
+      return { kind: metadata.tool === "command_execution" ? "command" : "tool", occurredAt: now(), text, metadata, ...(event.effect ? { effect: event.effect } : {}), component };
     case "file_change":
-      return { kind: "file_change", occurredAt: now(), text: event.raw, metadata, ...(event.effect ? { effect: event.effect } : {}), component: event.component };
+      return { kind: "file_change", occurredAt: now(), text, metadata, ...(event.effect ? { effect: event.effect } : {}), component };
     case "approval_request":
-      return { kind: "approval_request", occurredAt: now(), text: event.raw, metadata, component: event.component };
+      return { kind: "approval_request", occurredAt: now(), text, metadata, component };
     case "approval_response":
-      return { kind: "approval_result", occurredAt: now(), text: event.raw, metadata, component: event.component };
+      return { kind: "approval_result", occurredAt: now(), text, metadata, component };
     case "error":
-      return { kind: "error", occurredAt: now(), text: event.raw, metadata, component: event.component };
+      return { kind: "error", occurredAt: now(), text, metadata, component };
     case "lifecycle":
-      return { kind: "progress", occurredAt: now(), text: event.raw, metadata, component: event.component };
+      return { kind: "progress", occurredAt: now(), text, metadata, component };
     case "pty_output":
     case "retention_marker":
     case "user_message":
-      return { kind: "diagnostic", occurredAt: now(), text: event.raw, metadata: { ...metadata, code: "COMPATIBILITY_EVENT", compatibilityKind: event.kind }, component: event.component };
+      return { kind: "diagnostic", occurredAt: now(), text, metadata: { ...metadata, code: "COMPATIBILITY_EVENT", compatibilityKind: event.kind }, component };
   }
 }
 
 function compactTranscriptMetadata(metadata: ParsedTurnEvent["metadata"]): Record<string, string | number | boolean> {
   const output: Record<string, string | number | boolean> = {};
   for (const [key, value] of Object.entries(metadata ?? {})) {
-    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") output[key] = value;
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") output[key] = redactSensitiveValue(value, key) as string | number | boolean;
   }
   return output;
 }
@@ -644,7 +648,7 @@ function compactMetadata(value: unknown): Record<string, string | number | boole
   const record = asRecord(value);
   if (!record) return metadata;
   for (const [key, item] of Object.entries(record)) {
-    if (typeof item === "string" || typeof item === "number" || typeof item === "boolean") metadata[key] = item;
+    if (typeof item === "string" || typeof item === "number" || typeof item === "boolean") metadata[key] = redactSensitiveValue(item, key) as string | number | boolean;
   }
   return metadata;
 }
@@ -658,7 +662,7 @@ function addKnownMetadata(record: Record<string, unknown> | undefined, metadata:
   ];
   for (const [source, target] of mappings) {
     const value = record[source];
-    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") metadata[target] = value;
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") metadata[target] = redactSensitiveValue(value, target) as string | number | boolean;
   }
 }
 
@@ -667,19 +671,19 @@ function componentData(value: unknown): Record<string, TranscriptStructuredCompo
   return record && typeof record === "object" && !Array.isArray(record) ? record as Record<string, TranscriptStructuredComponentValue> : undefined;
 }
 
-function safeComponentValue(value: unknown, depth = 0): TranscriptStructuredComponentValue | undefined {
+function safeComponentValue(value: unknown, depth = 0, fieldName?: string): TranscriptStructuredComponentValue | undefined {
   if (value === null || typeof value === "boolean" || typeof value === "number") return value;
-  if (typeof value === "string") return value.slice(0, 4096);
+  if (typeof value === "string") return String(redactSensitiveValue(value, fieldName)).slice(0, 4096);
   if (depth >= 4) return undefined;
   if (Array.isArray(value)) {
     return value.slice(0, 20)
-      .map((item) => safeComponentValue(item, depth + 1))
+      .map((item) => safeComponentValue(item, depth + 1, fieldName))
       .filter((item): item is TranscriptStructuredComponentValue => item !== undefined);
   }
   if (value && typeof value === "object") {
     const output: Record<string, TranscriptStructuredComponentValue> = {};
     for (const [key, item] of Object.entries(value).slice(0, 30)) {
-      const safe = safeComponentValue(item, depth + 1);
+      const safe = safeComponentValue(item, depth + 1, key);
       if (safe !== undefined) output[key] = safe;
     }
     return output;

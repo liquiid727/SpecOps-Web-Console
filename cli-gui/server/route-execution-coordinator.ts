@@ -23,7 +23,7 @@ export interface RouteExecutionRequest {
 }
 
 export class RouteExecutionError extends Error {
-  constructor(readonly code: "TASK_REVISION_CONFLICT" | "TASK_CANCELLED" | "ROUTE_REPLAY_CONFIRMATION_REQUIRED" | "ROUTE_FALLBACK_EXHAUSTED" | "EXECUTION_NOT_FOUND", message: string) {
+  constructor(readonly code: "TASK_REVISION_CONFLICT" | "TASK_CANCELLED" | "ROUTE_REPLAY_CONFIRMATION_REQUIRED" | "ROUTE_FALLBACK_EXHAUSTED" | "EXECUTION_NOT_FOUND" | "EXECUTION_ATTEMPT_CANCEL_FAILED", message: string) {
     super(message);
     this.name = "RouteExecutionError";
   }
@@ -45,8 +45,12 @@ export class RouteExecutionCoordinator {
   execute(request: RouteExecutionRequest): Promise<ExecutionSnapshot> {
     const existing = this.active.get(request.task.id);
     if (existing) return existing;
-    this.requests.set(request.task.id, request);
-    const operation = this.run(request).finally(() => {
+    const frozenRequest: RouteExecutionRequest = {
+      ...request,
+      candidates: deepFreeze(structuredClone(request.candidates)),
+    };
+    this.requests.set(request.task.id, frozenRequest);
+    const operation = this.run(frozenRequest).finally(() => {
       if (this.active.get(request.task.id) === operation) this.active.delete(request.task.id);
       this.controllers.delete(request.task.id);
     });
@@ -55,14 +59,15 @@ export class RouteExecutionCoordinator {
   }
 
   async confirmRetry(taskId: string, expectedRevision: number, confirmationToken: string, inputSha256: string): Promise<ExecutionSnapshot> {
-    const existing = this.confirmations.get(taskId);
+    const key = [taskId, expectedRevision, confirmationToken, inputSha256].join("\\u0000");
+    const existing = this.confirmations.get(key);
     if (existing) return existing;
     const operation = this.confirmRetryOnce(taskId, expectedRevision, confirmationToken, inputSha256);
-    this.confirmations.set(taskId, operation);
+    this.confirmations.set(key, operation);
     try {
       return await operation;
     } finally {
-      if (this.confirmations.get(taskId) === operation) this.confirmations.delete(taskId);
+      if (this.confirmations.get(key) === operation) this.confirmations.delete(key);
     }
   }
 
@@ -70,7 +75,13 @@ export class RouteExecutionCoordinator {
     const operation = this.active.get(taskId);
     if (operation) await operation.catch(() => undefined);
     const request = this.requests.get(taskId);
-    if (!request) throw new RouteExecutionError("EXECUTION_NOT_FOUND", "The execution request is no longer available after restart.");
+    if (!request) {
+      const snapshot = await this.repository.get(taskId);
+      if (snapshot?.task.state === "awaiting_confirmation") {
+        throw new RouteExecutionError("ROUTE_REPLAY_CONFIRMATION_REQUIRED", "The execution is awaiting confirmation after restart; replay the original request before retrying.");
+      }
+      throw new RouteExecutionError("EXECUTION_NOT_FOUND", "The execution request is no longer available after restart.");
+    }
     const attempt = await this.withTaskLock(taskId, async () => {
       const snapshot = await this.requireSnapshot(taskId);
       if (snapshot.task.state !== "awaiting_confirmation" || snapshot.task.revision !== expectedRevision || snapshot.task.confirmationToken !== confirmationToken || snapshot.task.confirmationInputSha256 !== inputSha256 || snapshot.task.input.sha256 !== inputSha256) {
@@ -87,13 +98,19 @@ export class RouteExecutionCoordinator {
   }
 
   async cancel(taskId: string, expectedRevision?: number): Promise<ExecutionSnapshot> {
-    this.controllers.get(taskId)?.abort();
     return this.withTaskLock(taskId, async () => {
       const snapshot = await this.requireSnapshot(taskId);
       if (expectedRevision !== undefined && snapshot.task.revision !== expectedRevision) throw new RouteExecutionError("TASK_REVISION_CONFLICT", "The execution task has changed.");
       if (["completed", "failed", "cancelled"].includes(snapshot.task.state)) return snapshot;
+      this.controllers.get(taskId)?.abort();
       const activeAttempt = snapshot.attempts.find((attempt) => attempt.state === "running" || attempt.state === "created");
-      if (activeAttempt) await this.repository.transitionAttempt(taskId, activeAttempt.id, activeAttempt.revision, { state: "cancelled", completedAt: this.now() }, this.now()).catch(() => undefined);
+      if (activeAttempt) {
+        try {
+          await this.repository.transitionAttempt(taskId, activeAttempt.id, activeAttempt.revision, { state: "cancelled", completedAt: this.now() }, this.now());
+        } catch {
+          throw new RouteExecutionError("EXECUTION_ATTEMPT_CANCEL_FAILED", "The active execution attempt could not be cancelled; the task remains active.");
+        }
+      }
       await this.repository.transitionTask(taskId, snapshot.task.revision ?? 1, { state: "cancelled", completedAt: this.now() }, this.now()).catch((error: unknown) => {
         if (error instanceof Error && "code" in error && (error as { code?: string }).code === "EXECUTION_REVISION_CONFLICT") throw new RouteExecutionError("TASK_REVISION_CONFLICT", "The execution task has changed.");
         throw error;
@@ -214,6 +231,14 @@ export class RouteExecutionCoordinator {
     if (!snapshot) throw new RouteExecutionError("EXECUTION_NOT_FOUND", "Execution task not found.");
     return snapshot;
   }
+}
+
+function deepFreeze<T>(value: T): T {
+  if (value && typeof value === "object" && !Object.isFrozen(value)) {
+    Object.freeze(value);
+    for (const child of Object.values(value as Record<string, unknown>)) deepFreeze(child);
+  }
+  return value;
 }
 
 function latestAttempt(snapshot: ExecutionSnapshot, attemptId: string) {

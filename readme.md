@@ -126,18 +126,26 @@ Then open [http://localhost:3000](http://localhost:3000).
 
 ### 4. Run Code: Bugrail
 
-Initialize the submodule and start the independent Bugrail web preview:
+Initialize the submodule and install its locked dependencies:
 
 ```bash
-git submodule update --init --recursive bugrail
-pnpm --dir bugrail install --frozen-lockfile
+make bugrail-init
+```
+
+Start the independent Bugrail web preview:
+
+```bash
 make bugrail-dev
 ```
 
 Then open [http://127.0.0.1:3011](http://127.0.0.1:3011). Override the port
 when needed with `make bugrail-dev BUGRAIL_PORT=3022`. Use
-`make bugrail-test`, `make bugrail-build`, and
-`make bugrail-upstream-status` for the bootstrap verification loop.
+`make bugrail-desktop` to start the Tauri desktop development build, or
+`make bugrail-build-desktop` to build a local desktop bundle without updater
+signing artifacts. Release bundles still use the fork's signed workflow and
+require `TAURI_SIGNING_PRIVATE_KEY`. Use `make bugrail-test`, `make
+bugrail-build`, and `make bugrail-upstream-status` for the bootstrap verification
+loop.
 
 ## Repository Shape
 

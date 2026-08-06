@@ -8,6 +8,46 @@ describe("secret stores", () => {
     await expect(store.resolve("env:PROVIDER_KEY")).resolves.toBe("env-canary");
     await expect(store.status("env:PROVIDER_KEY")).resolves.toBe("legacy-environment");
     await expect(store.put({ providerId: "provider" }, "secret")).rejects.toMatchObject({ code: "SECRET_STORE_UNAVAILABLE" });
+    await expect(store.remove("env:PROVIDER_KEY")).resolves.toBeUndefined();
+    await expect(store.resolve("env:PROVIDER_KEY")).resolves.toBe("env-canary");
+    await expect(store.status("env:PROVIDER_KEY")).resolves.toBe("legacy-environment");
+  });
+
+  it("keeps concurrent memory writes independently resolvable", async () => {
+    const store = createMemorySecretStore();
+    const refs = await Promise.all(
+      Array.from({ length: 16 }, (_, index) => store.put({ providerId: `provider-${index % 2}` }, `memory-secret-${index}`)),
+    );
+
+    expect(new Set(refs).size).toBe(refs.length);
+    await expect(Promise.all(refs.map((ref) => store.status(ref)))).resolves.toEqual(Array(refs.length).fill("configured"));
+    await expect(Promise.all(refs.map((ref) => store.resolve(ref)))).resolves.toEqual(
+      Array.from({ length: refs.length }, (_, index) => `memory-secret-${index}`),
+    );
+  });
+
+  it("keeps replace and delete results consistent when operations interleave", async () => {
+    const store = createMemorySecretStore();
+    const original = await store.put({ providerId: "provider" }, "original-secret");
+    const replacementRefs = await Promise.all(
+      Array.from({ length: 8 }, (_, index) => store.put({ providerId: "provider" }, `replacement-secret-${index}`)),
+    );
+
+    await Promise.all([
+      store.remove(original),
+      ...replacementRefs.slice(0, 4).map((ref) => store.remove(ref)),
+    ]);
+
+    await expect(store.status(original)).resolves.toBe("missing");
+    await expect(Promise.all(replacementRefs.slice(0, 4).map((ref) => store.status(ref)))).resolves.toEqual(
+      Array(4).fill("missing"),
+    );
+    await expect(Promise.all(replacementRefs.slice(4).map((ref) => store.resolve(ref)))).resolves.toEqual([
+      "replacement-secret-4",
+      "replacement-secret-5",
+      "replacement-secret-6",
+      "replacement-secret-7",
+    ]);
   });
 
   it("uses a keychain ref without exposing the value through the adapter contract", async () => {
@@ -51,5 +91,16 @@ describe("secret stores", () => {
     const store = createMacKeychainSecretStore({ platform: "linux" });
     await expect(store.put({ providerId: "provider" }, "secret")).rejects.toBeInstanceOf(SecretStoreError);
     await expect(store.status("keychain:missing")).resolves.toBe("store-unavailable");
+  });
+
+  it("maps macOS adapter execution failures to stable errors and status", async () => {
+    const exec = vi.fn(async () => { throw new Error("fixture execution failure"); });
+    const store = createMacKeychainSecretStore({ platform: "darwin", exec });
+
+    await expect(store.put({ providerId: "provider" }, "fixture-secret")).rejects.toMatchObject({ code: "SECRET_WRITE_FAILED" });
+    await expect(store.remove("keychain:fixture-ref")).rejects.toMatchObject({ code: "SECRET_DELETE_FAILED" });
+    await expect(store.resolve("keychain:fixture-ref")).rejects.toMatchObject({ code: "PROVIDER_SECRET_MISSING" });
+    await expect(store.status("keychain:fixture-ref")).resolves.toBe("missing");
+    expect(exec).toHaveBeenCalledTimes(4);
   });
 });

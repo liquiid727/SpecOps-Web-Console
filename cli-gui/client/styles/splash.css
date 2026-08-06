@@ -390,8 +390,8 @@
 }
 
 @keyframes splash-enter-breathe {
-  0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(168,85,247,.2), inset 0 0 20px rgba(168,85,247,.05); }
-  50% { transform: scale(1.025); box-shadow: 0 0 36px rgba(168,85,247,.35), 0 0 72px rgba(129,140,248,.15), inset 0 0 24px rgba(168,85,247,.08); }
+  0%, 100% { box-shadow: 0 0 20px rgba(168,85,247,.2), inset 0 0 20px rgba(168,85,247,.05); }
+  50% { box-shadow: 0 0 36px rgba(168,85,247,.35), 0 0 72px rgba(129,140,248,.15), inset 0 0 24px rgba(168,85,247,.08); }
 }
 
 .splash-enter-banner:hover {

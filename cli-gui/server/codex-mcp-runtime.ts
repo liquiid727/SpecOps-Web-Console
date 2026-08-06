@@ -163,7 +163,7 @@ export function createCodexMcpRuntime(options: CodexMcpRuntimeOptions): CodexMcp
     }
     let child: McpChildProcess;
     try {
-      child = spawnProcess({ command: turn.command, args: ["mcp-server"], cwd: turn.cwd, env: turn.env });
+      child = spawnProcess({ command: turn.command, args: [...(turn.providerArgs ?? []), "mcp-server"], cwd: turn.cwd, env: turn.env });
     } catch (error) {
       throw new PersistentRuntimeUnavailableError(`Failed to spawn codex mcp-server: ${error instanceof Error ? error.message : String(error)}`);
     }

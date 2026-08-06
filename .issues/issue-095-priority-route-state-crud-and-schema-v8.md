@@ -24,11 +24,11 @@
 - GUI/Attempt。
 
 ## Acceptance Criteria
-- [ ] Route candidate IDs 有序、去重、1-8 个
-- [ ] schema v8 backup、重复迁移、坏 binding 和失败不写入通过
-- [ ] archived/in-use Route 合同稳定
-- [ ] CRUD API 不访问 Secret 或启动 Agent
-- [ ] shared/store/API tests 与 build 通过
+- [x] Route candidate IDs 有序、去重、1-8 个
+- [x] schema v8 backup、重复迁移、坏 binding 和失败不写入通过
+- [x] archived/in-use Route 合同稳定
+- [x] CRUD API 不访问 Secret 或启动 Agent
+- [x] shared/store/API tests 与 build 通过
 
 ## Inputs
 - issue-093 Deployment registry、AppState v7
@@ -44,3 +44,7 @@ implementation-agent（backend-agent + db-migration-agent）
 
 ## Gate Impact
 - blocking
+
+## Local loop status
+
+Accepted locally after independent verification. Evidence: `tests/results/cli-gui-030.issue-095.local.json`, `tests/results/cli-gui-030.issue-095.route.raw.json`, and `reviews/CLI-GUI-030-issue-095/qa-report.md`. This does not claim packaged-host, cross-process, real Provider/engine, or browser verification.

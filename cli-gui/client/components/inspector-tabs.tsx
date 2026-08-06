@@ -118,15 +118,75 @@ export function DiffTab({ workspace }: { workspace?: Workspace }) {
     <div className="inspector-tab-toolbar"><Select ariaLabel={t("diffScope")} value={scope} options={[{ value: "unstaged", label: t("unstaged") }, { value: "staged", label: t("staged") }]} onChange={(value) => setScope(value as "unstaged" | "staged")} /><IconButton icon="refresh" onClick={() => setReload((value) => value + 1)} label={t("refresh")} title={t("refresh")} /></div>
     {error && <InspectorState text={error} error onRetry={() => setReload((value) => value + 1)} />}
     {data?.truncated && <div className="inspector-notice">{t("inspectionTruncated")}</div>}
-    {!data ? <InspectorState text={t("loading")} /> : data.files.length === 0 ? <InspectorState text={t("noDiff")} /> : <div className="diff-view">
-      {data.files.map((file, fileIndex) => <section className="diff-file" key={`${file.oldPath ?? "new"}-${file.newPath ?? "deleted"}-${fileIndex}`}>
-        <header className="diff-file-header"><strong>{file.newPath ?? file.oldPath ?? t("unknownFile")}</strong><span>{file.status}</span></header>
-        {file.hunks.map((hunk, hunkIndex) => <div className="diff-hunk" key={`${hunk.header}-${hunkIndex}`}>
+    {!data ? <InspectorState text={t("loading")} /> : data.files.length === 0 ? <InspectorState text={t("noDiff")} /> : <VirtualizedDiff data={data} unknownFileLabel={t("unknownFile")} />}
+  </div>;
+}
+
+const DIFF_LINE_HEIGHT = 18;
+const DIFF_OVERSCAN_LINES = 24;
+
+function VirtualizedDiff({ data, unknownFileLabel }: { data: GitDiffResponse; unknownFileLabel: string }) {
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const [range, setRange] = useState({ start: 0, end: 80 });
+  const layout = data.files.map((file, fileIndex) => {
+    const hunks = file.hunks.map((hunk, hunkIndex) => ({ ...hunk, lineOffset: 0, fileIndex, hunkIndex }));
+    return { file, fileIndex, hunks };
+  });
+  let lineOffset = 0;
+  for (const file of layout) {
+    for (const hunk of file.hunks) {
+      hunk.lineOffset = lineOffset;
+      lineOffset += hunk.lines.length;
+    }
+  }
+  const totalLines = lineOffset;
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    let frame: number | undefined;
+    const updateRange = () => {
+      frame = undefined;
+      const start = Math.max(0, Math.floor(viewport.scrollTop / DIFF_LINE_HEIGHT) - DIFF_OVERSCAN_LINES);
+      const end = Math.min(totalLines, Math.ceil((viewport.scrollTop + viewport.clientHeight) / DIFF_LINE_HEIGHT) + DIFF_OVERSCAN_LINES);
+      setRange((current) => current.start === start && current.end === end ? current : { start, end });
+    };
+    const onScroll = () => {
+      if (frame === undefined) frame = window.requestAnimationFrame(updateRange);
+    };
+    updateRange();
+    viewport.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      viewport.removeEventListener("scroll", onScroll);
+      if (frame !== undefined) window.cancelAnimationFrame(frame);
+    };
+  }, [totalLines]);
+
+  const renderedLineCount = layout.reduce((count, file) => count + file.hunks.reduce((hunkCount, hunk) => {
+    const start = Math.max(0, range.start - hunk.lineOffset);
+    const end = Math.min(hunk.lines.length, range.end - hunk.lineOffset);
+    return hunkCount + Math.max(0, end - start);
+  }, 0), 0);
+
+  return <div ref={viewportRef} className="diff-view" data-virtualized="true" data-line-count={totalLines} data-rendered-line-count={renderedLineCount}>
+    {layout.map(({ file, fileIndex, hunks }) => <section className="diff-file" key={`${file.oldPath ?? "new"}-${file.newPath ?? "deleted"}-${fileIndex}`}>
+      <header className="diff-file-header"><strong>{file.newPath ?? file.oldPath ?? unknownFileLabel}</strong><span>{file.status}</span></header>
+      {hunks.map((hunk) => {
+        const start = Math.max(0, range.start - hunk.lineOffset);
+        const end = Math.min(hunk.lines.length, range.end - hunk.lineOffset);
+        return <div className="diff-hunk" key={`${hunk.header}-${hunk.hunkIndex}`}>
           <div className="diff-hunk-header">{hunk.header}</div>
-          {hunk.lines.map((line, lineIndex) => <div className={`diff-line ${line.kind}`} key={`${lineIndex}-${line.text}`}><span>{line.oldLine ?? ""}</span><span>{line.newLine ?? ""}</span><code>{line.text}</code></div>)}
-        </div>)}
-      </section>)}
-    </div>}
+          <div className="diff-virtual-lines" style={{ height: `${Math.max(1, hunk.lines.length * DIFF_LINE_HEIGHT)}px` }}>
+            <div className="diff-virtual-items" style={{ transform: `translateY(${start * DIFF_LINE_HEIGHT}px)` }}>
+              {hunk.lines.slice(start, end).map((line, lineIndex) => {
+                const absoluteLineIndex = start + lineIndex;
+                return <div className={`diff-line ${line.kind}`} key={`${hunk.hunkIndex}-${absoluteLineIndex}-${line.text}`}><span>{line.oldLine ?? ""}</span><span>{line.newLine ?? ""}</span><code>{line.text}</code></div>;
+              })}
+            </div>
+          </div>
+        </div>;
+      })}
+    </section>)}
   </div>;
 }
 

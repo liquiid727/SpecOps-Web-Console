@@ -300,7 +300,7 @@ export function ChatView({ session, profile, readonly, centerView, onCenterViewC
         </div>
         {/* Terminal 视图：chat 会话为只读回放，terminal 会话为交互式 PTY */}
         {chatSession
-          ? <div className={`chat-center-panel${centerView !== "terminal" ? " is-hidden" : ""}`} aria-hidden={centerView !== "terminal"}><Suspense fallback={<div className="transcript-state">{t("loadingTranscript")}</div>}><ChatTerminalReplay sessionId={session.id} /></Suspense></div>
+          ? <div className={`chat-center-panel${centerView !== "terminal" ? " is-hidden" : ""}`} aria-hidden={centerView !== "terminal"}><Suspense fallback={<div className="transcript-state">{t("loadingTranscript")}</div>}><ChatTerminalReplay sessionId={session.id} active={centerView === "terminal"} /></Suspense></div>
           : <div className={`chat-center-panel${centerView !== "terminal" ? " is-hidden" : ""}`} aria-hidden={centerView !== "terminal"}><div className="chat-terminal">{running || true ? <TerminalView sessionId={session.id} onStatus={onStatus} hidden={centerView !== "terminal"} inputEnabled={(session as unknown as { inputOwner?: string }).inputOwner !== "gui"} /> : <EmptyState className="chat-empty" icon={<Icon name="terminal" />} description={t("terminalStopped")} />}</div></div>}
       </div>
       {/* terminal 会话切到 terminal 视图时隐藏 composer（输入直达 PTY）；chat 会话在 terminal 回放视图下仍保留（issue-046） */}

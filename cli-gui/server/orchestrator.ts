@@ -4,7 +4,7 @@ import { ApiHttpError } from "./api-errors.js";
 import { PersistentRuntimeUnavailableError } from "./ports.js";
 import type { Clock, Logger, OrchestratorCallbacks, ParsedTurnEvent, PersistentTurnHandle, PreparedLaunch, PtyProcess, PtyRuntime, RuntimeOrchestrator, TurnInput, TurnParseResult } from "./ports.js";
 import type { AgentEvent, AgentTurnFailurePhase, AgentTurnHandle, AgentTurnResult, TranscriptEvent, TranscriptEventKind, TranscriptEventMetadataValue, TranscriptEventSource } from "../shared/types.js";
-import { observeSideEffect, type AgentEffect } from "../shared/execution-attempt.js";
+import { observeSideEffect, redactSensitiveText, redactSensitiveValue, type AgentEffect } from "../shared/execution-attempt.js";
 
 export const MAX_TERMINAL_COLS = 500;
 export const MAX_TERMINAL_ROWS = 200;
@@ -131,7 +131,7 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
       worker.pendingTranscript = "";
       if (raw) await callbacks.appendEvent(sessionId, { occurredAt: clock.now(), kind: "pty_output", source: "pty", raw });
     });
-    void worker.transcriptFlush.catch((error) => logger.warn("PTY transcript flush failed", { sessionId, error: String(error) }));
+  void worker.transcriptFlush.catch((error) => logger.warn("PTY transcript flush failed", { sessionId, error: redactSensitiveText(String(error)) }));
   }
 
   async function flushPtyTranscript(sessionId: string, worker: TerminalWorker) {
@@ -196,7 +196,7 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
       return;
     }
     if (turn.backendHandle) {
-      void turn.backendHandle.cancel().catch((error) => logger.warn("Backend turn cancel failed", { error: String(error) }));
+      void turn.backendHandle.cancel().catch((error) => logger.warn("Backend turn cancel failed", { error: redactSensitiveText(String(error)) }));
       return;
     }
     const child = turn.child;
@@ -265,7 +265,7 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
         ? { status: "completed", sideEffect }
         : outcome.status === "cancelled"
           ? { status: "cancelled", sideEffect }
-          : { status: "failed", sideEffect, error: { code: outcome.code, message: outcome.message, ...(outcome.phase ? { phase: outcome.phase } : {}), ...(outcome.fallbackAttempted !== undefined ? { fallbackAttempted: outcome.fallbackAttempted } : {}), ...(outcome.fallbackCode ? { fallbackCode: outcome.fallbackCode } : {}) } };
+          : { status: "failed", sideEffect, error: { code: outcome.code, message: redactSensitiveText(outcome.message), ...(outcome.phase ? { phase: outcome.phase } : {}), ...(outcome.fallbackAttempted !== undefined ? { fallbackAttempted: outcome.fallbackAttempted } : {}), ...(outcome.fallbackCode ? { fallbackCode: outcome.fallbackCode } : {}) } };
       const completed = completedTurns.get(sessionId) ?? new Map<string, AgentTurnResult>();
       completed.set(turn.turnId, turn.result);
       completedTurns.set(sessionId, completed);
@@ -280,7 +280,7 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
         callbacks.onTurnStatus?.(sessionId, turn.turnId, "cancelled");
       } else {
         await callbacks.appendEvent(sessionId, { occurredAt: clock.now(), kind: "lifecycle", source: "session-manager", raw: "Turn failed.", metadata: { status: "turn-failed", turnId: turn.turnId, exitCode: outcome.exitCode } });
-        await callbacks.appendEvent(sessionId, { occurredAt: clock.now(), kind: "error", source: "session-manager", raw: outcome.message, metadata: { ...outcome.metadata, code: outcome.code, turnId: turn.turnId } });
+        await callbacks.appendEvent(sessionId, { occurredAt: clock.now(), kind: "error", source: "session-manager", raw: redactSensitiveText(outcome.message), metadata: { ...outcome.metadata, code: outcome.code, turnId: turn.turnId } });
         callbacks.onTurnStatus?.(sessionId, turn.turnId, "failed");
       }
     };
@@ -294,7 +294,14 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
       if (closing || turn.terminationReason !== undefined) return;
       // Adapter 终态帧只描述 CLI 协议；由 orchestrator 在 resumeToken 写回后发布唯一终态，避免观察者先看到不一致状态。
       if (isTerminalTurnLifecycle(event)) return;
-      const persisted = await callbacks.appendEvent(sessionId, { occurredAt: clock.now(), kind: event.kind, source: event.source, raw: event.raw, metadata: { ...event.metadata, turnId: turn.turnId }, component: event.component });
+      const persisted = await callbacks.appendEvent(sessionId, {
+        occurredAt: clock.now(),
+        kind: event.kind,
+        source: event.source,
+        raw: redactSensitiveText(event.raw),
+        metadata: redactSensitiveValue({ ...event.metadata, turnId: turn.turnId }) as Record<string, TranscriptEventMetadataValue>,
+        component: redactSensitiveValue(event.component) as AgentEvent["component"]
+      });
       recordEffect(event.kind, persisted, event.effect);
       callbacks.onActivity(sessionId);
       if (event.kind === "approval_request" && typeof event.metadata?.approvalId === "string" && turn.backendHandle?.approve) enterWaitingApproval(sessionId, turn, event.metadata.approvalId);
@@ -308,6 +315,7 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
         if (event.text) callbacks.onTurnDelta?.(sessionId, turn.turnId, event.text);
         return;
       }
+      if (event.kind === "diagnostic" && event.metadata?.code === "UNKNOWN_VENDOR_EVENT") turn.protocolComplete = false;
       const mapped = toTranscriptEvent(event, turn.turnId);
       const persisted = await callbacks.appendEvent(sessionId, mapped);
       recordEffect(mapped.kind, persisted, event.effect);
@@ -341,7 +349,7 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
       await eventPump;
       if (eventFailure !== undefined) {
         turn.protocolComplete = false;
-        logger.warn("Backend event stream failed", { sessionId, turnId: turn.turnId, error: String(eventFailure) });
+        logger.warn("Backend event stream failed", { sessionId, turnId: turn.turnId, error: redactSensitiveText(String(eventFailure)) });
       }
       if (turn.terminationReason === "cancelled" || backendResult?.status === "cancelled") {
         await finishTurn({ status: "cancelled", exitCode: -1 });
@@ -352,7 +360,7 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
         return;
       }
       if (eventFailure !== undefined && backendFailure === undefined && backendResult?.status === "completed") {
-        await finishTurn({ status: "failed", code: "TURN_FAILED", message: String(eventFailure), phase: "parse", exitCode: -1 });
+        await finishTurn({ status: "failed", code: "TURN_FAILED", message: redactSensitiveText(String(eventFailure)), phase: "parse", exitCode: -1 });
         return;
       }
       if (backendFailure !== undefined || backendResult?.status === "failed") {
@@ -360,7 +368,7 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
         await finishTurn({
           status: "failed",
           code: error?.code ?? "TURN_FAILED",
-          message: error?.message ?? (backendFailure instanceof Error ? backendFailure.message : backendFailure !== undefined ? String(backendFailure) : "Backend turn failed."),
+          message: error?.message ?? (backendFailure instanceof Error ? redactSensitiveText(backendFailure.message) : backendFailure !== undefined ? redactSensitiveText(String(backendFailure)) : "Backend turn failed."),
           exitCode: -1,
           phase: error?.phase,
           fallbackAttempted: error?.fallbackAttempted,
@@ -385,7 +393,7 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
       if (!input.buildCommand || !input.parseOutput) throw new Error("Turn input is missing legacy command execution callbacks.");
       plan = await input.buildCommand();
     } catch (error) {
-      await finishTurn({ status: "failed", code: "TURN_SPAWN_FAILED", message: `Failed to build the turn command: ${error instanceof Error ? error.message : String(error)}`, phase: "spawn", exitCode: -1 });
+      await finishTurn({ status: "failed", code: "TURN_SPAWN_FAILED", message: redactSensitiveText(`Failed to build the turn command: ${error instanceof Error ? error.message : String(error)}`), phase: "spawn", exitCode: -1 });
       return;
     }
 
@@ -408,7 +416,7 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
           await finishTurn({ status: "failed", code: "TURN_SPAWN_FAILED", message: error instanceof Error ? error.message : String(error), phase: "spawn", exitCode: -1 });
           return;
         }
-        logger.info("Persistent runtime unavailable; falling back to spawn path", { sessionId, turnId: turn.turnId, reason: error.message });
+        logger.info("Persistent runtime unavailable; falling back to spawn path", { sessionId, turnId: turn.turnId, reason: redactSensitiveText(error.message) });
       }
       if (handle) {
         turn.persistentHandle = handle;
@@ -434,13 +442,13 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
             logger.info("Persistent runtime setup failed; falling back to spawn path", {
               sessionId,
               turnId: turn.turnId,
-              reason: persistentFailure.message
+              reason: redactSensitiveText(persistentFailure.message)
             });
           } else {
             await finishTurn({
               status: "failed",
               code: "TURN_FAILED",
-              message: persistentFailure instanceof Error ? persistentFailure.message : String(persistentFailure),
+              message: persistentFailure instanceof Error ? redactSensitiveText(persistentFailure.message) : redactSensitiveText(String(persistentFailure)),
               phase: "app-server",
               exitCode: -1
             });
@@ -502,7 +510,7 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
     } catch (error) {
       parseFailure = error;
       turn.protocolComplete = false;
-      logger.warn("Turn output parsing failed", { sessionId, turnId: turn.turnId, error: String(error) });
+      logger.warn("Turn output parsing failed", { sessionId, turnId: turn.turnId, error: redactSensitiveText(String(error)) });
     }
 
     const outcome = await exitOutcome;
@@ -516,7 +524,7 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
       return;
     }
     if (outcome.type === "spawn-error") {
-      await finishTurn({ status: "failed", code: "TURN_SPAWN_FAILED", message: outcome.error.message || String(outcome.error), phase: "spawn", exitCode: -1 });
+      await finishTurn({ status: "failed", code: "TURN_SPAWN_FAILED", message: redactSensitiveText(outcome.error.message || String(outcome.error)), phase: "spawn", exitCode: -1 });
       return;
     }
     if (parseFailure !== undefined) {
@@ -639,7 +647,7 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
       worker.activeTurn = turn;
       callbacks.onTurnStatus?.(sessionId, input.turnId, "running");
       turn.done = runTurn(sessionId, worker, turn, input).catch((error) => {
-        logger.warn("Turn execution failed unexpectedly", { sessionId, turnId: input.turnId, error: String(error) });
+        logger.warn("Turn execution failed unexpectedly", { sessionId, turnId: input.turnId, error: redactSensitiveText(String(error)) });
         if (worker.activeTurn === turn) worker.activeTurn = undefined;
       });
       return { turnId: input.turnId, event };
@@ -673,9 +681,9 @@ export function createRuntimeOrchestrator(dependencies: RuntimeOrchestratorDepen
       const payload = turn.approvalResponder?.(approvalId, decision);
       const child = turn.child;
       if (turn.backendHandle?.approve) {
-        try { await turn.backendHandle.approve(approvalId, decision); } catch (error) { logger.warn("Backend approval response failed", { sessionId, approvalId, error: String(error) }); }
+        try { await turn.backendHandle.approve(approvalId, decision); } catch (error) { logger.warn("Backend approval response failed", { sessionId, approvalId, error: redactSensitiveText(String(error)) }); }
       } else if (payload !== undefined && child?.stdin && !child.stdin.destroyed) {
-        try { child.stdin.write(payload); } catch (error) { logger.warn("Approval response write failed", { sessionId, approvalId, error: String(error) }); }
+        try { child.stdin.write(payload); } catch (error) { logger.warn("Approval response write failed", { sessionId, approvalId, error: redactSensitiveText(String(error)) }); }
       }
       armTurnTimeout(turn, turn.timeoutRemainingMs ?? turnTimeoutMs);
       callbacks.onTurnStatus?.(sessionId, turn.turnId, "running");
@@ -744,31 +752,32 @@ function toTranscriptEvent(event: AgentEvent, turnId: string): {
   metadata?: Record<string, TranscriptEventMetadataValue>;
   component?: AgentEvent["component"];
 } {
-  const metadata = { ...event.metadata, turnId } as Record<string, TranscriptEventMetadataValue>;
-  const raw = event.text ?? String(event.metadata?.vendorType ?? event.kind);
+  const metadata = redactSensitiveValue({ ...event.metadata, turnId }) as Record<string, TranscriptEventMetadataValue>;
+  const raw = redactSensitiveText(event.text ?? String(event.metadata?.vendorType ?? event.kind));
+  const component = redactSensitiveValue(event.component) as AgentEvent["component"];
   switch (event.kind) {
     case "assistant_message":
-      return { occurredAt: event.occurredAt, kind: "assistant_message", source: "profile-adapter", raw, metadata, component: event.component };
+      return { occurredAt: event.occurredAt, kind: "assistant_message", source: "profile-adapter", raw, metadata, component };
     case "tool":
     case "command":
     case "progress":
     case "usage":
-      return { occurredAt: event.occurredAt, kind: "tool_activity", source: "profile-adapter", raw, metadata: { ...metadata, tool: String(event.metadata?.tool ?? event.metadata?.name ?? event.kind) }, component: event.component };
+      return { occurredAt: event.occurredAt, kind: "tool_activity", source: "profile-adapter", raw, metadata: { ...metadata, tool: String(event.metadata?.tool ?? event.metadata?.name ?? event.kind) }, component };
     case "file_change":
-      return { occurredAt: event.occurredAt, kind: "file_change", source: "profile-adapter", raw, metadata, component: event.component };
+      return { occurredAt: event.occurredAt, kind: "file_change", source: "profile-adapter", raw, metadata, component };
     case "approval_request":
-      return { occurredAt: event.occurredAt, kind: "approval_request", source: "profile-adapter", raw, metadata, component: event.component };
+      return { occurredAt: event.occurredAt, kind: "approval_request", source: "profile-adapter", raw, metadata, component };
     case "approval_result":
-      return { occurredAt: event.occurredAt, kind: "approval_response", source: "profile-adapter", raw, metadata, component: event.component };
+      return { occurredAt: event.occurredAt, kind: "approval_response", source: "profile-adapter", raw, metadata, component };
     case "error":
-      return { occurredAt: event.occurredAt, kind: "error", source: "profile-adapter", raw, metadata, component: event.component };
+      return { occurredAt: event.occurredAt, kind: "error", source: "profile-adapter", raw, metadata, component };
     case "completed":
     case "cancelled":
-      return { occurredAt: event.occurredAt, kind: "lifecycle", source: "profile-adapter", raw, metadata, component: event.component };
+      return { occurredAt: event.occurredAt, kind: "lifecycle", source: "profile-adapter", raw, metadata, component };
     case "diagnostic":
-      if (event.metadata?.compatibilityKind === "pty_output") return { occurredAt: event.occurredAt, kind: "pty_output", source: "pty", raw, metadata, component: event.component };
-      return { occurredAt: event.occurredAt, kind: "pty_output", source: "profile-adapter", raw, metadata, component: event.component ?? { type: "diagnostic", text: raw } };
+      if (event.metadata?.compatibilityKind === "pty_output") return { occurredAt: event.occurredAt, kind: "pty_output", source: "pty", raw, metadata, component };
+      return { occurredAt: event.occurredAt, kind: "pty_output", source: "profile-adapter", raw, metadata, component: component ?? { type: "diagnostic", text: raw } };
     case "text_delta":
-      return { occurredAt: event.occurredAt, kind: "assistant_message", source: "profile-adapter", raw, metadata, component: event.component };
+      return { occurredAt: event.occurredAt, kind: "assistant_message", source: "profile-adapter", raw, metadata, component };
   }
 }

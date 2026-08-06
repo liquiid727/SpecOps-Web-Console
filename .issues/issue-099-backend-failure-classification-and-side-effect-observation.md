@@ -24,12 +24,12 @@
 - UI。
 
 ## Acceptance Criteria
-- [ ] 白名单/禁止类均由 machine code 映射，不解析 message
-- [ ] model_not_found=configuration；temporary capacity 才是 model-temporarily-unavailable
-- [ ] write/external/unknown/stream gap 均禁止自动判定 clean
-- [ ] read-only effect 可保持 clean，且有 Backend fixture 证明
-- [ ] persistent→spawn 不额外产生 Attempt classification
-- [ ] backend/orchestrator contract tests 通过
+- [x] 白名单/禁止类均由 machine code 映射，不解析 message
+- [x] model_not_found=configuration；temporary capacity 才是 model-temporarily-unavailable
+- [x] write/external/unknown/stream gap 均禁止自动判定 clean
+- [x] read-only effect 可保持 clean，且有 Backend fixture 证明
+- [x] persistent→spawn 不额外产生 Attempt classification
+- [x] backend/orchestrator contract tests 通过
 
 ## Inputs
 - AgentBackend、profile adapters、orchestrator parsed events、issue-098 contracts
@@ -45,3 +45,9 @@ implementation-agent（backend-agent + unit-test-agent）
 
 ## Gate Impact
 - blocking
+
+## Local loop status
+
+- Decision: accepted-with-waiver for the local in-process contract gate.
+- Evidence: normalized and raw results under `tests/results/`, independent testing-agent verification, and review closeout.
+- Not shipped: real Provider/Codex, packaged Tauri, cross-process lock/fsync/crash recovery, and real stream interruption remain unverified.

@@ -158,6 +158,23 @@ describe("codex mcp runtime", () => {
     expect(events[1]?.metadata).toMatchObject({ turnId: "turn-1", tool: "command_execution", exitCode: 0 });
   });
 
+  it("places transient provider launch args before mcp-server only on first spawn", async () => {
+    const { runtime, processes, spawnCalls } = createHarness();
+    const first = runtime.runTurn("session-provider", makeTurn({ providerArgs: ["--provider", "openai-compatible", "--base-url", "https://provider.invalid/v1"] }), collectHandlers().handlers);
+    const child = await waitForProcess(processes);
+    const call = await child.waitForToolCall();
+    expect(spawnCalls[0]?.args).toEqual(["--provider", "openai-compatible", "--base-url", "https://provider.invalid/v1", "mcp-server"]);
+    expect(JSON.stringify(spawnCalls)).not.toContain("provider-secret");
+    child.respond(call.id, { structuredContent: { threadId: "thread-provider" } });
+    await first.result;
+
+    const second = runtime.runTurn("session-provider", makeTurn({ turnId: "turn-2", prompt: "again", resumeToken: "thread-provider", providerArgs: ["--provider", "changed"] }), collectHandlers().handlers);
+    const secondCall = await waitFor(() => child.requests.filter((request) => request.method === "tools/call")[1]);
+    child.respond(secondCall.id, { structuredContent: { threadId: "thread-provider" } });
+    await second.result;
+    expect(spawnCalls).toHaveLength(1);
+  });
+
   it("reuses the resident process across turns and switches to codex-reply when the thread matches", async () => {
     const { runtime, processes, spawnCalls } = createHarness();
     const first = runtime.runTurn("session-1", makeTurn(), collectHandlers().handlers);

@@ -27,19 +27,33 @@ interface ReadResult {
   incompleteTail: boolean;
 }
 
+interface CachedReadResult {
+  signature: string;
+  result: ReadResult;
+}
+
 const writeQueues = new Map<string, Promise<void>>();
 
 export function createJsonTranscriptRepository({ dataDirectory, readonly = false, maxOwnBytes = MAX_TRANSCRIPT_OWN_BYTES }: JsonTranscriptRepositoryOptions): TranscriptRepository {
   const root = path.resolve(dataDirectory, "transcripts");
   const filePath = (sessionId: string) => path.join(root, `${safeSessionId(sessionId)}.jsonl`);
+  const readCache = new Map<string, CachedReadResult>();
 
   async function readRecords(sessionId: string): Promise<ReadResult> {
     const target = filePath(sessionId);
-    const raw = await fs.readFile(target, "utf8").catch((error: NodeJS.ErrnoException) => {
-      if (error.code === "ENOENT") return "";
+    const stat = await fs.stat(target).catch((error: NodeJS.ErrnoException) => {
+      if (error.code === "ENOENT") return undefined;
       throw error;
     });
-    if (!raw) return { events: [], incompleteTail: false };
+    const signature = stat ? `${stat.size}:${stat.mtimeMs}` : "missing";
+    const cached = readCache.get(target);
+    if (cached?.signature === signature) return cached.result;
+    const raw = stat ? await fs.readFile(target, "utf8") : "";
+    if (!raw) {
+      const result = { events: [], incompleteTail: false };
+      readCache.set(target, { signature, result });
+      return result;
+    }
 
     const lines = raw.split("\n");
     const hasTrailingNewline = raw.endsWith("\n");
@@ -62,7 +76,9 @@ export function createJsonTranscriptRepository({ dataDirectory, readonly = false
         throw new TranscriptRepositoryError("TRANSCRIPT_CORRUPT", "Transcript contains a malformed complete record.", { cause: error });
       }
     }
-    return { events, incompleteTail };
+    const result = { events, incompleteTail };
+    readCache.set(target, { signature, result });
+    return result;
   }
 
   async function writeEvents(sessionId: string, events: TranscriptEvent[]) {
@@ -71,6 +87,7 @@ export function createJsonTranscriptRepository({ dataDirectory, readonly = false
     const target = filePath(sessionId);
     const temporaryPath = `${target}.${process.pid}.${randomUUID()}.tmp`;
     try {
+      readCache.delete(target);
       await fs.writeFile(temporaryPath, events.map((event) => JSON.stringify(event)).join("\n") + (events.length ? "\n" : ""), "utf8");
       await fs.rename(temporaryPath, target);
     } catch (error) {
@@ -195,6 +212,7 @@ export function createJsonTranscriptRepository({ dataDirectory, readonly = false
     async delete(sessionId) {
       if (readonly) throw new TranscriptRepositoryError("READONLY_MODE", "Readonly mode does not delete transcripts.");
       await (writeQueues.get(filePath(sessionId)) ?? Promise.resolve());
+      readCache.delete(filePath(sessionId));
       await fs.rm(filePath(sessionId), { force: true });
     },
     async drain() {

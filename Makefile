@@ -15,7 +15,7 @@ YELLOW := \033[1;33m
 DIM := \033[2m
 RESET := \033[0m
 
-.PHONY: help dev dev-all dev-frontend dev-backend dev-web frontend backend bugrail-dev bugrail-test bugrail-build bugrail-upstream-status
+.PHONY: help dev dev-all dev-frontend dev-backend dev-web frontend backend bugrail-init bugrail-dev bugrail-desktop bugrail-build bugrail-build-desktop bugrail-test bugrail-upstream-status
 
 help: ## 显示可用的开发命令
 	@printf "\n$(BLUE)🧚 SpecOS CLI GUI · Development Commands$(RESET)\n"
@@ -29,12 +29,15 @@ help: ## 显示可用的开发命令
 	@printf "  make backend       → make dev-backend\n"
 	@printf "  make dev-web       → make dev-all（兼容旧命令）\n"
 	@printf "\n  $(YELLOW)Code: Bugrail$(RESET)\n"
+	@printf "  $(CYAN)make bugrail-init$(RESET)              初始化子模块并安装依赖\n"
 	@printf "  $(CYAN)make bugrail-dev$(RESET)              启动 Web 预览 · $(BUGRAIL_URL)\n"
+	@printf "  $(CYAN)make bugrail-desktop$(RESET)         启动 Tauri 桌面开发版\n"
 	@printf "  $(CYAN)make bugrail-test$(RESET)             运行 Bugrail 前端测试\n"
 	@printf "  $(CYAN)make bugrail-build$(RESET)            构建 Bugrail 静态前端\n"
+	@printf "  $(CYAN)make bugrail-build-desktop$(RESET)   构建本地 Tauri 桌面安装包\n"
 	@printf "  $(CYAN)make bugrail-upstream-status$(RESET)  检查 CodeG 最新 release tag\n"
 	@printf "\n$(DIM)💡 独立启动时，请分别打开两个终端运行前端和后端命令。$(RESET)\n"
-	@printf "$(DIM)🛑 使用 Ctrl+C 停止当前进程。首次运行请先在 cli-gui 安装依赖。$(RESET)\n\n"
+	@printf "$(DIM)🛑 使用 Ctrl+C 停止当前进程。首次运行 Bugrail 请先执行 make bugrail-init。$(RESET)\n\n"
 
 dev: dev-all ## 前后端一起启动（推荐）
 
@@ -64,14 +67,24 @@ frontend: dev-frontend ## 前端快捷别名
 
 backend: dev-backend ## 后端快捷别名
 
+bugrail-init: ## 初始化 Bugrail 子模块并安装锁定依赖
+	@git submodule update --init --recursive $(BUGRAIL_DIR)
+	@pnpm --dir $(BUGRAIL_DIR) install --frozen-lockfile
+
 bugrail-dev: ## 启动 Code: Bugrail Web 预览
 	@pnpm --dir $(BUGRAIL_DIR) exec next dev --turbopack --hostname 127.0.0.1 --port $(BUGRAIL_PORT)
+
+bugrail-desktop: bugrail-init ## 启动 Code: Bugrail Tauri 桌面开发版
+	@pnpm --dir $(BUGRAIL_DIR) tauri dev
 
 bugrail-test: ## 运行 Code: Bugrail 前端测试
 	@pnpm --dir $(BUGRAIL_DIR) test
 
 bugrail-build: ## 构建 Code: Bugrail 静态前端
 	@pnpm --dir $(BUGRAIL_DIR) build
+
+bugrail-build-desktop: bugrail-init ## 构建本地 Code: Bugrail Tauri 桌面安装包
+	@pnpm --dir $(BUGRAIL_DIR) tauri build --debug --config '{"bundle":{"createUpdaterArtifacts":false}}'
 
 bugrail-upstream-status: ## 检查 CodeG 最新 release tag
 	@pnpm --dir $(BUGRAIL_DIR) upstream:status

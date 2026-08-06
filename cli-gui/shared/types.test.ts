@@ -14,6 +14,7 @@ import type {
   SessionV3,
   TerminalServerFrame
 } from "./types.js";
+import type { ModelDeploymentSummary } from "./model-deployment.js";
 import { CURRENT_SCHEMA_VERSION, withCompatibilityState, withCompatibilityStatus, type AppStateEnvelopeV8 } from "./types.js";
 
 const canonicalSession: SessionV3 = {
@@ -89,10 +90,23 @@ describe("state schema contracts", () => {
   it("shares discriminated transport and error types", () => {
     expectTypeOf<SessionStatus>().toEqualTypeOf<SessionV3["runtimeStatus"]>();
     expectTypeOf<ApiErrorResponse["error"]["code"]>().toEqualTypeOf<ApiErrorCode>();
+    const cancelFailure: ApiErrorCode = "EXECUTION_ATTEMPT_CANCEL_FAILED";
+    expect(cancelFailure).toBe("EXECUTION_ATTEMPT_CANCEL_FAILED");
     expectTypeOf<TerminalServerFrame["type"]>().toEqualTypeOf<"terminal-output" | "runtime-status" | "input-rejected" | "protocol-error">();
     expectTypeOf<EventServerFrame["type"]>().toEqualTypeOf<"subscription-ready" | "transcript-event" | "session-updated" | "recording-warning" | "turn-status" | "turn-delta" | "protocol-error">();
 
     const pick: PickWorkspaceResponse = { cancelled: false, workspace: { id: "workspace-1", name: "Workspace", path: "/tmp/workspace", kind: "local-folder", createdAt: "2026-01-01T00:00:00Z" } };
     if (!pick.cancelled) expectTypeOf(pick.workspace.path).toBeString();
+  });
+
+  it("exports the deployment contract and represents unknown capabilities without eligibility", () => {
+    const summary = {
+      id: "deployment-1", name: "Primary", providerId: "provider-1", profileId: "profile-1", modelId: "model-1",
+      enabled: true, createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", credentialStatus: "missing",
+      capability: { source: "configured", observedAt: "2026-01-01T00:00:00Z", modelPresent: true, nativeSession: "unknown", toolCalling: "unknown", codeEditing: "unknown" },
+      eligibility: "unknown", exclusionCodes: []
+    } satisfies ModelDeploymentSummary;
+    expect(summary.capability.nativeSession).toBe("unknown");
+    expect(summary.eligibility).toBe("unknown");
   });
 });

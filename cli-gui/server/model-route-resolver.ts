@@ -14,15 +14,16 @@ function selectedRouteId(input: ResolveModelRouteInput) {
 }
 
 function deploymentExclusions(deployment: ModelDeploymentSummary | undefined, route: PriorityModelRoute): RouteExclusionCode[] {
-  if (!deployment) return ["deployment-missing"];
   const exclusions: RouteExclusionCode[] = [];
   if (!route.enabled || route.archivedAt) exclusions.push("route-disabled");
-  if (!deployment.enabled) exclusions.push("deployment-disabled");
-  if (deployment.archivedAt || deployment.eligibility === "archived") exclusions.push("deployment-archived");
-  if (deployment.providerEnabled === false) exclusions.push("provider-disabled");
-  if (deployment.credentialStatus !== "configured" && deployment.credentialStatus !== "legacy-environment") exclusions.push("credential-missing");
-  if (deployment.exclusionCodes.includes("engine-incompatible") || deployment.exclusionCodes.includes("protocol-mismatch")) exclusions.push("engine-incompatible");
-  if (deployment.exclusionCodes.includes("model-unverified") || deployment.exclusionCodes.includes("model-missing") || deployment.eligibility === "unknown" || deployment.eligibility === "invalid") exclusions.push("model-unverified");
+  if (!deployment) return [...exclusions, "deployment-missing"];
+  const summaryCodes = new Set(deployment.exclusionCodes);
+  if (!deployment.enabled || deployment.eligibility === "disabled" || summaryCodes.has("deployment-disabled")) exclusions.push("deployment-disabled");
+  if (deployment.archivedAt || deployment.eligibility === "archived" || summaryCodes.has("deployment-archived")) exclusions.push("deployment-archived");
+  if (deployment.providerEnabled === false || summaryCodes.has("provider-disabled")) exclusions.push("provider-disabled");
+  if ((deployment.credentialStatus !== "configured" && deployment.credentialStatus !== "legacy-environment") || summaryCodes.has("credential-missing")) exclusions.push("credential-missing");
+  if (summaryCodes.has("engine-incompatible") || summaryCodes.has("protocol-mismatch")) exclusions.push("engine-incompatible");
+  if (summaryCodes.has("model-unverified") || summaryCodes.has("model-missing") || deployment.eligibility === "unknown" || deployment.eligibility === "invalid") exclusions.push("model-unverified");
   return [...new Set(exclusions)];
 }
 
@@ -31,13 +32,19 @@ export function resolveModelRoute(input: ResolveModelRouteInput): ResolvedRoute 
   const selected = selectedRouteId(input);
   if (!selected.id) {
     const legacy = input.legacy;
+    const fixedDeploymentId = input.routeOverride?.fixedDeploymentId;
     return {
       kind: "legacy-profile-model",
+      legacyResolution: legacy,
       resolvedAt,
-      sourceTrace: legacy ? [{ field: "profileId", source: "session", value: legacy.profileId }, { field: "modelId", source: "session", value: legacy.modelId ?? undefined }] : [],
+      sourceTrace: [
+        ...(legacy ? [{ field: "profileId", source: "session" as const, value: legacy.profileId }, { field: "modelId", source: "session" as const, value: legacy.modelId ?? undefined }] : []),
+        ...(fixedDeploymentId !== undefined ? [{ field: "fixedDeploymentId", source: "run" as const, value: fixedDeploymentId }] : [])
+      ],
       candidates: [],
       executableCandidates: [],
-      canSend: true
+      ...(fixedDeploymentId !== undefined ? { fixedDeploymentId, errorCode: "ROUTE_FIXED_DEPLOYMENT_UNAVAILABLE" as const } : {}),
+      canSend: fixedDeploymentId === undefined
     };
   }
 
@@ -47,7 +54,7 @@ export function resolveModelRoute(input: ResolveModelRouteInput): ResolvedRoute 
     ...(input.globalRouteId ? [{ field: "routeId", source: "global" as const, value: input.globalRouteId }] : []),
     ...(input.projectRouteId ? [{ field: "routeId", source: "project" as const, value: input.projectRouteId }] : []),
     ...(input.sessionRouteId ? [{ field: "routeId", source: "session" as const, value: input.sessionRouteId }] : []),
-    ...(input.routeOverride?.fixedDeploymentId ? [{ field: "fixedDeploymentId", source: "run" as const, value: input.routeOverride.fixedDeploymentId }] : [])
+    ...(input.routeOverride?.fixedDeploymentId !== undefined ? [{ field: "fixedDeploymentId", source: "run" as const, value: input.routeOverride.fixedDeploymentId }] : [])
   ];
   if (!route) {
     return { kind: "route", routeId: selected.id, resolvedAt, sourceTrace, candidates: [], executableCandidates: [], canSend: false, errorCode: "ROUTE_NO_CANDIDATE" };
@@ -60,7 +67,7 @@ export function resolveModelRoute(input: ResolveModelRouteInput): ResolvedRoute 
   });
   const executableCandidates = candidates.filter((candidate) => candidate.eligible);
   const fixedDeploymentId = input.routeOverride?.fixedDeploymentId;
-  if (fixedDeploymentId) {
+  if (fixedDeploymentId !== undefined) {
     const fixed = candidates.find((candidate) => candidate.deploymentId === fixedDeploymentId);
     if (!fixed?.eligible) return { kind: "route", routeId: route.id, resolvedAt, sourceTrace, candidates, executableCandidates, fixedDeploymentId, canSend: false, errorCode: "ROUTE_FIXED_DEPLOYMENT_UNAVAILABLE" };
     return { kind: "route", routeId: route.id, resolvedAt, sourceTrace, candidates, executableCandidates, selectedDeploymentId: fixedDeploymentId, fixedDeploymentId, canSend: true };

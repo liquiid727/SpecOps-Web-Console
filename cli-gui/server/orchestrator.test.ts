@@ -53,6 +53,7 @@ type RecordedStatus = { sessionId: string; status: string; extra?: { exitCode?: 
 
 function createHarness(options?: { turnTimeoutMs?: number; approvalTimeoutMs?: number; cancelGraceMs?: number; ptyProcess?: PtyProcess }) {
   const events: RecordedEvent[] = [];
+  const loggerCalls: { level: string; metadata?: Record<string, unknown> }[] = [];
   const statusCalls: RecordedStatus[] = [];
   const turnStatuses: { sessionId: string; turnId: string; status: string }[] = [];
   const turnDeltas: { sessionId: string; turnId: string; delta: string }[] = [];
@@ -65,7 +66,11 @@ function createHarness(options?: { turnTimeoutMs?: number; approvalTimeoutMs?: n
       async shutdown() {}
     },
     clock: { now: () => new Date().toISOString() },
-    logger: { info() {}, warn() {}, error() {} },
+    logger: {
+      info(_message, metadata) { loggerCalls.push({ level: "info", metadata }); },
+      warn(_message, metadata) { loggerCalls.push({ level: "warn", metadata }); },
+      error(_message, metadata) { loggerCalls.push({ level: "error", metadata }); }
+    },
     turnTimeoutMs: options?.turnTimeoutMs,
     approvalTimeoutMs: options?.approvalTimeoutMs,
     cancelGraceMs: options?.cancelGraceMs,
@@ -87,7 +92,7 @@ function createHarness(options?: { turnTimeoutMs?: number; approvalTimeoutMs?: n
       }
     }
   });
-  return { orchestrator, events, statusCalls, turnStatuses, turnDeltas };
+  return { orchestrator, events, statusCalls, turnStatuses, turnDeltas, loggerCalls };
 }
 
 // 行协议：普通行 → assistant_message；"token:x" 行 → resumeToken（多次取最后）
@@ -146,6 +151,106 @@ const turnEnded = (events: RecordedEvent[], turnId: string) =>
   events.some((event) => event.kind === "lifecycle" && typeof event.metadata?.status === "string" && String(event.metadata.status).startsWith("turn-") && event.metadata?.turnId === turnId);
 
 describe("runtime orchestrator chat turns", () => {
+  it("marks a completed backend result as failed when its event stream gaps", async () => {
+    const { orchestrator } = createHarness();
+    await orchestrator.submitTurn("backend-gap", {
+      turnId: "turn-gap",
+      prompt: "stream gap",
+      runBackend: async () => ({
+        events: (async function* () {
+          yield { kind: "assistant_message" as const, occurredAt: new Date().toISOString(), text: "partial" };
+          throw new Error("stream secret=stream-canary");
+        })(),
+        result: Promise.resolve({ status: "completed" as const }),
+        cancel: async () => undefined
+      })
+    });
+    const result = await orchestrator.waitForTurn("backend-gap", "turn-gap");
+    expect(result).toMatchObject({ status: "failed", sideEffect: { state: "unknown" } });
+  });
+
+  it("marks parser failures as parse failures with unknown side effects", async () => {
+    const { orchestrator } = createHarness();
+    await orchestrator.submitTurn("parse-gap", {
+      turnId: "turn-parse-gap",
+      prompt: "parse gap",
+      buildCommand: async () => ({ command: process.execPath, args: ["-e", "process.exit(0)"], cwd: fixtureDir, env: {} }),
+      parseOutput: async function* () {
+        throw new Error("parser prompt=parse-canary");
+      }
+    });
+    const result = await orchestrator.waitForTurn("parse-gap", "turn-parse-gap");
+    expect(result).toMatchObject({ status: "failed", sideEffect: { state: "unknown" }, error: { code: "TURN_FAILED", phase: "parse" } });
+  });
+
+  it("redacts failure canaries before persisting the error transcript", async () => {
+    const { orchestrator, events, loggerCalls } = createHarness();
+    await orchestrator.submitTurn("transcript-canary", {
+      turnId: "turn-transcript-canary",
+      prompt: "failure",
+      runBackend: async () => {
+        return {
+          events: (async function* () { throw new Error("backend secret=transcript-canary prompt=hidden"); })(),
+          result: Promise.resolve({ status: "completed" as const }),
+          cancel: async () => undefined
+        };
+      }
+    });
+    await waitFor(() => turnEnded(events, "turn-transcript-canary"));
+    const error = events.find((event) => event.kind === "error" && event.metadata?.turnId === "turn-transcript-canary");
+    expect(error?.raw).not.toContain("transcript-canary");
+    expect(error?.raw).not.toContain("hidden");
+    expect(loggerCalls.every(({ metadata }) => typeof metadata?.error !== "string" || !metadata.error.includes("transcript-canary"))).toBe(true);
+  });
+
+  it("treats unknown vendor diagnostics and missing effect declarations conservatively", async () => {
+    const { orchestrator } = createHarness();
+    await orchestrator.submitTurn("unknown-vendor", {
+      turnId: "turn-unknown-vendor",
+      prompt: "unknown vendor",
+      runBackend: async () => ({
+        events: (async function* () {
+          yield { kind: "diagnostic" as const, occurredAt: new Date().toISOString(), text: "vendor event", metadata: { code: "UNKNOWN_VENDOR_EVENT" } };
+        })(),
+        result: Promise.resolve({ status: "completed" as const }),
+        cancel: async () => undefined
+      })
+    });
+    await expect(orchestrator.waitForTurn("unknown-vendor", "turn-unknown-vendor")).resolves.toMatchObject({ status: "completed", sideEffect: { state: "unknown" } });
+
+    await orchestrator.submitTurn("missing-effect", {
+      turnId: "turn-missing-effect",
+      prompt: "missing effect",
+      runBackend: async () => ({
+        events: (async function* () {
+          yield { kind: "tool" as const, occurredAt: new Date().toISOString(), text: "read tool" };
+        })(),
+        result: Promise.resolve({ status: "completed" as const }),
+        cancel: async () => undefined
+      })
+    });
+    await expect(orchestrator.waitForTurn("missing-effect", "turn-missing-effect")).resolves.toMatchObject({ status: "completed", sideEffect: { state: "possible" } });
+  });
+
+  it("redacts direct AgentEvent components before transcript persistence", async () => {
+    const { orchestrator, events } = createHarness();
+    await orchestrator.submitTurn("event-canary", {
+      turnId: "turn-event-canary",
+      prompt: "canary",
+      runBackend: async () => ({
+        events: (async function* () {
+          yield { kind: "tool" as const, occurredAt: new Date().toISOString(), text: "path=/tmp/project", metadata: { token: "event-token-canary" }, component: { type: "tool" as const, title: "title", text: "prompt=event-prompt-canary", data: { secret: "event-secret-canary", path: "/tmp/project/file.ts" } } };
+        })(),
+        result: Promise.resolve({ status: "completed" as const }),
+        cancel: async () => undefined
+      })
+    });
+    await expect(orchestrator.waitForTurn("event-canary", "turn-event-canary")).resolves.toMatchObject({ status: "completed" });
+    const persisted = events.find((event) => event.sessionId === "event-canary" && event.kind === "tool_activity");
+    expect(JSON.stringify(persisted)).not.toMatch(/event-token-canary|event-prompt-canary|event-secret-canary/);
+    expect(JSON.stringify(persisted)).toContain("/tmp/project/file.ts");
+  });
+
   it("projects compatibility PTY diagnostics into replay output without treating them as assistant text", async () => {
     const { orchestrator, events } = createHarness();
     await orchestrator.submitTurn("backend-session", {
@@ -264,6 +369,23 @@ describe("runtime orchestrator chat turns", () => {
     await orchestrator.submitTurn("s5", makeTurn("turn-b", "retry", echoScript));
     await waitFor(() => turnEnded(events, "turn-b"));
     expect(events.some((event) => event.metadata?.status === "turn-completed" && event.metadata?.turnId === "turn-b")).toBe(true);
+  });
+
+  it("redacts legacy parsed event canaries at the persistence boundary", async () => {
+    const { orchestrator, events } = createHarness();
+    await orchestrator.submitTurn("legacy-canary", {
+      turnId: "turn-legacy-canary",
+      prompt: "legacy",
+      buildCommand: async () => ({ command: process.execPath, args: ["-e", "process.exit(0)"], cwd: fixtureDir, env: {} }),
+      parseOutput: async function* () {
+        yield { kind: "tool_activity", source: "profile-adapter", raw: "prompt=legacy-prompt-canary path=/tmp/project", metadata: { token: "legacy-token-canary" }, component: { type: "tool", text: "secret=legacy-secret-canary", data: { path: "/tmp/project/file.ts" } }, effect: "read" };
+        return {};
+      }
+    });
+    await waitFor(() => turnEnded(events, "turn-legacy-canary"));
+    const persisted = events.find((event) => event.sessionId === "legacy-canary" && event.kind === "tool_activity");
+    expect(JSON.stringify(persisted)).not.toMatch(/legacy-prompt-canary|legacy-token-canary|legacy-secret-canary/);
+    expect(JSON.stringify(persisted)).toContain("/tmp/project/file.ts");
   });
 
   it("marks non-zero exits as turn-failed with a stderr summary and withholds resumeToken", async () => {

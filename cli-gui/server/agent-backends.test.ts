@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { CliProfileV3 } from "../shared/types";
 import type { ProfileAdapterRegistry, PersistentChatRuntime } from "./ports";
 import { PersistentRuntimeUnavailableError } from "./ports";
-import { createAgentBackendRegistry, createProfileAdapterTurnExecutor } from "./agent-backends";
+import { classifyAgentTurnFailure, createAgentBackendRegistry, createProfileAdapterTurnExecutor, normalizeVendorEvent } from "./agent-backends";
 
 const profile: CliProfileV3 = {
   id: "profile-codex",
@@ -28,6 +28,34 @@ const capabilities = {
 };
 
 describe("Agent Backend migration seam", () => {
+  it("redacts vendor text, metadata, structured components, and unknown previews at normalization", () => {
+    const known = normalizeVendorEvent({
+      type: "tool_use", text: "keep path=/tmp/project", metadata: { token: "known-canary", note: "token=inline-canary" },
+      component: { type: "tool", title: "title", text: "prompt=component-canary", data: { secret: "data-canary", path: "/tmp/project/file.ts" } }
+    }, "codex");
+    expect(known.text).toContain("/tmp/project");
+    expect(JSON.stringify(known)).not.toMatch(/known-canary|inline-canary|component-canary|data-canary/);
+    expect(JSON.stringify(known)).toContain("/tmp/project/file.ts");
+
+    const unknown = normalizeVendorEvent({ type: "vendor.experimental", payload: { auth: "unknown-canary", path: "/tmp/project" }, component: { type: "diagnostic", data: { apiKey: "component-canary" } } }, "codex");
+    expect(JSON.stringify(unknown)).not.toMatch(/unknown-canary|component-canary/);
+    expect(JSON.stringify(unknown)).toContain("/tmp/project");
+  });
+
+  it("maps only controlled machine codes and ignores an upstream class override", () => {
+    const cases = [
+      ["MODEL_NOT_FOUND", "configuration", false],
+      ["MODEL_OVERLOADED", "model-temporarily-unavailable", true],
+      ["CONNECTION_FAILED", "connection", true],
+      ["PROVIDER_UNAVAILABLE", "provider-unavailable", true],
+      ["HTTP_401", "authentication", false],
+      ["PARSER_FAILED", "unknown", false]
+    ] as const;
+    for (const [code, expected, fallbackEligible] of cases) {
+      expect(classifyAgentTurnFailure({ code, message: "secret=canary prompt=hidden", failureClass: "startup" })).toMatchObject({ class: expected, fallbackEligible, message: expect.not.stringContaining("canary") });
+    }
+  });
+
   it("selects a structured transport and delegates turns through a stateful handle", async () => {
     const adapters: ProfileAdapterRegistry = {
       availableAdapterIds: ["codex"],
@@ -68,17 +96,20 @@ describe("Agent Backend migration seam", () => {
         return {};
       }
     };
+    const persistentRun = vi.fn(() => {
+      return {
+        result: Promise.reject(new PersistentRuntimeUnavailableError("failed to initialize in-process app-server client: Operation not permitted")),
+        kill() {}
+      };
+    });
     const persistentChatRuntime: PersistentChatRuntime = {
-      runTurn() {
-        return {
-          result: Promise.reject(new PersistentRuntimeUnavailableError("failed to initialize in-process app-server client: Operation not permitted")),
-          kill() {}
-        };
-      },
+      runTurn: persistentRun,
       release() {},
       async shutdown() {}
     };
-    const executor = createProfileAdapterTurnExecutor({ processEnvironment: { PATH: process.env.PATH ?? "" }, persistentChatRuntime });
+    const buildTurn = adapters.buildTurn;
+    const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+    const executor = createProfileAdapterTurnExecutor({ processEnvironment: { PATH: process.env.PATH ?? "" }, persistentChatRuntime, logger });
     const handle = await executor.run({
       backendId: "codex",
       session: { sessionId: "session-1", workspacePath: process.cwd(), config: { profile } },
@@ -86,7 +117,9 @@ describe("Agent Backend migration seam", () => {
       adapters
     });
 
-    await expect(handle.result).resolves.toMatchObject({
+    const resultPromise = handle.result;
+    expect(handle.result).toBe(resultPromise);
+    await expect(resultPromise).resolves.toMatchObject({
       status: "failed",
       error: {
         code: "CLI_PERMISSION_DENIED",
@@ -95,8 +128,50 @@ describe("Agent Backend migration seam", () => {
         fallbackCode: "CLI_PERMISSION_DENIED"
       }
     });
-    const result = await handle.result;
+    const result = await resultPromise;
     expect(result.error?.message).toContain("app-server");
+    expect(result.error?.message).not.toContain("canary");
+    expect(logger.info).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ reason: expect.not.stringContaining("canary") }));
+    expect(persistentRun).toHaveBeenCalledTimes(1);
+    expect(buildTurn).toHaveBeenCalledTimes(1);
+  });
+
+  it("redacts parser diagnostics before they enter the backend event queue", async () => {
+    const adapters: ProfileAdapterRegistry = {
+      availableAdapterIds: ["codex"],
+      buildTurn: vi.fn(async () => ({ command: process.execPath, args: ["-e", "process.exit(0)"] })),
+      parseEvents: async function* () {
+        throw new Error("parser secret=parser-canary prompt=hidden");
+      }
+    };
+    const executor = createProfileAdapterTurnExecutor({ processEnvironment: { PATH: process.env.PATH ?? "" } });
+    const handle = await executor.run({
+      backendId: "codex",
+      session: { sessionId: "session-parser", workspacePath: process.cwd(), config: { profile } },
+      turn: { prompt: "hello" },
+      adapters
+    });
+    const events = [];
+    for await (const event of handle.events) events.push(event);
+    expect(events).toContainEqual(expect.objectContaining({ kind: "diagnostic", text: expect.not.stringContaining("parser-canary") }));
+    await expect(handle.result).resolves.toMatchObject({ status: "failed", error: { message: expect.not.stringContaining("parser-canary") } });
+  });
+
+  it("redacts parsed adapter raw and component canaries before queueing", async () => {
+    const adapters: ProfileAdapterRegistry = {
+      availableAdapterIds: ["codex"],
+      buildTurn: vi.fn(async () => ({ command: process.execPath, args: ["-e", "process.exit(0)"] })),
+      parseEvents: async function* () {
+        yield { kind: "assistant_message", raw: "prompt=parsed-prompt-canary path=/tmp/project", metadata: { token: "parsed-token-canary" }, component: { type: "message", text: "secret=parsed-secret-canary", data: { path: "/tmp/project/file.ts" } } };
+        return {};
+      }
+    };
+    const executor = createProfileAdapterTurnExecutor({ processEnvironment: { PATH: process.env.PATH ?? "" } });
+    const handle = await executor.run({ backendId: "codex", session: { sessionId: "session-parsed", workspacePath: process.cwd(), config: { profile } }, turn: { prompt: "hello" }, adapters });
+    const events = [];
+    for await (const event of handle.events) events.push(event);
+    expect(JSON.stringify(events)).not.toMatch(/parsed-prompt-canary|parsed-token-canary|parsed-secret-canary/);
+    expect(JSON.stringify(events)).toContain("/tmp/project/file.ts");
   });
 
   it("registers backend boundaries without advertising unimplemented native SDK or ACP transports", () => {

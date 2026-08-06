@@ -16,6 +16,8 @@ import { AttemptTimeline } from "./AttemptTimeline";
 
 export { MarkdownLite } from "./MarkdownLite";
 
+const HISTORY_PAGE_BATCH = 5;
+
 interface TranscriptPanelProps {
   sessionId: string;
   /** 发送响应里的 user_message 本地回显（与 WS 推送按 id 去重，frontend-spec §5.1） */
@@ -43,11 +45,15 @@ export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerive
   const { t } = useI18n();
   const feedback = useFeedback();
   const runtime = useClientRuntime();
-  const [events, setEvents] = useState<TranscriptEvent[]>([]);
-  const [nextHistorySequence, setNextHistorySequence] = useState(0);
+  const eventsRef = useRef<TranscriptEvent[]>([]);
+  const [loadedEventCount, setLoadedEventCount] = useState(0);
+  const nextHistorySequenceRef = useRef(0);
   const [hasMore, setHasMore] = useState(false);
+  const hasMoreRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const loadingMoreRef = useRef(false);
+  const loadingMoreStartCountRef = useRef(0);
   const [error, setError] = useState(false);
   const [connectionState, setConnectionState] = useState<"connecting" | "connected" | "reconnecting" | "offline">("connecting");
   const [retryKey, setRetryKey] = useState(0);
@@ -63,15 +69,13 @@ export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerive
   const [executionLoading, setExecutionLoading] = useState(false);
   const [pendingExecutionTaskId, setPendingExecutionTaskId] = useState<string>();
 
-  const mergeEvent = useCallback((event: TranscriptEvent) => {
-    setEvents((current) => {
-      const byId = new Map(current.map((item) => [item.id, item]));
-      const previous = byId.get(event.id);
-      if (!previous || event.sequence > previous.sequence) byId.set(event.id, event);
-      return [...byId.values()].sort((left, right) => left.sequence - right.sequence || left.id.localeCompare(right.id));
-    });
-    latestSequenceRef.current = Math.max(latestSequenceRef.current, event.sequence);
+  const mergeEvents = useCallback((incoming: TranscriptEvent[]) => {
+    if (!incoming.length) return;
+    latestSequenceRef.current = Math.max(latestSequenceRef.current, ...incoming.map((event) => event.sequence));
+    eventsRef.current = mergeTranscriptEvents(eventsRef.current, incoming);
+    setLoadedEventCount(eventsRef.current.length);
   }, []);
+  const mergeEvent = useCallback((event: TranscriptEvent) => mergeEvents([event]), [mergeEvents]);
 
   useEffect(() => {
     const generation = generationRef.current + 1;
@@ -81,10 +85,14 @@ export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerive
     const controller = new AbortController();
     setLoading(true);
     setError(false);
-    setEvents([]);
-    setNextHistorySequence(0);
+    eventsRef.current = [];
+    setLoadedEventCount(0);
+    nextHistorySequenceRef.current = 0;
     latestSequenceRef.current = 0;
+    hasMoreRef.current = false;
+    loadingMoreRef.current = false;
     setHasMore(false);
+    setLoadingMore(false);
     setConnectionState("connecting");
     setStream(undefined);
 
@@ -125,13 +133,15 @@ export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerive
 
     runtime.events.transcript(sessionId, 0, 200, controller.signal).then((page) => {
       if (!isCurrent()) return;
-      const events = Array.isArray(page.events) ? page.events : [];
-      const sessionEvents = events.filter((event) => event.sessionId === sessionId);
-      setEvents(sessionEvents);
+      const pageEvents = Array.isArray(page.events) ? page.events : [];
+      const sessionEvents = pageEvents.filter((event) => event.sessionId === sessionId);
+      eventsRef.current = sessionEvents;
+      setLoadedEventCount(sessionEvents.length);
       const historySequence = typeof page.nextAfterSequence === "number" ? page.nextAfterSequence : 0;
-      setNextHistorySequence(historySequence);
+      nextHistorySequenceRef.current = historySequence;
       latestSequenceRef.current = sessionEvents.at(-1)?.sequence ?? historySequence;
-      setHasMore(page.hasMore === true);
+      hasMoreRef.current = page.hasMore === true;
+      setHasMore(hasMoreRef.current);
       setLoading(false);
       closeSubscription = runtime.events.subscribe(sessionId, latestSequenceRef.current, {
         onReady: () => { if (isCurrent()) setConnectionState("connected"); },
@@ -231,35 +241,73 @@ export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerive
     for (const event of localEvents ?? []) if (event.sessionId === sessionId) mergeEvent(event);
   }, [localEvents, mergeEvent, sessionId]);
 
-  // 顶部 SessionLifecycleStatusBar 数据源：从 events 派生 session-* 状态
+  // 顶部 SessionLifecycleStatusBar 数据源：从完整 transcript ref 派生 session-* 状态
   useEffect(() => {
-    const fallback: SessionLifecycleStatus = events.length === 0 ? "idle" : "stopped";
-    onSessionLifecycle?.(deriveSessionLifecycleStatus(events, fallback));
-  }, [events, onSessionLifecycle]);
+    const fallback: SessionLifecycleStatus = loadedEventCount === 0 ? "idle" : "stopped";
+    onSessionLifecycle?.(deriveSessionLifecycleStatus(eventsRef.current, fallback));
+  }, [loadedEventCount, onSessionLifecycle]);
 
   async function loadMore() {
-    if (loadingMore || !hasMore) return;
+    if (loadingMoreRef.current || !hasMoreRef.current) return;
     const generation = generationRef.current;
     const requestedSessionId = sessionId;
+    loadingMoreRef.current = true;
+    loadingMoreStartCountRef.current = eventsRef.current.length;
     setLoadingMore(true);
     try {
-      const page = await runtime.events.transcript(requestedSessionId, nextHistorySequence, 200);
-      if (generationRef.current !== generation || requestedSessionId !== sessionId) return;
-      for (const event of page.events) if (event.sessionId === requestedSessionId) mergeEvent(event);
-      setNextHistorySequence((current) => Math.max(current, page.nextAfterSequence));
-      setHasMore(page.hasMore);
+      let cursor = nextHistorySequenceRef.current;
+      let hasMorePage = true;
+      const pages: TranscriptEvent[] = [];
+      for (let index = 0; index < HISTORY_PAGE_BATCH && hasMorePage; index += 1) {
+        const page = await runtime.events.transcript(requestedSessionId, cursor, 200);
+        if (generationRef.current !== generation || requestedSessionId !== sessionId) return;
+        pages.push(...page.events.filter((event) => event.sessionId === requestedSessionId));
+        if (page.nextAfterSequence <= cursor) break;
+        cursor = page.nextAfterSequence;
+        hasMorePage = page.hasMore;
+      }
+      nextHistorySequenceRef.current = cursor;
+      hasMoreRef.current = hasMorePage;
+      loadingMoreRef.current = false;
+      mergeEvents(pages);
+      setHasMore(hasMorePage);
     } catch (cause) {
       feedback.error(toFeedbackError(cause, t, "transcriptFailed", `transcript-page:${sessionId}`));
     } finally {
+      loadingMoreRef.current = false;
       setLoadingMore(false);
     }
   }
 
-  const displayEvents = useMemo(() => projectTranscriptEvents(events, { chatMode }), [chatMode, events]);
-  const turnPrompts = useMemo(() => buildTurnPrompts(events), [events]);
-  const approvalStates = useMemo(() => buildApprovalStates(events), [events]);
-  useEffect(() => { onDerivedTurn?.(deriveActiveTurnId(events)); }, [events, onDerivedTurn]);
+  const turnPrompts = useMemo(() => buildTurnPrompts(eventsRef.current), [loadedEventCount]);
+  const approvalStates = useMemo(() => buildApprovalStates(eventsRef.current), [loadedEventCount]);
+  useEffect(() => { onDerivedTurn?.(deriveActiveTurnId(eventsRef.current)); }, [loadedEventCount, onDerivedTurn]);
   const listRef = useRef<HTMLDivElement | null>(null);
+  const rangeFrameRef = useRef<number | undefined>(undefined);
+  const estimatedItemHeight = chatMode ? 72 : 88;
+  const virtualOverscan = 24;
+  const [renderRange, setRenderRange] = useState({ start: 0, end: 160 });
+  const displayEvents = useMemo(() => projectTranscriptEvents(eventsRef.current, { chatMode }), [chatMode, loadedEventCount]);
+  const updateRenderRange = useCallback(() => {
+    if (rangeFrameRef.current !== undefined) return;
+    rangeFrameRef.current = window.requestAnimationFrame(() => {
+      rangeFrameRef.current = undefined;
+      const element = listRef.current;
+      if (!element) return;
+      const eventOffset = Math.max(0, element.scrollTop - 48);
+      const viewportItems = Math.ceil(element.clientHeight / estimatedItemHeight) + virtualOverscan * 2;
+      const start = Math.max(0, Math.floor(eventOffset / estimatedItemHeight) - virtualOverscan);
+      const end = Math.min(displayEvents.length, start + viewportItems);
+      setRenderRange((current) => current.start === start && current.end === end ? current : { start, end });
+    });
+  }, [displayEvents.length, estimatedItemHeight]);
+  useEffect(() => {
+    updateRenderRange();
+    return () => {
+      if (rangeFrameRef.current !== undefined) window.cancelAnimationFrame(rangeFrameRef.current);
+      rangeFrameRef.current = undefined;
+    };
+  }, [displayEvents.length, updateRenderRange]);
   const [following, setFollowing] = useState(true);
   const followRef = useRef(true);
   followRef.current = following;
@@ -268,12 +316,14 @@ export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerive
   useEffect(() => {
     const element = listRef.current;
     if (element && followRef.current) element.scrollTop = element.scrollHeight;
-  }, [displayEvents, turnPending, stream]);
+    updateRenderRange();
+  }, [displayEvents.length, turnPending, stream, updateRenderRange]);
 
   const handleScroll = () => {
     const element = listRef.current;
     if (!element) return;
     setFollowing(isNearBottom(element.scrollTop, element.scrollHeight, element.clientHeight));
+    updateRenderRange();
   };
 
   const backToLatest = () => {
@@ -286,40 +336,57 @@ export function TranscriptPanel({ sessionId, localEvents, onTurnStatus, onDerive
   if (error) return <AsyncState className="transcript-state error" state="error" title={t("transcriptFailed")} actions={<Button variant="secondary" className="secondary-button" onClick={() => setRetryKey((value) => value + 1)}>{t("retry")}</Button>} />;
   if (!displayEvents.length && !turnPending && !stream && !executionTasks.length && !executionLoading) return <AsyncState className="transcript-state" state="empty" icon={<Icon name="terminal" />} title={t("emptyTranscript")} description={t("emptyTranscriptDescription")} />;
 
-  return <div className={`transcript-list${chatMode ? " chat-mode" : ""}`} aria-label={t("transcript")} ref={listRef} onScroll={handleScroll}>
+  const visibleEvents = displayEvents.slice(renderRange.start, renderRange.end);
+  const virtualHeight = displayEvents.length * estimatedItemHeight;
+  return <div className={`transcript-list${chatMode ? " chat-mode" : ""}`} aria-label={t("transcript")} ref={listRef} onScroll={handleScroll} data-virtualized="true" data-event-count={loadedEventCount} data-rendered-event-count={visibleEvents.length} data-loading-more={loadingMore ? "true" : "false"}>
     <div className="transcript-status" aria-live="polite">
-      {hasMore && <Button variant="secondary" className="secondary-button" onClick={() => void loadMore()} loading={loadingMore} loadingLabel={t("loading")}>{t("loadMore")}</Button>}
+      {hasMore && <Button variant="secondary" className="secondary-button" onClick={() => void loadMore()} loading={loadingMore && loadedEventCount === loadingMoreStartCountRef.current} loadingLabel={t("loading")}>{t("loadMore")}</Button>}
       {connectionState === "reconnecting" && <span>{t("reconnecting")}</span>}
       {connectionState === "offline" && <span>{t("offlineMode")}</span>}
     </div>
     {executionTasks.length > 0 && <AttemptTimeline snapshots={executionTasks} pendingTaskId={pendingExecutionTaskId} onConfirmRetry={confirmExecutionRetry} onCancel={cancelExecution} />}
-    <StructuredCardList
-      items={displayEvents}
-      chatMode={chatMode}
-      onApprove={onApprove}
-      approvalStates={approvalStates}
-      turnPrompts={turnPrompts}
-      onRetry={onRetry}
-      approvalFallback={approvalFallback}
-      onViewInTerminal={onViewInTerminal}
-      renderFallback={(item) => {
-      const turnId = typeof item.event.metadata?.turnId === "string" ? item.event.metadata.turnId : undefined;
-      const prompt = item.event.kind === "error" && turnId ? turnPrompts.get(turnId) : undefined;
-      const approvalId = item.event.kind === "approval_request" && typeof item.event.metadata?.approvalId === "string" ? item.event.metadata.approvalId : undefined;
-      return <TranscriptMessage
-        item={item}
-        chatMode={chatMode}
-        onRetry={onRetry && prompt ? () => onRetry(prompt) : undefined}
-        approval={approvalId ? approvalStates.get(approvalId) : undefined}
-        onRespondApproval={onApprove && approvalId ? (decision) => onApprove(approvalId, decision) : undefined}
-        fallbackHint={approvalFallback && item.event.kind === "error" && Boolean(turnId)}
-        onViewInTerminal={onViewInTerminal}
-      />;
-    }} />
+    <div className="transcript-virtual-window" style={{ height: `${Math.max(virtualHeight, 1)}px` }}>
+      <div className="transcript-virtual-items" style={{ top: `${renderRange.start * estimatedItemHeight}px` }}>
+        <StructuredCardList
+          items={visibleEvents}
+          chatMode={chatMode}
+          onApprove={onApprove}
+          approvalStates={approvalStates}
+          turnPrompts={turnPrompts}
+          onRetry={onRetry}
+          approvalFallback={approvalFallback}
+          onViewInTerminal={onViewInTerminal}
+          renderFallback={(item) => {
+            const turnId = typeof item.event.metadata?.turnId === "string" ? item.event.metadata.turnId : undefined;
+            const prompt = item.event.kind === "error" && turnId ? turnPrompts.get(turnId) : undefined;
+            const approvalId = item.event.kind === "approval_request" && typeof item.event.metadata?.approvalId === "string" ? item.event.metadata.approvalId : undefined;
+            return <TranscriptMessage
+              item={item}
+              chatMode={chatMode}
+              onRetry={onRetry && prompt ? () => onRetry(prompt) : undefined}
+              approval={approvalId ? approvalStates.get(approvalId) : undefined}
+              onRespondApproval={onApprove && approvalId ? (decision) => onApprove(approvalId, decision) : undefined}
+              fallbackHint={approvalFallback && item.event.kind === "error" && Boolean(turnId)}
+              onViewInTerminal={onViewInTerminal}
+            />;
+          }} />
+      </div>
+    </div>
     {stream && <StreamingMessage text={stream.text} chatMode={chatMode} />}
     {turnPending && !stream && <TurnPendingIndicator chatMode={chatMode} />}
     {!following && <Button variant="secondary" className="secondary-button back-to-latest" onClick={backToLatest}>{t("backToLatest")}</Button>}
   </div>;
+}
+
+/** Merge a history page in one state transition; page loading must not re-render once per event. */
+export function mergeTranscriptEvents(current: TranscriptEvent[], incoming: TranscriptEvent[]) {
+  if (!incoming.length) return current;
+  const byId = new Map(current.map((item) => [item.id, item]));
+  for (const event of incoming) {
+    const previous = byId.get(event.id);
+    if (!previous || event.sequence > previous.sequence) byId.set(event.id, event);
+  }
+  return [...byId.values()].sort((left, right) => left.sequence - right.sequence || left.id.localeCompare(right.id));
 }
 
 /** 流式气泡（streaming-spec FR-5）：turn-delta 累积文本 + 光标，落盘 assistant_message 到达后退场；不显示名称 */

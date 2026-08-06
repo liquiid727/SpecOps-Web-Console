@@ -153,6 +153,8 @@ export interface PersistentChatTurnRequest {
   sandboxMode: string | null;
   approvalPolicy: string | null;
   resumeToken?: string;
+  /** Provider launch arguments; kept transient and applied only at first spawn. */
+  providerArgs?: string[];
 }
 
 /** 每会话常驻 chat 运行时（streaming-spec §3.3）；生产组装为 codex mcp-server 实现 */

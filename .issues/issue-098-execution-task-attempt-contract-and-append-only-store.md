@@ -24,12 +24,18 @@
 - UI。
 
 ## Acceptance Criteria
-- [ ] Task/Attempt immutable 字段不能被 transition 改写
-- [ ] revision conflict 和非法 transition 被拒绝
-- [ ] incomplete tail 可恢复，corrupt middle 明确失败
-- [ ] old Session 无 execution file 返回空，不生成伪记录
-- [ ] delete/archive/fork 按 SPEC 保留或删除正确文件
-- [ ] repository/state-machine/security tests 通过
+- [x] Task/Attempt immutable 字段不能被 transition 改写
+- [x] revision conflict 和非法 transition 被拒绝
+- [x] incomplete tail 可恢复，corrupt middle 明确失败
+- [x] old Session 无 execution file 返回空，不生成伪记录
+- [x] delete/archive/fork 按 SPEC 保留或删除正确文件
+- [x] repository/state-machine/security tests 通过
+
+## Local loop status
+
+- Decision: accepted-with-waiver
+- Evidence: execution-store 14 passed; compatibility 79 passed; full suite 561 passed, 4 skipped; typecheck/lint/ui:check/build passed.
+- Waiver: cross-process lock, fsync/crash-restart, packaged Tauri, and real-engine/provider evidence unavailable.
 
 ## Inputs
 - TranscriptRepository patterns、issue-097 resolved snapshot

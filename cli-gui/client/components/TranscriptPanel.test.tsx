@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TranscriptEvent } from "../../shared/types";
 import { I18nProvider } from "../i18n";
 import { isNearBottom, projectTranscriptEvents, sanitizePtyOutput, buildTurnPrompts, buildApprovalStates, deriveActiveTurnId } from "../transcript-display";
-import { MarkdownLite, StreamingMessage, TranscriptMessage, TurnPendingIndicator } from "./TranscriptPanel";
+import { MarkdownLite, mergeTranscriptEvents, StreamingMessage, TranscriptMessage, TurnPendingIndicator } from "./TranscriptPanel";
 
 describe("Markdown transcript rendering", () => {
   let container: HTMLDivElement;
@@ -80,6 +80,23 @@ function makeEvent(overrides: Partial<TranscriptEvent> & { id: string; kind: Tra
     ...overrides
   };
 }
+
+describe("transcript history page merging", () => {
+  it("deduplicates and sorts a page in one pure merge", () => {
+    const current = [makeEvent({ id: "e1", kind: "user_message", sequence: 1, raw: "first" }), makeEvent({ id: "e3", kind: "user_message", sequence: 3, raw: "old third" })];
+    const merged = mergeTranscriptEvents(current, [
+      makeEvent({ id: "e2", kind: "user_message", sequence: 2, raw: "second" }),
+      makeEvent({ id: "e3", kind: "user_message", sequence: 4, raw: "new third" }),
+      makeEvent({ id: "e1", kind: "user_message", sequence: 0, raw: "stale first" })
+    ]);
+    expect(merged.map((event) => [event.id, event.sequence, event.raw])).toEqual([
+      ["e1", 1, "first"],
+      ["e2", 2, "second"],
+      ["e3", 4, "new third"]
+    ]);
+    expect(current).toHaveLength(2);
+  });
+});
 
 describe("ChatView structured rendering (kind → render table)", () => {
   let container: HTMLDivElement;

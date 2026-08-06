@@ -21,3 +21,9 @@ Blocking: state/fallback cardinality, side-effect confirmation, cancellation rac
 ## Status
 
 Ready for independent test execution; no normalized result is claimed until the commands and evidence artifacts are recorded.
+
+## Local loop status
+
+- Decision: `blocked`
+- Evidence: `tests/results/cli-gui-031.issue-113.local.json`, `tests/results/cli-gui-031.issue-113.aggregate.raw.json`
+- Reason: #100 and #101 prerequisite normalized results remain blocked on restart confirmation reruns; aggregate external engine, cross-process, packaged, and browser evidence is unavailable.

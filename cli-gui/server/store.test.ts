@@ -2,7 +2,8 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { CURRENT_SCHEMA_VERSION } from "../shared/types.js";
 import type { AppStateEnvelopeV2, AppStateEnvelopeV8, AppStateV2, AppStateV3 } from "../shared/types.js";
 import { createJsonStateRepository, StateRepositoryError } from "./store.js";
 
@@ -96,6 +97,64 @@ describe("JSON state repository lifecycle", () => {
 });
 
 describe("schema v2/v3 -> v4 migration", () => {
+  it("loads a v4 envelope with optional providers and providerId without inventing data", async () => {
+    const dataDirectory = await makeDataDirectory("cli-gui-state-v4-");
+    const workspacePath = await fs.realpath(await fs.mkdtemp(path.join(dataDirectory, "workspace-")));
+    const envelope = buildV2Envelope(workspacePath) as unknown as { schemaVersion: number; state: Record<string, unknown> };
+    envelope.schemaVersion = 4;
+    delete envelope.state.providers;
+    const sessions = envelope.state.sessions as Array<Record<string, unknown>>;
+    delete sessions[0].providerId;
+    sessions[1].providerId = "provider-legacy";
+    const statePath = path.join(dataDirectory, "state.json");
+    const original = JSON.stringify(envelope, null, 2);
+    await fs.writeFile(statePath, original, "utf8");
+
+    const repository = createJsonStateRepository({ dataDirectory, clock: { now: () => "2026-02-01T00:00:00Z" } });
+    const state = await repository.load();
+    expect(state.providers).toEqual([]);
+    expect(state.sessions[0]).not.toHaveProperty("providerId");
+    expect(state.sessions[1].providerId).toBe("provider-legacy");
+    await repository.drain();
+    expect((JSON.parse(await fs.readFile(statePath, "utf8")) as AppStateEnvelopeV8).schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    expect(await fs.readFile(`${statePath}.v4.bak`, "utf8")).toBe(original);
+  });
+
+  it("keeps valid v4 providers, drops malformed entries, and does not write in readonly mode", async () => {
+    const dataDirectory = await makeDataDirectory("cli-gui-state-v4-providers-");
+    const workspacePath = await fs.realpath(await fs.mkdtemp(path.join(dataDirectory, "workspace-")));
+    const envelope = buildV2Envelope(workspacePath) as unknown as { schemaVersion: number; state: Record<string, unknown> };
+    envelope.schemaVersion = 4;
+    envelope.state.providers = [
+      { id: "provider-1", name: "Primary", protocol: "openai-compatible", baseUrl: "https://provider.example/v1", credentialRef: "env:PROVIDER_KEY", models: ["model-1"] },
+      { id: "broken", name: "Broken", protocol: "not-a-protocol", baseUrl: "https://provider.example/v1", models: [] }
+    ];
+    const statePath = path.join(dataDirectory, "state.json");
+    const original = JSON.stringify(envelope, null, 2);
+    await fs.writeFile(statePath, original, "utf8");
+    await fs.writeFile(`${statePath}.v4.bak`, "readonly-v4-backup", "utf8");
+
+    const state = await createJsonStateRepository({ dataDirectory, readonly: true, clock: { now: () => "2026-02-01T00:00:00Z" } }).load();
+    expect(state.providers).toEqual([expect.objectContaining({ id: "provider-1", credentialRef: "env:PROVIDER_KEY" })]);
+    expect(await fs.readFile(statePath, "utf8")).toBe(original);
+    expect(await fs.readFile(`${statePath}.v4.bak`, "utf8")).toBe("readonly-v4-backup");
+  });
+
+  it("writes only credentialRef, never a secret token, to JSON state or v4 backups", async () => {
+    const dataDirectory = await makeDataDirectory("cli-gui-state-token-");
+    const statePath = path.join(dataDirectory, "state.json");
+    const token = "token-canary-never-persist";
+    const state = { workspaces: [], profiles: [], sessions: [], providers: [{ id: "provider-1", name: "Primary", protocol: "openai-compatible", baseUrl: "https://provider.example/v1", credentialRef: "env:PROVIDER_KEY", models: [] }] } as AppStateV3;
+    const repository = createJsonStateRepository({ dataDirectory, clock: { now: () => "2026-02-01T00:00:00Z" } });
+    await repository.save(state);
+    await repository.drain();
+    const written = await fs.readFile(statePath, "utf8");
+    expect(written).toContain("env:PROVIDER_KEY");
+    expect(written).not.toContain(token);
+    await fs.writeFile(`${statePath}.v4.bak`, written, "utf8");
+    expect(await fs.readFile(`${statePath}.v4.bak`, "utf8")).not.toContain(token);
+  });
+
   it("migrates a realistic v2 envelope without losing legacy fields and writes state.json.v2.bak once", async () => {
     const dataDirectory = await makeDataDirectory("cli-gui-state-v2v3-");
     const workspacePath = await fs.realpath(await fs.mkdtemp(path.join(dataDirectory, "workspace-")));
@@ -257,6 +316,48 @@ describe("schema v5-v8 model routing migrations", () => {
     expect(await fs.readFile(`${statePath}.v5.bak`, "utf8")).toBe(original);
   });
 
+  it("keeps the v5 backup stable and migration idempotent on repeated loads", async () => {
+    const dataDirectory = await makeDataDirectory("cli-gui-state-v5-repeat-");
+    const workspacePath = await fs.realpath(await fs.mkdtemp(path.join(dataDirectory, "workspace-")));
+    const envelope = buildV2Envelope(workspacePath) as unknown as { schemaVersion: number; state: Record<string, unknown> };
+    envelope.schemaVersion = 5;
+    envelope.state.providers = [{ id: "provider-1", name: "Primary", protocol: "openai-compatible", baseUrl: "https://provider.example/v1", credentialRef: "PROVIDER_KEY", models: ["model-1"] }];
+    const statePath = path.join(dataDirectory, "state.json");
+    const original = JSON.stringify(envelope, null, 2);
+    await fs.writeFile(statePath, original, "utf8");
+
+    const repository = createJsonStateRepository({ dataDirectory, clock: { now: () => "2026-03-01T00:00:00Z" } });
+    const first = await repository.load();
+    await repository.drain();
+    const backupPath = `${statePath}.v5.bak`;
+    const backup = await fs.readFile(backupPath, "utf8");
+    const migrated = await fs.readFile(statePath, "utf8");
+    const second = await createJsonStateRepository({ dataDirectory, clock: { now: () => "2026-03-02T00:00:00Z" } }).load();
+
+    expect(second).toEqual(first);
+    expect(await fs.readFile(backupPath, "utf8")).toBe(backup);
+    expect(await fs.readFile(statePath, "utf8")).toBe(migrated);
+  });
+
+  it("leaves v5 source unchanged and preserves its recovery backup when migration write fails", async () => {
+    const dataDirectory = await makeDataDirectory("cli-gui-state-v5-failure-");
+    const workspacePath = await fs.realpath(await fs.mkdtemp(path.join(dataDirectory, "workspace-")));
+    const envelope = buildV2Envelope(workspacePath) as unknown as { schemaVersion: number; state: Record<string, unknown> };
+    envelope.schemaVersion = 5;
+    envelope.state.providers = [{ id: "provider-1", name: "Primary", protocol: "openai-compatible", baseUrl: "https://provider.example/v1", credentialRef: "PROVIDER_KEY", models: ["model-1"] }];
+    const statePath = path.join(dataDirectory, "state.json");
+    const original = JSON.stringify(envelope, null, 2);
+    await fs.writeFile(statePath, original, "utf8");
+    const rename = vi.spyOn(fs, "rename").mockRejectedValueOnce(new Error("injected migration write failure"));
+    try {
+      await expect(createJsonStateRepository({ dataDirectory, clock: { now: () => "2026-03-01T00:00:00Z" } }).load()).rejects.toThrow("injected migration write failure");
+    } finally {
+      rename.mockRestore();
+    }
+    expect(await fs.readFile(statePath, "utf8")).toBe(original);
+    expect(await fs.readFile(`${statePath}.v5.bak`, "utf8")).toBe(original);
+  });
+
   it("adds deployment defaults from v6 and preserves archived history", async () => {
     const dataDirectory = await makeDataDirectory("cli-gui-state-v6-");
     const workspacePath = await fs.realpath(await fs.mkdtemp(path.join(dataDirectory, "workspace-")));
@@ -268,11 +369,58 @@ describe("schema v5-v8 model routing migrations", () => {
       { id: "broken", name: "Missing model" }
     ];
     const statePath = path.join(dataDirectory, "state.json");
-    await fs.writeFile(statePath, JSON.stringify(envelope), "utf8");
+    const original = JSON.stringify(envelope, null, 2);
+    await fs.writeFile(statePath, original, "utf8");
 
-    const state = await createJsonStateRepository({ dataDirectory, clock: { now: () => "2026-03-01T00:00:00Z" } }).load();
+    const repository = createJsonStateRepository({ dataDirectory, clock: { now: () => "2026-03-01T00:00:00Z" } });
+    const state = await repository.load();
     expect(state.modelDeployments).toEqual([expect.objectContaining({ id: "deployment-1", enabled: false, archivedAt: "2026-02-01T00:00:00Z" })]);
-    await expect(fs.access(`${statePath}.v6.bak`)).resolves.toBeUndefined();
+    await repository.drain();
+    expect((JSON.parse(await fs.readFile(statePath, "utf8")) as AppStateEnvelopeV8).schemaVersion).toBe(8);
+    expect(await fs.readFile(`${statePath}.v6.bak`, "utf8")).toBe(original);
+    expect((await fs.readdir(dataDirectory)).filter((entry) => entry.endsWith(".tmp"))).toEqual([]);
+  });
+
+  it("keeps the v6 backup stable and migration idempotent on repeated loads", async () => {
+    const dataDirectory = await makeDataDirectory("cli-gui-state-v6-repeat-");
+    const workspacePath = await fs.realpath(await fs.mkdtemp(path.join(dataDirectory, "workspace-")));
+    const envelope = buildV2Envelope(workspacePath) as unknown as { schemaVersion: number; state: Record<string, unknown> };
+    envelope.schemaVersion = 6;
+    envelope.state.modelDeployments = [{ id: "deployment-1", name: "Primary", providerId: "provider-1", profileId: "profile-codex", modelId: "model-1", enabled: true, createdAt: "2026-02-01T00:00:00Z", updatedAt: "2026-02-01T00:00:00Z" }];
+    const statePath = path.join(dataDirectory, "state.json");
+    const original = JSON.stringify(envelope, null, 2);
+    await fs.writeFile(statePath, original, "utf8");
+    const backupPath = `${statePath}.v6.bak`;
+    await fs.writeFile(backupPath, "sentinel-v6-backup", "utf8");
+    const repository = createJsonStateRepository({ dataDirectory, clock: { now: () => "2026-03-01T00:00:00Z" } });
+    const first = await repository.load();
+    await repository.drain();
+    const migrated = await fs.readFile(statePath, "utf8");
+    const second = await createJsonStateRepository({ dataDirectory, clock: { now: () => "2026-03-02T00:00:00Z" } }).load();
+    expect(second).toEqual(first);
+    expect(migrated).not.toBe(original);
+    expect(await fs.readFile(backupPath, "utf8")).toBe("sentinel-v6-backup");
+    expect(await fs.readFile(statePath, "utf8")).toBe(migrated);
+  });
+
+  it("leaves v6 source and backup unchanged and cleans the temporary file when migration rename fails", async () => {
+    const dataDirectory = await makeDataDirectory("cli-gui-state-v6-failure-");
+    const workspacePath = await fs.realpath(await fs.mkdtemp(path.join(dataDirectory, "workspace-")));
+    const envelope = buildV2Envelope(workspacePath) as unknown as { schemaVersion: number; state: Record<string, unknown> };
+    envelope.schemaVersion = 6;
+    envelope.state.modelDeployments = [{ id: "deployment-1", name: "Primary", providerId: "provider-1", profileId: "profile-codex", modelId: "model-1", enabled: true, createdAt: "2026-02-01T00:00:00Z", updatedAt: "2026-02-01T00:00:00Z" }];
+    const statePath = path.join(dataDirectory, "state.json");
+    const original = JSON.stringify(envelope, null, 2);
+    await fs.writeFile(statePath, original, "utf8");
+    const rename = vi.spyOn(fs, "rename").mockRejectedValueOnce(new Error("injected v6 migration rename failure"));
+    try {
+      await expect(createJsonStateRepository({ dataDirectory, clock: { now: () => "2026-03-01T00:00:00Z" } }).load()).rejects.toThrow("injected v6 migration rename failure");
+    } finally {
+      rename.mockRestore();
+    }
+    expect(await fs.readFile(statePath, "utf8")).toBe(original);
+    expect(await fs.readFile(`${statePath}.v6.bak`, "utf8")).toBe(original);
+    expect((await fs.readdir(dataDirectory)).filter((entry) => entry.includes(".tmp"))).toEqual([]);
   });
 
   it("normalizes v7 route bindings and rejects routes outside the 1-8 candidate contract", async () => {
@@ -282,15 +430,114 @@ describe("schema v5-v8 model routing migrations", () => {
     envelope.schemaVersion = 7;
     envelope.state.modelRoutes = [
       { id: "route-1", name: "Primary", candidateDeploymentIds: ["deployment-1", "deployment-2"], automaticTechnicalFallback: true },
+      { id: "route-1", name: "Duplicate", candidateDeploymentIds: ["deployment-3"] },
+      { id: "", name: "Malformed id", candidateDeploymentIds: ["deployment-4"] },
+      null,
       { id: "route-broken", name: "Too many", candidateDeploymentIds: ["1", "2", "3", "4", "5", "6", "7", "8", "9"] }
     ];
-    envelope.state.workspaceModelRouteBindings = [{ workspaceId: "workspace-1", routeId: "route-1" }, { workspaceId: "missing" }];
+    envelope.state.globalModelRouteId = "missing-global-route";
+    (envelope.state.sessions as Array<Record<string, unknown>>)[0].modelRouteId = "missing-session-route";
+    envelope.state.workspaceModelRouteBindings = [
+      { workspaceId: "workspace-1", routeId: "route-1" },
+      { workspaceId: "workspace-1", routeId: "route-1" },
+      { workspaceId: "workspace-1", routeId: "missing-binding-route" },
+      { workspaceId: "missing", routeId: "route-1" }
+    ];
     const statePath = path.join(dataDirectory, "state.json");
     await fs.writeFile(statePath, JSON.stringify(envelope), "utf8");
 
     const state = await createJsonStateRepository({ dataDirectory, clock: { now: () => "2026-03-01T00:00:00Z" } }).load();
     expect(state.modelRoutes).toEqual([expect.objectContaining({ id: "route-1", enabled: true, candidateDeploymentIds: ["deployment-1", "deployment-2"] })]);
-    expect(state.workspaceModelRouteBindings).toEqual([{ workspaceId: "workspace-1", routeId: "route-1" }, { workspaceId: "missing" }]);
+    expect(state.modelRoutes?.[0].candidateDeploymentIds).toEqual(["deployment-1", "deployment-2"]);
+    expect(state.globalModelRouteId).toBeUndefined();
+    expect(state.sessions[0].modelRouteId).toBeUndefined();
+    expect(state.workspaceModelRouteBindings).toEqual([{ workspaceId: "workspace-1", routeId: "route-1" }]);
     await expect(fs.access(`${statePath}.v7.bak`)).resolves.toBeUndefined();
+  });
+
+  it("keeps the v7 migration result and backup stable across repeated loads", async () => {
+    const dataDirectory = await makeDataDirectory("cli-gui-state-v7-repeat-");
+    const workspacePath = await fs.realpath(await fs.mkdtemp(path.join(dataDirectory, "workspace-")));
+    const envelope = buildV2Envelope(workspacePath) as unknown as { schemaVersion: number; state: Record<string, unknown> };
+    envelope.schemaVersion = 7;
+    envelope.state.modelRoutes = [{ id: "route-1", name: "Primary", candidateDeploymentIds: ["missing-deployment"] }];
+    envelope.state.globalModelRouteId = "route-1";
+    const statePath = path.join(dataDirectory, "state.json");
+    const original = JSON.stringify(envelope, null, 2);
+    await fs.writeFile(statePath, original, "utf8");
+
+    const first = await createJsonStateRepository({ dataDirectory, clock: { now: () => "2026-03-01T00:00:00Z" } }).load();
+    const backupPath = `${statePath}.v7.bak`;
+    const backup = await fs.readFile(backupPath, "utf8");
+    const migrated = await fs.readFile(statePath, "utf8");
+    const second = await createJsonStateRepository({ dataDirectory, clock: { now: () => "2026-03-02T00:00:00Z" } }).load();
+
+    expect(second).toEqual(first);
+    expect(second.modelRoutes?.[0].candidateDeploymentIds).toEqual(["missing-deployment"]);
+    expect(await fs.readFile(backupPath, "utf8")).toBe(backup);
+    expect(await fs.readFile(statePath, "utf8")).toBe(migrated);
+    expect((await fs.readdir(dataDirectory)).filter((entry) => entry.includes(".tmp"))).toEqual([]);
+  });
+
+  it("does not overwrite an existing v7 backup", async () => {
+    const dataDirectory = await makeDataDirectory("cli-gui-state-v7-backup-");
+    const workspacePath = await fs.realpath(await fs.mkdtemp(path.join(dataDirectory, "workspace-")));
+    const envelope = buildV2Envelope(workspacePath) as unknown as { schemaVersion: number; state: Record<string, unknown> };
+    envelope.schemaVersion = 7;
+    envelope.state.modelRoutes = [{ id: "route-1", name: "Primary", candidateDeploymentIds: ["deployment-1"] }];
+    const statePath = path.join(dataDirectory, "state.json");
+    const original = JSON.stringify(envelope, null, 2);
+    await fs.writeFile(statePath, original, "utf8");
+    await fs.writeFile(`${statePath}.v7.bak`, "pre-existing-v7-backup", "utf8");
+
+    await createJsonStateRepository({ dataDirectory, clock: { now: () => "2026-03-01T00:00:00Z" } }).load();
+
+    expect(await fs.readFile(`${statePath}.v7.bak`, "utf8")).toBe("pre-existing-v7-backup");
+    expect(await fs.readFile(statePath, "utf8")).not.toBe(original);
+  });
+
+  it.each([
+    ["rename", "injected v7 rename failure"],
+    ["write", "injected v7 write failure"]
+  ] as const)("keeps v7 source and backup unchanged and cleans tmp on %s failure", async (failure, message) => {
+    const dataDirectory = await makeDataDirectory(`cli-gui-state-v7-${failure}-failure-`);
+    const workspacePath = await fs.realpath(await fs.mkdtemp(path.join(dataDirectory, "workspace-")));
+    const envelope = buildV2Envelope(workspacePath) as unknown as { schemaVersion: number; state: Record<string, unknown> };
+    envelope.schemaVersion = 7;
+    envelope.state.modelRoutes = [{ id: "route-1", name: "Primary", candidateDeploymentIds: ["deployment-1"] }];
+    const statePath = path.join(dataDirectory, "state.json");
+    const original = JSON.stringify(envelope, null, 2);
+    await fs.writeFile(statePath, original, "utf8");
+
+    const failureSpy = failure === "rename"
+      ? vi.spyOn(fs, "rename").mockRejectedValueOnce(new Error(message))
+      : vi.spyOn(fs, "writeFile").mockRejectedValueOnce(new Error(message));
+    try {
+      await expect(createJsonStateRepository({ dataDirectory, clock: { now: () => "2026-03-01T00:00:00Z" } }).load()).rejects.toThrow(message);
+    } finally {
+      failureSpy.mockRestore();
+    }
+    expect(await fs.readFile(statePath, "utf8")).toBe(original);
+    expect(await fs.readFile(`${statePath}.v7.bak`, "utf8")).toBe(original);
+    expect((await fs.readdir(dataDirectory)).filter((entry) => entry.includes(".tmp"))).toEqual([]);
+  });
+
+  it("performs v7 migration in memory only in readonly mode", async () => {
+    const dataDirectory = await makeDataDirectory("cli-gui-state-v7-readonly-");
+    const workspacePath = await fs.realpath(await fs.mkdtemp(path.join(dataDirectory, "workspace-")));
+    const envelope = buildV2Envelope(workspacePath) as unknown as { schemaVersion: number; state: Record<string, unknown> };
+    envelope.schemaVersion = 7;
+    envelope.state.modelRoutes = [{ id: "route-1", name: "Primary", candidateDeploymentIds: ["missing-deployment"] }];
+    const statePath = path.join(dataDirectory, "state.json");
+    const original = JSON.stringify(envelope, null, 2);
+    await fs.writeFile(statePath, original, "utf8");
+    await fs.writeFile(`${statePath}.v7.bak`, "readonly-v7-backup", "utf8");
+
+    const state = await createJsonStateRepository({ dataDirectory, readonly: true, clock: { now: () => "2026-03-01T00:00:00Z" } }).load();
+
+    expect(state.modelRoutes?.[0].candidateDeploymentIds).toEqual(["missing-deployment"]);
+    expect(await fs.readFile(statePath, "utf8")).toBe(original);
+    expect(await fs.readFile(`${statePath}.v7.bak`, "utf8")).toBe("readonly-v7-backup");
+    expect((await fs.readdir(dataDirectory)).filter((entry) => entry.includes(".tmp"))).toEqual([]);
   });
 });

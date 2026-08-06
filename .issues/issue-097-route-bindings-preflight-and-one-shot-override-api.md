@@ -24,12 +24,12 @@
 - GUI（issues 103-107）。
 
 ## Acceptance Criteria
-- [ ] global < project < session < run 的 API 集成符合 pure resolver
-- [ ] invalid fixed/no candidate 时无 user_message、Task 或 process spawn
-- [ ] Session revision conflict 与 readonly 语义不变
-- [ ] one-shot selection 请求结束后不写 Session/AppState
-- [ ] terminal/unsupported Engine 不伪报 Route 可用
-- [ ] legacy clients/no-route regression tests 通过
+- [x] global < project < session < run 的 API 集成符合 pure resolver
+- [x] invalid fixed/no candidate 时无 user_message、Task 或 process spawn
+- [x] Session revision conflict 与 readonly 语义不变
+- [x] one-shot selection 请求结束后不写 Session/AppState
+- [x] terminal/unsupported Engine 不伪报 Route 可用
+- [x] legacy clients/no-route regression tests 通过
 
 ## Inputs
 - issue-096 resolver、application/session/chat API
@@ -45,3 +45,7 @@ implementation-agent（backend-agent + openapi-agent）
 
 ## Gate Impact
 - blocking
+
+## Local loop status
+
+Accepted locally after independent HTTP/application verification. Evidence: `tests/results/cli-gui-030.issue-097.local.json`, `tests/results/cli-gui-030.issue-097.route.raw.json`, and `reviews/CLI-GUI-030-issue-097/qa-report.md`. This does not claim packaged-host, real-engine, cross-process, or browser verification.

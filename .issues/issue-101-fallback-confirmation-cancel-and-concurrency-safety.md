@@ -23,12 +23,19 @@
 - browser acceptance（issue-107）。
 
 ## Acceptance Criteria
-- [ ] possible/confirmed/unknown 不自动 fallback，进入 awaiting_confirmation
-- [ ] valid confirmation 创建一个 confirmed-retry Attempt
-- [ ] double/expired/hash mismatch/revision conflict 不创建额外 Attempt
-- [ ] cancel 获胜后永不启动备用或确认 Attempt
-- [ ] exhaustion chain 按 ordinal、脱敏且 root cause 保留
-- [ ] concurrency/fault/API tests 全绿
+- [x] possible/confirmed/unknown 不自动 fallback，进入 awaiting_confirmation
+- [x] valid confirmation 创建一个 confirmed-retry Attempt
+- [x] double/expired/hash mismatch/revision conflict 不创建额外 Attempt
+- [x] cancel 获胜后永不启动备用或确认 Attempt
+- [x] exhaustion chain 按 ordinal、脱敏且 root cause 保留
+- [x] concurrency/fault/API tests 全绿
+
+## Local loop status
+
+- Decision: **blocked**.
+- Local confirmation, cancellation, strict-revision, idempotency, and Task/Attempt consistency evidence passes.
+- P1 blocker: `confirmRetry` still depends on the in-memory coordinator `requests` map; a new coordinator/process cannot safely recover the persisted `awaiting_confirmation` execution handler and candidate context.
+- Follow-up owner: issue-102 recovery/history contract must define persisted retry context or an explicit recoverable terminal state before this issue is accepted.
 
 ## Inputs
 - issue-100 coordinator、ExecutionRepository、cancel/approval paths

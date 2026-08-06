@@ -10,11 +10,12 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { WebSocket } from "ws";
 import type { AppStateV3, TranscriptEvent, TranscriptPage } from "../shared/types.js";
 import { createApplication } from "./application.js";
-import { createAgentBackendRegistry, createProfileAdapterTurnExecutor } from "./agent-backends.js";
+import { createAgentBackendRegistry, createProfileAdapterTurnExecutor, type BackendTurnExecutor } from "./agent-backends.js";
 import { createServer } from "./http-server.js";
 import { createProfileAdapterRegistry } from "./profile-adapters.js";
 import { PersistentRuntimeUnavailableError } from "./ports.js";
 import type { ApplicationDependencies, ParsedTurnEvent, PersistentChatRuntime, PersistentChatTurnRequest, PtyProcess, PtyRuntime, TurnConfig, TurnParseResult } from "./ports.js";
+import { createMemorySecretStore } from "./secret-store.js";
 
 const emptyState: AppStateV3 = { workspaces: [], profiles: [], sessions: [] };
 
@@ -386,6 +387,52 @@ describe("chat API wiring", () => {
     }
   });
 
+  it("uses activeModel over launchConfig.model for a no-route backend turn", async () => {
+    const backendModels: string[] = [];
+    const executor: BackendTurnExecutor = {
+      run: vi.fn(async ({ turn }) => {
+        backendModels.push(turn.model ?? "<none>");
+        return {
+          events: (async function* () {
+            yield { type: "response.output_text.delta", delta: { text: "backend reply" } };
+            yield { type: "turn.completed" };
+          })(),
+          result: Promise.resolve({ status: "completed" as const }),
+          cancel: vi.fn(async () => undefined)
+        };
+      })
+    };
+    const { dependencies, state, transcripts } = createChatDependencies({
+      agentBackends: createAgentBackendRegistry({
+        availableAdapterIds: ["codex", "generic"],
+        capabilities: async (profile) => ({
+          ...({ adapterId: profile.adapterId, compatibility: "supported" as const, permissions: [], modes: [], models: [
+            { id: "model-a", labelKey: "model.a", requiresRestart: false },
+            { id: "model-b", labelKey: "model.b", requiresRestart: false }
+          ], supportsComposer: true, supportsStructuredRecognition: true, supportsHeadlessTurns: true,
+          supportsResume: true, supportsApproval: false, supportsPromptEnhancement: false })
+        })
+      }, executor)
+    });
+    const { server, port } = await startServer(dependencies);
+
+    try {
+      const created = await post(port, "/api/sessions", { name: "Legacy chat", workspaceId: "workspace-1", profileId: "profile-chat", launchConfig: { permission: null, mode: null, model: "model-a" } });
+      expect(created.status).toBe(201);
+      const activated = await patch(port, `/api/sessions/${created.json.id}`, { expectedRevision: created.json.revision, activeModel: "model-b" });
+      expect(activated.status).toBe(200);
+      const sent = await post(port, `/api/sessions/${created.json.id}/messages`, { clientMessageId: "legacy-active-model", content: "hello", startIfStopped: true, confirmedStart: true });
+      expect(sent.status).toBe(202);
+      await waitFor(() => backendModels.length === 1);
+      await waitFor(() => turnEnded(transcripts.get(created.json.id), sent.json.turnId));
+      expect(backendModels).toEqual(["model-b"]);
+      expect(sent.json).not.toHaveProperty("resolvedDeployment");
+      expect(state.modelDeployments).toEqual([]);
+    } finally {
+      await server.close();
+    }
+  });
+
   it("broadcasts turn-status frames on the events channel without payload content", async () => {
     const { dependencies } = createChatDependencies();
     const { server, port } = await startServer(dependencies);
@@ -433,10 +480,14 @@ describe("chat API wiring", () => {
       release() {},
       async shutdown() {}
     };
-    const { dependencies, state, transcripts } = createChatDependencies({ persistentChatRuntime: fakeRuntime });
+    const secretStore = createMemorySecretStore();
+    const resolveSpy = vi.spyOn(secretStore, "resolve");
+    const { dependencies, state, transcripts } = createChatDependencies({ persistentChatRuntime: fakeRuntime, secretStore });
+    state.providers = [{ id: "provider-persistent", name: "Persistent provider", protocol: "openai-compatible", baseUrl: "https://provider.example/v1", models: [], enabled: true, createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }];
+    state.providers[0].credentialRef = await secretStore.put({ providerId: "provider-persistent" }, "persistent-provider-canary");
     const { server, port } = await startServer(dependencies);
     try {
-      const created = await post(port, "/api/sessions", { name: "Chat", workspaceId: "workspace-1", profileId: "profile-chat", launchConfig: { permission: "never", mode: "default", model: "model-a" } });
+      const created = await post(port, "/api/sessions", { name: "Chat", workspaceId: "workspace-1", profileId: "profile-chat", providerId: "provider-persistent", launchConfig: { permission: "never", mode: "default", model: "model-a" } });
       const sessionId = created.json.id as string;
 
       const frames: any[] = [];
@@ -453,7 +504,12 @@ describe("chat API wiring", () => {
       // 选项翻译："default" → null，其余透传；cwd/command 来自 workspace/profile
       expect(runtimeTurns).toHaveLength(1);
       expect(runtimeTurns[0].sessionId).toBe(sessionId);
-      expect(runtimeTurns[0].turn).toMatchObject({ prompt: "hello", cwd: fixtureDir, command: "fake-chat", model: "model-a", sandboxMode: null, approvalPolicy: "never", resumeToken: undefined });
+      expect(runtimeTurns[0].turn).toMatchObject({ prompt: "hello", cwd: fixtureDir, command: "fake-chat", model: "model-a", sandboxMode: null, approvalPolicy: "never", resumeToken: undefined, env: expect.objectContaining({ SPECOS_PROVIDER_PROVIDER_PERSISTENT_KEY: "persistent-provider-canary" }) });
+      expect(resolveSpy).toHaveBeenCalledTimes(2);
+      expect(resolveSpy).toHaveBeenCalledWith(state.providers[0].credentialRef);
+      expect(JSON.stringify(state)).not.toContain("persistent-provider-canary");
+      expect(JSON.stringify(transcripts.get(sessionId))).not.toContain("persistent-provider-canary");
+      expect(JSON.stringify(dependencies.logger)).not.toContain("persistent-provider-canary");
 
       const deltas = frames.filter((frame) => frame.type === "turn-delta" && frame.turnId === sent.json.turnId);
       expect(deltas.map((frame) => frame.delta)).toEqual(["Hel", "lo!"]);
@@ -490,6 +546,28 @@ describe("chat API wiring", () => {
       expect(events.some((event) => event.kind === "assistant_message" && event.raw === "assistant says hi")).toBe(true);
       expect(events.find((event) => event.metadata?.status === "turn-completed")?.metadata?.turnId).toBe(sent.json.turnId);
       expect(state.sessions.find((item) => item.id === sessionId)?.chatContext?.resumeToken).toBe("thread-1");
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("fails a persistent provider turn before runtime execution when the credential is unavailable", async () => {
+    const runTurn = vi.fn(() => ({ result: Promise.resolve({ resumeToken: "should-not-run" }), kill() {} }));
+    const fakeRuntime: PersistentChatRuntime = { runTurn, release() {}, async shutdown() {} };
+    const secretStore = createMemorySecretStore();
+    const resolveSpy = vi.spyOn(secretStore, "resolve");
+    const { dependencies, state, transcripts } = createChatDependencies({ persistentChatRuntime: fakeRuntime, secretStore });
+    state.providers = [{ id: "provider-missing", name: "Missing provider", protocol: "openai-compatible", baseUrl: "https://provider.example/v1", models: [], enabled: true, credentialRef: "keychain:missing", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }];
+    const { server, port } = await startServer(dependencies);
+    try {
+      const created = await post(port, "/api/sessions", { name: "Missing", workspaceId: "workspace-1", profileId: "profile-chat", providerId: "provider-missing" });
+      const sent = await post(port, `/api/sessions/${created.json.id}/messages`, { clientMessageId: "missing-credential", content: "hello", startIfStopped: true, confirmedStart: true });
+      expect(sent.status).toBe(400);
+      expect(resolveSpy).toHaveBeenCalledTimes(1);
+      expect(runTurn).not.toHaveBeenCalled();
+      expect(dependencies.ptyRuntime.spawn).not.toHaveBeenCalled();
+      expect(JSON.stringify(transcripts.get(created.json.id) ?? [])).not.toContain("missing-credential");
+      expect(JSON.stringify(dependencies.logger)).not.toContain("missing-credential");
     } finally {
       await server.close();
     }

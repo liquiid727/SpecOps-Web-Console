@@ -1,4 +1,5 @@
 import type { ModelDeploymentSummary } from "./model-deployment.js";
+import type { LegacyModelResolution } from "./model-deployment.js";
 
 export interface PriorityModelRoute {
   id: string;
@@ -61,6 +62,7 @@ export interface ResolvedRoute {
   selectedDeploymentId?: string;
   fixedDeploymentId?: string;
   canSend: boolean;
+  legacyResolution?: LegacyModelResolution;
   errorCode?: "ROUTE_NO_CANDIDATE" | "ROUTE_FIXED_DEPLOYMENT_UNAVAILABLE" | "ROUTE_UNSUPPORTED_ENGINE";
 }
 
@@ -73,5 +75,5 @@ export interface ResolveModelRouteInput {
   projectRouteId?: string;
   sessionRouteId?: string;
   routeOverride?: RunRouteOverride;
-  legacy?: { profileId: string; modelId?: string | null; source?: "launch-config" | "active-model" | "profile-default" };
+  legacy?: LegacyModelResolution;
 }

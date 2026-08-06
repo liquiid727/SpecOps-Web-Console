@@ -42,7 +42,7 @@ export function buildPtyReplaySegments(events: TranscriptEvent[]): PtyReplaySegm
  * chat 会话 Terminal tab：只读回放 pty_output（frontend-spec §2）。
  * 复用 transcript 拉取 + 既有 WS 订阅追加，不建立 terminal 写通道、不触发 start/spawn（domain-spec §4 I-3）。
  */
-export function ChatTerminalReplay({ sessionId }: { sessionId: string }) {
+export function ChatTerminalReplay({ sessionId, active = true }: { sessionId: string; active?: boolean }) {
   const { t } = useI18n();
   const feedback = useFeedback();
   const runtime = useClientRuntime();
@@ -51,6 +51,7 @@ export function ChatTerminalReplay({ sessionId }: { sessionId: string }) {
   const generationRef = useRef(0);
 
   useEffect(() => {
+    if (!active) return;
     const generation = generationRef.current + 1;
     generationRef.current = generation;
     let closeSubscription: () => void = () => undefined;
@@ -90,7 +91,7 @@ export function ChatTerminalReplay({ sessionId }: { sessionId: string }) {
       controller.abort();
       closeSubscription();
     };
-  }, [feedback, runtime.events, sessionId, t]);
+  }, [active, feedback, runtime.events, sessionId, t]);
 
   const segments = useMemo(() => buildPtyReplaySegments(events), [events]);
   const listRef = useRef<HTMLDivElement | null>(null);

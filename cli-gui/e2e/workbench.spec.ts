@@ -17,6 +17,20 @@ async function openWorkbench(page: Page) {
   await dismissSplash(page);
 }
 
+async function resetFixtureSessions(page: Page) {
+  await page.evaluate(async () => {
+    const state = await (await fetch("/api/state")).json() as { csrfCapability: string; sessions: Array<{ id: string; runtimeStatus?: string }> };
+    const headers = { "content-type": "application/json", "x-specos-csrf-capability": state.csrfCapability };
+    for (const session of state.sessions) {
+      if (session.id === "session-fixture") continue;
+      if (["running", "starting", "stopping"].includes(session.runtimeStatus ?? "")) {
+        await fetch(`/api/sessions/${encodeURIComponent(session.id)}/stop`, { method: "POST", headers, body: "{}" });
+      }
+      await fetch(`/api/sessions/${encodeURIComponent(session.id)}`, { method: "DELETE", headers, body: "{}" });
+    }
+  });
+}
+
 // 产品默认语言为中文（i18n.tsx QA 调节）；E2E 断言基于英文 label，显式预置英文偏好。
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -219,15 +233,16 @@ test("persists the appearance theme after reload", async ({ page }) => {
 // issue-011：多会话冒烟（2 chat + 1 terminal 并行，内容互不串台；test-spec §4.2）
 test("keeps concurrent chat and terminal sessions isolated (multi-session smoke)", async ({ page }) => {
   await openWorkbench(page);
+  await resetFixtureSessions(page);
   await page.evaluate(async () => {
     const state = await (await fetch("/api/state")).json();
     const headers = { "content-type": "application/json", "x-specos-csrf-capability": state.csrfCapability } as Record<string, string>;
-    for (const name of ["Chat quest A", "Chat quest B"]) {
+    for (const name of ["Isolation chat A", "Isolation chat B"]) {
       const response = await fetch("/api/sessions", { method: "POST", headers, body: JSON.stringify({ name, workspaceId: "workspace-fixture", profileId: "profile-headless", start: true, confirmed: true }) });
       if (response.status !== 201) throw new Error(`create failed: ${response.status}`);
     }
     // issue-017 G-B1：补第 2 个 terminal 会话，凑足 2 chat + 2 terminal ≥4 并发（test-spec §4.2）
-    const terminal = await fetch("/api/sessions", { method: "POST", headers, body: JSON.stringify({ name: "Terminal quest C", workspaceId: "workspace-fixture", profileId: "profile-fixture", start: true, confirmed: true }) });
+    const terminal = await fetch("/api/sessions", { method: "POST", headers, body: JSON.stringify({ name: "Isolation terminal C", workspaceId: "workspace-fixture", profileId: "profile-fixture", start: true, confirmed: true }) });
     if (terminal.status !== 201) throw new Error(`create failed: ${terminal.status}`);
   });
   await page.reload();
@@ -242,26 +257,32 @@ test("keeps concurrent chat and terminal sessions isolated (multi-session smoke)
   await expect(stopButton).toBeVisible({ timeout: 10_000 });
 
   const prompt = page.getByRole("textbox", { name: "Prompt" });
-  await page.locator(SESSION_ROW).filter({ hasText: "Chat quest A" }).first().click();
+  await page.locator(SESSION_ROW).filter({ hasText: "Isolation chat A" }).first().click();
   await prompt.fill("alpha task");
   await prompt.press("Enter");
   await expect(page.locator(".chat-messages")).toContainText("reply:alpha task", { timeout: 10_000 });
 
-  await page.locator(SESSION_ROW).filter({ hasText: "Chat quest B" }).first().click();
+  await page.locator(SESSION_ROW).filter({ hasText: "Isolation chat B" }).first().click();
+  // Wait for the selected session's empty chat view before reusing the composer.
+  // Without this boundary the locator can still target A while the sidebar click
+  // is being committed, so the beta request is never sent for B.
+  await expect(page.locator(".chat-messages")).toContainText("No transcript yet", { timeout: 10_000 });
+  await expect(prompt).toBeVisible();
+  await expect(prompt).toBeEnabled();
   await prompt.fill("beta task");
   await prompt.press("Enter");
   await expect(page.locator(".chat-messages")).toContainText("reply:beta task", { timeout: 10_000 });
   await expect(page.locator(".chat-messages")).not.toContainText("alpha task");
 
   // 切回 A：只包含自己的轮次，无 B 的内容
-  await page.locator(SESSION_ROW).filter({ hasText: "Chat quest A" }).first().click();
+  await page.locator(SESSION_ROW).filter({ hasText: "Isolation chat A" }).first().click();
   await expect(page.locator(".chat-messages")).toContainText("reply:alpha task", { timeout: 10_000 });
   await expect(page.locator(".chat-messages")).not.toContainText("beta task");
 
   // 终端会话的 transcript 不含任何 chat 回复（两个 terminal 会话都验证零串台）
   await page.locator(SESSION_ROW).filter({ hasText: "Fixture session" }).first().click();
   await expect(page.locator(".chat-messages")).not.toContainText("reply:");
-  await page.locator(SESSION_ROW).filter({ hasText: "Terminal quest C" }).first().click();
+  await page.locator(SESSION_ROW).filter({ hasText: "Isolation terminal C" }).first().click();
   await expect(page.locator(".chat-messages")).not.toContainText("reply:");
 });
 

@@ -279,15 +279,30 @@ export async function migrateAndValidate(parsed: unknown, clock: Clock): Promise
   for (const session of sessions) {
     if (session.parentSessionId !== undefined && (!sessionIds.has(session.parentSessionId) || session.parentSessionId === session.id)) throw new Error("session contains an invalid fork parent");
   }
+  const modelRoutes = sanitizeRoutes(source.modelRoutes, clock);
+  const routeById = new Map(modelRoutes.map((route) => [route.id, route]));
+  const activeRoute = (routeId: string | undefined) => {
+    const route = routeId ? routeById.get(routeId) : undefined;
+    return route && route.enabled && !route.archivedAt ? route : undefined;
+  };
+  const workspaceModelRouteBindings = sanitizeWorkspaceBindings(source.workspaceModelRouteBindings)
+    .filter((binding, index, bindings) => {
+      if (!workspaceIds.has(binding.workspaceId)) return false;
+      if (binding.routeId !== undefined && !activeRoute(binding.routeId)) return false;
+      return bindings.findIndex((candidate) => candidate.workspaceId === binding.workspaceId) === index;
+    });
+  for (const session of sessions) {
+    if (session.modelRouteId !== undefined && !routeById.has(session.modelRouteId)) delete session.modelRouteId;
+  }
   return {
     workspaces,
     profiles,
     sessions,
     providers: sanitizeProviders(source.providers, sourceVersion, clock),
     modelDeployments: sanitizeDeployments(source.modelDeployments, clock),
-    modelRoutes: sanitizeRoutes(source.modelRoutes, clock),
-    globalModelRouteId: nonEmpty(source.globalModelRouteId) ? source.globalModelRouteId : undefined,
-    workspaceModelRouteBindings: sanitizeWorkspaceBindings(source.workspaceModelRouteBindings)
+    modelRoutes,
+    globalModelRouteId: activeRoute(source.globalModelRouteId)?.id,
+    workspaceModelRouteBindings
   };
 }
 
@@ -494,12 +509,14 @@ function sanitizeDeployments(value: unknown, clock: Clock): ModelDeploymentConfi
 
 function sanitizeRoutes(value: unknown, clock: Clock): PriorityModelRoute[] {
   if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
   return value.flatMap((entry) => {
     if (!entry || typeof entry !== "object") return [];
     const candidate = entry as Partial<PriorityModelRoute>;
-    if (!nonEmpty(candidate.id) || !nonEmpty(candidate.name) || !Array.isArray(candidate.candidateDeploymentIds)) return [];
+    if (!nonEmpty(candidate.id) || seen.has(candidate.id) || !nonEmpty(candidate.name) || !Array.isArray(candidate.candidateDeploymentIds)) return [];
     const ids = candidate.candidateDeploymentIds.filter(nonEmpty);
     if (!ids.length || ids.length > 8 || new Set(ids).size !== ids.length) return [];
+    seen.add(candidate.id);
     const now = clock.now();
     return [{
       id: candidate.id,
