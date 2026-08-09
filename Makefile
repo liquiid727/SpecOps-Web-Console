@@ -15,7 +15,7 @@ YELLOW := \033[1;33m
 DIM := \033[2m
 RESET := \033[0m
 
-.PHONY: help dev dev-all dev-frontend dev-backend dev-web frontend backend bugrail-init bugrail-dev bugrail-desktop bugrail-build bugrail-build-desktop bugrail-test bugrail-upstream-status
+.PHONY: help dev dev-all dev-frontend dev-backend dev-web frontend backend bugrail-init bugrail-dev bugrail-desktop bugrail-build bugrail-build-desktop bugrail-test bugrail-upstream-status bugrail-upstream-sync bugrail-upstream-finalize
 
 help: ## 显示可用的开发命令
 	@printf "\n$(BLUE)🧚 SpecOS CLI GUI · Development Commands$(RESET)\n"
@@ -36,6 +36,8 @@ help: ## 显示可用的开发命令
 	@printf "  $(CYAN)make bugrail-build$(RESET)            构建 Bugrail 静态前端\n"
 	@printf "  $(CYAN)make bugrail-build-desktop$(RESET)   构建本地 Tauri 桌面安装包\n"
 	@printf "  $(CYAN)make bugrail-upstream-status$(RESET)  检查 CodeG 最新 release tag\n"
+	@printf "  $(CYAN)make bugrail-upstream-sync$(RESET)   同步最新 CodeG release（可 TAG=vX.Y.Z）\n"
+	@printf "  $(CYAN)make bugrail-upstream-finalize$(RESET) 标记某 release 为基线（需 TAG=vX.Y.Z）\n"
 	@printf "\n$(DIM)💡 独立启动时，请分别打开两个终端运行前端和后端命令。$(RESET)\n"
 	@printf "$(DIM)🛑 使用 Ctrl+C 停止当前进程。首次运行 Bugrail 请先执行 make bugrail-init。$(RESET)\n\n"
 
@@ -88,3 +90,12 @@ bugrail-build-desktop: bugrail-init ## 构建本地 Code: Bugrail Tauri 桌面�
 
 bugrail-upstream-status: ## 检查 CodeG 最新 release tag
 	@pnpm --dir $(BUGRAIL_DIR) upstream:status
+
+BUGRAIL_UPSTREAM_TAG_ARGS := $(if $(TAG),--tag $(TAG),)
+
+bugrail-upstream-sync: ## 同步 CodeG release（默认最新，可指定 TAG=vX.Y.Z）
+	@pnpm --dir $(BUGRAIL_DIR) sync:upstream prepare $(BUGRAIL_UPSTREAM_TAG_ARGS)
+
+bugrail-upstream-finalize: ## 将某个 CodeG release 标记为基线（需指定 TAG=vX.Y.Z）
+	@test -n "$(TAG)" || (echo "✗ 请指定 make bugrail-upstream-finalize TAG=vX.Y.Z"; exit 1)
+	@pnpm --dir $(BUGRAIL_DIR) sync:upstream finalize --tag $(TAG)
