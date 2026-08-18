@@ -25,11 +25,13 @@
       "enabled": true
     }
   ],
-  "draftTemplateId": "template-ui-handoff",
-  "draftPath": "spec-web-ui/workspace/projects/merchant-console/draft.md",
+  "prdTemplateId": "template-ui-handoff",
+  "prdPath": "spec-web-ui/workspace/projects/merchant-console/prd.md",
   "exportTargets": [
+    "docs/",
+    "design/",
     "rules/",
-    "specs/_template/",
+    ".requirements/",
     "ai/agents/",
     "agent-teams/",
     "project-manifest.yaml"

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import * as exportClient from "@/lib/export-client";
+import * as exportClient from "../features/exports/client";
 
 describe("export review note filters", () => {
   it("supports showing only files with notes and summarizes directory note snippets", () => {

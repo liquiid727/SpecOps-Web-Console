@@ -1,13 +1,23 @@
 {
   "name": "@specos/templates",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "scripts": {
+    "build": "node -e \"console.log('SPECOS_TEMPLATES_BUILD_OK')\""
+  },
   "exports": {
     "./package.json": "./package.json",
-    "./fullstack/*": "./fullstack/*"
+    "./fullstack/*": "./fullstack/*",
+    "./spec-only/*": "./spec-only/*",
+    "./modes/*": "./modes/*"
   },
   "files": [
-    "fullstack"
+    "fullstack",
+    "spec-only",
+    "modes"
   ]
 }

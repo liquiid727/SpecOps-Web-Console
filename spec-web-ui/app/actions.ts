@@ -8,8 +8,8 @@ import {
   updateExportReviewDecision,
   updateExportReviewNote,
   updateExportReviewTodo
-} from "@/lib/export";
-import { loadCatalogAssets } from "@/lib/catalog";
+} from "@/features/exports/server";
+import { loadCatalogAssets } from "@/features/catalog/server";
 import {
   buildDiscoverReorderFeedback,
   loadPresetBundles,
@@ -34,15 +34,17 @@ import {
   setPresetDisplayHidden,
   toggleFavoriteAsset,
   updateDiscoverPreferences
-} from "@/lib/discover";
+} from "@/features/catalog/preferences";
 import {
   addProjectAssets,
   createProject,
   saveProjectDraft,
   updateProjectAssetSelection
 } from "@/lib/projects";
+import { assertWorkspaceWritable } from "@/lib/runtime";
 
 export async function createProjectAction(formData: FormData) {
+  assertWorkspaceWritable();
   const name = String(formData.get("name") ?? "").trim();
   const projectType = String(formData.get("projectType") ?? "mixed") as
     | "backend"
@@ -70,6 +72,7 @@ export async function createProjectAction(formData: FormData) {
 }
 
 export async function setProjectAssetSelectionAction(formData: FormData) {
+  assertWorkspaceWritable();
   const projectId = String(formData.get("projectId"));
   const assetId = String(formData.get("assetId"));
   const enabled = String(formData.get("enabled")) === "true";
@@ -88,6 +91,7 @@ export async function setProjectAssetSelectionAction(formData: FormData) {
 }
 
 export async function saveDraftAction(formData: FormData) {
+  assertWorkspaceWritable();
   const projectId = String(formData.get("projectId"));
   const content = String(formData.get("content") ?? "");
 
@@ -98,6 +102,7 @@ export async function saveDraftAction(formData: FormData) {
 }
 
 export async function generateExportAction(formData: FormData) {
+  assertWorkspaceWritable();
   const projectId = String(formData.get("projectId"));
 
   await generateExportBundle(projectId);
@@ -108,6 +113,7 @@ export async function generateExportAction(formData: FormData) {
 }
 
 export async function toggleFavoriteAssetAction(formData: FormData) {
+  assertWorkspaceWritable();
   const assetId = String(formData.get("assetId"));
   const redirectTo = String(formData.get("redirectTo") ?? "/discover");
 
@@ -119,6 +125,7 @@ export async function toggleFavoriteAssetAction(formData: FormData) {
 }
 
 export async function saveCompareSetAction(formData: FormData) {
+  assertWorkspaceWritable();
   const redirectTo = String(formData.get("redirectTo") ?? "/discover");
   const projectId = String(formData.get("projectId") ?? "") || undefined;
   const assetIds = String(formData.get("assetIds") ?? "")
@@ -140,6 +147,7 @@ export async function saveCompareSetAction(formData: FormData) {
 }
 
 export async function applyPresetBundleAction(formData: FormData) {
+  assertWorkspaceWritable();
   const projectId = String(formData.get("projectId"));
   const presetId = String(formData.get("presetId"));
   const redirectTo = String(formData.get("redirectTo") ?? `/discover?projectId=${projectId}`);
@@ -161,6 +169,7 @@ export async function applyPresetBundleAction(formData: FormData) {
 }
 
 export async function updateFavoriteEntryAction(formData: FormData) {
+  assertWorkspaceWritable();
   const assetId = String(formData.get("assetId"));
   const redirectTo = String(formData.get("redirectTo") ?? "/discover");
   const intent = String(formData.get("intent"));
@@ -184,6 +193,7 @@ export async function updateFavoriteEntryAction(formData: FormData) {
 }
 
 export async function updateCompareSetAction(formData: FormData) {
+  assertWorkspaceWritable();
   const compareSetId = String(formData.get("compareSetId"));
   const redirectTo = String(formData.get("redirectTo") ?? "/discover");
   const intent = String(formData.get("intent"));
@@ -207,6 +217,7 @@ export async function updateCompareSetAction(formData: FormData) {
 }
 
 export async function updatePresetDisplayAction(formData: FormData) {
+  assertWorkspaceWritable();
   const presetId = String(formData.get("presetId"));
   const redirectTo = String(formData.get("redirectTo") ?? "/discover");
   const intent = String(formData.get("intent"));
@@ -234,6 +245,7 @@ export async function updatePresetDisplayAction(formData: FormData) {
 }
 
 export async function batchUpdateDiscoverCollectionAction(formData: FormData) {
+  assertWorkspaceWritable();
   const scope = String(formData.get("scope") ?? "");
   const intent = String(formData.get("intent") ?? "");
   const redirectTo = String(formData.get("redirectTo") ?? "/discover");
@@ -283,6 +295,7 @@ export async function batchUpdateDiscoverCollectionAction(formData: FormData) {
 }
 
 export async function setExportReviewDecisionAction(formData: FormData) {
+  assertWorkspaceWritable();
   const projectId = String(formData.get("projectId") ?? "");
   const redirectTo = String(formData.get("redirectTo") ?? `/projects/${projectId}/exports`);
   const decision = String(formData.get("decision") ?? "pending") as
@@ -306,6 +319,7 @@ export async function setExportReviewDecisionAction(formData: FormData) {
 }
 
 export async function moveDiscoverCollectionItemAction(formData: FormData) {
+  assertWorkspaceWritable();
   const scope = String(formData.get("scope") ?? "");
   const itemId = String(formData.get("itemId") ?? "");
   const beforeId = String(formData.get("beforeId") ?? "");
@@ -357,6 +371,7 @@ export async function moveDiscoverCollectionItemAction(formData: FormData) {
 }
 
 export async function saveExportReviewNoteAction(formData: FormData) {
+  assertWorkspaceWritable();
   const projectId = String(formData.get("projectId") ?? "");
   const targetPath = String(formData.get("targetPath") ?? "");
   const note = String(formData.get("note") ?? "");
@@ -373,6 +388,7 @@ export async function saveExportReviewNoteAction(formData: FormData) {
 }
 
 export async function toggleExportReviewTodoAction(formData: FormData) {
+  assertWorkspaceWritable();
   const projectId = String(formData.get("projectId") ?? "");
   const targetPath = String(formData.get("targetPath") ?? "");
   const itemIndex = Number(formData.get("itemIndex") ?? -1);

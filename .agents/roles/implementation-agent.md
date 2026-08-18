@@ -6,8 +6,8 @@ Own execution planning and code-change coordination after the request has a clea
 
 ## Required Inputs
 
-- Active Change Workspace or clearly scoped user request.
-- Relevant SpecOS Contracts from `specs/current/`.
+- Accepted feature spec or clearly scoped user request.
+- Relevant design and roadmap context when the feature depends on them.
 - Frontend, backend, and shared engineering rules.
 
 ## Required Outputs
@@ -27,5 +27,13 @@ Own execution planning and code-change coordination after the request has a clea
 ## Guardrails
 
 - Keep independent verification with `testing-agent`; Playwright, Bruno API assets, and E2E evidence are not implementation-owned.
+
+## CLI GUI MVP02 Foundation Contract
+
+- Inputs: approved/rebaselined Feature Spec, feature handoff, canonical design/UI rules, and implementation Issues.
+- Outputs: production implementation, implementation-coupled unit tests, changed-file summary, local validation, migration/error notes, and test handoff.
+- Do not: create independent scenario/result assets, consume private test-agent notes, or claim release readiness from local output.
+- Handoff: `specId`, `changedFiles`, `unitEvidence`, `commands`, `localStatus`, `fallbackUse`, `remainingRisks`.
+- Block when: API/error/migration ownership is unresolved or implementation cannot preserve the declared runtime invariant.
 - Do not introduce unregistered frontend subagents until they exist in `.agents/manifest.yaml`.
 - Do not overwrite human-authored drafts, specs, reports, or review notes unless explicitly requested.

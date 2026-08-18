@@ -1,9 +1,10 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { CatalogAssetSummary } from "@/components/catalog/asset-summary";
 import { Badge } from "@/components/ui/badge";
-import { getCatalogRowTagPreview } from "@/lib/discover-ui";
-import { buildGlassSurfaceClassName, type GlassSurfaceTint } from "@/lib/theme";
+import { getCatalogRowTagPreview } from "@/features/catalog/ui";
+import { buildNeoSurfaceClassName, type NeoSurfaceTint } from "@/lib/theme";
 import type { CatalogAsset } from "@/lib/types";
 
 export function CatalogResultRow({
@@ -27,12 +28,12 @@ export function CatalogResultRow({
   rightContent?: ReactNode;
   actions?: ReactNode;
   tagLimit?: number;
-  tint?: GlassSurfaceTint;
+  tint?: NeoSurfaceTint;
 }) {
   const tagPreview = getCatalogRowTagPreview(asset.tags, tagLimit);
 
   return (
-    <div className={`${buildGlassSurfaceClassName("row", tint)} rounded-[18px] px-4 py-3`}>
+    <div className={`${buildNeoSurfaceClassName("row", tint)} px-4 py-3`}>
       <div className="flex flex-wrap items-center gap-2">
         {badges}
         {meta}
@@ -53,7 +54,13 @@ export function CatalogResultRow({
               {asset.sourcePath}
             </p>
           </div>
-          <p className="mt-1.5 text-sm leading-6 text-slate-400">{asset.summary}</p>
+          <div className="mt-1.5">
+            <CatalogAssetSummary
+              asset={asset}
+              englishClassName="text-sm leading-6 text-slate-400"
+              chineseClassName="text-sm leading-6 text-slate-300"
+            />
+          </div>
           {detail ? <p className="mt-1.5 text-xs text-slate-500">{detail}</p> : null}
           <div className="mt-2.5 flex flex-wrap gap-1.5">
             {tagPreview.visibleTags.map((tag) => (

@@ -21,47 +21,48 @@ export const localeCopy = {
         about: "关于",
         home: "主页",
         discover: "发现",
+        requirements: "需求包",
         "spec-templates": "Spec 模版",
         "skill-templates": "Skill 技能",
         "agent-templates": "Agent 模版",
         "agent-teams": "Agent Team",
+        "engineering-packs": "工程包",
         specTemplates: "Spec 模版",
         skillTemplates: "Skill 技能",
         agentTemplates: "Agent 模版",
         agentTeams: "Agent Team",
+        engineeringPacks: "工程包",
         workflowTemplates: "Workflow 模版",
         projects: "项目",
         drafts: "草稿",
         exports: "导出"
       },
       home: "首页",
-      theme: "主题",
-      day: "日间",
-      night: "夜间"
+      theme: "视觉系统"
     },
     home: {
-      heroTitle: "先搜索目录，找到要组合的项目资产。",
-      heroDescription: "SpecOS Web UI 是一个轻量入口。真正的浏览、组装和导出都放在对应工作区里，首页只负责帮你开始。",
-      searchLabel: "搜索目录",
-      searchPlaceholder: "$ 搜索规则、模板、Agent 角色...",
-      openDiscover: "进入发现",
-      openProjects: "进入项目",
-      firstUseTitle: "初次使用建议",
-      firstUsePrefix: "不知道从哪里开始时，先去 ",
+      heroTitle: "把 AI 工程资产装进项目骨架。",
+      heroDescription: "从规则、Skill、Agent 到模板，搜索目录，挑选可复用资产，组合出一套能直接落地的项目基线。",
+      searchLabel: "搜索可复用资产",
+      searchPlaceholder: "搜索规则、模板、Agent 角色...",
+      openDiscover: "浏览资产",
+      openProjects: "创建工作区",
+      firstUseTitle: "三步开始",
+      firstUsePrefix: "先 ",
       firstUseLinks: [
         {
-          label: "发现页",
-          description: " 看目录资产",
+          label: "浏览目录",
+          description: " 找到适合的资产",
           href: "/discover"
         },
         {
-          label: "项目页",
-          description: " 组合项目上下文",
+          label: "组合工作区",
+          description: " 形成项目基线",
           href: "/projects"
         },
         {
-          label: "导出页",
-          description: " 做交付评审",
+          label: "预览导出",
+          description: " 确认交付内容",
           href: "/exports"
         }
       ],
@@ -96,8 +97,8 @@ export const localeCopy = {
       },
       projectShortcutsTitle: "最近项目",
       projectShortcutsDescription: "保留工作区入口，不在首页展开项目细节。",
-      workflowTitle: "工作区循环",
-      workflowDescription: "产品流程保持聚焦：发现、组装、草稿、导出。",
+      workflowTitle: "资产工作流",
+      workflowDescription: "从目录选择开始，到项目基线交付结束。",
       workflowBodyA:
         "`spec-web-ui` 是目录优先的工作台。目录保持仓库驱动，项目把规则、模板和 Agent 角色作为可组合资产使用。",
       workflowBodyB: "产品循环刻意收窄：发现资产、组装项目、细化草稿，然后在交付前评审导出差异。",
@@ -110,31 +111,84 @@ export const localeCopy = {
     },
     about: {
       agentFlow: {
-        eyebrow: "$ cat specs/changes/spec-change-agent-workflow/spec.md",
-        title: "Agent 工作方式与测试边界",
-        description: "从需求进入 spec-draft，到 change 归档，执行和测试始终保持独立上下文。执行只管实现和单元测试，测试只管 test-plan、场景和真实执行。",
-        stages: ["需求", "spec-draft", "spec", "change", "架构/设计 Gate", "执行 + 测试分轨", "归档"],
-        gate: "架构和设计先审，再把执行与测试拆成两个互不污染的 agent track。",
+        eyebrow: "$ cat .requirements/requirements/R001-decision-api/spec.md",
+        title: "Agent-Native SDLC 工作流",
+        description: "一个需求 = 一个 Requirement Package。所有契约（PRD、Spec、Test、Issues）在同一目录落盘，ID 从 REQ 到 SPEC / TEST / ISSUE 永久锚定。Agent 沿 8 个 mode 的链路推进，执行与验证始终可追踪、可回溯。",
+        stages: ["需求 / Idea", "PRD", "Spec", "Spec-Test", "Issues", "Issue 执行", "Feature Verify", "Done"],
+        gate: "PRD 与 Spec 必须先通过 review 才能进入下游；Spec 与代码冲突时执行 agent 必须 STOP 并记录 Deviation 退回 Spec Review，不得静默改写产品语义。",
         tracks: [
           {
             name: "Spec Agent",
-            role: "维护 change 文档链路",
-            description: "把 draft 润色为可审查的 change，记录变更、结论和归档事实。",
-            points: ["spec-draft -> spec", "change 变更记录", "current / archive 推进"]
+            role: "维护 Requirement Package 的契约链路",
+            description: "按 prd-author → prd-review → spec-generate → spec-review → spec-test-generate → issue-generate 推进，产出并回写 prd.md / spec.md / test.md / issues.md。",
+            points: [".requirements/requirements/R001-<slug>/prd.md（REQ-R001-001）", "spec.md（SPEC-R001-F01-001）+ test.md（TEST-R001-F01-001）", "issues.md（ISSUE-R001-001）与 review gate"]
           },
           {
             name: "Execution Agent",
-            role: "实现业务代码与单元测试",
-            description: "只处理实现与实现耦合的单元测试，不读取独立测试计划。",
-            points: ["实现任务", "单元测试", "implementation-report"]
+            role: "按 Issue 实现，不擅改产品意图",
+            description: "执行前必读 prd / spec / test 与代码库；只改本 Issue 范围并写 Completion Record；Spec 与代码冲突时 STOP 记录 Deviation。",
+            points: ["遍历 ## ISSUE-R001-001 执行", "写 **Status:** 与 ### Completion Record", "实现耦合的单元测试"]
           },
           {
-            name: "Test Agent",
-            role: "编排独立验证",
-            description: "负责 test-plan、场景、API、E2E、UI 以及结果归一化。",
-            points: ["test-plan / test-schedule", "E2E / 场景 / API / UI", "test-result-summary"]
+            name: "Verify Agent",
+            role: "独立验证与追踪矩阵",
+            description: "跑 test.md 的 Exit Criteria（E2E / 场景 / API / UI），核对 Requirement|Spec|Test|Issue 的可追踪关系，收敛到 feature-verify gate。",
+            points: ["test.md 全场景覆盖（P0/P1 REQ）", "feature-verify 关卡", "traceability.md"]
           }
         ]
+      },
+      projectModes: {
+        eyebrow: "$ cat docs/spec-modes/GoalSpec/README.md",
+        title: "项目模式说明",
+        description: "SpecOS 只有一个官方模式：GoalSpec（Agent-Native SDLC）。LiteSpec 与 EnterpriseSpec 不再作为独立 mode，保留为可选插件规范。about 页直接说明模式的结构重点和实际作用，方便在进入项目之前先选对交付模型。",
+        sharedLabel: "共享约束",
+        sharedPoints: [
+          "一个需求 = 一个 Requirement Package（prd / spec / test / issues 同目录落盘）。",
+          "ID 是永久锚点：REQ / SPEC / TEST / ISSUE 不因改稿而重排复用。",
+          "Source Priority：approved PRD → approved Spec → ADR → 代码 → 测试，Agent 不得静默改写产品意图。"
+        ],
+        modes: [
+          {
+            name: "GoalSpec",
+            typeLabel: "类型",
+            typeValue: "Agent-Native SDLC",
+            treeLabel: "目录树缩略图",
+            treeCommand: "$ tree .requirements/",
+            tree: [
+              { text: ".requirements/" },
+              { text: "|-- README.md", note: "包索引 / 入口" },
+              { text: "|-- requirements/" },
+              { text: "|   `-- R001-decision-api/" },
+              { text: "|       |-- prd.md", note: "REQ-R001-001" },
+              { text: "|       |-- spec.md", note: "SPEC-R001-F01-001" },
+              { text: "|       |-- test.md", note: "TEST-R001-F01-001" },
+              { text: "|       `-- issues.md", note: "ISSUE-R001-001" },
+              { text: "|-- examples/", note: "R000-example-*" },
+              { text: "|-- templates/", note: "prd / spec / test / issues" },
+              { text: "`-- skills/", note: "8-mode 统一 skill" }
+            ],
+            loadLabel: "加载顺序",
+            loadPath: [".requirements/README.md", "R001-<slug>/prd.md", "spec.md", "test.md", "issues.md", "相关 skill"],
+            loadNote: "按一个 Requirement Package 加载，一次读完 REQ→SPEC→TEST→ISSUE 整条链路。",
+            purposeLabel: "作用",
+            purposeValue: "让需求、契约、验证与执行进度在同一目录下可追踪：ID 永久锚定，变更走 type: change + affects，Agent 在任何 mode 都能找到决策来源。",
+            structureLabel: "结构重点",
+            structure: [
+              "prd.md 用 RFC-2119 语言写 Goal / Non-Goal / REQ / BR / INV / Edge / AC，稳定 ID 不重排。",
+              "spec.md 按业务逻辑做 F0N 分组，每条契约编号 SPEC-R001-F0N-###。",
+              "test.md 覆盖 happy / negative / permission / state / invariant / retry / concurrency / external failure / observability。",
+              "issues.md 用 ## ISSUE-R001-### 小节维护执行与进度。"
+            ],
+            fitLabel: "适用场景",
+            fit: [
+              "所有按需求包交付、要求可追踪链的团队。",
+              "需要 Agent 在多模式链路中稳定推进、且能回溯每个决策来源的项目。",
+              "LiteSpec / EnterpriseSpec 可作为可选插件叠加。"
+            ]
+          }
+        ],
+        decisionLabel: "选择原则",
+        decision: "默认直接使用 GoalSpec。需要轻量单线推进时可参考 LiteSpec 插件，需要重治理与审计证据时叠加 EnterpriseSpec 插件；但它们不再是独立的正式模式。"
       },
       testUiDemo: {
         eyebrow: "$ open test-console/demo",
@@ -150,7 +204,7 @@ export const localeCopy = {
         columnNotes: ["输入来源", "从 spec 拆出的用户行为", "场景落到可执行路径", "判断通过/失败的规则", "真实执行后的结论"],
         flows: [
           {
-            spec: "reward-order spec v1.2.0",
+            spec: "reward-order SPEC-R001-F01-001",
             scenario: "用户成功领取奖励",
             chain: "API + UI 主路径链条",
             standard: "200 / 扣减库存 / 成功提示",
@@ -158,7 +212,7 @@ export const localeCopy = {
             status: "pass"
           },
           {
-            spec: "reward-order spec v1.2.0",
+            spec: "reward-order SPEC-R001-F01-001",
             scenario: "用户成功领取奖励",
             chain: "结果一致性链条",
             standard: "订单 / 库存 / 权益一致",
@@ -166,7 +220,7 @@ export const localeCopy = {
             status: "pass"
           },
           {
-            spec: "reward-order spec v1.2.0",
+            spec: "reward-order SPEC-R001-F01-001",
             scenario: "库存不足时领取失败",
             chain: "异常分支链条",
             standard: "OUT_OF_STOCK / 可恢复失败提示",
@@ -174,7 +228,7 @@ export const localeCopy = {
             status: "fail"
           },
           {
-            spec: "reward-order spec v1.2.0",
+            spec: "reward-order SPEC-R001-F01-001",
             scenario: "库存不足时领取失败",
             chain: "测试资产链条",
             standard: "Bruno collection / adapter 可执行",
@@ -194,48 +248,49 @@ export const localeCopy = {
         about: "About",
         home: "Home",
         discover: "Discover",
+        requirements: "Requirements",
         "spec-templates": "Spec templates",
         "skill-templates": "Skill skills",
         "agent-templates": "Agent templates",
         "agent-teams": "Agent teams",
+        "engineering-packs": "Engineering packs",
         specTemplates: "Spec templates",
         skillTemplates: "Skill skills",
         agentTemplates: "Agent templates",
         agentTeams: "Agent teams",
+        engineeringPacks: "Engineering packs",
         workflowTemplates: "Workflow templates",
         projects: "Projects",
         drafts: "Drafts",
         exports: "Exports"
       },
       home: "Home",
-      theme: "Theme",
-      day: "Day",
-      night: "Night"
+      theme: "Visual system"
     },
     home: {
-      heroTitle: "Search the catalog first, then compose the assets you need.",
+      heroTitle: "Pack your AI engineering assets into a project baseline.",
       heroDescription:
-        "SpecOS Web UI is a lightweight entry point. Browsing, composing, and exporting live in their own workspaces. The homepage only helps you get started.",
-      searchLabel: "search catalog",
-      searchPlaceholder: "$ search rules, templates, agent roles...",
-      openDiscover: "Go to discover",
-      openProjects: "Go to projects",
-      firstUseTitle: "First-use guide",
-      firstUsePrefix: "If you are not sure where to start, open ",
+        "Search rules, skills, agents, and templates, then assemble a reusable project baseline you can install and review.",
+      searchLabel: "search reusable assets",
+      searchPlaceholder: "search rules, templates, agent roles...",
+      openDiscover: "Browse assets",
+      openProjects: "Create workspace",
+      firstUseTitle: "Three steps to start",
+      firstUsePrefix: "Start by ",
       firstUseLinks: [
         {
-          label: "discover",
-          description: " for catalog assets",
+          label: "browsing the catalog",
+          description: " to find the right assets",
           href: "/discover"
         },
         {
-          label: "projects",
-          description: " to compose context",
+          label: "composing a workspace",
+          description: " to form your baseline",
           href: "/projects"
         },
         {
-          label: "exports",
-          description: " for handoff review",
+          label: "previewing the export",
+          description: " before handoff",
           href: "/exports"
         }
       ],
@@ -270,8 +325,8 @@ export const localeCopy = {
       },
       projectShortcutsTitle: "Recent projects",
       projectShortcutsDescription: "Keep workspace entry points visible without expanding project detail.",
-      workflowTitle: "Workspace loop",
-      workflowDescription: "The product flow stays intentionally narrow: discover, assemble, draft, export.",
+      workflowTitle: "Asset workflow",
+      workflowDescription: "Start with catalog selection and finish with a reviewable project baseline.",
       workflowBodyA:
         "`spec-web-ui` is a catalog-first workspace. The catalog stays repo-backed. Projects consume rules, templates, and agent roles as composable assets.",
       workflowBodyB:
@@ -285,32 +340,88 @@ export const localeCopy = {
     },
     about: {
       agentFlow: {
-        eyebrow: "$ cat specs/changes/spec-change-agent-workflow/spec.md",
-        title: "Agent workflow and test boundaries",
+        eyebrow: "$ cat .requirements/requirements/R001-decision-api/spec.md",
+        title: "Agent-Native SDLC workflow",
         description:
-          "From draft intake to archived change, execution and testing stay in separate contexts. Execution owns implementation and unit tests. Testing owns the test plan, scenarios, and real runs.",
-        stages: ["request", "spec-draft", "spec", "change", "architecture/design gate", "split execution + testing", "archive"],
-        gate: "Architecture and design review first, then split execution and testing into two isolated agent tracks.",
+          "One requirement = one Requirement Package. All contracts (PRD, Spec, Test, Issues) live in the same directory, with IDs anchored permanently from REQ through SPEC/TEST/ISSUE. Agents advance along an 8-mode chain, so execution and verification stay traceable end to end.",
+        stages: ["Idea", "PRD", "Spec", "Spec-Test", "Issues", "Issue execution", "Feature verify", "Done"],
+        gate: "PRD and Spec must pass review before downstream work. On a spec/code conflict the execution agent must STOP, record a Deviation, and hand back to Spec Review — never silently rewrite product intent.",
         tracks: [
           {
             name: "Spec Agent",
-            role: "Maintain the change document chain",
-            description: "Refine the draft into a reviewable change and record change history, conclusions, and archive facts.",
-            points: ["spec-draft -> spec", "change log", "current / archive promotion"]
+            role: "Maintain the Requirement Package contract chain",
+            description: "Runs prd-author → prd-review → spec-generate → spec-review → spec-test-generate → issue-generate, producing and updating prd.md / spec.md / test.md / issues.md.",
+            points: [".requirements/requirements/R001-<slug>/prd.md (REQ-R001-001)", "spec.md (SPEC-R001-F01-001) + test.md (TEST-R001-F01-001)", "issues.md (ISSUE-R001-001) and review gates"]
           },
           {
             name: "Execution Agent",
-            role: "Deliver code and unit tests",
-            description: "Own implementation and implementation-coupled unit tests only. Do not consume independent test plans.",
-            points: ["implementation tasks", "unit tests", "implementation-report"]
+            role: "Deliver issues without rewriting product intent",
+            description: "Reads prd / spec / test and the codebase before executing; touches only the current Issue scope and writes a Completion Record; STOPs with a Deviation on spec/code conflicts.",
+            points: ["execute ## ISSUE-R001-001", "write **Status:** and ### Completion Record", "implementation-coupled unit tests"]
           },
           {
-            name: "Test Agent",
-            role: "Run isolated verification",
-            description: "Own test plan, scenarios, API, E2E, UI, and normalized result reporting.",
-            points: ["test-plan / test-schedule", "E2E / scenario / API / UI", "test-result-summary"]
+            name: "Verify Agent",
+            role: "Run isolated verification and the traceability matrix",
+            description: "Runs test.md Exit Criteria (E2E / scenario / API / UI) and checks the Requirement|Spec|Test|Issue trace links, converging at the feature-verify gate.",
+            points: ["test.md full coverage (P0/P1 REQs)", "feature-verify gate", "traceability.md"]
           }
         ]
+      },
+      projectModes: {
+        eyebrow: "$ cat docs/spec-modes/GoalSpec/README.md",
+        title: "Project modes",
+        description:
+          "SpecOS has one official mode: GoalSpec (Agent-Native SDLC). LiteSpec and EnterpriseSpec are no longer independent modes; they remain as optional plugin specs. The about page spells out the structural focus and operating purpose so the delivery model can be chosen before project assembly starts.",
+        sharedLabel: "Shared rules",
+        sharedPoints: [
+          "One requirement = one Requirement Package (prd / spec / test / issues co-located).",
+          "IDs are permanent anchors: REQ / SPEC / TEST / ISSUE are never renumbered or reused across drafts.",
+          "Source Priority: approved PRD → approved Spec → ADR → code → tests. Agents never silently rewrite product intent."
+        ],
+        modes: [
+          {
+            name: "GoalSpec",
+            typeLabel: "Type",
+            typeValue: "Agent-Native SDLC",
+            treeLabel: "Tree preview",
+            treeCommand: "$ tree .requirements/",
+            tree: [
+              { text: ".requirements/" },
+              { text: "|-- README.md", note: "package index / entry" },
+              { text: "|-- requirements/" },
+              { text: "|   `-- R001-decision-api/" },
+              { text: "|       |-- prd.md", note: "REQ-R001-001" },
+              { text: "|       |-- spec.md", note: "SPEC-R001-F01-001" },
+              { text: "|       |-- test.md", note: "TEST-R001-F01-001" },
+              { text: "|       `-- issues.md", note: "ISSUE-R001-001" },
+              { text: "|-- examples/", note: "R000-example-*" },
+              { text: "|-- templates/", note: "prd / spec / test / issues" },
+              { text: "`-- skills/", note: "8-mode unified skill" }
+            ],
+            loadLabel: "Loading order",
+            loadPath: [".requirements/README.md", "R001-<slug>/prd.md", "spec.md", "test.md", "issues.md", "relevant skill"],
+            loadNote: "Load along one Requirement Package so an agent reads the whole REQ→SPEC→TEST→ISSUE chain in a single pass.",
+            purposeLabel: "Purpose",
+            purposeValue:
+              "Keep requirements, contracts, verification, and execution progress traceable in one directory: IDs are permanent, changes use type: change + affects, and every mode can resolve the source of a decision.",
+            structureLabel: "Structure focus",
+            structure: [
+              "prd.md writes Goal / Non-Goal / REQ / BR / INV / Edge / AC in RFC-2119 language, with stable IDs that never renumber.",
+              "spec.md groups contracts into logical F0N units, each numbered SPEC-R001-F0N-###.",
+              "test.md covers happy / negative / permission / state / invariant / retry / concurrency / external failure / observability.",
+              "issues.md tracks execution and progress as ## ISSUE-R001-### sections."
+            ],
+            fitLabel: "Best for",
+            fit: [
+              "Any team delivering by requirement package with a demand for traceability.",
+              "Projects where agents must advance along a multi-mode chain and every decision can be traced to a source.",
+              "LiteSpec / EnterpriseSpec may be layered on as optional plugins."
+            ]
+          }
+        ],
+        decisionLabel: "Selection rule",
+        decision:
+          "Use GoalSpec by default. Reference the LiteSpec plugin for light single-track delivery, or layer EnterpriseSpec for heavy governance and audit evidence — but they are no longer official modes."
       },
       testUiDemo: {
         eyebrow: "$ open test-console/demo",
@@ -327,7 +438,7 @@ export const localeCopy = {
         columnNotes: ["Input source", "User behavior split from the spec", "Executable path for the scenario", "Rule for pass/fail judgement", "Conclusion from the real run"],
         flows: [
           {
-            spec: "reward-order spec v1.2.0",
+            spec: "reward-order SPEC-R001-F01-001",
             scenario: "User claims reward successfully",
             chain: "API + UI happy-path chain",
             standard: "200 / decrement inventory / success copy",
@@ -335,7 +446,7 @@ export const localeCopy = {
             status: "pass"
           },
           {
-            spec: "reward-order spec v1.2.0",
+            spec: "reward-order SPEC-R001-F01-001",
             scenario: "User claims reward successfully",
             chain: "Result consistency chain",
             standard: "Order / inventory / entitlement align",
@@ -343,7 +454,7 @@ export const localeCopy = {
             status: "pass"
           },
           {
-            spec: "reward-order spec v1.2.0",
+            spec: "reward-order SPEC-R001-F01-001",
             scenario: "Claim fails when inventory is low",
             chain: "Error branch chain",
             standard: "OUT_OF_STOCK / recoverable failure copy",
@@ -351,7 +462,7 @@ export const localeCopy = {
             status: "fail"
           },
           {
-            spec: "reward-order spec v1.2.0",
+            spec: "reward-order SPEC-R001-F01-001",
             scenario: "Claim fails when inventory is low",
             chain: "Test asset chain",
             standard: "Bruno collection / adapter executable",

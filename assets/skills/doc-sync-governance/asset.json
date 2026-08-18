@@ -1,0 +1,44 @@
+{
+  "id": "skill-doc-sync-governance",
+  "type": "skill",
+  "title": "Doc Sync Governance",
+  "summary": "Reuse a generic documentation-sync governance workflow with fact-source priority, sync triggers, and target-layer selection. Use when a repository needs a repeatable rule for when code, docs, prompts, or specs must be updated together.",
+  "direction": "backend",
+  "stacks": [
+    "go",
+    "specos"
+  ],
+  "tags": [
+    "docs",
+    "sync",
+    "governance",
+    "go-pack"
+  ],
+  "appliesTo": [
+    "backend"
+  ],
+  "dependsOn": [],
+  "conflictsWith": [],
+  "sourcePath": "assets/skills/doc-sync-governance/SKILL.md",
+  "files": [
+    "skills/developer/doc-sync-governance/SKILL.md",
+    "skills/developer/doc-sync-governance/agents/openai.yaml",
+    "skills/developer/doc-sync-governance/references/anti-patterns.md",
+    "skills/developer/doc-sync-governance/references/fact-priority.md",
+    "skills/developer/doc-sync-governance/references/sync-triggers.md",
+    "skills/developer/doc-sync-governance/references/target-selection.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "按项目类型确认是否启用该 skill，并检查引用资料是否适配目标仓库。"
+  ],
+  "sampleOutput": "可复用 skill 说明、触发条件、参考资料和运行边界。",
+  "contentFiles": {
+    "skills/developer/doc-sync-governance/SKILL.md": "assets/skills/doc-sync-governance/SKILL.md",
+    "skills/developer/doc-sync-governance/agents/openai.yaml": "assets/skills/doc-sync-governance/agents/openai.yaml",
+    "skills/developer/doc-sync-governance/references/anti-patterns.md": "assets/skills/doc-sync-governance/references/anti-patterns.md",
+    "skills/developer/doc-sync-governance/references/fact-priority.md": "assets/skills/doc-sync-governance/references/fact-priority.md",
+    "skills/developer/doc-sync-governance/references/sync-triggers.md": "assets/skills/doc-sync-governance/references/sync-triggers.md",
+    "skills/developer/doc-sync-governance/references/target-selection.md": "assets/skills/doc-sync-governance/references/target-selection.md"
+  }
+}

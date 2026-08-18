@@ -2,9 +2,9 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/catalog", () => ({
+vi.mock("@/features/catalog/server", () => ({
   filterCatalogAssets: (
-    assets: Array<{ title: string; summary: string; tags: string[]; categories?: string[] }>,
+    assets: Array<{ title: string; summary: string; summaryZh?: string; tags: string[]; categories?: string[] }>,
     filters: { query?: string; categories?: string[] }
   ) => {
     const query = filters.query?.toLowerCase().trim();
@@ -12,7 +12,9 @@ vi.mock("@/lib/catalog", () => ({
 
     return assets.filter((asset) => {
       if (query) {
-        const matchesQuery = [asset.title, asset.summary, ...asset.tags].some((value) => value.toLowerCase().includes(query));
+        const matchesQuery = [asset.title, asset.summary, asset.summaryZh ?? "", ...asset.tags].some((value) =>
+          value.toLowerCase().includes(query)
+        );
 
         if (!matchesQuery) {
           return false;
@@ -43,15 +45,15 @@ vi.mock("@/lib/catalog", () => ({
       appliesTo: ["frontend"],
       dependsOn: [],
       conflictsWith: [],
-      sourcePath: "spec-draft/_template/feature/product-ui.template.md",
-      files: ["spec-draft/_template/feature/product-ui.template.md"],
+      sourcePath: ".requirements/templates/prd-feature-draft.template.md",
+      files: [".requirements/templates/prd-feature-draft.template.md"],
       version: "1.0.0"
     },
     {
       id: "agent-spec-editor",
       type: "agent_role",
       title: "Spec Editor Agent",
-      summary: "Refines drafts into reviewable SpecOS Change Workspaces.",
+      summary: "Refines drafts into reviewable feature specs and roadmap updates.",
       direction: "fullstack",
       categories: ["product", "backend"],
       stacks: ["specos"],
@@ -64,10 +66,11 @@ vi.mock("@/lib/catalog", () => ({
       version: "1.0.0"
     },
     {
-      id: "skill-tool-config-ui",
+      id: "skill-spec-to-test",
       type: "skill",
-      title: "Tool Config UI Skill",
-      summary: "Patterns for building safe configuration surfaces.",
+      title: "Spec to Test Skill",
+      summary: "Independent Test Specs from approved Feature Specs.",
+      summaryZh: "用于构建安全配置界面的交互模式。",
       direction: "frontend",
       categories: ["frontend", "operations"],
       stacks: ["react"],
@@ -75,8 +78,8 @@ vi.mock("@/lib/catalog", () => ({
       appliesTo: ["frontend"],
       dependsOn: [],
       conflictsWith: [],
-      sourcePath: ".skills/tool-config-ui/SKILL.md",
-      files: [".skills/tool-config-ui/SKILL.md"],
+      sourcePath: "skills/developer/spec-to-test/SKILL.md",
+      files: ["skills/developer/spec-to-test/SKILL.md"],
       version: "1.0.0"
     },
     {
@@ -127,14 +130,15 @@ describe("template library routes", () => {
 
     expect(screen.getByRole("heading", { name: "Skill 技能" })).toBeInTheDocument();
     expect(screen.getByRole("searchbox", { name: "搜索 Skill 技能" })).toBeInTheDocument();
-    expect(screen.getByText("Tool Config UI Skill")).toBeInTheDocument();
+    expect(screen.getByText("Spec to Test Skill")).toBeInTheDocument();
+    expect(screen.getByText("用于构建安全配置界面的交互模式。")).toBeInTheDocument();
     expect(screen.queryByText("Spec Editor Agent")).not.toBeInTheDocument();
   });
 
   it("filters skills by category on the dedicated route", async () => {
     render(await SkillTemplatesPage({ searchParams: Promise.resolve({ category: "operations" }) }));
 
-    expect(screen.getByText("Tool Config UI Skill")).toBeInTheDocument();
+    expect(screen.getByText("Spec to Test Skill")).toBeInTheDocument();
     expect(screen.queryByText("Governance Team Pack")).not.toBeInTheDocument();
   });
 

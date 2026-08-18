@@ -31,7 +31,18 @@ describe("SiteNav", () => {
       "href",
       "/agent-teams"
     );
+    expect(screen.getByRole("link", { name: "工程包/" })).toHaveAttribute(
+      "href",
+      "/engineering-packs"
+    );
     expect(screen.getByText("Workflow 模版/")).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByRole("link", { name: "项目/" })).toHaveAttribute("href", "/projects");
+  });
+
+  it("hides workspace navigation in read-only mode", () => {
+    render(<SiteNav locale="zh" readOnly />);
+
+    expect(screen.queryByRole("link", { name: "项目/" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Spec 模版/" })).toHaveAttribute("href", "/spec-templates");
   });
 });

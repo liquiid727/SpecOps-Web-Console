@@ -8,7 +8,7 @@ vi.mock("next/headers", () => ({
   })
 }));
 
-vi.mock("@/lib/catalog", () => ({
+vi.mock("@/features/catalog/server", () => ({
   loadCatalogAssets: async () => [
     {
       id: "rule-backend-governance",
@@ -49,21 +49,40 @@ vi.mock("@/lib/projects", () => ({
 import HomePage from "@/app/page";
 
 describe("HomePage", () => {
-  it("keeps the landing page as a lightweight first-use guide", async () => {
+  it("keeps the homepage as a focused asset entry point", async () => {
     render(await HomePage());
 
     expect(
-      screen.getByRole("heading", { name: "先搜索目录，找到要组合的项目资产。" })
+      screen.getByRole("heading", { name: "把 AI 工程资产装进项目骨架。" })
     ).toBeInTheDocument();
-    expect(screen.getByText("初次使用建议")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "发现页" })).toHaveAttribute("href", "/discover");
-    expect(screen.getByRole("link", { name: "项目页" })).toHaveAttribute("href", "/projects");
-    expect(screen.getByRole("link", { name: "导出页" })).toHaveAttribute("href", "/exports");
-    expect(screen.queryByRole("heading", { name: "Agent 工作方式与测试边界" })).not.toBeInTheDocument();
+    expect(screen.getByText("三步开始")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "浏览目录" })).toHaveAttribute("href", "/discover");
+    expect(screen.getByRole("link", { name: "组合工作区" })).toHaveAttribute("href", "/projects");
+    expect(screen.getByRole("link", { name: "预览导出" })).toHaveAttribute("href", "/exports");
+    expect(screen.queryByRole("heading", { name: "Agent-Native SDLC 工作流" })).not.toBeInTheDocument();
     expect(screen.queryByText("$ GO DISCOVER")).not.toBeInTheDocument();
     expect(screen.queryByText("目录快照")).not.toBeInTheDocument();
     expect(screen.queryByText("最近项目")).not.toBeInTheDocument();
     expect(screen.queryByText("筛选器")).not.toBeInTheDocument();
     expect(screen.queryByText("工作区循环")).not.toBeInTheDocument();
+  });
+
+  it("removes workspace links in read-only mode", async () => {
+    const previousMode = process.env.SPECOS_RUNTIME_MODE;
+    process.env.SPECOS_RUNTIME_MODE = "readonly";
+
+    try {
+      render(await HomePage());
+
+      expect(screen.getByRole("link", { name: "浏览目录" })).toHaveAttribute("href", "/discover");
+      expect(screen.queryByRole("link", { name: "组合工作区" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "预览导出" })).not.toBeInTheDocument();
+    } finally {
+      if (previousMode === undefined) {
+        delete process.env.SPECOS_RUNTIME_MODE;
+      } else {
+        process.env.SPECOS_RUNTIME_MODE = previousMode;
+      }
+    }
   });
 });

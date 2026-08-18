@@ -1,0 +1,36 @@
+{
+  "id": "template-backend-domain",
+  "type": "spec_template",
+  "title": "Backend Domain Draft",
+  "summary": "Draft template for backend domain features with model, state, migration, and rollout focus.",
+  "direction": "backend",
+  "stacks": [
+    "go",
+    "python"
+  ],
+  "tags": [
+    "backend",
+    "domain",
+    "draft"
+  ],
+  "appliesTo": [
+    "backend"
+  ],
+  "dependsOn": [
+    "rule-backend-governance"
+  ],
+  "conflictsWith": [],
+  "sourcePath": "assets/templates/specs/template-backend-domain/backend-domain.template.md",
+  "files": [
+    ".requirements/templates/prd-backend-domain.template.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "把迁移、回滚和异步编排写清楚",
+    "为关键聚合补充状态和约束"
+  ],
+  "sampleOutput": "后端域能力草稿模板。",
+  "contentFiles": {
+    ".requirements/templates/prd-backend-domain.template.md": "assets/templates/specs/template-backend-domain/backend-domain.template.md"
+  }
+}

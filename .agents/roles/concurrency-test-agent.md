@@ -2,17 +2,17 @@
 
 ## Mission
 
-Create and maintain concurrency, idempotency, and consistency verification assets derived from SpecOS Contracts.
+Create and maintain concurrency, idempotency, and consistency verification assets derived from feature specs.
 
 ## Required Inputs
 
-- SpecOS Contract or active Change Workspace.
-- `tests/plans/<spec-id>.test-plan.json` concurrency invariants.
+- Feature spec plus any relevant implementation or environment notes.
+- `.requirements/plans/<spec-id>.test-plan.json` concurrency invariants.
 - Data setup, fixture, retry, locking, and consistency-delay requirements.
 
 ## Required Outputs
 
-- Concurrency runner assets under `tests/concurrency/<spec-id>/`.
+- Concurrency runner assets under `.requirements/concurrency/<spec-id>/`.
 - Actor profile, request profile, expected final state, and observed final state.
 - Normalized `concurrency` result entries.
 - Blocking invariant failure summary.
@@ -24,3 +24,11 @@ Create and maintain concurrency, idempotency, and consistency verification asset
 - Treat nondeterministic P0 invariant behavior as blocked until classified.
 - Keep implementation source paths out of independent concurrency assets.
 - Document required fixture and cleanup commands without storing secrets.
+
+## CLI GUI MVP02 Foundation Contract
+
+- Inputs: Turn/Attempt/approval/session invariants, race matrix, and deterministic barriers.
+- Outputs: duplicate submit, cancel/completion, approval expiry, retry, multi-session, and final-state normalized evidence.
+- Do not: replace unit tests, ignore final-state reconciliation, or classify an unrepeatable race as pass.
+- Handoff: `requirementId`, `actors`, `requests`, `invariant`, `expectedFinalState`, `observedFinalState`, `artifactRefs`, `flakeClassification`.
+- Block when: any P0/P1 invariant fails, final state differs, or nondeterminism is unclassified.

@@ -1,7 +1,7 @@
 import React from "react";
 
 import { WindowSection } from "@/components/ui/window-section";
-import { buildGlassSurfaceClassName } from "@/lib/theme";
+import { buildNeoSurfaceClassName } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
 export function TestUiDemoPanel({
@@ -34,20 +34,20 @@ export function TestUiDemoPanel({
       tint="mint"
       contentClassName="space-y-4"
     >
-      <div className={cn(buildGlassSurfaceClassName("panel", "neutral"), "rounded-lg p-3")}>
+      <div className={cn(buildNeoSurfaceClassName("panel", "neutral"), "p-3")}>
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
           <div>
             <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-slate-500">SpecOS Test Console</p>
             <h3 className="mt-1 text-base font-medium text-ink">reward-order · run-2026-04-24</h3>
           </div>
-          <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 font-mono text-[11px] uppercase tracking-[0.12em] text-amber-300">
+          <span className="neo-status neo-status-blocked">
             blocked
           </span>
         </div>
 
         <div className="mt-3 grid gap-2 md:grid-cols-3">
           {copy.summary.map((item) => (
-            <div key={item.label} className={cn(buildGlassSurfaceClassName("row", item.tone), "rounded-lg px-3 py-3")}>
+            <div key={item.label} className={cn(buildNeoSurfaceClassName("row", item.tone), "px-3 py-3")}>
               <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-slate-500">{item.label}</p>
               <p className="mt-2 text-2xl font-semibold text-ink">{item.value}</p>
             </div>
@@ -82,12 +82,12 @@ export function TestUiDemoPanel({
                 {copy.flows.map((flow, index) => {
                   const tone =
                     flow.status === "pass" ? "mint" : flow.status === "fail" ? "amber" : "neutral";
-                  const statusClassName =
-                    flow.status === "pass"
-                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                    const statusClassName =
+                      flow.status === "pass"
+                      ? "neo-status neo-status-pass"
                       : flow.status === "fail"
-                        ? "border-rose-500/30 bg-rose-500/10 text-rose-300"
-                        : "border-amber-500/30 bg-amber-500/10 text-amber-300";
+                        ? "neo-status neo-status-fail"
+                        : "neo-status neo-status-blocked";
 
                   return (
                     <div key={`${flow.scenario}-${flow.chain}`} className="grid grid-cols-5 items-stretch gap-3">
@@ -101,8 +101,8 @@ export function TestUiDemoPanel({
                           ) : null}
                           <div
                             className={cn(
-                              buildGlassSurfaceClassName("row", valueIndex === 4 ? tone : "neutral"),
-                              "flex min-h-[72px] items-center rounded-lg px-3 py-2 text-sm leading-5 text-ink",
+                              buildNeoSurfaceClassName("row", valueIndex === 4 ? tone : "neutral"),
+                              "flex min-h-[72px] items-center px-3 py-2 text-sm leading-5 text-ink",
                               valueIndex === 0 && index > 0 ? "opacity-55" : null
                             )}
                           >

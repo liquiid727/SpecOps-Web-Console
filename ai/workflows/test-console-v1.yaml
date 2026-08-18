@@ -1,5 +1,5 @@
 workflow: test-console-v1
-purpose: SpecOS Contract -> task plan -> execution -> normalized result -> report ui
+purpose: Feature Spec -> task plan -> execution -> normalized result -> report ui
 
 inputs:
   - specos_contract
@@ -15,8 +15,8 @@ steps:
   - publish_to_test_console
 
 outputs:
-  - tests/plans/<spec>.test-plan.json
-  - tests/results/<spec>.<run_id>.json
+  - .requirements/plans/<spec>.test-plan.json
+  - .requirements/<spec>.<run_id>.json
   - test-console overview and detail pages
 
 gates:

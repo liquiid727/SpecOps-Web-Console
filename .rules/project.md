@@ -4,7 +4,7 @@
 
 Every meaningful change should preserve the chain:
 
-`draft -> SpecOS contract -> task plan -> evidence -> Project Memory -> Evidence Archive`
+`draft -> prd -> spec -> spec-test -> issues -> implementation -> verify -> merge`
 
 If a task skips any link in the chain, call that out explicitly.
 
@@ -12,24 +12,30 @@ If a task skips any link in the chain, call that out explicitly.
 
 - Identify whether the request is draft, spec, implementation, test, CI, or review work.
 - Locate the closest source of truth before editing.
-- For active development, read `specs/current/` as Project Memory and `specs/changes/<change-id>/` as the active Change Workspace. Do not treat a new requirement as accepted project memory until the change has passed implementation, tests, review, and acceptance.
-- Use `spec-draft/` and `draft/` as intake material only; shape them into `specs/changes/<change-id>/` before implementation work whenever possible.
+- Read `docs/spec-modes/` and the active Requirement Package when project mode or active delivery state affects the task.
+- Use the Requirement Package under `.requirements/requirements/R0NN-<slug>/` as the single source of truth: `prd.md` (intake/contract), `spec.md` (executable contract), `test.md` (verification contract), `issues.md` (issue execution).
+- Read `design/` as the stable platform and architecture truth.
+- Keep implementation and review evidence inside the Requirement Package (`issues.md` completion records, `review.md`), and test plans/schedules under `.requirements/plans/` and `.requirements/schedules/`.
 - Record assumptions when the source of truth is incomplete.
 
 ## Artifact Rules
 
-- Specs must include goals, non-goals, flows, rules, exceptions, tests, observability, and open questions when applicable.
+- Design docs must remain broad, durable, and singular for a platform or system.
+- `GoalSpec` is the single official operating mode (Agent-Native SDLC). `LiteSpec` and `EnterpriseSpec` remain as optional plugin specs under `docs/spec-modes/plugins/`.
+- Requirement Packages must include: meta, goal, why this exists, out of scope, deliverables, domain, application, repository, API, database impact, test plan, and definition of done.
+- Specs must express dependencies by spec id and prerequisites as upstream contracts already provided.
 - API artifacts must include request/response examples and stable error semantics.
 - Test artifacts must map to business scenarios and cover happy path, limit cases, and error cases.
 - UI artifacts must cover empty, loading, success, and failure states.
 - Workflow artifacts must document inputs, outputs, gates, and human approval points.
-- Promotion into `specs/current/` is a finalization step. It should happen only after the related Change Workspace has task and evidence records from implementation, test results, review/report, and human or release approval.
+- Merge readiness requires implementation, review, and test evidence that references the same `spec_id`.
 
 ## Engineering Rules
 
 - Keep changes minimal and aligned with existing directory boundaries.
 - Prefer documented templates over ad-hoc formats.
 - Do not duplicate canonical rules; link to `rules/` instead.
+- Prefer feature-sliced specs over broad subsystem specs.
 - Keep generated outputs deterministic and reviewable.
 - Protect human-authored drafts, review notes, reports, and task files from accidental overwrite.
 

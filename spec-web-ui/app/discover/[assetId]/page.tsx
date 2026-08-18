@@ -2,10 +2,12 @@ import { notFound } from "next/navigation";
 import React from "react";
 
 import { setProjectAssetSelectionAction } from "@/app/actions";
+import { CatalogAssetSummary } from "@/components/catalog/asset-summary";
 import { Badge } from "@/components/ui/badge";
-import { loadAssetSourcePreview, loadCatalogAsset, loadCatalogAssets } from "@/lib/catalog";
-import { buildExportDiffPreview } from "@/lib/export";
+import { loadAssetSourcePreview, loadCatalogAsset, loadCatalogAssets } from "@/features/catalog/server";
+import { buildExportDiffPreview } from "@/features/exports/server";
 import { buildAssetCompositionPreview, listProjects, loadProjectWorkspace } from "@/lib/projects";
+import { isReadOnlyMode } from "@/lib/runtime";
 import { buildShellCommandTitle } from "@/lib/shell";
 
 export default async function AssetDetailPage({
@@ -22,10 +24,11 @@ export default async function AssetDetailPage({
     notFound();
   }
 
-  const [preview, projects, catalog] = await Promise.all([
+  const readOnly = isReadOnlyMode();
+  const [preview, catalog, projects] = await Promise.all([
     loadAssetSourcePreview(asset),
-    listProjects(),
-    loadCatalogAssets()
+    loadCatalogAssets(),
+    readOnly ? Promise.resolve([]) : listProjects()
   ]);
   const requestedProjectId =
     typeof resolvedSearchParams.projectId === "string" ? resolvedSearchParams.projectId : "";
@@ -51,11 +54,19 @@ export default async function AssetDetailPage({
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
                 <h1 className="text-2xl font-semibold text-ink">{asset.title}</h1>
-                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">{asset.summary}</p>
+                <div className="mt-2 max-w-3xl">
+                  <CatalogAssetSummary
+                    asset={asset}
+                    englishClassName="text-sm leading-6 text-slate-400"
+                    chineseClassName="text-sm leading-6 text-slate-300"
+                  />
+                </div>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Badge>{asset.type.replace("_", " ")}</Badge>
                 <Badge>{asset.direction}</Badge>
+                {asset.tier ? <Badge>{asset.tier === "main" ? "main agent" : "specialist"}</Badge> : null}
+                {asset.managedBy ? <Badge>managed by {asset.managedBy}</Badge> : null}
               </div>
             </div>
           </div>
@@ -129,7 +140,11 @@ export default async function AssetDetailPage({
             <span className="hidden font-mono text-xs text-slate-500 group-open:inline">close</span>
           </summary>
           <div className="space-y-4 border-t border-line px-4 py-4">
-            {projects.length ? (
+            {readOnly ? (
+              <div className="surface-base surface-field rounded-xl px-4 py-4 text-sm text-slate-400">
+                This deployment is a read-only catalog preview. Workspace composition is available in the local workspace build.
+              </div>
+            ) : projects.length ? (
               <form action={`/discover/${asset.id}`} className="space-y-3">
                 <label className="block space-y-2">
                   <span className="text-sm font-medium text-slate-300">preview in project</span>
@@ -203,36 +218,38 @@ export default async function AssetDetailPage({
           </div>
         </details>
 
-        <details className="surface-base surface-panel group rounded-xl border border-line">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-ink">
-            Send To Workspace
-            <span className="font-mono text-xs text-slate-500 group-open:hidden">open</span>
-            <span className="hidden font-mono text-xs text-slate-500 group-open:inline">close</span>
-          </summary>
-          <div className="space-y-3 border-t border-line px-4 py-4">
-            {projects.length ? (
-              projects.map((project) => (
-                <form key={project.id} action={setProjectAssetSelectionAction} className="space-y-3">
-                  <input type="hidden" name="projectId" value={project.id} />
-                  <input type="hidden" name="assetId" value={asset.id} />
-                  <input type="hidden" name="enabled" value="true" />
-                  <input type="hidden" name="redirectTo" value={`/discover/${asset.id}?projectId=${project.id}`} />
-                  <button
-                    type="submit"
-                    className="surface-base surface-row flex w-full flex-col items-start gap-2 rounded-xl px-3 py-3 text-left text-sm font-medium text-ink"
-                  >
-                    <span>{project.name}</span>
-                    <span className="text-slate-500">{project.stacks.join(" / ")}</span>
-                  </button>
-                </form>
-              ))
-            ) : (
-              <div className="surface-base surface-field rounded-xl px-4 py-4 text-sm text-slate-400">
-                create a project workspace before assigning catalog assets.
-              </div>
-            )}
-          </div>
-        </details>
+        {!readOnly ? (
+          <details className="surface-base surface-panel group rounded-xl border border-line">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-ink">
+              Send To Workspace
+              <span className="font-mono text-xs text-slate-500 group-open:hidden">open</span>
+              <span className="hidden font-mono text-xs text-slate-500 group-open:inline">close</span>
+            </summary>
+            <div className="space-y-3 border-t border-line px-4 py-4">
+              {projects.length ? (
+                projects.map((project) => (
+                  <form key={project.id} action={setProjectAssetSelectionAction} className="space-y-3">
+                    <input type="hidden" name="projectId" value={project.id} />
+                    <input type="hidden" name="assetId" value={asset.id} />
+                    <input type="hidden" name="enabled" value="true" />
+                    <input type="hidden" name="redirectTo" value={`/discover/${asset.id}?projectId=${project.id}`} />
+                    <button
+                      type="submit"
+                      className="surface-base surface-row flex w-full flex-col items-start gap-2 rounded-xl px-3 py-3 text-left text-sm font-medium text-ink"
+                    >
+                      <span>{project.name}</span>
+                      <span className="text-slate-500">{project.stacks.join(" / ")}</span>
+                    </button>
+                  </form>
+                ))
+              ) : (
+                <div className="surface-base surface-field rounded-xl px-4 py-4 text-sm text-slate-400">
+                  create a project workspace before assigning catalog assets.
+                </div>
+              )}
+            </div>
+          </details>
+        ) : null}
 
         <details className="surface-base surface-panel group rounded-xl border border-line">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-ink">
@@ -249,7 +266,11 @@ export default async function AssetDetailPage({
                 <div key={candidate.id} className="surface-base surface-row space-y-2 rounded-xl px-3 py-3">
                   <Badge>{candidate.type.replace("_", " ")}</Badge>
                   <h3 className="text-sm font-semibold text-ink">{candidate.title}</h3>
-                  <p className="text-sm leading-6 text-slate-400">{candidate.summary}</p>
+                  <CatalogAssetSummary
+                    asset={candidate}
+                    englishClassName="text-sm leading-6 text-slate-400"
+                    chineseClassName="text-sm leading-6 text-slate-300"
+                  />
                 </div>
               ))}
           </div>

@@ -22,6 +22,7 @@ work_types:
     rules:
       - rules/frontend/react-workbench-delivery.md
       - rules/shared/error-code-governance.md
+      - rules/ui/feedback-and-layering.md
     agents:
       - implementation-agent
       - ui-design-agent
@@ -29,7 +30,9 @@ work_types:
 
   ui_prototype:
     rules:
+      - rules/ui/design-governance.md
       - rules/ui/pencil-prototype-ui.md
+      - rules/ui/feedback-and-layering.md
       - rules/frontend/react-workbench-delivery.md
     agents:
       - architecture-agent
@@ -38,7 +41,8 @@ work_types:
 
   spec:
     rules:
-      - specs/_rules/README.md
+      - .requirements/README.md
+      - rules/shared/artifact-locations.md
       - rules/testing/production-test-standards.md
       - rules/shared/error-code-governance.md
     agents:
@@ -49,7 +53,8 @@ work_types:
 
   tests:
     rules:
-      - tests/README.md
+      - .requirements/README.md
+      - rules/shared/artifact-locations.md
       - rules/testing/production-test-standards.md
       - rules/ci/spec-release-gates.md
     agents:

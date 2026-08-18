@@ -1,0 +1,56 @@
+idea:
+  summary:
+  source:
+
+spec:
+  product:
+    goals: []
+    actors: []
+    flows: []
+    constraints: []
+    acceptance: []
+  architecture:
+    style:
+    modules: []
+    integrations: []
+    risks: []
+  database:
+    entities: []
+    relationships: []
+    migrations: []
+    dataRisks: []
+  api:
+    endpoints: []
+    events: []
+    externalServices: []
+    errorSemantics: []
+  ui:
+    surfaces: []
+    states:
+      empty: []
+      loading: []
+      success: []
+      failure: []
+    analytics: []
+
+task:
+  epics: []
+  stories: []
+  issues: []
+
+code:
+  frontend: []
+  backend: []
+  shared: []
+
+test:
+  unit: []
+  api: []
+  e2e: []
+  performance: []
+  concurrency: []
+
+deploy:
+  environments: []
+  gates: []
+  rollback: []

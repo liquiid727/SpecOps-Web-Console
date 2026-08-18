@@ -1,18 +1,27 @@
 project:
   name: specos-fullstack
   type: fullstack
+projectMode: goalspec
 stacks:
   frontend: next
   backend: node-api
 artifacts:
-  draftsDir: spec-draft
-  specsDir: specs/current
-  testsDir: tests
-  resultsDir: tests/results
+  draftsDir: .requirements
+  specsDir: .requirements
+  issuesDir: .requirements
+  testsDir: .requirements
+  resultsDir: .requirements
 rulePacks:
   - spec-driven-delivery
 agentTemplates:
-  - fullstack-agent
+  - product-architect-agent
+  - spec-editor
+  - frontend-agent
+  - backend-agent
+  - testing-agent
+  - qa-agent
+  - ci-editor
+  - reviewer
 workflows:
   - default-fullstack
 ci:

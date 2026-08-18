@@ -1,0 +1,21 @@
+version: 1
+defaults:
+  model: gpt-5.4
+  reasoning: medium
+routes:
+  - match: spec-orchestrator
+    model: gpt-5.6
+    reasoning: high
+  - match: team-orchestrator
+    model: gpt-5.6
+    reasoning: high
+  - match: architecture-agent
+    model: gpt-5.6
+    reasoning: high
+  - match: review-agent
+    model: gpt-5.6
+    reasoning: high
+fallbacks:
+  - unsupported_model: gpt-5.4-nano
+    fallback_model: gpt-5.4
+    reasoning: medium

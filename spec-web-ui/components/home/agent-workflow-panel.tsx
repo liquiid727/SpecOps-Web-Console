@@ -1,6 +1,6 @@
 import React from "react";
 
-import { buildGlassSurfaceClassName } from "@/lib/theme";
+import { buildNeoSurfaceClassName } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import { WindowSection } from "@/components/ui/window-section";
 
@@ -39,8 +39,8 @@ export function AgentWorkflowPanel({
             <li
               key={stage}
               className={cn(
-                buildGlassSurfaceClassName("row", index < 2 ? "blue" : index === copy.stages.length - 1 ? "mint" : "neutral"),
-                "rounded-lg px-3 py-3 text-sm text-ink"
+                buildNeoSurfaceClassName("row", index < 2 ? "blue" : index === copy.stages.length - 1 ? "mint" : "neutral"),
+                "px-3 py-3 text-sm text-ink"
               )}
             >
               <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-slate-500">{String(index + 1).padStart(2, "0")}</span>
@@ -50,7 +50,7 @@ export function AgentWorkflowPanel({
         </ol>
       </div>
 
-      <div className={cn(buildGlassSurfaceClassName("row", "mint"), "rounded-lg px-4 py-3 text-sm leading-6 text-slate-600")}>
+      <div className={cn(buildNeoSurfaceClassName("row", "mint"), "px-4 py-3 text-sm leading-6 text-slate-600")}>
         <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-slate-500">gate</span>
         <p className="mt-1 text-ink">{copy.gate}</p>
       </div>
@@ -60,8 +60,8 @@ export function AgentWorkflowPanel({
           <article
             key={track.name}
             className={cn(
-              buildGlassSurfaceClassName("panel", index === 0 ? "violet" : index === 1 ? "blue" : "amber"),
-              "rounded-lg p-4"
+              buildNeoSurfaceClassName("panel", index === 0 ? "violet" : index === 1 ? "blue" : "amber"),
+              "p-4"
             )}
           >
             <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-slate-500">{track.name}</p>

@@ -6,10 +6,10 @@ Independent verification console for spec-driven API and scenario results.
 
 This app reads repository artifacts directly from:
 
-- `../tests/plans/*.json`
-- `../tests/results/*.json`
+- `../.requirements/plans/*.json`
+- `../.requirements/*.json`
 
-It does not parse Bruno or Playwright native output directly. Those tools should be normalized into `tests/results/` first.
+It does not parse Bruno or Playwright native output directly. Those tools should be normalized into `.requirements/` first.
 
 ## Local Run
 
@@ -33,8 +33,8 @@ Then reload the console to see the newest run.
 
 The home page includes a manual trigger form.
 
-- Choose a spec from `tests/plans/*.json`
+- Choose a spec from `.requirements/plans/*.json`
 - Choose `API`, `Scenario`, or `API + Scenario`
 - Submit the form
 
-The server action will call `scripts/orchestration/test-runner.mjs`, write a new normalized result into `tests/results/`, and redirect back to the spec detail page.
+The server action will call `scripts/orchestration/test-runner.mjs`, write a new normalized result into `.requirements/`, and redirect back to the spec detail page.

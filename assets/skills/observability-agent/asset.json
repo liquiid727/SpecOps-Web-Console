@@ -1,0 +1,36 @@
+{
+  "id": "skill-observability-agent",
+  "type": "skill",
+  "title": "Observability Agent",
+  "summary": "Use when a task needs post-deploy inspection, runtime health review, metrics and logs checks, or behavior-drift detection.",
+  "direction": "fullstack",
+  "stacks": [
+    "go",
+    "react"
+  ],
+  "tags": [
+    "observability",
+    "runtime",
+    "monitoring",
+    "reusable",
+    "go-pack"
+  ],
+  "appliesTo": [
+    "backend",
+    "frontend"
+  ],
+  "dependsOn": [],
+  "conflictsWith": [],
+  "sourcePath": "assets/skills/observability-agent/SKILL.md",
+  "files": [
+    "skills/developer/observability-agent/SKILL.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "按项目类型确认是否启用该 skill，并检查引用资料是否适配目标仓库。"
+  ],
+  "sampleOutput": "可复用 skill 说明、触发条件、参考资料和运行边界。",
+  "contentFiles": {
+    "skills/developer/observability-agent/SKILL.md": "assets/skills/observability-agent/SKILL.md"
+  }
+}

@@ -9,29 +9,45 @@ import { buildShellBreadcrumbs } from "@/lib/shell";
 import { cn } from "@/lib/utils";
 
 type NavItem =
-  | { href: string; key: "home" | "about" | "specTemplates" | "skillTemplates" | "agentTemplates" | "agentTeams" | "projects" }
+  | {
+      href: string;
+      key:
+        | "home"
+        | "about"
+        | "requirements"
+        | "specTemplates"
+        | "skillTemplates"
+        | "agentTemplates"
+        | "agentTeams"
+        | "engineeringPacks"
+        | "projects";
+    }
   | { disabled: true; key: "workflowTemplates" };
 
-const navItems: NavItem[] = [
+const baseNavItems: NavItem[] = [
   { href: "/", key: "home" },
   { href: "/about", key: "about" },
+  { href: "/requirements", key: "requirements" },
   { href: "/spec-templates", key: "specTemplates" },
   { href: "/skill-templates", key: "skillTemplates" },
   { href: "/agent-templates", key: "agentTemplates" },
   { href: "/agent-teams", key: "agentTeams" },
-  { key: "workflowTemplates", disabled: true },
-  { href: "/projects", key: "projects" }
+  { href: "/engineering-packs", key: "engineeringPacks" },
+  { key: "workflowTemplates", disabled: true }
 ];
 
-export function SiteNav({ locale }: { locale: Locale }) {
+export function SiteNav({ locale, readOnly = false }: { locale: Locale; readOnly?: boolean }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const breadcrumbs = buildShellBreadcrumbs(pathname);
   const copy = getLocaleCopy(locale);
+  const navItems: NavItem[] = readOnly
+    ? baseNavItems
+    : [...baseNavItems, { href: "/projects", key: "projects" }];
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5">
-      <div className="flex min-w-0 flex-wrap items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-3">
+      <div className="flex min-w-0 flex-wrap items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">
         {breadcrumbs.map((segment, index) => (
           <span key={segment.href} className="inline-flex items-center gap-1.5">
             {index > 0 ? <span className="text-slate-400">/</span> : null}
@@ -49,7 +65,7 @@ export function SiteNav({ locale }: { locale: Locale }) {
           </span>
         ))}
       </div>
-      <nav className="flex flex-wrap items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">
+      <nav className="flex flex-wrap items-center gap-1 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">
         {navItems.map((item) => {
           const [itemPath, itemQueryString] = "href" in item ? item.href.split("?") : ["", ""];
           const itemQuery = new URLSearchParams(itemQueryString ?? "");
@@ -67,7 +83,7 @@ export function SiteNav({ locale }: { locale: Locale }) {
               <span
                 key={item.key}
                 aria-disabled="true"
-                className="rounded-full border border-transparent px-2.5 py-1 text-slate-600"
+                className="neo-nav-link text-slate-500"
               >
                 {label}/
               </span>
@@ -79,10 +95,10 @@ export function SiteNav({ locale }: { locale: Locale }) {
               key={item.href}
               href={item.href}
               className={cn(
-                "rounded-full border px-2.5 py-1 transition",
+                "neo-nav-link transition",
                 active
-                  ? "border-line bg-panel text-ink"
-                  : "border-transparent text-slate-500 hover:border-line hover:bg-panel hover:text-ink"
+                  ? "neo-nav-link-active"
+                  : "text-slate-500 hover:text-ink"
               )}
             >
               {label}/

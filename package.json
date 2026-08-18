@@ -6,7 +6,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build --workspace @specos/core && npm run build --workspace @specos/cli",
+    "build": "npm run build --workspace @specos/catalog && npm run build --workspace @specos/bundler && npm run build --workspace @specos/installer && npm run build --workspace @specos/core && npm run build --workspace @specos/templates && npm run build --workspace @specos/cli",
     "test": "npm test --workspaces --if-present"
   }
 }

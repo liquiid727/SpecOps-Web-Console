@@ -1,0 +1,73 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# env / secrets
+.env
+.env.*
+!.env.example
+*.local
+
+# dependencies
+node_modules/
+
+# build output
+dist/
+build/
+out/
+.next/
+.turbo/
+*.tsbuildinfo
+
+# test / coverage artifacts
+coverage/
+playwright-report/
+test-results/
+
+# logs
+*.log
+npm-debug.log*
+
+# Python (if this project has a Python backend)
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# --- Editor / CLI tool local state ---
+# Keep AGENTS.md, CLAUDE.md, .claude/, .codex/, .requirements/, and docs/ under
+# version control. Only ignore the cache/session subpaths these tools generate locally.
+.claude/settings.local.json
+.claude/todos/
+.claude/shell-snapshots/
+.claude/projects/
+.claude/statsig/
+.claude/logs/
+.codex/config.toml
+.codex/sessions/
+.codex/cache/
+.codex/logs/
+
+# --- Requirement Package generated scratch ---
+# Generated plans, schedules, results, and adapter output are reproducible, never source of truth.
+.requirements/*.json
+.requirements/plans/*.json
+.requirements/schedules/*.json
+.requirements/bruno/
+.requirements/results/
+.requirements/performance/
+.requirements/concurrency/
+.requirements/scenarios/
+
+# --- Agent development caches ---
+# Local run/handoff/inference caches produced by agent tooling. Reproducible
+# scratch state, never source of truth, so it never gets committed.
+.agent/runs/
+.agent/cache/
+runs/
+*.handoff.md.tmp
+.llm-cache/

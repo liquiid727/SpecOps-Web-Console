@@ -1,13 +1,16 @@
 {
   "name": "@specos/cli",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "bin": {
     "specos": "./dist/main.js"
   },
   "main": "./dist/main.js",
   "types": "./dist/main.d.ts",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
   "exports": {
     ".": {
       "types": "./dist/main.d.ts",
@@ -15,18 +18,19 @@
     }
   },
   "files": [
-    "dist",
-    "templates"
+    "dist"
   ],
   "scripts": {
     "build": "npm -C ../.. run build --workspace @specos/core && tsc -p tsconfig.json && esbuild src/main.ts --bundle --platform=node --format=esm --outfile=dist/main.js --banner:js='import { createRequire as __createRequire } from \"node:module\"; const require = __createRequire(import.meta.url);'",
     "test": "npm -C ../.. run build --workspace @specos/core && vitest run --root ../.. packages/cli/src"
   },
   "dependencies": {
+    "@specos/core": "^0.1.0",
+    "@specos/installer": "^0.1.0",
+    "@specos/templates": "^0.1.0",
     "yaml": "^2.8.1"
   },
   "devDependencies": {
-    "@specos/core": "file:../core",
     "@types/node": "^24.6.0",
     "esbuild": "^0.25.0",
     "typescript": "^5.4.0",

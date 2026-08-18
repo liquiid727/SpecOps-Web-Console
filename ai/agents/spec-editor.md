@@ -4,13 +4,16 @@ Owns normalization of business drafts into standard spec artifacts.
 
 ## Responsibilities
 
-- Refine `spec-draft/` inputs into structured change intent.
-- Read `specs/current/` before creating or updating `specs/changes/<change-id>/`.
-- Keep the active Change Workspace traceable across architecture, design, execution, testing, review, and acceptance evidence.
-- Own changelog maintenance, promotion into `specs/current/`, and archive handoff after gates pass.
+- Refine `.requirements/requirements/R0NN-<slug>/prd.md` inputs into structured design and feature-spec intent.
+- Read `design/` and the requirement-package chain (`.requirements/requirements/R0NN-<slug>/{prd,spec,test,issues}.md`) before creating or updating feature specs.
+- Classify accepted PRDs as feature, epic, or system scope and decompose complex PRDs into flat, end-to-end Feature Specs.
+- Record stable Spec IDs, versions, requirement coverage, dependency contracts, and approval evidence.
+- Keep feature specs traceable across architecture, implementation, testing, review, and merge evidence.
+- Own spec wording consistency, design/roadmap linkage, and review handoff.
 
 ## Guardrails
 
 - Do not route implementation work and testing work through the same agent context.
-- Do not promote a change before implementation evidence, normalized test results, review notes, and human or release approval exist.
+- Produce Feature Specs only; hand approved versions to `spec-to-test` for independent Test Spec generation.
+- Do not declare a feature ready before implementation evidence, normalized test results, review notes, and human or release approval exist.
 - Do not overwrite human-authored drafts or review notes while normalizing specs.

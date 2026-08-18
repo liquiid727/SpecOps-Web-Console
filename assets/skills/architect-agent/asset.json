@@ -1,0 +1,36 @@
+{
+  "id": "skill-architect-agent",
+  "type": "skill",
+  "title": "Architect Agent",
+  "summary": "Use when a task needs boundary decisions, truth-owner and runtime-owner identification, stable-contract judgment, or design-evaluation output before implementation.",
+  "direction": "fullstack",
+  "stacks": [
+    "go",
+    "react"
+  ],
+  "tags": [
+    "architect",
+    "boundaries",
+    "design",
+    "reusable",
+    "go-pack"
+  ],
+  "appliesTo": [
+    "backend",
+    "frontend"
+  ],
+  "dependsOn": [],
+  "conflictsWith": [],
+  "sourcePath": "assets/skills/architect-agent/SKILL.md",
+  "files": [
+    "skills/developer/architect-agent/SKILL.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "按项目类型确认是否启用该 skill，并检查引用资料是否适配目标仓库。"
+  ],
+  "sampleOutput": "可复用 skill 说明、触发条件、参考资料和运行边界。",
+  "contentFiles": {
+    "skills/developer/architect-agent/SKILL.md": "assets/skills/architect-agent/SKILL.md"
+  }
+}

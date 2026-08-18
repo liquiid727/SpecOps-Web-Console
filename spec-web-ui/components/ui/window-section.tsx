@@ -1,11 +1,6 @@
 import React, { type HTMLAttributes, type ReactNode } from "react";
 
-import {
-  buildGlassSurfaceClassName,
-  buildTrafficLightClassName,
-  WINDOW_TRAFFIC_LIGHTS,
-  type GlassSurfaceTint
-} from "@/lib/theme";
+import { buildNeoSurfaceClassName, type NeoSurfaceTint } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
 export function WindowSection({
@@ -25,13 +20,13 @@ export function WindowSection({
   eyebrow?: ReactNode;
   actions?: ReactNode;
   contentClassName?: string;
-  tint?: GlassSurfaceTint;
+  tint?: NeoSurfaceTint;
   variant?: "window" | "plain";
 }) {
   if (variant === "plain") {
     return (
       <section
-        className={cn(buildGlassSurfaceClassName("panel", tint), "plain-section rounded-lg", className)}
+        className={cn(buildNeoSurfaceClassName("panel", tint), "plain-section", className)}
         {...props}
       >
         <div className="plain-section-header">
@@ -48,14 +43,9 @@ export function WindowSection({
   }
 
   return (
-    <section className={cn(buildGlassSurfaceClassName("hero", tint), "window-section rounded-[28px]", className)} {...props}>
+    <section className={cn(buildNeoSurfaceClassName("hero", tint), "window-section", className)} {...props}>
       <div className="window-titlebar">
         <div className="window-heading">
-          <div className="traffic-lights" aria-hidden="true">
-            {WINDOW_TRAFFIC_LIGHTS.map((tone) => (
-              <span key={tone} className={buildTrafficLightClassName(tone)} data-testid="traffic-light" />
-            ))}
-          </div>
           <div className="window-heading-copy">
             {eyebrow ? <p className="window-eyebrow">{eyebrow}</p> : null}
             <h2 className="window-title">{title}</h2>

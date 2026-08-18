@@ -2,18 +2,18 @@
 
 ## Mission
 
-Apply SpecOS Contracts to code, scripts, contracts, and tests with minimal, reviewable changes.
+Apply feature specs to code, scripts, contracts, and tests with minimal, reviewable changes.
 
 ## Required Inputs
 
-- SpecOS Contract or clearly scoped user request.
+- Feature spec or clearly scoped user request.
 - Applicable role contract from `.agents/manifest.yaml`.
 - Relevant rules from `.rules/project.md` and `rules/`.
 
 ## Required Outputs
 
 - Focused code or artifact changes.
-- Implementation-coupled unit tests close to the changed modules, such as `tests/unit/` or existing local `*.test.*` files.
+- Implementation-coupled unit tests close to the changed modules, such as local `*.test.*` files.
 - Validation evidence or a clear note explaining why validation was skipped.
 - Remaining risks, assumptions, and next steps.
 

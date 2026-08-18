@@ -1,0 +1,4 @@
+interface:
+  display_name: "Spec to Test"
+  short_description: "Generate versioned test specs from approved feature specs"
+  default_prompt: "Use $spec-to-test to derive an independent, versioned test specification from this approved feature spec."

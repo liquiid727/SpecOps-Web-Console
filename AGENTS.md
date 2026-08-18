@@ -10,14 +10,15 @@ Read context in this order before changing behavior:
 
 1. `README.md` or `readme.md` for product intent.
 2. `rules/` and `.rules/` for engineering governance.
-3. `spec-draft/` for human-authored draft intent.
-4. `specs/current/` for accepted Project Memory.
-5. `tests/` for scenario, API, and UI verification assets.
-6. `ai/agents/` and `.agents/` for role-specific responsibilities.
+3. `docs/spec-modes/` for the project mode (GoalSpec = Agent-Native SDLC).
+4. `design/` for stable platform and system design truth.
+5. `.requirements/` for active Requirement Packages: enter the target `requirements/R0NN-<slug>/` and read `prd.md` → `spec.md` → `test.md` → `issues.md`.
+6. `archive/legacy/` for historical delivery evidence (read-only reference).
+7. `ai/agents/` and `.agents/` for role-specific responsibilities.
 
 ## Required Workflow
 
-- Start from Project Memory or an active SpecOS Contract, or clearly state that the work is draft-only.
+- Start from a design doc, feature spec, or a Requirement Package (`prd.md`), or clearly state that the work is draft-only.
 - Keep every generated artifact traceable to a spec, draft, or rule.
 - Prefer small, reviewable changes over broad rewrites.
 - Do not overwrite human-authored drafts, specs, reports, or review notes unless explicitly asked.
@@ -33,19 +34,24 @@ Read context in this order before changing behavior:
 - `.agents/manifest.yaml` is the only source of truth for available agent roles, prompt assembly, scoped skills, context includes, ownership, and outputs.
 - `route-request` and `classify-request` are deterministic routing previews. They return `primaryAgent`, `supportingAgents`, rules, skills, and required context, but they do not execute agents by themselves.
 - Concrete multi-agent execution belongs to the host agent system or workflow runner. When the host supports subagents, `pola` may start 2 to 4 narrowly scoped specialist subagents and then judge which findings are actionable.
-- Nested dispatch is allowed only through registered roles. Main primary roles are `architecture-agent`, `implementation-agent`, `deployment-agent`, and `testing-agent`; they may propose bounded work for registered specialist roles such as spec, domain, API, migration, UI design, unit, browser, E2E, performance, concurrency, CI, review, or QA agents.
+- Nested dispatch is allowed only through registered roles. User-routable main roles (`tier: main`) are the four domain leads: `architecture-agent`, `implementation-agent`, `testing-agent`, and `qa-agent`; `pola` is the coordinator above them and is never a dispatch target.
+- Every other registered role is `tier: specialist` with a `managed_by` main agent. Specialists (product intake, spec, domain, API, migration, UI design, frontend/backend, focused editors, unit/browser/E2E/performance/concurrency tests, CI, deployment, review) are opened on demand as subagents by their managing main agent, never pre-dispatched as user entrypoints.
+- `deployment-agent` is a specialist managed by `qa-agent`; release and deployment readiness decisions belong to `qa-agent`.
 
 ## Repository Boundaries
 
+- Artifact locations are declared once in `.specos/manifest.yaml` `artifacts`; see `rules/shared/artifact-locations.md` for the resolution order and customization protocol.
+- `.requirements/`: Requirement Package workflow root. `requirements/R0NN-<slug>/` holds co-located `prd.md` / `spec.md` / `test.md` / `issues.md`; `templates/`, `examples/`, and `skills/` hold authoring assets.
 - `rules/`: canonical reusable rule documents.
 - `.rules/`: agent-facing rule index and execution policy.
 - `ai/`: prompt, workflow, agent, and reviewer assets for SpecOS orchestration.
 - `.agents/`: local agent manifests and role routing for coding assistants.
 - `.codex/`: Codex-specific local configuration and operating notes.
-- `spec-draft/`: draft inputs that may still be incomplete or exploratory.
-- `specs/`: SpecOS Knowledge Spine with Project Memory (`current/`), Change Workspaces (`changes/`), and Evidence Archive (`archive/`).
-- `tests/`: spec-driven verification assets and scenario test templates.
+- `design/`: stable platform and system design documents. One canonical design doc per platform or system.
+- `archive/legacy/`: historical delivery evidence archived from the previous global-dir model (`.prd/`, `.features/`, `.issues/`, `implementation/`, `reviews/`, `tests/`). Read-only reference; do not create new work here.
+- `docs/spec-modes/`: project mode documentation. `GoalSpec` (Agent-Native SDLC) is the single official mode; `plugins/` holds optional lighter/heavier spec variants.
 - `spec-web-ui/`: Next.js UI for SpecOS.
+- Code: Bugrail is a separate repository (`liquiid727/bugrail`, local checkout `~/code/bugrail`). Do not recreate a `bugrail/` submodule or copy its source into this repo.
 
 ## Coding Standards
 

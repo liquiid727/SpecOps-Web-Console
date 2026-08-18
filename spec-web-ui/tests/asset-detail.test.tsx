@@ -10,21 +10,22 @@ vi.mock("@/app/actions", () => ({
   setProjectAssetSelectionAction: vi.fn()
 }));
 
-vi.mock("@/lib/catalog", () => ({
+vi.mock("@/features/catalog/server", () => ({
   loadAssetSourcePreview: async () => "# DDD Layering Governance\n\nUse this skill to guide design.",
   loadCatalogAsset: async () => ({
     id: "skill-ddd-layering-governance",
     type: "skill",
     title: "DDD Layering Governance",
     summary: "Guides DDD layer ownership.",
+    summaryZh: "用于指导 DDD 分层归属与领域建模边界。",
     direction: "backend",
     stacks: ["go"],
     tags: ["ddd"],
     appliesTo: ["backend"],
     dependsOn: [],
     conflictsWith: [],
-    sourcePath: "spec-web-ui/catalog/skills/ddd-layering-governance/SKILL.md",
-    files: ["spec-web-ui/catalog/skills/ddd-layering-governance/SKILL.md"],
+    sourcePath: "assets/skills/ddd-layering-governance/SKILL.md",
+    files: ["skills/developer/ddd-layering-governance/SKILL.md"],
     version: "1.0.0",
     sampleOutput: "DDD decisions"
   }),
@@ -50,7 +51,7 @@ vi.mock("@/lib/catalog", () => ({
 vi.mock("@/lib/projects", () => ({
   buildAssetCompositionPreview: () => ({
     selectedAssetCount: 2,
-    exportDirectories: ["spec-web-ui"],
+    exportDirectories: ["skills"],
     remainingMissingDependencies: [],
     introducedConflicts: []
   }),
@@ -71,8 +72,8 @@ vi.mock("@/lib/projects", () => ({
       architecture: "modular-monolith",
       stacks: ["go"],
       selectedAssets: [],
-      draftTemplateId: "template-feature-draft",
-      draftPath: "spec-web-ui/workspace/projects/backend-kit/draft.md",
+      prdTemplateId: "template-feature-draft",
+      prdPath: "spec-web-ui/workspace/projects/backend-kit/prd.md",
       exportTargets: []
     },
     selectedAssets: [],
@@ -95,7 +96,8 @@ describe("AssetDetailPage", () => {
 
     expect(screen.getByRole("heading", { name: "DDD Layering Governance" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Source preview" })).not.toBeInTheDocument();
-    expect(screen.getByText("$ cat spec-web-ui/catalog/skills/ddd-layering-governance/SKILL.md")).toBeInTheDocument();
+    expect(screen.getByText("$ cat assets/skills/ddd-layering-governance/SKILL.md")).toBeInTheDocument();
+    expect(screen.getByText("用于指导 DDD 分层归属与领域建模边界。")).toBeInTheDocument();
     expect(
       screen.getByText((_, element) =>
         element?.tagName === "PRE" && Boolean(element.textContent?.includes("# DDD Layering Governance"))
@@ -105,5 +107,28 @@ describe("AssetDetailPage", () => {
     expect(screen.getByText("Asset manifest").tagName).toBe("SUMMARY");
     expect(screen.getByText("Composition preview").tagName).toBe("SUMMARY");
     expect(screen.getByText("Good companions").tagName).toBe("SUMMARY");
+  });
+
+  it("removes workspace composition controls in read-only mode", async () => {
+    const previousMode = process.env.SPECOS_RUNTIME_MODE;
+    process.env.SPECOS_RUNTIME_MODE = "readonly";
+
+    try {
+      render(
+        await AssetDetailPage({
+          params: Promise.resolve({ assetId: "skill-ddd-layering-governance" }),
+          searchParams: Promise.resolve({})
+        })
+      );
+
+      expect(screen.queryByText("Send To Workspace")).not.toBeInTheDocument();
+      expect(screen.getByText(/read-only catalog preview/)).toBeInTheDocument();
+    } finally {
+      if (previousMode === undefined) {
+        delete process.env.SPECOS_RUNTIME_MODE;
+      } else {
+        process.env.SPECOS_RUNTIME_MODE = previousMode;
+      }
+    }
   });
 });

@@ -1,0 +1,482 @@
+{
+  "runId": "run-2026-05-31T11-30-43-046Z",
+  "specId": "reward-order",
+  "specVersion": "1.2.0",
+  "standardVersion": "specos-test-standard/v1",
+  "qualityProfile": "fullstack-flow",
+  "changeId": "reward-order-ready",
+  "featureName": "奖励订单发放",
+  "runner": {
+    "name": "specos-test-runner",
+    "command": "node scripts/orchestration/test-runner.mjs reward-order 1.2.0 api",
+    "exitCode": 0
+  },
+  "environment": {
+    "id": "local-sample",
+    "fixtureVersion": "reward-order-fixture-v1",
+    "externalDependencyMode": "stubbed"
+  },
+  "status": "pass",
+  "releaseDecision": "blocked",
+  "startedAt": "2026-05-31T11:30:43.047Z",
+  "endedAt": "2026-05-31T11:30:43.047Z",
+  "blockers": [
+    "happy/error 断言通过，limit 分支通过但 p95 偏高"
+  ],
+  "highRiskScenarios": [
+    "库存不足时领取失败"
+  ],
+  "coverageGaps": [
+    "查询奖励订单 缺少 limit 分支校验"
+  ],
+  "summary": {
+    "apiPassRate": 0.5,
+    "scenarioPassRate": 0,
+    "totalEndpoints": 2,
+    "totalScenarios": 2
+  },
+  "flowResults": [
+    {
+      "name": "奖励领取业务流",
+      "status": "warning",
+      "stages": [
+        {
+          "name": "进入场景",
+          "status": "warning",
+          "scenarios": [
+            {
+              "name": "用户成功领取奖励",
+              "status": "pending",
+              "relatedEndpointTargets": [
+                "POST /api/reward-orders",
+                "GET /api/reward-orders/:id"
+              ],
+              "steps": [
+                {
+                  "name": "打开奖励页",
+                  "status": "pending"
+                },
+                {
+                  "name": "点击领取",
+                  "status": "pending"
+                },
+                {
+                  "name": "提交订单",
+                  "status": "pending"
+                },
+                {
+                  "name": "查看结果",
+                  "status": "pending"
+                }
+              ]
+            },
+            {
+              "name": "库存不足时领取失败",
+              "status": "pending",
+              "relatedEndpointTargets": [
+                "POST /api/reward-orders",
+                "GET /api/reward-orders/:id"
+              ],
+              "steps": [
+                {
+                  "name": "打开奖励页",
+                  "status": "pending"
+                },
+                {
+                  "name": "点击领取",
+                  "status": "pending"
+                },
+                {
+                  "name": "提交订单",
+                  "status": "pending"
+                },
+                {
+                  "name": "查看失败提示",
+                  "status": "pending"
+                }
+              ]
+            }
+          ],
+          "endpoints": [
+            {
+              "target": "POST /api/reward-orders",
+              "name": "创建奖励订单",
+              "method": "POST",
+              "path": "/api/reward-orders",
+              "status": "warning",
+              "avgMs": 210,
+              "p95Ms": 641,
+              "errorRate": 0.02,
+              "relatedRule": "reward.order.create",
+              "summary": "happy/error 断言通过，limit 分支通过但 p95 偏高"
+            },
+            {
+              "target": "GET /api/reward-orders/:id",
+              "name": "查询奖励订单",
+              "method": "GET",
+              "path": "/api/reward-orders/:id",
+              "status": "pass",
+              "avgMs": 84,
+              "p95Ms": 140,
+              "errorRate": 0,
+              "relatedRule": "reward.order.read",
+              "summary": "happy/error/edge 全部通过"
+            }
+          ]
+        },
+        {
+          "name": "触发动作",
+          "status": "warning",
+          "scenarios": [
+            {
+              "name": "用户成功领取奖励",
+              "status": "pending",
+              "relatedEndpointTargets": [
+                "POST /api/reward-orders",
+                "GET /api/reward-orders/:id"
+              ],
+              "steps": [
+                {
+                  "name": "打开奖励页",
+                  "status": "pending"
+                },
+                {
+                  "name": "点击领取",
+                  "status": "pending"
+                },
+                {
+                  "name": "提交订单",
+                  "status": "pending"
+                },
+                {
+                  "name": "查看结果",
+                  "status": "pending"
+                }
+              ]
+            },
+            {
+              "name": "库存不足时领取失败",
+              "status": "pending",
+              "relatedEndpointTargets": [
+                "POST /api/reward-orders",
+                "GET /api/reward-orders/:id"
+              ],
+              "steps": [
+                {
+                  "name": "打开奖励页",
+                  "status": "pending"
+                },
+                {
+                  "name": "点击领取",
+                  "status": "pending"
+                },
+                {
+                  "name": "提交订单",
+                  "status": "pending"
+                },
+                {
+                  "name": "查看失败提示",
+                  "status": "pending"
+                }
+              ]
+            }
+          ],
+          "endpoints": [
+            {
+              "target": "POST /api/reward-orders",
+              "name": "创建奖励订单",
+              "method": "POST",
+              "path": "/api/reward-orders",
+              "status": "warning",
+              "avgMs": 210,
+              "p95Ms": 641,
+              "errorRate": 0.02,
+              "relatedRule": "reward.order.create",
+              "summary": "happy/error 断言通过，limit 分支通过但 p95 偏高"
+            },
+            {
+              "target": "GET /api/reward-orders/:id",
+              "name": "查询奖励订单",
+              "method": "GET",
+              "path": "/api/reward-orders/:id",
+              "status": "pass",
+              "avgMs": 84,
+              "p95Ms": 140,
+              "errorRate": 0,
+              "relatedRule": "reward.order.read",
+              "summary": "happy/error/edge 全部通过"
+            }
+          ]
+        },
+        {
+          "name": "提交请求",
+          "status": "warning",
+          "scenarios": [
+            {
+              "name": "用户成功领取奖励",
+              "status": "pending",
+              "relatedEndpointTargets": [
+                "POST /api/reward-orders",
+                "GET /api/reward-orders/:id"
+              ],
+              "steps": [
+                {
+                  "name": "打开奖励页",
+                  "status": "pending"
+                },
+                {
+                  "name": "点击领取",
+                  "status": "pending"
+                },
+                {
+                  "name": "提交订单",
+                  "status": "pending"
+                },
+                {
+                  "name": "查看结果",
+                  "status": "pending"
+                }
+              ]
+            },
+            {
+              "name": "库存不足时领取失败",
+              "status": "pending",
+              "relatedEndpointTargets": [
+                "POST /api/reward-orders",
+                "GET /api/reward-orders/:id"
+              ],
+              "steps": [
+                {
+                  "name": "打开奖励页",
+                  "status": "pending"
+                },
+                {
+                  "name": "点击领取",
+                  "status": "pending"
+                },
+                {
+                  "name": "提交订单",
+                  "status": "pending"
+                },
+                {
+                  "name": "查看失败提示",
+                  "status": "pending"
+                }
+              ]
+            }
+          ],
+          "endpoints": [
+            {
+              "target": "POST /api/reward-orders",
+              "name": "创建奖励订单",
+              "method": "POST",
+              "path": "/api/reward-orders",
+              "status": "warning",
+              "avgMs": 210,
+              "p95Ms": 641,
+              "errorRate": 0.02,
+              "relatedRule": "reward.order.create",
+              "summary": "happy/error 断言通过，limit 分支通过但 p95 偏高"
+            },
+            {
+              "target": "GET /api/reward-orders/:id",
+              "name": "查询奖励订单",
+              "method": "GET",
+              "path": "/api/reward-orders/:id",
+              "status": "pass",
+              "avgMs": 84,
+              "p95Ms": 140,
+              "errorRate": 0,
+              "relatedRule": "reward.order.read",
+              "summary": "happy/error/edge 全部通过"
+            }
+          ]
+        },
+        {
+          "name": "确认结果",
+          "status": "warning",
+          "scenarios": [
+            {
+              "name": "用户成功领取奖励",
+              "status": "pending",
+              "relatedEndpointTargets": [
+                "POST /api/reward-orders",
+                "GET /api/reward-orders/:id"
+              ],
+              "steps": [
+                {
+                  "name": "打开奖励页",
+                  "status": "pending"
+                },
+                {
+                  "name": "点击领取",
+                  "status": "pending"
+                },
+                {
+                  "name": "提交订单",
+                  "status": "pending"
+                },
+                {
+                  "name": "查看结果",
+                  "status": "pending"
+                }
+              ]
+            },
+            {
+              "name": "库存不足时领取失败",
+              "status": "pending",
+              "relatedEndpointTargets": [
+                "POST /api/reward-orders",
+                "GET /api/reward-orders/:id"
+              ],
+              "steps": [
+                {
+                  "name": "打开奖励页",
+                  "status": "pending"
+                },
+                {
+                  "name": "点击领取",
+                  "status": "pending"
+                },
+                {
+                  "name": "提交订单",
+                  "status": "pending"
+                },
+                {
+                  "name": "查看失败提示",
+                  "status": "pending"
+                }
+              ]
+            }
+          ],
+          "endpoints": [
+            {
+              "target": "POST /api/reward-orders",
+              "name": "创建奖励订单",
+              "method": "POST",
+              "path": "/api/reward-orders",
+              "status": "warning",
+              "avgMs": 210,
+              "p95Ms": 641,
+              "errorRate": 0.02,
+              "relatedRule": "reward.order.create",
+              "summary": "happy/error 断言通过，limit 分支通过但 p95 偏高"
+            },
+            {
+              "target": "GET /api/reward-orders/:id",
+              "name": "查询奖励订单",
+              "method": "GET",
+              "path": "/api/reward-orders/:id",
+              "status": "pass",
+              "avgMs": 84,
+              "p95Ms": 140,
+              "errorRate": 0,
+              "relatedRule": "reward.order.read",
+              "summary": "happy/error/edge 全部通过"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "items": [
+    {
+      "requirementId": "std.p0.api.contract",
+      "ownerAgent": "test-editor",
+      "evidenceQuality": "partial",
+      "attempts": 1,
+      "flakeClassification": "not-flaky",
+      "gateImpact": "blocking",
+      "runId": "run-2026-05-31T11-30-43-046Z",
+      "specId": "reward-order",
+      "specVersion": "1.2.0",
+      "changeId": "reward-order-ready",
+      "testType": "api",
+      "target": "POST /api/reward-orders",
+      "flowName": "奖励领取业务流",
+      "stageName": "进入场景",
+      "status": "warning",
+      "durationMs": 421,
+      "summary": "happy/error 断言通过，limit 分支通过但 p95 偏高",
+      "artifactRefs": [
+        {
+          "type": "trace",
+          "path": "trace-api-1"
+        },
+        {
+          "type": "raw-report",
+          "path": "tests/results/reward-order.run-2026-05-31T11-30-43-046Z.json"
+        }
+      ],
+      "endpoint": {
+        "name": "创建奖励订单",
+        "method": "POST",
+        "path": "/api/reward-orders",
+        "coverage": [
+          "happy",
+          "error",
+          "limit",
+          "flow"
+        ],
+        "avgMs": 210,
+        "p95Ms": 641,
+        "errorRate": 0.02,
+        "relatedRule": "reward.order.create",
+        "failureReason": "p95 超过 500ms 目标"
+      },
+      "evidence": {
+        "traceId": "trace-api-1",
+        "requestSummary": "创建奖励订单 请求已发起",
+        "responseSummary": "创建奖励订单 返回结果已校验"
+      }
+    },
+    {
+      "requirementId": "std.p0.api.contract",
+      "ownerAgent": "test-editor",
+      "evidenceQuality": "complete",
+      "attempts": 1,
+      "flakeClassification": "not-flaky",
+      "gateImpact": "warning",
+      "runId": "run-2026-05-31T11-30-43-046Z",
+      "specId": "reward-order",
+      "specVersion": "1.2.0",
+      "changeId": "reward-order-ready",
+      "testType": "api",
+      "target": "GET /api/reward-orders/:id",
+      "flowName": "奖励领取业务流",
+      "stageName": "进入场景",
+      "status": "pass",
+      "durationMs": 132,
+      "summary": "happy/error/edge 全部通过",
+      "artifactRefs": [
+        {
+          "type": "trace",
+          "path": "trace-api-2"
+        },
+        {
+          "type": "raw-report",
+          "path": "tests/results/reward-order.run-2026-05-31T11-30-43-046Z.json"
+        }
+      ],
+      "endpoint": {
+        "name": "查询奖励订单",
+        "method": "GET",
+        "path": "/api/reward-orders/:id",
+        "coverage": [
+          "happy",
+          "error",
+          "edge"
+        ],
+        "avgMs": 84,
+        "p95Ms": 140,
+        "errorRate": 0,
+        "relatedRule": "reward.order.read"
+      },
+      "evidence": {
+        "traceId": "trace-api-2",
+        "requestSummary": "查询奖励订单 请求已发起",
+        "responseSummary": "查询奖励订单 返回结果已校验"
+      }
+    }
+  ]
+}

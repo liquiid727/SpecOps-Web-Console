@@ -10,7 +10,12 @@ export type SpecosErrorCode =
   | "SPECOS_WORKFLOW_INVALID"
   | "SPECOS_BUNDLE_INVALID"
   | "SPECOS_PROVIDER_MISSING"
-  | "SPECOS_ARTIFACT_EXISTS";
+  | "SPECOS_ARTIFACT_EXISTS"
+  | "SPECOS_ROUTE_OUTPUT_INVALID"
+  | "SPECOS_TEST_SPEC_INVALID"
+  | "SPECOS_TEST_SPEC_MISSING"
+  | "SPECOS_TEST_SPEC_STALE"
+  | "SPECOS_TEST_SPEC_UNAPPROVED";
 
 export interface SpecosError {
   code: SpecosErrorCode;
@@ -28,6 +33,7 @@ export interface SpecosManifest {
     name: string;
     type: "backend" | "frontend" | "fullstack" | "spec-only";
   };
+  projectMode?: "litespec" | "goalspec" | "enterprisespec";
   stacks: {
     frontend?: string;
     backend?: string;
@@ -35,6 +41,7 @@ export interface SpecosManifest {
   artifacts: {
     draftsDir: string;
     specsDir: string;
+    issuesDir: string;
     testsDir: string;
     resultsDir: string;
   };
@@ -68,8 +75,10 @@ export interface SpecosBundleManifest {
     available: string[];
   };
   entrypoints: {
-    draftTemplate: string;
-    specTemplate: string;
+    prdTemplate: string;
+    designTemplate: string;
+    featureTemplate: string;
+    issueTemplate: string;
     workflowId: string;
   };
   capabilities: {
@@ -120,7 +129,7 @@ export interface SpecosSpec {
     requiredBranches: string[];
   };
   traceability: {
-    draft: string;
+    prd: string;
   };
 }
 
@@ -140,6 +149,29 @@ export type TestType =
   | "compatibility";
 export type GateImpact = "blocking" | "warning" | "informational";
 export type TestStandardVersion = "specos-test-standard/v1";
+export type TestSpecStatus = "preview" | "draft" | "in-review" | "approved" | "stale" | "superseded";
+
+export interface TestSpecMetadata {
+  testSpecId: string;
+  testSpecVersion: string;
+  status: TestSpecStatus;
+  sourceSpecId: string;
+  sourceSpecVersion: string;
+  sourceSpecPath: string;
+  sourceSpecHash?: string;
+  sourceApprovalEvidence?: string;
+  testSpecApprovalEvidence?: string;
+}
+
+export interface TestSpecBinding {
+  testSpecPath: string;
+  testSpecId: string;
+  testSpecVersion: string;
+  testSpecHash?: string;
+  testSpecStatus: TestSpecStatus;
+  testSpecApprovalEvidence?: string;
+  sourceFeatureSpecHash?: string;
+}
 export type QualityProfile = "backend-api" | "frontend-ui" | "fullstack-flow" | "data-migration" | "agent-workflow";
 export type TestLayer =
   | "unit"
@@ -187,8 +219,11 @@ export type RequestRouteAgentRole =
   | "implementation-agent"
   | "deployment-agent"
   | "testing-agent"
+  | "product-architect-agent"
   | "spec-editor"
   | "ui-design-agent"
+  | "frontend-agent"
+  | "backend-agent"
   | "ddd-domain-agent"
   | "openapi-agent"
   | "db-migration-agent"
@@ -204,6 +239,46 @@ export type RequestRouteAgentRole =
   | "test-editor"
   | "qa-agent"
   | "reviewer";
+export type RequestMainAgentRole =
+  | "architecture-agent"
+  | "implementation-agent"
+  | "testing-agent"
+  | "qa-agent";
+export type RequestSpecialistAgentRole = Exclude<RequestRouteAgentRole, RequestMainAgentRole>;
+export const mainAgentRoles: RequestMainAgentRole[] = [
+  "architecture-agent",
+  "implementation-agent",
+  "testing-agent",
+  "qa-agent",
+];
+export const specialistManagedBy: Record<RequestSpecialistAgentRole, RequestMainAgentRole> = {
+  "product-architect-agent": "architecture-agent",
+  "spec-editor": "architecture-agent",
+  "ddd-domain-agent": "architecture-agent",
+  "openapi-agent": "architecture-agent",
+  "db-migration-agent": "architecture-agent",
+  "frontend-agent": "implementation-agent",
+  "backend-agent": "implementation-agent",
+  "implementation-editor": "implementation-agent",
+  "ui-design-agent": "implementation-agent",
+  "execution-editor": "implementation-agent",
+  "test-editor": "testing-agent",
+  "unit-test-agent": "testing-agent",
+  "playwright-test-agent": "testing-agent",
+  "e2e-test-agent": "testing-agent",
+  "performance-test-agent": "testing-agent",
+  "concurrency-test-agent": "testing-agent",
+  "specialized-check-agent": "testing-agent",
+  "reviewer": "qa-agent",
+  "ci-editor": "qa-agent",
+  "deployment-agent": "qa-agent",
+};
+export function managingMainAgentFor(role: RequestRouteAgentRole): RequestMainAgentRole {
+  return (mainAgentRoles as RequestRouteAgentRole[]).includes(role)
+    ? role as RequestMainAgentRole
+    : specialistManagedBy[role as RequestSpecialistAgentRole];
+}
+export type ProjectMode = "litespec" | "goalspec" | "enterprisespec";
 
 const productionTestStandardVersion: TestStandardVersion = "specos-test-standard/v1";
 
@@ -337,6 +412,13 @@ export interface SpecosTestPlan {
   riskTier?: Priority;
   specId: string;
   specVersion: string;
+  testSpecPath?: string;
+  testSpecId?: string;
+  testSpecVersion?: string;
+  testSpecHash?: string;
+  testSpecStatus?: TestSpecStatus;
+  testSpecApprovalEvidence?: string;
+  sourceFeatureSpecHash?: string;
   changeId?: string;
   featureName: string;
   source: "accepted-spec" | "draft";
@@ -355,7 +437,23 @@ export interface SpecosTestPlan {
 export type TestScheduleExecutionMode = "parallel" | "test-after-execution";
 export type TestScheduleTrackId = "execution" | "testing";
 export type TestScheduleIsolation = "implementation-only" | "spec-and-contract-only";
-export type TestScheduleTaskType = "implementation" | "api-test" | "ui-test-gap";
+export type TestScheduleTaskType =
+  | "implementation"
+  | "api-test"
+  | "integration-test"
+  | "e2e-test"
+  | "performance-test"
+  | "load-test"
+  | "stress-test"
+  | "spike-test"
+  | "soak-test"
+  | "concurrency-test"
+  | "security-test"
+  | "migration-test"
+  | "compatibility-test"
+  | "observability-test"
+  | "chaos-test"
+  | "ui-test-gap";
 export type TestScheduleTaskStatus = "ready" | "blocked";
 
 export interface TestScheduleTrack {
@@ -385,6 +483,13 @@ export interface TestScheduleTask {
 export interface SpecosTestSchedule {
   specId: string;
   specVersion: string;
+  testSpecPath?: string;
+  testSpecId?: string;
+  testSpecVersion?: string;
+  testSpecHash?: string;
+  testSpecStatus?: TestSpecStatus;
+  testSpecApprovalEvidence?: string;
+  sourceFeatureSpecHash?: string;
   featureName: string;
   changeId: string;
   executionMode: TestScheduleExecutionMode;
@@ -402,6 +507,13 @@ export interface ScenarioResult {
   runId: string;
   specId: string;
   specVersion: string;
+  testSpecPath?: string;
+  testSpecId?: string;
+  testSpecVersion?: string;
+  testSpecHash?: string;
+  testSpecStatus?: TestSpecStatus;
+  testSpecApprovalEvidence?: string;
+  sourceFeatureSpecHash?: string;
   standardVersion?: TestStandardVersion;
   qualityProfile?: QualityProfile;
   changeId?: string;
@@ -438,6 +550,13 @@ export interface TestGateReportGate {
 export interface TestGateReport {
   specId: string;
   specVersion: string;
+  testSpecPath?: string;
+  testSpecId?: string;
+  testSpecVersion?: string;
+  testSpecHash?: string;
+  testSpecStatus?: TestSpecStatus;
+  testSpecApprovalEvidence?: string;
+  sourceFeatureSpecHash?: string;
   changeId?: string;
   decision: "ready" | "blocked" | "draft-only";
   requiredGates: TestGateReportGate[];
@@ -470,6 +589,7 @@ export interface TestGateAgentEvidenceSummary {
 }
 
 export interface RequestRouteDecision {
+  projectMode: ProjectMode;
   requestKind: RequestKind;
   workTypes: RequestWorkType[];
   primaryAgent: RequestRouteAgentRole;
@@ -477,11 +597,191 @@ export interface RequestRouteDecision {
   rules: string[];
   skills: string[];
   requiredContext: string[];
+  promptAssembly: RequestRoutePromptAssembly;
   needsDraft: boolean;
   needsChangePackage: boolean;
   nextStep: string;
   confidence: "high" | "medium" | "low";
   matchedSignals: string[];
+}
+
+export interface AgentManifestSkillBinding {
+  name: string;
+  path: string;
+  required?: boolean;
+  purpose?: string;
+}
+
+export interface AgentManifestRoleRecord {
+  role_prompt: string;
+  canonical: string;
+  skill_mode?: string;
+  skills?: AgentManifestSkillBinding[];
+  delegates_to?: RequestRouteAgentRole[];
+  context_includes?: string[];
+  owns?: string[];
+  outputs?: string[];
+}
+
+export interface AgentRuntimeManifest {
+  calling_convention?: {
+    role_path_base?: string;
+    canonical_path_base?: string;
+    mode_overlay_roots?: {
+      role_overlays?: string;
+      canonical_overlays?: string;
+    };
+    prompt_assembly_order?: string[];
+  };
+  mode_overlays?: Partial<Record<ProjectMode, {
+    manifest_overlay?: string;
+    purpose?: string;
+  }>>;
+  roles?: Partial<Record<RequestRouteAgentRole, AgentManifestRoleRecord>>;
+}
+
+export interface AgentModeOverlayManifest {
+  mode?: ProjectMode;
+  description?: string;
+  load_order?: string[];
+  overrides?: RequestRouteAgentRole[];
+}
+
+export interface HostPromptAssembly {
+  projectMode: ProjectMode;
+  manifestPath: string;
+  overlayManifest: string;
+  sharedContext: string[];
+  loadOrder: string[];
+  roles: HostPromptRoleAssembly[];
+}
+
+export interface HostPromptRoleAssembly {
+  role: RequestRouteAgentRole;
+  sharedRolePrompt: string;
+  sharedCanonicalPrompt: string;
+  overlayApplied: boolean;
+  modeRolePrompt?: string;
+  modeCanonicalPrompt?: string;
+  skillMode?: string;
+  skills: AgentManifestSkillBinding[];
+  contextIncludes: string[];
+  delegatesTo: RequestRouteAgentRole[];
+  owns: string[];
+  outputs: string[];
+  loadOrder: string[];
+}
+
+export type RequestRoutePromptAssembly = HostPromptAssembly;
+export type RequestRouteRolePromptAssembly = HostPromptRoleAssembly;
+
+export interface AgentExecutionTask {
+  role: RequestRouteAgentRole;
+  dispatch: "primary" | "supporting";
+  parallelizable: boolean;
+  prompt: HostPromptRoleAssembly;
+  sharedContext: string[];
+  requiredContext: string[];
+  rules: string[];
+  requestedRuntimeSkills: string[];
+  nextStep: string;
+}
+
+export interface SpecialistDispatchTask {
+  id: string;
+  role: RequestRouteAgentRole;
+  managedBy: RequestMainAgentRole;
+  activation: "on-demand";
+  priority: number;
+  parallelizable: true;
+  reason: string;
+  sourceContext: string[];
+  inspectableSurfaces: string[];
+  exactQuestion: string;
+  expectedOutput: string[];
+  nonGoals: string[];
+  requestedRuntimeSkills: string[];
+  dispatchPromptEnvelope: SpecialistDispatchPromptEnvelope;
+}
+
+export interface SpecialistDispatchPlan {
+  primaryRole: RequestRouteAgentRole;
+  maxTasks: number;
+  minTasks: number;
+  tasks: SpecialistDispatchTask[];
+  deferredRoles: RequestRouteAgentRole[];
+}
+
+export interface SpecialistDispatchPromptEnvelope {
+  role: RequestRouteAgentRole;
+  sharedPromptStack: string[];
+  rolePromptStack: string[];
+  contextPaths: string[];
+  requestedRuntimeSkills: string[];
+  taskBrief: {
+    reason: string;
+    exactQuestion: string;
+    inspectableSurfaces: string[];
+    expectedOutput: string[];
+    nonGoals: string[];
+  };
+  message: string;
+}
+
+export type PrimaryDispatchPromptEnvelope = SpecialistDispatchPromptEnvelope;
+export type RouteRequestOutputFormat = "full" | "dispatch-json" | "primary-json" | "execution-plan-json";
+export type RouteRequestFormattedOutput =
+  | (RequestRouteDecision & { promptAssembly: HostPromptAssembly; executionPlan: AgentExecutionPlan })
+  | SpecialistDispatchPromptEnvelope[]
+  | PrimaryDispatchPromptEnvelope
+  | AgentExecutionPlan;
+
+export interface ArtifactShapeSchema {
+  rootType: "object" | "array";
+  requiredTopLevel: string[];
+  itemRequiredTopLevel?: string[];
+  roleRequiredTopLevel?: string[];
+  format?: RouteRequestOutputFormat;
+  artifact?: "route-output" | "dispatch-prompt-envelope" | "host-prompt-assembly" | "execution-plan-output";
+}
+
+export type RouteRequestOutputSchema = ArtifactShapeSchema & {
+  format: RouteRequestOutputFormat;
+};
+
+export type DispatchPromptEnvelopeSchema = ArtifactShapeSchema & {
+  rootType: "object";
+  artifact: "dispatch-prompt-envelope";
+};
+
+export type HostPromptAssemblySchema = ArtifactShapeSchema & {
+  rootType: "object";
+  artifact: "host-prompt-assembly";
+};
+
+export interface BuildAgentExecutionPlanOptions {
+  projectMode?: ProjectMode;
+  manifest?: AgentRuntimeManifest;
+  manifestPath?: string;
+  overlayManifest?: AgentModeOverlayManifest;
+}
+
+export interface AgentExecutionPlan {
+  request: string;
+  projectMode: ProjectMode;
+  route: RequestRouteDecision;
+  promptAssembly: HostPromptAssembly;
+  sharedContext: string[];
+  primaryTask: AgentExecutionTask;
+  primaryDispatchPromptEnvelope: PrimaryDispatchPromptEnvelope;
+  supportingTasks: AgentExecutionTask[];
+  specialistDispatchPlan: SpecialistDispatchPlan;
+  orderedRoles: RequestRouteAgentRole[];
+  specialistDispatch: "primary-only" | "bounded-parallel";
+  recommendedParallelism: {
+    suggested: number;
+    max: number;
+  };
 }
 
 export interface SpecosWorkflowStep {
@@ -492,7 +792,10 @@ export interface SpecosWorkflowStep {
 export interface SpecosWorkflow {
   id: string;
   name: string;
-  steps: SpecosWorkflowStep[];
+  inputs?: string[];
+  outputs?: string[];
+  gates?: string[];
+  steps?: SpecosWorkflowStep[];
 }
 
 export interface FlowResult {
@@ -564,8 +867,8 @@ type MutableValidation = {
 const requestRoutingRules: Record<RequestWorkType, string[]> = {
   architecture: [
     ".rules/project.md",
-    "specs/current/architecture-context.md",
-    "specs/current/domain-context.md",
+    "design/README.md",
+    ".requirements/README.md",
     "rules/backend/go-backend-governance.md",
     "rules/shared/error-code-governance.md",
     "ai/workflows/nested-agent-orchestration.md",
@@ -577,8 +880,8 @@ const requestRoutingRules: Record<RequestWorkType, string[]> = {
   ],
   frontend: ["rules/frontend/react-workbench-delivery.md", "rules/shared/error-code-governance.md"],
   ui_prototype: ["rules/ui/pencil-prototype-ui.md", "rules/frontend/react-workbench-delivery.md"],
-  spec: ["specs/_rules/README.md", "rules/testing/production-test-standards.md", "rules/shared/error-code-governance.md"],
-  tests: ["tests/README.md", "rules/testing/production-test-standards.md", "rules/ci/spec-release-gates.md"],
+  spec: [".requirements/README.md", "rules/testing/production-test-standards.md", "rules/shared/error-code-governance.md"],
+  tests: [".requirements/README.md", "rules/testing/production-test-standards.md", "rules/ci/spec-release-gates.md"],
   ci: ["rules/testing/production-test-standards.md", "rules/ci/spec-release-gates.md", "scripts/checks/README.md"],
   orchestration: ["ai/workflows/README.md", "scripts/orchestration/README.md", "rules/ci/spec-release-gates.md"],
 };
@@ -594,10 +897,10 @@ const requestRoutingAgents: Record<RequestWorkType, RequestRouteAgentRole[]> = {
     "concurrency-test-agent",
     "reviewer",
   ],
-  backend: ["ddd-domain-agent", "openapi-agent", "db-migration-agent", "unit-test-agent"],
-  frontend: ["ui-design-agent", "test-editor"],
+  backend: ["backend-agent", "ddd-domain-agent", "openapi-agent", "db-migration-agent", "unit-test-agent"],
+  frontend: ["frontend-agent", "ui-design-agent", "test-editor"],
   ui_prototype: ["spec-editor", "ui-design-agent"],
-  spec: ["spec-editor", "ddd-domain-agent", "test-editor"],
+  spec: ["product-architect-agent", "spec-editor", "ddd-domain-agent", "test-editor"],
   tests: [
     "test-editor",
     "unit-test-agent",
@@ -607,13 +910,297 @@ const requestRoutingAgents: Record<RequestWorkType, RequestRouteAgentRole[]> = {
     "concurrency-test-agent",
     "qa-agent",
   ],
-  ci: ["ci-editor", "execution-editor", "qa-agent"],
+  ci: ["ci-editor", "execution-editor", "deployment-agent", "qa-agent"],
   orchestration: ["execution-editor", "ci-editor", "qa-agent", "reviewer"],
 };
 
-export function buildRequestRoute(rawRequest: string): RequestRouteDecision {
+const routeModeRoleOverrides: Record<ProjectMode, RequestRouteAgentRole[]> = {
+  litespec: [
+    "spec-editor",
+    "implementation-agent",
+    "testing-agent",
+    "reviewer",
+    "openapi-agent",
+    "db-migration-agent",
+    "ui-design-agent",
+    "test-editor",
+    "performance-test-agent",
+    "concurrency-test-agent",
+  ],
+  goalspec: [
+    "spec-editor",
+    "implementation-agent",
+    "testing-agent",
+    "qa-agent",
+    "reviewer",
+    "ci-editor",
+    "deployment-agent",
+    "openapi-agent",
+    "db-migration-agent",
+    "ui-design-agent",
+    "test-editor",
+    "performance-test-agent",
+    "concurrency-test-agent",
+  ],
+  enterprisespec: [
+    "architecture-agent",
+    "spec-editor",
+    "deployment-agent",
+    "testing-agent",
+    "qa-agent",
+    "reviewer",
+    "ci-editor",
+    "openapi-agent",
+    "db-migration-agent",
+    "ui-design-agent",
+    "test-editor",
+    "performance-test-agent",
+    "concurrency-test-agent",
+  ],
+};
+
+const allRouteAgentRoles: RequestRouteAgentRole[] = [
+  "architecture-agent",
+  "implementation-agent",
+  "deployment-agent",
+  "testing-agent",
+  "product-architect-agent",
+  "spec-editor",
+  "ui-design-agent",
+  "frontend-agent",
+  "backend-agent",
+  "ddd-domain-agent",
+  "openapi-agent",
+  "db-migration-agent",
+  "e2e-test-agent",
+  "playwright-test-agent",
+  "unit-test-agent",
+  "specialized-check-agent",
+  "performance-test-agent",
+  "concurrency-test-agent",
+  "ci-editor",
+  "execution-editor",
+  "implementation-editor",
+  "test-editor",
+  "qa-agent",
+  "reviewer",
+];
+
+const defaultPromptAssemblyOrder = [
+  "AGENTS.md",
+  ".codex/instructions.md",
+  ".specos/manifest.yaml projectMode",
+  "selected role metadata from .agents/manifest.yaml",
+  "selected mode overlay manifest from .agents/modes/<projectMode>/manifest.overlay.yaml",
+  "selected shared role_prompt",
+  "selected shared canonical",
+  "selected mode overlay role_prompt when present",
+  "selected mode overlay canonical when present",
+  "selected skills",
+  "selected context_includes",
+];
+
+const defaultRoutePromptManifest: AgentRuntimeManifest = {
+  calling_convention: {
+    role_path_base: ".agents",
+    canonical_path_base: "repository root",
+    mode_overlay_roots: {
+      role_overlays: ".agents/modes",
+      canonical_overlays: "ai/agents/modes",
+    },
+    prompt_assembly_order: defaultPromptAssemblyOrder,
+  },
+  mode_overlays: {
+    litespec: {
+      manifest_overlay: ".agents/modes/litespec/manifest.overlay.yaml",
+    },
+    goalspec: {
+      manifest_overlay: ".agents/modes/goalspec/manifest.overlay.yaml",
+    },
+    enterprisespec: {
+      manifest_overlay: ".agents/modes/enterprisespec/manifest.overlay.yaml",
+    },
+  },
+  roles: Object.fromEntries(
+    allRouteAgentRoles.map((role) => [
+      role,
+      {
+        role_prompt: `roles/${role}.md`,
+        canonical: `ai/agents/${role}.md`,
+        skills: [],
+        context_includes: [],
+        delegates_to: [],
+        owns: [],
+        outputs: [],
+      },
+    ]),
+  ) as Partial<Record<RequestRouteAgentRole, AgentManifestRoleRecord>>,
+};
+
+const specialistRoleKeywords: Partial<Record<RequestRouteAgentRole, string[]>> = {
+  "product-architect-agent": ["idea", "想法", "需求", "prd", "product", "产品", "blueprint", "蓝图", "intake"],
+  "deployment-agent": ["deploy", "deployment", "release", "rollout", "发布", "上线", "部署"],
+  "frontend-agent": ["frontend", "前端", "ui branch", "页面", "component", "组件"],
+  "backend-agent": ["backend", "后端", "service", "服务端", "api", "migration"],
+  "ddd-domain-agent": ["domain", "ddd", "bounded context", "领域", "边界", "invariant", "不变量"],
+  "openapi-agent": ["api", "contract", "schema", "swagger", "openapi", "接口"],
+  "db-migration-agent": ["db", "database", "sql", "migration", "schema", "table", "迁移", "表"],
+  "ui-design-agent": ["ui", "frontend", "react", "next", "console", "page", "页面", "前端", "交互", "prototype", "原型"],
+  "test-editor": ["test", "qa", "coverage", "scenario", "contract", "测试", "验收"],
+  "performance-test-agent": ["performance", "latency", "throughput", "slo", "benchmark", "性能", "延迟"],
+  "concurrency-test-agent": ["concurrency", "race", "lock", "idempot", "duplicate", "并发", "一致性", "重试"],
+  "ci-editor": ["ci", "pipeline", "gate", "workflow", "发布", "门禁"],
+  "execution-editor": ["workflow", "script", "orchestration", "脚本", "编排"],
+  "qa-agent": ["qa", "acceptance", "release", "验收", "发布"],
+  "reviewer": ["review", "risk", "评审", "审查", "风险"],
+  "unit-test-agent": ["unit", "单元"],
+  "playwright-test-agent": ["playwright", "browser", "ui", "浏览器"],
+  "e2e-test-agent": ["e2e", "journey", "flow", "端到端"],
+  "spec-editor": ["spec", "draft", "roadmap", "design", "规格", "草稿"],
+};
+
+const primaryRoleDispatchPriority: Record<RequestRouteAgentRole, RequestRouteAgentRole[]> = {
+  "architecture-agent": [
+    "product-architect-agent",
+    "openapi-agent",
+    "db-migration-agent",
+    "ddd-domain-agent",
+    "performance-test-agent",
+    "concurrency-test-agent",
+    "test-editor",
+    "ui-design-agent",
+    "reviewer",
+    "spec-editor",
+    "qa-agent",
+    "ci-editor",
+    "execution-editor",
+    "unit-test-agent",
+    "playwright-test-agent",
+    "e2e-test-agent",
+    "specialized-check-agent",
+    "implementation-editor",
+    "implementation-agent",
+    "deployment-agent",
+    "testing-agent",
+  ],
+  "implementation-agent": [
+    "frontend-agent",
+    "backend-agent",
+    "ui-design-agent",
+    "openapi-agent",
+    "db-migration-agent",
+    "unit-test-agent",
+    "specialized-check-agent",
+    "test-editor",
+    "reviewer",
+    "performance-test-agent",
+    "concurrency-test-agent",
+    "qa-agent",
+    "ci-editor",
+    "execution-editor",
+    "ddd-domain-agent",
+    "playwright-test-agent",
+    "e2e-test-agent",
+    "spec-editor",
+    "architecture-agent",
+    "deployment-agent",
+    "testing-agent",
+    "implementation-editor",
+  ],
+  "deployment-agent": [
+    "ci-editor",
+    "execution-editor",
+    "qa-agent",
+    "reviewer",
+    "performance-test-agent",
+    "concurrency-test-agent",
+    "test-editor",
+    "openapi-agent",
+    "db-migration-agent",
+    "spec-editor",
+    "ddd-domain-agent",
+    "ui-design-agent",
+    "unit-test-agent",
+    "playwright-test-agent",
+    "e2e-test-agent",
+    "specialized-check-agent",
+    "architecture-agent",
+    "implementation-agent",
+    "testing-agent",
+    "implementation-editor",
+  ],
+  "testing-agent": [
+    "test-editor",
+    "performance-test-agent",
+    "concurrency-test-agent",
+    "playwright-test-agent",
+    "e2e-test-agent",
+    "qa-agent",
+    "reviewer",
+    "openapi-agent",
+    "db-migration-agent",
+    "ui-design-agent",
+    "unit-test-agent",
+    "ddd-domain-agent",
+    "ci-editor",
+    "execution-editor",
+    "spec-editor",
+    "architecture-agent",
+    "implementation-agent",
+    "deployment-agent",
+    "specialized-check-agent",
+    "implementation-editor",
+  ],
+  "qa-agent": [
+    "reviewer",
+    "ci-editor",
+    "deployment-agent",
+    "execution-editor",
+    "performance-test-agent",
+    "concurrency-test-agent",
+    "test-editor",
+    "openapi-agent",
+    "db-migration-agent",
+    "spec-editor",
+    "ddd-domain-agent",
+    "ui-design-agent",
+    "unit-test-agent",
+    "playwright-test-agent",
+    "e2e-test-agent",
+    "specialized-check-agent",
+    "architecture-agent",
+    "implementation-agent",
+    "testing-agent",
+    "implementation-editor",
+  ],
+  "product-architect-agent": allRouteAgentRoles,
+  "spec-editor": allRouteAgentRoles,
+  "ui-design-agent": allRouteAgentRoles,
+  "frontend-agent": allRouteAgentRoles,
+  "backend-agent": allRouteAgentRoles,
+  "ddd-domain-agent": allRouteAgentRoles,
+  "openapi-agent": allRouteAgentRoles,
+  "db-migration-agent": allRouteAgentRoles,
+  "e2e-test-agent": allRouteAgentRoles,
+  "playwright-test-agent": allRouteAgentRoles,
+  "unit-test-agent": allRouteAgentRoles,
+  "specialized-check-agent": allRouteAgentRoles,
+  "performance-test-agent": allRouteAgentRoles,
+  "concurrency-test-agent": allRouteAgentRoles,
+  "ci-editor": allRouteAgentRoles,
+  "execution-editor": allRouteAgentRoles,
+  "implementation-editor": allRouteAgentRoles,
+  "test-editor": allRouteAgentRoles,
+  "reviewer": allRouteAgentRoles,
+};
+
+export function buildRequestRoute(
+  rawRequest: string,
+  options: { projectMode?: ProjectMode } = {},
+): RequestRouteDecision {
   const request = rawRequest.trim();
   const normalized = request.toLowerCase();
+  const projectMode = options.projectMode ?? "litespec";
   const matchedSignals: string[] = [];
   const workTypes = new Set<RequestWorkType>();
   const supportingAgents = new Set<RequestRouteAgentRole>();
@@ -627,7 +1214,14 @@ export function buildRequestRoute(rawRequest: string): RequestRouteDecision {
 
   const hasRawRequirementSignal = match("raw-requirement", ["需求", "想法", "prd", "还没有 spec", "new requirement", "requirement"]);
   const hasDraftSignal = match("draft-only", ["draft", "草稿", "设计文档", "文档", "整理一下"]);
-  const hasActiveChangeSignal = match("active-change", ["change", "specs/changes", "变更", "change package", "Change Workspace"]);
+  const hasActiveChangeSignal = match("active-change", [
+    "feature spec",
+    ".requirements/",
+    "roadmap",
+    "变更",
+    "spec package",
+    /[a-z]+-\d{3}[-/][a-z0-9-]+/i,
+  ]);
   const hasImplementationSignal = match("implementation", ["实现", "开发", "代码", "修复", "bug", "接口实现", "implement", "fix"]);
   const hasTestSignal = match("test", ["测试", "test", "unit", "e2e", "scenario", "api", "contract", "性能", "并发", "concurrency", "performance", "latency"]);
   const hasReviewSignal = match("review", ["评审", "review", "检查", "审查"]);
@@ -663,7 +1257,7 @@ export function buildRequestRoute(rawRequest: string): RequestRouteDecision {
   if (match("ui_prototype", ["prototype", "原型", "pencil", "交互稿"])) {
     workTypes.add("ui_prototype");
   }
-  if (hasRawRequirementSignal || hasDraftSignal || hasActiveChangeSignal || match("spec", ["spec", "规格", "规范", "change package", "SpecOS Contract"])) {
+  if (hasRawRequirementSignal || hasDraftSignal || hasActiveChangeSignal || match("spec", ["spec", "规格", "规范", "feature spec"])) {
     workTypes.add("spec");
   }
   if (hasTestSignal) {
@@ -718,14 +1312,31 @@ export function buildRequestRoute(rawRequest: string): RequestRouteDecision {
     skills.add(".codex/skills/specos-ui-design/SKILL.md");
   }
   if (workTypes.has("ci")) {
-    skills.add(".skills/team-ci-agent/SKILL.md");
+    skills.add("skills/developer/ship-it/SKILL.md");
   }
 
   const rules = [...workTypes].flatMap((workType) => requestRoutingRules[workType]);
   const needsDraft = requestKind === "raw-requirement" || requestKind === "draft-only";
   const needsChangePackage = needsDraft || requestKind === "implementation" || requestKind === "test" || requestKind === "acceptance";
+  const orderedRoles = [primaryAgent, ...[...supportingAgents].sort()] as RequestRouteAgentRole[];
+  const modeReadme = projectMode === "enterprisespec"
+    ? "docs/spec-modes/plugins/EnterpriseSpec/README.md"
+    : projectMode === "goalspec"
+      ? "docs/spec-modes/GoalSpec/README.md"
+      : "docs/spec-modes/plugins/LiteSpec/README.md";
+  const promptAssembly = buildHostPromptAssembly(defaultRoutePromptManifest, {
+    projectMode,
+    manifestPath: ".agents/manifest.yaml",
+    primaryAgent,
+    supportingAgents: [...supportingAgents],
+    overlayManifest: {
+      mode: projectMode,
+      overrides: routeModeRoleOverrides[projectMode],
+    },
+  });
 
   return {
+    projectMode,
     requestKind,
     workTypes: [...workTypes],
     primaryAgent,
@@ -736,9 +1347,13 @@ export function buildRequestRoute(rawRequest: string): RequestRouteDecision {
       "AGENTS.md",
       ".codex/instructions.md",
       ".agents/manifest.yaml",
+      ".specos/manifest.yaml",
+      modeReadme,
+      ".requirements/",
       ".rules/rule-map.yaml",
       ...[...workTypes].map((workType) => `.rules work_type: ${workType}`),
     ],
+    promptAssembly,
     needsDraft,
     needsChangePackage,
     nextStep: nextStepForRequest(requestKind, needsDraft, needsChangePackage),
@@ -747,13 +1362,1173 @@ export function buildRequestRoute(rawRequest: string): RequestRouteDecision {
   };
 }
 
-function primaryAgentForRequest(kind: RequestKind, workTypes: Set<RequestWorkType>): RequestRouteAgentRole {
+export function buildAgentExecutionPlan(
+  rawRequest: string,
+  options: BuildAgentExecutionPlanOptions = {},
+): AgentExecutionPlan {
+  const baseRoute = buildRequestRoute(rawRequest, { projectMode: options.projectMode });
+  const promptAssembly = options.manifest
+    ? buildHostPromptAssembly(options.manifest, {
+      projectMode: baseRoute.projectMode,
+      manifestPath: options.manifestPath ?? ".agents/manifest.yaml",
+      primaryAgent: baseRoute.primaryAgent,
+      supportingAgents: baseRoute.supportingAgents,
+      overlayManifest: options.overlayManifest,
+    })
+    : baseRoute.promptAssembly;
+  const route: RequestRouteDecision = {
+    ...baseRoute,
+    promptAssembly,
+  };
+  const sharedContext = uniqueStrings([
+    ...promptAssembly.sharedContext,
+    ...route.requiredContext,
+    ...route.rules,
+  ]);
+  const roleMap = new Map(promptAssembly.roles.map((role) => [role.role, role]));
+  const primaryTask = buildAgentExecutionTask(
+    roleMap.get(route.primaryAgent),
+    "primary",
+    sharedContext,
+    route,
+  );
+  if (!primaryTask) {
+    throw new Error(`Missing prompt assembly for primary agent: ${route.primaryAgent}`);
+  }
+  const supportingTasks = route.supportingAgents
+    .map((role) => buildAgentExecutionTask(roleMap.get(role), "supporting", sharedContext, route))
+    .filter((task): task is AgentExecutionTask => task !== undefined);
+  const specialistDispatch: AgentExecutionPlan["specialistDispatch"] = supportingTasks.length > 0
+    ? "bounded-parallel"
+    : "primary-only";
+  const recommendedParallelism = {
+    suggested: Math.min(Math.max(supportingTasks.length, 1), 4),
+    max: Math.min(Math.max(supportingTasks.length, 1), 4),
+  };
+  const basePlan = {
+    request: rawRequest,
+    projectMode: route.projectMode,
+    route,
+    promptAssembly,
+    sharedContext,
+    primaryTask,
+    primaryDispatchPromptEnvelope: buildPrimaryDispatchPromptEnvelope({
+      request: rawRequest,
+      projectMode: route.projectMode,
+      route,
+      promptAssembly,
+      sharedContext,
+      primaryTask,
+      supportingTasks,
+      orderedRoles: [route.primaryAgent, ...route.supportingAgents],
+      specialistDispatch,
+      recommendedParallelism,
+    }),
+    supportingTasks,
+    orderedRoles: [route.primaryAgent, ...route.supportingAgents],
+    specialistDispatch,
+    recommendedParallelism,
+  };
+  const specialistDispatchPlan = buildSpecialistDispatchPlan(basePlan);
+
+  return {
+    ...basePlan,
+    specialistDispatchPlan,
+  };
+}
+
+export function buildValidatedAgentExecutionPlan(
+  rawRequest: string,
+  options: BuildAgentExecutionPlanOptions = {},
+): AgentExecutionPlan {
+  const executionPlan = buildAgentExecutionPlan(rawRequest, options);
+  const validation = validateAgentExecutionPlan(executionPlan);
+
+  if (!validation.ok) {
+    throw new Error(validation.errors.map((error) => `${error.path ?? "executionPlan"} ${error.message}`).join("; "));
+  }
+
+  return executionPlan;
+}
+
+export function buildValidatedRouteRequestOutput(
+  rawRequest: string,
+  format: RouteRequestOutputFormat = "full",
+  options: BuildAgentExecutionPlanOptions = {},
+): {
+  executionPlan: AgentExecutionPlan;
+  output: RouteRequestFormattedOutput;
+} {
+  const executionPlan = buildValidatedAgentExecutionPlan(rawRequest, options);
+  const output = formatRouteRequestOutput(executionPlan, format);
+  const validation = validateRouteRequestOutput(output, format);
+
+  if (!validation.ok) {
+    throw new Error(validation.errors.map((error) => `${error.path ?? "route-output"} ${error.message}`).join("; "));
+  }
+
+  return {
+    executionPlan,
+    output,
+  };
+}
+
+export function formatRouteRequestOutput(
+  executionPlan: AgentExecutionPlan,
+  format: RouteRequestOutputFormat = "full",
+): RouteRequestFormattedOutput {
+  if (format === "dispatch-json") {
+    return executionPlan.specialistDispatchPlan.tasks.map((task) => task.dispatchPromptEnvelope);
+  }
+
+  if (format === "primary-json") {
+    return executionPlan.primaryDispatchPromptEnvelope;
+  }
+
+  if (format === "execution-plan-json") {
+    return executionPlan;
+  }
+
+  return {
+    ...executionPlan.route,
+    promptAssembly: executionPlan.promptAssembly,
+    executionPlan,
+  };
+}
+
+export function buildRouteRequestOutputSchema(
+  format: RouteRequestOutputFormat = "full",
+): RouteRequestOutputSchema {
+  if (format === "dispatch-json") {
+    const envelopeSchema = buildDispatchPromptEnvelopeSchema();
+    return {
+      format,
+      artifact: "route-output",
+      rootType: "array",
+      requiredTopLevel: [],
+      itemRequiredTopLevel: envelopeSchema.requiredTopLevel,
+    };
+  }
+
+  if (format === "primary-json") {
+    const envelopeSchema = buildDispatchPromptEnvelopeSchema();
+    return {
+      format,
+      artifact: "route-output",
+      rootType: envelopeSchema.rootType,
+      requiredTopLevel: envelopeSchema.requiredTopLevel,
+    };
+  }
+
+  if (format === "execution-plan-json") {
+    return buildExecutionPlanOutputSchema();
+  }
+
+  return {
+    format,
+    artifact: "route-output",
+    rootType: "object",
+    requiredTopLevel: [
+      "projectMode",
+      "requestKind",
+      "workTypes",
+      "primaryAgent",
+      "supportingAgents",
+      "rules",
+      "skills",
+      "requiredContext",
+      "promptAssembly",
+      "needsDraft",
+      "needsChangePackage",
+      "nextStep",
+      "confidence",
+      "matchedSignals",
+      "executionPlan",
+    ],
+  };
+}
+
+export function buildDispatchPromptEnvelopeSchema(): DispatchPromptEnvelopeSchema {
+  return {
+    artifact: "dispatch-prompt-envelope",
+    rootType: "object",
+    requiredTopLevel: [
+      "role",
+      "sharedPromptStack",
+      "rolePromptStack",
+      "contextPaths",
+      "requestedRuntimeSkills",
+      "taskBrief",
+      "message",
+    ],
+  };
+}
+
+export function buildPrimaryDispatchPromptEnvelopeSchema(): DispatchPromptEnvelopeSchema {
+  return buildDispatchPromptEnvelopeSchema();
+}
+
+export function buildSpecialistDispatchPromptEnvelopeSchema(): DispatchPromptEnvelopeSchema {
+  return buildDispatchPromptEnvelopeSchema();
+}
+
+export function buildExecutionPlanOutputSchema(): RouteRequestOutputSchema {
+  return {
+    format: "execution-plan-json",
+    artifact: "execution-plan-output",
+    rootType: "object",
+    requiredTopLevel: [
+      "request",
+      "projectMode",
+      "route",
+      "promptAssembly",
+      "sharedContext",
+      "primaryTask",
+      "primaryDispatchPromptEnvelope",
+      "supportingTasks",
+      "specialistDispatchPlan",
+      "orderedRoles",
+      "specialistDispatch",
+      "recommendedParallelism",
+    ],
+  };
+}
+
+export function buildHostPromptAssemblySchema(): HostPromptAssemblySchema {
+  return {
+    artifact: "host-prompt-assembly",
+    rootType: "object",
+    requiredTopLevel: [
+      "projectMode",
+      "manifestPath",
+      "overlayManifest",
+      "sharedContext",
+      "loadOrder",
+      "roles",
+    ],
+    roleRequiredTopLevel: [
+      "role",
+      "sharedRolePrompt",
+      "sharedCanonicalPrompt",
+      "overlayApplied",
+      "contextIncludes",
+      "owns",
+      "outputs",
+      "loadOrder",
+    ],
+  };
+}
+
+export function validateExecutionPlanOutput(value: unknown): ValidationResult {
+  return validateAgentExecutionPlan(value);
+}
+
+export function validateDispatchPromptEnvelope(value: unknown): ValidationResult {
+  return validateDispatchPromptEnvelopeAtPath(value, "dispatchPromptEnvelope");
+}
+
+export function validatePrimaryDispatchPromptEnvelope(value: unknown): ValidationResult {
+  return validateDispatchPromptEnvelopeAtPath(value, "primary-json");
+}
+
+export function validateSpecialistDispatchPromptEnvelope(value: unknown): ValidationResult {
+  return validateDispatchPromptEnvelopeAtPath(value, "dispatchPromptEnvelope");
+}
+
+function validateDispatchPromptEnvelopeAtPath(value: unknown, path: string): ValidationResult {
+  const state: MutableValidation = { errors: [] };
+  requirePromptEnvelopeShape(state, value, path);
+  return result(state.errors);
+}
+
+export function validateHostPromptAssembly(value: unknown): ValidationResult {
+  const state: MutableValidation = { errors: [] };
+  requirePromptAssemblyShape(state, value, "promptAssembly");
+  return result(state.errors);
+}
+
+export function validateAgentExecutionPlan(value: unknown): ValidationResult {
+  const plan = asRecord(value);
+  if (!plan) {
+    return result([makeError("SPECOS_ROUTE_OUTPUT_INVALID", "executionPlan")]);
+  }
+
+  const route = asRecord(plan.route);
+  if (!route) {
+    return result([makeError("SPECOS_ROUTE_OUTPUT_INVALID", "executionPlan.route")]);
+  }
+
+  const fullOutput = {
+    ...route,
+    promptAssembly: plan.promptAssembly,
+    executionPlan: value,
+  };
+
+  return validateRouteRequestOutput(fullOutput, "full");
+}
+
+export function validateRouteRequestOutput(
+  value: unknown,
+  format: RouteRequestOutputFormat = "full",
+): ValidationResult {
+  const state: MutableValidation = { errors: [] };
+
+  if (format === "dispatch-json") {
+    if (!Array.isArray(value)) {
+      state.errors.push(makeError("SPECOS_ROUTE_OUTPUT_INVALID", "dispatch-json"));
+      return result(state.errors);
+    }
+    value.forEach((item, index) => {
+      const validation = validateDispatchPromptEnvelopeAtPath(item, `dispatch-json[${index}]`);
+      if (!validation.ok) {
+        state.errors.push(...validation.errors);
+      }
+    });
+    return result(state.errors);
+  }
+
+  if (format === "primary-json") {
+    return validatePrimaryDispatchPromptEnvelope(value);
+  }
+
+  if (format === "execution-plan-json") {
+    return validateExecutionPlanOutput(value);
+  }
+
+  const output = asRecord(value);
+  if (!output) {
+    state.errors.push(makeError("SPECOS_ROUTE_OUTPUT_INVALID", "full"));
+    return result(state.errors);
+  }
+
+  requireOneOf(state, output.projectMode, ["litespec", "goalspec", "enterprisespec"], "SPECOS_ROUTE_OUTPUT_INVALID", "projectMode");
+  requireOneOf(
+    state,
+    output.requestKind,
+    ["raw-requirement", "draft-only", "active-change", "implementation", "test", "review", "acceptance", "tooling-configuration"],
+    "SPECOS_ROUTE_OUTPUT_INVALID",
+    "requestKind",
+  );
+  requireOneOfArray(
+    state,
+    output.workTypes,
+    ["architecture", "backend", "frontend", "ui_prototype", "spec", "tests", "ci", "orchestration"],
+    "SPECOS_ROUTE_OUTPUT_INVALID",
+    "workTypes",
+  );
+  requireMainAgentRole(state, output.primaryAgent, "primaryAgent");
+  requireAgentRoleArray(state, output.supportingAgents, "supportingAgents");
+  requireStringArrayAllowEmpty(state, output.rules, "SPECOS_ROUTE_OUTPUT_INVALID", "rules");
+  requireStringArrayAllowEmpty(state, output.skills, "SPECOS_ROUTE_OUTPUT_INVALID", "skills");
+  requireStringArray(state, output.requiredContext, "SPECOS_ROUTE_OUTPUT_INVALID", "requiredContext");
+  requireBoolean(state, output, "needsDraft", "SPECOS_ROUTE_OUTPUT_INVALID", "needsDraft");
+  requireBoolean(state, output, "needsChangePackage", "SPECOS_ROUTE_OUTPUT_INVALID", "needsChangePackage");
+  requireString(state, output, "nextStep", "SPECOS_ROUTE_OUTPUT_INVALID", "nextStep");
+  requireOneOf(state, output.confidence, ["high", "medium", "low"], "SPECOS_ROUTE_OUTPUT_INVALID", "confidence");
+  requireStringArrayAllowEmpty(state, output.matchedSignals, "SPECOS_ROUTE_OUTPUT_INVALID", "matchedSignals");
+  requirePromptAssemblyShape(state, output.promptAssembly, "promptAssembly");
+  requireExecutionPlanShape(state, output.executionPlan, "executionPlan");
+
+  return result(state.errors);
+}
+
+export function buildSpecialistDispatchPlan(
+  executionPlan: Omit<AgentExecutionPlan, "specialistDispatchPlan">,
+  options: {
+    minTasks?: number;
+    maxTasks?: number;
+  } = {},
+): SpecialistDispatchPlan {
+  const availableTasks = executionPlan.supportingTasks;
+  const maxTasks = clampTaskCount(options.maxTasks ?? executionPlan.recommendedParallelism.max);
+  const minTasks = Math.min(clampTaskCount(options.minTasks ?? 2), maxTasks);
+
+  if (availableTasks.length === 0) {
+    return {
+      primaryRole: executionPlan.primaryTask.role,
+      minTasks,
+      maxTasks,
+      tasks: [],
+      deferredRoles: [],
+    };
+  }
+
+  const scoredTasks = availableTasks
+    .map((task, index) => ({
+      task,
+      index,
+      score: specialistTaskScore(task, executionPlan),
+    }))
+    .sort((left, right) => right.score - left.score || left.index - right.index);
+
+  const targetCount = Math.min(
+    availableTasks.length,
+    Math.max(
+      availableTasks.length >= minTasks ? minTasks : availableTasks.length,
+      Math.min(maxTasks, scoredTasks.length),
+    ),
+  );
+  const selected = scoredTasks.slice(0, Math.min(maxTasks, Math.max(targetCount, 1)));
+  const selectedRoles = new Set(selected.map(({ task }) => task.role));
+
+  return {
+    primaryRole: executionPlan.primaryTask.role,
+    minTasks,
+    maxTasks,
+    tasks: selected.map(({ task, score }, index) => buildSpecialistDispatchTask(task, executionPlan, score, index + 1)),
+    deferredRoles: scoredTasks
+      .filter(({ task }) => !selectedRoles.has(task.role))
+      .map(({ task }) => task.role),
+  };
+}
+
+export function buildSpecialistDispatchPromptEnvelope(
+  task: SpecialistDispatchTask,
+  executionPlan: Omit<AgentExecutionPlan, "specialistDispatchPlan">,
+): SpecialistDispatchPromptEnvelope {
+  const promptRole = executionPlan.promptAssembly.roles.find((role) => role.role === task.role);
+  const sharedPromptStack = uniqueStrings([
+    ...executionPlan.promptAssembly.sharedContext,
+    ...executionPlan.route.requiredContext,
+  ]);
+  const rolePromptStack = promptRole
+    ? [
+      promptRole.sharedRolePrompt,
+      promptRole.sharedCanonicalPrompt,
+      ...(promptRole.modeRolePrompt ? [promptRole.modeRolePrompt] : []),
+      ...(promptRole.modeCanonicalPrompt ? [promptRole.modeCanonicalPrompt] : []),
+    ]
+    : [];
+  const contextPaths = uniqueStrings([
+    ...task.sourceContext,
+    ...task.inspectableSurfaces,
+  ]);
+
+  return {
+    role: task.role,
+    sharedPromptStack,
+    rolePromptStack,
+    contextPaths,
+    requestedRuntimeSkills: task.requestedRuntimeSkills,
+    taskBrief: {
+      reason: task.reason,
+      exactQuestion: task.exactQuestion,
+      inspectableSurfaces: task.inspectableSurfaces,
+      expectedOutput: task.expectedOutput,
+      nonGoals: task.nonGoals,
+    },
+    message: buildSpecialistDispatchMessage(task, executionPlan, rolePromptStack, contextPaths),
+  };
+}
+
+export function buildPrimaryDispatchPromptEnvelope(
+  executionPlan: Omit<AgentExecutionPlan, "specialistDispatchPlan" | "primaryDispatchPromptEnvelope">,
+): PrimaryDispatchPromptEnvelope {
+  const task = executionPlan.primaryTask;
+  const rolePromptStack = [
+    task.prompt.sharedRolePrompt,
+    task.prompt.sharedCanonicalPrompt,
+    ...(task.prompt.modeRolePrompt ? [task.prompt.modeRolePrompt] : []),
+    ...(task.prompt.modeCanonicalPrompt ? [task.prompt.modeCanonicalPrompt] : []),
+  ];
+  const contextPaths = uniqueStrings([
+    ...executionPlan.promptAssembly.sharedContext,
+    ...executionPlan.route.requiredContext,
+    ...task.prompt.contextIncludes,
+    ...task.prompt.owns,
+    ...executionPlan.route.rules,
+  ]);
+  const inspectableSurfaces = uniqueStrings([
+    ...task.prompt.contextIncludes,
+    ...task.prompt.owns,
+    ...executionPlan.route.rules,
+  ]).slice(0, 10);
+  const expectedOutput = task.prompt.outputs.length > 0
+    ? task.prompt.outputs.slice(0, 4)
+    : ["focused execution plan", "bounded delegation plan", "validation notes"];
+  const nonGoals = primaryDispatchNonGoals(task.role, executionPlan);
+  const exactQuestion = primaryDispatchQuestion(task.role, executionPlan);
+  const reason = primaryDispatchReason(task.role, executionPlan);
+
+  return {
+    role: task.role,
+    sharedPromptStack: uniqueStrings([
+      ...executionPlan.promptAssembly.sharedContext,
+      ...executionPlan.route.requiredContext,
+    ]),
+    rolePromptStack,
+    contextPaths,
+    requestedRuntimeSkills: task.requestedRuntimeSkills,
+    taskBrief: {
+      reason,
+      exactQuestion,
+      inspectableSurfaces,
+      expectedOutput,
+      nonGoals,
+    },
+    message: [
+      `Role: ${task.role}`,
+      `Dispatch: primary`,
+      `Request: ${executionPlan.request}`,
+      "",
+      "Reason",
+      reason,
+      "",
+      "Exact Question",
+      exactQuestion,
+      "",
+      "Inspectable Surfaces",
+      ...inspectableSurfaces.map((surface) => `- ${surface}`),
+      "",
+      "Expected Output",
+      ...expectedOutput.map((item) => `- ${item}`),
+      "",
+      "Non-Goals",
+      ...nonGoals.map((item) => `- ${item}`),
+      "",
+      "Prompt Stack",
+      ...rolePromptStack.map((item) => `- ${item}`),
+      "",
+      "Context Paths",
+      ...contextPaths.map((item) => `- ${item}`),
+      "",
+      "Requested Runtime Skills",
+      ...(task.requestedRuntimeSkills.length > 0 ? task.requestedRuntimeSkills.map((item) => `- ${item}`) : ["- none"]),
+    ].join("\n"),
+  };
+}
+
+export function buildHostPromptAssembly(
+  manifest: AgentRuntimeManifest,
+  options: {
+    projectMode: ProjectMode;
+    primaryAgent: RequestRouteAgentRole;
+    supportingAgents?: RequestRouteAgentRole[];
+    manifestPath?: string;
+    overlayManifest?: AgentModeOverlayManifest;
+  },
+): HostPromptAssembly {
+  const projectMode = options.projectMode;
+  const orderedRoles = uniqueAgentRoles([options.primaryAgent, ...(options.supportingAgents ?? []).sort()]);
+  const rolePathBase = trimPathSeparators(manifest.calling_convention?.role_path_base ?? ".agents");
+  const overlayRoots = manifest.calling_convention?.mode_overlay_roots;
+  const roleOverlayRoot = trimPathSeparators(overlayRoots?.role_overlays ?? ".agents/modes");
+  const canonicalOverlayRoot = trimPathSeparators(overlayRoots?.canonical_overlays ?? "ai/agents/modes");
+  const overlayManifest = manifest.mode_overlays?.[projectMode]?.manifest_overlay ?? `${roleOverlayRoot}/${projectMode}/manifest.overlay.yaml`;
+  const sharedContext = [
+    "AGENTS.md",
+    ".codex/instructions.md",
+    options.manifestPath ?? ".agents/manifest.yaml",
+    ".specos/manifest.yaml projectMode",
+    overlayManifest,
+  ];
+
+  return {
+    projectMode,
+    manifestPath: options.manifestPath ?? ".agents/manifest.yaml",
+    overlayManifest,
+    sharedContext,
+    loadOrder: manifest.calling_convention?.prompt_assembly_order ?? defaultPromptAssemblyOrder,
+    roles: orderedRoles.map((role) =>
+      buildHostPromptRoleAssembly(
+        manifest,
+        role,
+        projectMode,
+        rolePathBase,
+        roleOverlayRoot,
+        canonicalOverlayRoot,
+        options.overlayManifest?.overrides ?? routeModeRoleOverrides[projectMode],
+      )),
+  };
+}
+
+function buildHostPromptRoleAssembly(
+  manifest: AgentRuntimeManifest,
+  role: RequestRouteAgentRole,
+  projectMode: ProjectMode,
+  rolePathBase: string,
+  roleOverlayRoot: string,
+  canonicalOverlayRoot: string,
+  overlayOverrides: RequestRouteAgentRole[],
+): HostPromptRoleAssembly {
+  const roleRecord = manifest.roles?.[role];
+  const sharedRolePrompt = joinPosixPath(rolePathBase, roleRecord?.role_prompt ?? `roles/${role}.md`);
+  const sharedCanonicalPrompt = roleRecord?.canonical ?? `ai/agents/${role}.md`;
+  const overlayApplied = overlayOverrides.includes(role);
+
+  if (overlayApplied) {
+    const modeRolePrompt = joinPosixPath(roleOverlayRoot, projectMode, "roles", `${role}.md`);
+    const modeCanonicalPrompt = joinPosixPath(canonicalOverlayRoot, projectMode, `${role}.md`);
+
+    return {
+      role,
+      sharedRolePrompt,
+      sharedCanonicalPrompt,
+      overlayApplied,
+      modeRolePrompt,
+      modeCanonicalPrompt,
+      skillMode: roleRecord?.skill_mode,
+      skills: roleRecord?.skills ?? [],
+      contextIncludes: roleRecord?.context_includes ?? [],
+      delegatesTo: roleRecord?.delegates_to ?? [],
+      owns: roleRecord?.owns ?? [],
+      outputs: roleRecord?.outputs ?? [],
+      loadOrder: [
+        sharedRolePrompt,
+        sharedCanonicalPrompt,
+        modeRolePrompt,
+        modeCanonicalPrompt,
+      ],
+    };
+  }
+
+  return {
+    role,
+    sharedRolePrompt,
+    sharedCanonicalPrompt,
+    overlayApplied,
+    skillMode: roleRecord?.skill_mode,
+    skills: roleRecord?.skills ?? [],
+    contextIncludes: roleRecord?.context_includes ?? [],
+    delegatesTo: roleRecord?.delegates_to ?? [],
+    owns: roleRecord?.owns ?? [],
+    outputs: roleRecord?.outputs ?? [],
+    loadOrder: [
+      sharedRolePrompt,
+      sharedCanonicalPrompt,
+    ],
+  };
+}
+
+function buildAgentExecutionTask(
+  prompt: HostPromptRoleAssembly | undefined,
+  dispatch: "primary" | "supporting",
+  sharedContext: string[],
+  route: RequestRouteDecision,
+): AgentExecutionTask | undefined {
+  if (!prompt) {
+    return undefined;
+  }
+
+  return {
+    role: prompt.role,
+    dispatch,
+    parallelizable: dispatch === "supporting",
+    prompt,
+    sharedContext,
+    requiredContext: uniqueStrings([...sharedContext, ...prompt.contextIncludes]),
+    rules: route.rules,
+    requestedRuntimeSkills: uniqueStrings([
+      ...route.skills,
+      ...prompt.skills.map((skill) => skill.path),
+    ]),
+    nextStep: route.nextStep,
+  };
+}
+
+function buildSpecialistDispatchTask(
+  task: AgentExecutionTask,
+  executionPlan: Omit<AgentExecutionPlan, "specialistDispatchPlan">,
+  priority: number,
+  ordinal: number,
+): SpecialistDispatchTask {
+  const dispatchTask: SpecialistDispatchTask = {
+    id: `dispatch-${ordinal}-${task.role}`,
+    role: task.role,
+    managedBy: managingMainAgentFor(task.role),
+    activation: "on-demand",
+    priority,
+    parallelizable: true,
+    reason: specialistDispatchReason(task.role, executionPlan),
+    sourceContext: task.sharedContext,
+    inspectableSurfaces: uniqueStrings([
+      ...task.prompt.contextIncludes,
+      ...task.prompt.owns,
+      ...executionPlan.route.rules,
+    ]).slice(0, 8),
+    exactQuestion: specialistDispatchQuestion(task.role, executionPlan),
+    expectedOutput: task.prompt.outputs.length > 0
+      ? task.prompt.outputs.slice(0, 3)
+      : ["concise findings", "preconditions", "recommended action"],
+    nonGoals: specialistDispatchNonGoals(task.role),
+    requestedRuntimeSkills: task.requestedRuntimeSkills,
+    dispatchPromptEnvelope: {
+      role: task.role,
+      sharedPromptStack: [],
+      rolePromptStack: [],
+      contextPaths: [],
+      requestedRuntimeSkills: task.requestedRuntimeSkills,
+      taskBrief: {
+        reason: "",
+        exactQuestion: "",
+        inspectableSurfaces: [],
+        expectedOutput: [],
+        nonGoals: [],
+      },
+      message: "",
+    },
+  };
+
+  dispatchTask.dispatchPromptEnvelope = buildSpecialistDispatchPromptEnvelope(dispatchTask, executionPlan);
+  return dispatchTask;
+}
+
+function specialistTaskScore(
+  task: AgentExecutionTask,
+  executionPlan: Omit<AgentExecutionPlan, "specialistDispatchPlan">,
+): number {
+  const request = executionPlan.request.toLowerCase();
+  const role = task.role;
+  const primaryRole = executionPlan.primaryTask.role;
+  let score = 0;
+
+  const priorityOrder = primaryRoleDispatchPriority[primaryRole] ?? allRouteAgentRoles;
+  const priorityIndex = priorityOrder.indexOf(role);
+  score += priorityIndex === -1 ? 0 : Math.max(0, 80 - priorityIndex * 4);
+
+  for (const workType of executionPlan.route.workTypes) {
+    score += roleWorkTypeWeight(role, workType);
+  }
+
+  for (const keyword of specialistRoleKeywords[role] ?? []) {
+    if (request.includes(keyword)) {
+      score += 25;
+    }
+  }
+
+  if (executionPlan.route.requestKind === "acceptance" && (role === "qa-agent" || role === "reviewer")) {
+    score += 30;
+  }
+  if (executionPlan.route.requestKind === "review" && role === "reviewer") {
+    score += 30;
+  }
+  if (executionPlan.route.requestKind === "raw-requirement" && role === "product-architect-agent") {
+    score += 25;
+  }
+  if (executionPlan.route.requestKind === "raw-requirement" && role === "spec-editor") {
+    score += 20;
+  }
+
+  return score;
+}
+
+function roleWorkTypeWeight(role: RequestRouteAgentRole, workType: RequestWorkType): number {
+  const roleWeights: Partial<Record<RequestRouteAgentRole, Partial<Record<RequestWorkType, number>>>> = {
+    "product-architect-agent": { spec: 26, architecture: 12 },
+    "frontend-agent": { frontend: 30, ui_prototype: 12 },
+    "backend-agent": { backend: 30, architecture: 10 },
+    "ddd-domain-agent": { architecture: 24, spec: 18, backend: 10 },
+    "openapi-agent": { backend: 26, architecture: 16, tests: 8 },
+    "db-migration-agent": { backend: 26, architecture: 16, tests: 8 },
+    "ui-design-agent": { frontend: 28, ui_prototype: 22, architecture: 8 },
+    "test-editor": { tests: 22, spec: 16, architecture: 10, ci: 8 },
+    "performance-test-agent": { tests: 24, backend: 14, ci: 10 },
+    "concurrency-test-agent": { tests: 24, backend: 14, ci: 10 },
+    "ci-editor": { ci: 26, orchestration: 18, tests: 10 },
+    "deployment-agent": { ci: 24, orchestration: 12, tests: 8 },
+    "execution-editor": { orchestration: 26, ci: 14 },
+    "qa-agent": { tests: 20, ci: 18, orchestration: 10 },
+    "reviewer": { architecture: 16, tests: 14, ci: 14, orchestration: 12, spec: 10 },
+    "unit-test-agent": { backend: 18, tests: 18 },
+    "playwright-test-agent": { frontend: 18, tests: 20, ui_prototype: 8 },
+    "e2e-test-agent": { tests: 18, frontend: 8, backend: 8 },
+    "spec-editor": { spec: 24, architecture: 14 },
+  };
+
+  return roleWeights[role]?.[workType] ?? 0;
+}
+
+function specialistDispatchReason(
+  role: RequestRouteAgentRole,
+  executionPlan: Omit<AgentExecutionPlan, "specialistDispatchPlan">,
+): string {
+  const reasons: Partial<Record<RequestRouteAgentRole, string>> = {
+    "product-architect-agent": "Compile raw product intent into an accepted PRD before prd-to-spec decomposition and downstream planning.",
+    "frontend-agent": "Coordinate frontend delivery for the UI branch so specialist handoffs stay bounded and traceable.",
+    "backend-agent": "Coordinate backend delivery across Architecture, Database, and API branches before implementation fans out.",
+    "ddd-domain-agent": "Clarify domain boundaries, invariants, and model-level risk before broader implementation or testing decisions.",
+    "openapi-agent": "Narrow contract and error-semantics changes early so downstream implementation and tests stay aligned.",
+    "db-migration-agent": "Surface schema, rollout, rollback, and compatibility risks before code and release work diverge.",
+    "ui-design-agent": "Lock user-facing states, workflow boundaries, and interaction assumptions before implementation fans out.",
+    "test-editor": "Define independent verification scope and evidence gaps before execution-specific tests are dispatched.",
+    "performance-test-agent": "Identify latency and throughput risk where feature behavior may pass functionally but still fail under load.",
+    "concurrency-test-agent": "Identify race, retry, idempotency, and final-state invariant risk that ordinary tests can miss.",
+    "ci-editor": "Keep release gates and validation commands aligned with the current change and evidence model.",
+    "deployment-agent": "Sequence release readiness checks, rollout order, and deployment evidence once QA acceptance is in scope.",
+    "execution-editor": "Keep workflow wiring and local automation aligned with the selected delivery path.",
+    "qa-agent": "Provide final acceptance framing once verification evidence exists.",
+    "reviewer": "Provide cross-rule risk review and reject local false positives before merge or release claims.",
+  };
+
+  return reasons[role] ?? `Provide bounded specialist input for ${executionPlan.primaryTask.role}.`;
+}
+
+function specialistDispatchQuestion(
+  role: RequestRouteAgentRole,
+  executionPlan: Omit<AgentExecutionPlan, "specialistDispatchPlan">,
+): string {
+  const request = executionPlan.request.trim();
+  const questions: Partial<Record<RequestRouteAgentRole, string>> = {
+    "product-architect-agent": `For "${request}", what requirements, acceptance criteria, scope boundaries, assumptions, and open questions should the PRD capture across Product, Architecture, Database, API, and UI branches?`,
+    "frontend-agent": `For "${request}", what frontend implementation plan, UI state coverage, and specialist handoffs are required for the UI branch?`,
+    "backend-agent": `For "${request}", what backend implementation plan, specialist routing, and migration or compatibility risks must be handled first?`,
+    "ddd-domain-agent": `For "${request}", what domain boundaries, invariants, and entity/value-object responsibilities are most likely to cause design drift?`,
+    "openapi-agent": `For "${request}", what request/response contract, error semantics, and compatibility constraints must be locked before implementation proceeds?`,
+    "db-migration-agent": `For "${request}", what schema changes, migration order, backfill concerns, and rollback constraints must be handled explicitly?`,
+    "ui-design-agent": `For "${request}", what screen states, operator workflows, and responsive behaviors must be specified to avoid UI ambiguity?`,
+    "test-editor": `For "${request}", what independent verification matrix, scenario split, and evidence gaps should be defined first?`,
+    "performance-test-agent": `For "${request}", what SLO-sensitive paths, baseline assumptions, and minimal load scenarios should be tested first?`,
+    "concurrency-test-agent": `For "${request}", what concurrent actors, idempotency constraints, and final-state invariants should be tested first?`,
+    "ci-editor": `For "${request}", what gate checks, command sequence, and release evidence requirements must be updated?`,
+    "deployment-agent": `For "${request}", what validation order, rollout steps, and rollback criteria are required before claiming deployment readiness?`,
+    "execution-editor": `For "${request}", what workflow or script wiring must change so the delivery path stays reproducible?`,
+    "qa-agent": `For "${request}", what acceptance blockers, missing evidence, and waiver decisions remain before promotion?`,
+    "reviewer": `For "${request}", what cross-rule risks, regressions, or missing neighboring updates remain after local implementation decisions?`,
+    "unit-test-agent": `For "${request}", what implementation-coupled unit coverage should be added to protect local behavior changes?`,
+    "playwright-test-agent": `For "${request}", what browser-visible flows and UI state transitions need deterministic verification?`,
+    "e2e-test-agent": `For "${request}", what user or operator journeys need end-to-end coverage across system boundaries?`,
+    "spec-editor": `For "${request}", what design, roadmap, or feature-spec wording still needs refinement before downstream work is safe?`,
+  };
+
+  return questions[role] ?? `For "${request}", what bounded specialist findings should ${role} return to support ${executionPlan.primaryTask.role}?`;
+}
+
+function specialistDispatchNonGoals(role: RequestRouteAgentRole): string[] {
+  const defaults: Partial<Record<RequestRouteAgentRole, string[]>> = {
+    "product-architect-agent": ["Do not promote the PRD into an approved Feature Spec baseline.", "Do not decompose into Feature Specs, Test Specs, or Issues; hand the accepted PRD to spec-editor."],
+    "frontend-agent": ["Do not absorb backend or migration ownership.", "Do not replace independent browser or E2E verification ownership."],
+    "backend-agent": ["Do not absorb frontend or UI design ownership.", "Do not skip contract and migration specialists for cross-surface changes."],
+    "ddd-domain-agent": ["Do not redesign unrelated bounded contexts.", "Do not rewrite API or migration details unless domain changes require it."],
+    "openapi-agent": ["Do not invent fields not justified by the spec or request.", "Do not drift into full backend implementation."],
+    "db-migration-agent": ["Do not assume destructive schema changes are safe.", "Do not redesign unrelated storage surfaces."],
+    "ui-design-agent": ["Do not broaden into a full product redesign.", "Do not rewrite backend semantics."],
+    "test-editor": ["Do not replace implementation-coupled unit coverage ownership.", "Do not treat missing evidence as a code fix plan."],
+    "performance-test-agent": ["Do not claim production capacity from ad hoc local runs.", "Do not substitute raw load-tool output for normalized findings."],
+    "concurrency-test-agent": ["Do not stop at response-code counts without final-state checks.", "Do not treat flaky concurrent behavior as acceptable by default."],
+    "ci-editor": ["Do not redesign the full CI surface.", "Do not add unrelated release ceremony."],
+    "deployment-agent": ["Do not own the final QA acceptance decision; that stays with qa-agent.", "Do not claim release readiness without explicit gate evidence."],
+    "execution-editor": ["Do not rewrite unrelated workflows.", "Do not broaden into role or spec redesign."],
+    "qa-agent": ["Do not own implementation decisions.", "Do not waive missing evidence without stating the blocker."],
+    "reviewer": ["Do not duplicate every local finding from other specialists.", "Do not expand beyond rule and evidence impact."],
+  };
+
+  return defaults[role] ?? ["Do not broaden beyond the assigned bounded surface."];
+}
+
+function primaryDispatchReason(
+  role: RequestRouteAgentRole,
+  executionPlan: Omit<AgentExecutionPlan, "specialistDispatchPlan" | "primaryDispatchPromptEnvelope">,
+): string {
+  const reasons: Partial<Record<RequestRouteAgentRole, string>> = {
+    "architecture-agent": "Own the cross-surface design judgment and decide which bounded specialist findings materially affect the system plan.",
+    "implementation-agent": "Own the concrete implementation path and keep code changes aligned with accepted spec and design boundaries.",
+    "deployment-agent": "Own release readiness, validation order, and delivery evidence sequencing.",
+    "testing-agent": "Own independent verification strategy and decide where specialist evidence is required before acceptance.",
+    "qa-agent": "Own the final quality decision, acceptance evidence, and release readiness across review, CI, and deployment specialists.",
+  };
+
+  return reasons[role] ?? `Own the main delivery track for "${executionPlan.request}".`;
+}
+
+function primaryDispatchQuestion(
+  role: RequestRouteAgentRole,
+  executionPlan: Omit<AgentExecutionPlan, "specialistDispatchPlan" | "primaryDispatchPromptEnvelope">,
+): string {
+  const request = executionPlan.request.trim();
+  const questions: Partial<Record<RequestRouteAgentRole, string>> = {
+    "architecture-agent": `For "${request}", what is the smallest correct cross-surface plan, and which specialist findings actually change the architecture decision?`,
+    "implementation-agent": `For "${request}", what is the narrowest implementation plan that can be executed safely end to end?`,
+    "deployment-agent": `For "${request}", what validation and release sequence is required before claiming deployment readiness?`,
+    "testing-agent": `For "${request}", what independent verification plan is required, and which specialist test tracks must run first?`,
+    "qa-agent": `For "${request}", what acceptance evidence, release gates, and deployment readiness checks decide promotion, and which QA specialists must be opened first?`,
+  };
+
+  return questions[role] ?? `For "${request}", what primary-agent execution plan should ${role} lead?`;
+}
+
+function primaryDispatchNonGoals(
+  role: RequestRouteAgentRole,
+  executionPlan: Omit<AgentExecutionPlan, "specialistDispatchPlan" | "primaryDispatchPromptEnvelope">,
+): string[] {
+  const defaults: Partial<Record<RequestRouteAgentRole, string[]>> = {
+    "architecture-agent": [
+      "Do not expand into full implementation details before the cross-surface plan is stable.",
+      "Do not forward every specialist concern without filtering false positives and duplicates.",
+    ],
+    "implementation-agent": [
+      "Do not redesign unrelated architecture or product scope.",
+      "Do not absorb independent verification ownership that belongs to testing specialists.",
+    ],
+    "deployment-agent": [
+      "Do not broaden into unrelated feature implementation.",
+      "Do not claim release readiness without explicit gate evidence.",
+    ],
+    "testing-agent": [
+      "Do not rewrite implementation details unless they directly block independent verification.",
+      "Do not accept missing P0/P1 evidence as complete by default.",
+    ],
+    "qa-agent": [
+      "Do not own implementation or architecture decisions.",
+      "Do not waive missing gate evidence without recording the blocker.",
+    ],
+  };
+
+  return defaults[role] ?? [
+    `Do not broaden beyond the primary responsibility of ${role}.`,
+    `Do not ignore bounded specialist input when it materially changes "${executionPlan.request}".`,
+  ];
+}
+
+function buildSpecialistDispatchMessage(
+  task: SpecialistDispatchTask,
+  executionPlan: Omit<AgentExecutionPlan, "specialistDispatchPlan">,
+  rolePromptStack: string[],
+  contextPaths: string[],
+): string {
+  return [
+    `Role: ${task.role}`,
+    `Primary Role: ${executionPlan.primaryTask.role}`,
+    `Managed By: ${task.managedBy}`,
+    `Activation: ${task.activation} — open this specialist as a subagent only when the managing main agent needs it`,
+    `Request: ${executionPlan.request}`,
+    "",
+    "Reason",
+    task.reason,
+    "",
+    "Exact Question",
+    task.exactQuestion,
+    "",
+    "Inspectable Surfaces",
+    ...task.inspectableSurfaces.map((surface) => `- ${surface}`),
+    "",
+    "Expected Output",
+    ...task.expectedOutput.map((item) => `- ${item}`),
+    "",
+    "Non-Goals",
+    ...task.nonGoals.map((item) => `- ${item}`),
+    "",
+    "Prompt Stack",
+    ...rolePromptStack.map((item) => `- ${item}`),
+    "",
+    "Context Paths",
+    ...contextPaths.map((item) => `- ${item}`),
+    "",
+    "Requested Runtime Skills",
+    ...(task.requestedRuntimeSkills.length > 0 ? task.requestedRuntimeSkills.map((item) => `- ${item}`) : ["- none"]),
+  ].join("\n");
+}
+
+function requirePromptEnvelopeShape(state: MutableValidation, value: unknown, path: string): void {
+  const envelope = asRecord(value);
+  if (!envelope) {
+    state.errors.push(makeError("SPECOS_ROUTE_OUTPUT_INVALID", path));
+    return;
+  }
+
+  requireAgentRole(state, envelope.role, `${path}.role`);
+  requireStringArray(state, envelope.sharedPromptStack, "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.sharedPromptStack`);
+  requireStringArray(state, envelope.rolePromptStack, "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.rolePromptStack`);
+  requireStringArray(state, envelope.contextPaths, "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.contextPaths`);
+  requireStringArrayAllowEmpty(state, envelope.requestedRuntimeSkills, "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.requestedRuntimeSkills`);
+  requireString(state, envelope, "message", "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.message`);
+
+  const taskBrief = asRecord(envelope.taskBrief);
+  if (!taskBrief) {
+    state.errors.push(makeError("SPECOS_ROUTE_OUTPUT_INVALID", `${path}.taskBrief`));
+    return;
+  }
+  requireString(state, taskBrief, "reason", "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.taskBrief.reason`);
+  requireString(state, taskBrief, "exactQuestion", "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.taskBrief.exactQuestion`);
+  requireStringArray(state, taskBrief.inspectableSurfaces, "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.taskBrief.inspectableSurfaces`);
+  requireStringArray(state, taskBrief.expectedOutput, "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.taskBrief.expectedOutput`);
+  requireStringArray(state, taskBrief.nonGoals, "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.taskBrief.nonGoals`);
+}
+
+function requirePromptAssemblyShape(state: MutableValidation, value: unknown, path: string): void {
+  const assembly = asRecord(value);
+  if (!assembly) {
+    state.errors.push(makeError("SPECOS_ROUTE_OUTPUT_INVALID", path));
+    return;
+  }
+
+  requireOneOf(state, assembly.projectMode, ["litespec", "goalspec", "enterprisespec"], "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.projectMode`);
+  requireString(state, assembly, "manifestPath", "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.manifestPath`);
+  requireString(state, assembly, "overlayManifest", "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.overlayManifest`);
+  requireStringArray(state, assembly.sharedContext, "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.sharedContext`);
+  requireStringArray(state, assembly.loadOrder, "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.loadOrder`);
+  if (!Array.isArray(assembly.roles) || assembly.roles.length === 0) {
+    state.errors.push(makeError("SPECOS_ROUTE_OUTPUT_INVALID", `${path}.roles`));
+    return;
+  }
+
+  assembly.roles.forEach((role, index) => {
+    const rolePath = `${path}.roles[${index}]`;
+    const roleRecord = asRecord(role);
+    if (!roleRecord) {
+      state.errors.push(makeError("SPECOS_ROUTE_OUTPUT_INVALID", rolePath));
+      return;
+    }
+    requireAgentRole(state, roleRecord.role, `${rolePath}.role`);
+    requireString(state, roleRecord, "sharedRolePrompt", "SPECOS_ROUTE_OUTPUT_INVALID", `${rolePath}.sharedRolePrompt`);
+    requireString(state, roleRecord, "sharedCanonicalPrompt", "SPECOS_ROUTE_OUTPUT_INVALID", `${rolePath}.sharedCanonicalPrompt`);
+    requireBoolean(state, roleRecord, "overlayApplied", "SPECOS_ROUTE_OUTPUT_INVALID", `${rolePath}.overlayApplied`);
+    requireStringArrayAllowEmpty(state, roleRecord.contextIncludes, "SPECOS_ROUTE_OUTPUT_INVALID", `${rolePath}.contextIncludes`);
+    requireStringArrayAllowEmpty(state, roleRecord.owns, "SPECOS_ROUTE_OUTPUT_INVALID", `${rolePath}.owns`);
+    requireStringArrayAllowEmpty(state, roleRecord.outputs, "SPECOS_ROUTE_OUTPUT_INVALID", `${rolePath}.outputs`);
+    requireStringArray(state, roleRecord.loadOrder, "SPECOS_ROUTE_OUTPUT_INVALID", `${rolePath}.loadOrder`);
+    if (roleRecord.delegatesTo !== undefined) {
+      requireAgentRoleArray(state, roleRecord.delegatesTo, `${rolePath}.delegatesTo`);
+    }
+    if (roleRecord.skills !== undefined && !Array.isArray(roleRecord.skills)) {
+      state.errors.push(makeError("SPECOS_ROUTE_OUTPUT_INVALID", `${rolePath}.skills`));
+    }
+  });
+}
+
+function requireExecutionPlanShape(state: MutableValidation, value: unknown, path: string): void {
+  const plan = asRecord(value);
+  if (!plan) {
+    state.errors.push(makeError("SPECOS_ROUTE_OUTPUT_INVALID", path));
+    return;
+  }
+
+  requireString(state, plan, "request", "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.request`);
+  requireOneOf(state, plan.projectMode, ["litespec", "goalspec", "enterprisespec"], "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.projectMode`);
+  requireStringArray(state, plan.sharedContext, "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.sharedContext`);
+  requireOneOf(state, plan.specialistDispatch, ["primary-only", "bounded-parallel"], "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.specialistDispatch`);
+  requirePromptEnvelopeShape(state, plan.primaryDispatchPromptEnvelope, `${path}.primaryDispatchPromptEnvelope`);
+
+  const primaryTask = asRecord(plan.primaryTask);
+  if (!primaryTask) {
+    state.errors.push(makeError("SPECOS_ROUTE_OUTPUT_INVALID", `${path}.primaryTask`));
+  } else {
+    requireMainAgentRole(state, primaryTask.role, `${path}.primaryTask.role`);
+    requireOneOf(state, primaryTask.dispatch, ["primary", "supporting"], "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.primaryTask.dispatch`);
+    requireBoolean(state, primaryTask, "parallelizable", "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.primaryTask.parallelizable`);
+    requireStringArray(state, primaryTask.requiredContext, "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.primaryTask.requiredContext`);
+    requireStringArrayAllowEmpty(state, primaryTask.requestedRuntimeSkills, "SPECOS_ROUTE_OUTPUT_INVALID", `${path}.primaryTask.requestedRuntimeSkills`);
+  }
+
+  if (!Array.isArray(plan.supportingTasks)) {
+    state.errors.push(makeError("SPECOS_ROUTE_OUTPUT_INVALID", `${path}.supportingTasks`));
+  }
+
+  const dispatchPlan = asRecord(plan.specialistDispatchPlan);
+  if (!dispatchPlan) {
+    state.errors.push(makeError("SPECOS_ROUTE_OUTPUT_INVALID", `${path}.specialistDispatchPlan`));
+    return;
+  }
+  requireMainAgentRole(state, dispatchPlan.primaryRole, `${path}.specialistDispatchPlan.primaryRole`);
+  if (typeof dispatchPlan.maxTasks !== "number") {
+    state.errors.push(makeError("SPECOS_ROUTE_OUTPUT_INVALID", `${path}.specialistDispatchPlan.maxTasks`));
+  }
+  if (typeof dispatchPlan.minTasks !== "number") {
+    state.errors.push(makeError("SPECOS_ROUTE_OUTPUT_INVALID", `${path}.specialistDispatchPlan.minTasks`));
+  }
+  if (!Array.isArray(dispatchPlan.tasks)) {
+    state.errors.push(makeError("SPECOS_ROUTE_OUTPUT_INVALID", `${path}.specialistDispatchPlan.tasks`));
+  } else {
+    dispatchPlan.tasks.forEach((task, index) => {
+      const taskPath = `${path}.specialistDispatchPlan.tasks[${index}]`;
+      const taskRecord = asRecord(task);
+      if (!taskRecord) {
+        state.errors.push(makeError("SPECOS_ROUTE_OUTPUT_INVALID", taskPath));
+        return;
+      }
+      requireAgentRole(state, taskRecord.role, `${taskPath}.role`);
+      requireMainAgentRole(state, taskRecord.managedBy, `${taskPath}.managedBy`);
+      requireOneOf(state, taskRecord.activation, ["on-demand"], "SPECOS_ROUTE_OUTPUT_INVALID", `${taskPath}.activation`);
+      requireString(state, taskRecord, "id", "SPECOS_ROUTE_OUTPUT_INVALID", `${taskPath}.id`);
+      requireString(state, taskRecord, "reason", "SPECOS_ROUTE_OUTPUT_INVALID", `${taskPath}.reason`);
+      requireString(state, taskRecord, "exactQuestion", "SPECOS_ROUTE_OUTPUT_INVALID", `${taskPath}.exactQuestion`);
+      requireStringArray(state, taskRecord.inspectableSurfaces, "SPECOS_ROUTE_OUTPUT_INVALID", `${taskPath}.inspectableSurfaces`);
+      requireStringArray(state, taskRecord.expectedOutput, "SPECOS_ROUTE_OUTPUT_INVALID", `${taskPath}.expectedOutput`);
+      requireStringArray(state, taskRecord.nonGoals, "SPECOS_ROUTE_OUTPUT_INVALID", `${taskPath}.nonGoals`);
+      requirePromptEnvelopeShape(state, taskRecord.dispatchPromptEnvelope, `${taskPath}.dispatchPromptEnvelope`);
+    });
+  }
+  requireAgentRoleArray(state, dispatchPlan.deferredRoles ?? [], `${path}.specialistDispatchPlan.deferredRoles`);
+}
+
+function requireAgentRole(state: MutableValidation, value: unknown, path: string): void {
+  requireOneOf(
+    state,
+    value,
+    [
+      "architecture-agent",
+      "implementation-agent",
+      "deployment-agent",
+      "testing-agent",
+      "product-architect-agent",
+      "spec-editor",
+      "ui-design-agent",
+      "frontend-agent",
+      "backend-agent",
+      "ddd-domain-agent",
+      "openapi-agent",
+      "db-migration-agent",
+      "e2e-test-agent",
+      "playwright-test-agent",
+      "unit-test-agent",
+      "specialized-check-agent",
+      "performance-test-agent",
+      "concurrency-test-agent",
+      "ci-editor",
+      "execution-editor",
+      "implementation-editor",
+      "test-editor",
+      "qa-agent",
+      "reviewer",
+    ],
+    "SPECOS_ROUTE_OUTPUT_INVALID",
+    path,
+  );
+}
+
+function requireMainAgentRole(state: MutableValidation, value: unknown, path: string): void {
+  requireOneOf(state, value, mainAgentRoles, "SPECOS_ROUTE_OUTPUT_INVALID", path);
+}
+
+function requireAgentRoleArray(state: MutableValidation, value: unknown, path: string): void {
+  if (!Array.isArray(value)) {
+    state.errors.push(makeError("SPECOS_ROUTE_OUTPUT_INVALID", path));
+    return;
+  }
+
+  value.forEach((item, index) => requireAgentRole(state, item, `${path}[${index}]`));
+}
+
+function uniqueAgentRoles(roles: RequestRouteAgentRole[]): RequestRouteAgentRole[] {
+  return [...new Set(roles)];
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values)];
+}
+
+function clampTaskCount(value: number): number {
+  return Math.max(1, Math.min(4, value));
+}
+
+function trimPathSeparators(path: string): string {
+  return path.replace(/\/+$/g, "");
+}
+
+function joinPosixPath(...segments: string[]): string {
+  return segments
+    .map((segment) => segment.trim())
+    .filter((segment) => segment.length > 0)
+    .map((segment, index) => index === 0 ? segment.replace(/\/+$/g, "") : segment.replace(/^\/+|\/+$/g, ""))
+    .join("/");
+}
+
+function primaryAgentForRequest(kind: RequestKind, workTypes: Set<RequestWorkType>): RequestMainAgentRole {
   if (workTypes.has("architecture")) return "architecture-agent";
   if (kind === "test") return "testing-agent";
-  if (kind === "acceptance") return "testing-agent";
+  if (kind === "acceptance") return "qa-agent";
   if (kind === "implementation") return "implementation-agent";
-  if (kind === "tooling-configuration") return workTypes.has("ci") ? "deployment-agent" : "architecture-agent";
-  if (workTypes.has("ci")) return "deployment-agent";
+  if (kind === "tooling-configuration") return workTypes.has("ci") ? "qa-agent" : "architecture-agent";
+  if (workTypes.has("ci")) return "qa-agent";
   if (kind === "review") return "architecture-agent";
   if (workTypes.has("frontend") || workTypes.has("backend")) return "implementation-agent";
   if (kind === "raw-requirement" || kind === "draft-only" || kind === "active-change") return "architecture-agent";
@@ -762,10 +2537,10 @@ function primaryAgentForRequest(kind: RequestKind, workTypes: Set<RequestWorkTyp
 
 function nextStepForRequest(kind: RequestKind, needsDraft: boolean, needsChangePackage: boolean): string {
   if (needsDraft) {
-    return "Create or update spec-draft/<stable-id>.md with raw request, assumptions, and open questions.";
+    return "Create or update the Requirement Package `.requirements/requirements/R0NN-<slug>/prd.md` with raw request, assumptions, and open questions.";
   }
   if (needsChangePackage) {
-    return "Attach the request to specs/changes/<change-id>/ before implementation, testing, or release gates.";
+    return "Attach the request to a Requirement Package `.requirements/requirements/R0NN-<slug>/` (prd.md -> spec.md -> test.md -> issues.md) before implementation, testing, or release gates.";
   }
   if (kind === "review") {
     return "Run the reviewer role against the active change, rules, tests, and validation evidence.";
@@ -786,10 +2561,20 @@ export function validateManifest(value: unknown): ValidationResult {
     "project.type",
   );
   requireObject(state, manifest?.stacks, "SPECOS_MANIFEST_INVALID", "stacks");
-  requireString(state, manifest?.artifacts, "draftsDir", "SPECOS_MANIFEST_INVALID", "artifacts.draftsDir");
-  requireString(state, manifest?.artifacts, "specsDir", "SPECOS_MANIFEST_INVALID", "artifacts.specsDir");
-  requireString(state, manifest?.artifacts, "testsDir", "SPECOS_MANIFEST_INVALID", "artifacts.testsDir");
-  requireString(state, manifest?.artifacts, "resultsDir", "SPECOS_MANIFEST_INVALID", "artifacts.resultsDir");
+  if (manifest?.projectMode !== undefined) {
+    requireOneOf(
+      state,
+      manifest.projectMode,
+      ["litespec", "goalspec", "enterprisespec"],
+      "SPECOS_MANIFEST_INVALID",
+      "projectMode",
+    );
+  }
+  requireArtifactDirectory(state, manifest?.artifacts, "draftsDir", "artifacts.draftsDir");
+  requireArtifactDirectory(state, manifest?.artifacts, "specsDir", "artifacts.specsDir");
+  requireArtifactDirectory(state, manifest?.artifacts, "issuesDir", "artifacts.issuesDir");
+  requireArtifactDirectory(state, manifest?.artifacts, "testsDir", "artifacts.testsDir");
+  requireArtifactDirectory(state, manifest?.artifacts, "resultsDir", "artifacts.resultsDir");
   requireStringArray(state, manifest?.rulePacks, "SPECOS_MANIFEST_INVALID", "rulePacks");
   requireStringArray(state, manifest?.agentTemplates, "SPECOS_MANIFEST_INVALID", "agentTemplates");
   requireStringArray(state, manifest?.workflows, "SPECOS_MANIFEST_INVALID", "workflows");
@@ -820,8 +2605,8 @@ export function validateSpec(value: unknown): ValidationResult {
   requireStringArray(state, spec?.tests?.requiredBranches, "SPECOS_SPEC_INVALID", "tests.requiredBranches");
   requireRequiredBranches(state, spec?.tests?.requiredBranches, "SPECOS_SPEC_INVALID", "tests.requiredBranches");
 
-  if (!isNonEmptyString(spec?.traceability?.draft)) {
-    state.errors.push(makeError("SPECOS_TRACE_MISSING", "traceability.draft"));
+  if (!isNonEmptyString(spec?.traceability?.prd)) {
+    state.errors.push(makeError("SPECOS_TRACE_MISSING", "traceability.prd"));
   }
 
   if (spec?.api !== undefined) {
@@ -835,7 +2620,10 @@ export function validateSpec(value: unknown): ValidationResult {
   return result(state.errors);
 }
 
-export function buildDeterministicTestPlan(spec: SpecosSpec): SpecosTestPlan {
+export function buildDeterministicTestPlan(
+  spec: SpecosSpec,
+  binding?: TestSpecBinding,
+): SpecosTestPlan {
   const api = spec.api ?? [];
   const branches = normalizeBranches(spec.tests.requiredBranches);
   const firstRule = spec.rules[0]?.id ?? "spec.rule";
@@ -849,6 +2637,17 @@ export function buildDeterministicTestPlan(spec: SpecosSpec): SpecosTestPlan {
     riskTier: "P0",
     specId: spec.id,
     specVersion: spec.version,
+    ...(binding
+      ? {
+          testSpecPath: binding.testSpecPath,
+          testSpecId: binding.testSpecId,
+          testSpecVersion: binding.testSpecVersion,
+          testSpecHash: binding.testSpecHash,
+          testSpecStatus: binding.testSpecStatus,
+          testSpecApprovalEvidence: binding.testSpecApprovalEvidence,
+          sourceFeatureSpecHash: binding.sourceFeatureSpecHash,
+        }
+      : {}),
     featureName: spec.title,
     source: "accepted-spec",
     flows: [
@@ -937,17 +2736,72 @@ function buildDefaultStandardRequirements(
   ];
 }
 
+function inferFeatureSpecDirectory(specPath: string | undefined, specsDir = ".features"): string | undefined {
+  if (!specPath) {
+    return undefined;
+  }
+
+  const normalized = specPath.replace(/\\/g, "/");
+  const normalizedRoot = trimPathSeparators(specsDir).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = normalized.match(new RegExp(`(?:^|/)${normalizedRoot}/([^/]+)/spec\\.md$`));
+  return match?.[1];
+}
+
+function buildFallbackFeatureSpecDirectory(specId: string, changeId: string): string {
+  if (/^[A-Z]+-\d{3}$/u.test(changeId)) {
+    return `${changeId}-${specId}`;
+  }
+  return changeId;
+}
+
 export function buildSpecChangeTestSchedule(
   plan: SpecosTestPlan,
-  options: { changeId: string; executionMode?: TestScheduleExecutionMode },
+  options: {
+    changeId: string;
+    executionMode?: TestScheduleExecutionMode;
+    specPath?: string;
+    manifest?: Pick<SpecosManifest, "artifacts">;
+    testSpecBinding?: TestSpecBinding;
+  },
 ): SpecosTestSchedule {
   const endpointTargets = plan.endpoints.map((endpoint) => `${endpoint.method.toUpperCase()} ${endpoint.path}`);
   const scenarioNames = plan.scenarios.map((scenario) => scenario.name);
   const executionMode = options.executionMode ?? "parallel";
+  const specRoot = trimPathSeparators(options.manifest?.artifacts.specsDir ?? ".features");
+  const issuesRoot = trimPathSeparators(options.manifest?.artifacts.issuesDir ?? ".issues");
+  const testsRoot = trimPathSeparators(options.manifest?.artifacts.testsDir ?? "tests");
+  const resultsRoot = trimPathSeparators(options.manifest?.artifacts.resultsDir ?? `${testsRoot}/results`);
+  const specDirectory = inferFeatureSpecDirectory(options.specPath, specRoot) ?? buildFallbackFeatureSpecDirectory(plan.specId, options.changeId);
+  const specFile = `${specRoot}/${specDirectory}/spec.md`;
+  const testSpecPath =
+    options.testSpecBinding?.testSpecPath ??
+    plan.testSpecPath ??
+    `${specRoot}/${specDirectory}/test-spec.md`;
+  const implementationDir = `implementation/${specDirectory}`;
+  const reviewDir = `reviews/${specDirectory}`;
 
   return {
     specId: plan.specId,
     specVersion: plan.specVersion,
+    ...(options.testSpecBinding
+      ? {
+          testSpecPath: options.testSpecBinding.testSpecPath,
+          testSpecId: options.testSpecBinding.testSpecId,
+          testSpecVersion: options.testSpecBinding.testSpecVersion,
+          testSpecHash: options.testSpecBinding.testSpecHash,
+          testSpecStatus: options.testSpecBinding.testSpecStatus,
+          testSpecApprovalEvidence: options.testSpecBinding.testSpecApprovalEvidence,
+          sourceFeatureSpecHash: options.testSpecBinding.sourceFeatureSpecHash,
+        }
+      : {
+          testSpecPath: plan.testSpecPath,
+          testSpecId: plan.testSpecId,
+          testSpecVersion: plan.testSpecVersion,
+          testSpecHash: plan.testSpecHash,
+          testSpecStatus: plan.testSpecStatus,
+          testSpecApprovalEvidence: plan.testSpecApprovalEvidence,
+          sourceFeatureSpecHash: plan.sourceFeatureSpecHash,
+        }),
     featureName: plan.featureName,
     changeId: options.changeId,
     executionMode,
@@ -957,22 +2811,25 @@ export function buildSpecChangeTestSchedule(
         agentRole: "execution-editor",
         isolation: "implementation-only",
         allowedInputs: [
-          `specs/changes/${options.changeId}/spec.md`,
-          `specs/changes/${options.changeId}/architecture-review.md`,
-          `specs/changes/${options.changeId}/design-review.md`,
-          "specs/current/",
+          specFile,
+          `${reviewDir}/architecture-review.md`,
+          `${reviewDir}/design-review.md`,
+          "design/",
+          `${specRoot}/roadmap.md`,
         ],
-        forbiddenInputs: ["tests/results/", "tests/bruno/", "tests/scenarios/", "tests/e2e/", "tests/playwright/"],
+        forbiddenInputs: [`${resultsRoot}/`, `${testsRoot}/bruno/`, `${testsRoot}/scenarios/`, `${testsRoot}/e2e/`, `${testsRoot}/playwright/`],
       },
       {
         id: "testing",
         agentRole: "test-editor",
         isolation: "spec-and-contract-only",
         allowedInputs: [
-          `specs/changes/${options.changeId}/spec.md`,
-          `specs/changes/${options.changeId}/openapi.yaml`,
-          `tests/plans/${plan.specId}.test-plan.json`,
-          "specs/current/",
+          specFile,
+          `${implementationDir}/openapi.yaml`,
+          `${testsRoot}/plans/${plan.specId}.test-plan.json`,
+          testSpecPath,
+          "design/",
+          `${specRoot}/roadmap.md`,
         ],
         forbiddenInputs: ["implementation report", "source implementation notes"],
       },
@@ -984,8 +2841,8 @@ export function buildSpecChangeTestSchedule(
         agentRole: "execution-editor",
         type: "implementation",
         status: "ready",
-        inputs: [`specs/changes/${options.changeId}/spec.md`, "specs/current/"],
-        outputs: [`specs/changes/${options.changeId}/implementation-report.md`, `tests/unit/${plan.specId}/`],
+        inputs: [specFile, "design/", `${specRoot}/roadmap.md`],
+        outputs: [`${implementationDir}/implementation-report.md`, `${testsRoot}/unit/${plan.specId}/`, `${issuesRoot}/${plan.specId}/`],
         dependsOn: ["architecture_reviewed", "design_reviewed"],
         traceability: { scenarios: scenarioNames, endpoints: endpointTargets },
       },
@@ -996,10 +2853,11 @@ export function buildSpecChangeTestSchedule(
         type: "api-test",
         status: "ready",
         inputs: [
-          `tests/plans/${plan.specId}.test-plan.json`,
-          `specs/changes/${options.changeId}/openapi.yaml`,
+          testSpecPath,
+          `${testsRoot}/plans/${plan.specId}.test-plan.json`,
+          `${implementationDir}/openapi.yaml`,
         ],
-        outputs: [`tests/bruno/${plan.specId}/`, `tests/results/${plan.specId}.*.json`],
+        outputs: [`${testsRoot}/bruno/${plan.specId}/`, `${resultsRoot}/${plan.specId}.*.json`],
         dependsOn: executionMode === "parallel" ? ["test_plan_ready"] : [`implement-${plan.specId}`],
         traceability: { scenarios: scenarioNames, endpoints: endpointTargets },
       },
@@ -1010,8 +2868,11 @@ export function buildSpecChangeTestSchedule(
         type: "ui-test-gap" as const,
         status: "blocked" as const,
         reason: "UI execution is scheduled as a gap until Playwright assets and selectors are available.",
-        inputs: [`tests/plans/${plan.specId}.test-plan.json`],
-        outputs: [`tests/scenarios/${plan.specId}/ui-gaps.md`],
+        inputs: [
+          testSpecPath,
+          `${testsRoot}/plans/${plan.specId}.test-plan.json`,
+        ],
+        outputs: [`${testsRoot}/scenarios/${plan.specId}/ui-gaps.md`],
         dependsOn: ["test_plan_ready"],
         traceability: { scenarios: [scenario.name], endpoints: endpointTargets },
       })),
@@ -1071,6 +2932,12 @@ export function buildBlockedApiScenarioResult(
     runId,
     specId: plan.specId,
     specVersion: plan.specVersion,
+    testSpecPath: plan.testSpecPath,
+    testSpecId: plan.testSpecId,
+    testSpecVersion: plan.testSpecVersion,
+    testSpecHash: plan.testSpecHash,
+    testSpecApprovalEvidence: plan.testSpecApprovalEvidence,
+    sourceFeatureSpecHash: plan.sourceFeatureSpecHash,
     standardVersion: plan.standardVersion,
     qualityProfile: plan.qualityProfile,
     featureName: plan.featureName,
@@ -1149,6 +3016,12 @@ export function buildExecutedApiScenarioResult(
     runId,
     specId: plan.specId,
     specVersion: plan.specVersion,
+    testSpecPath: plan.testSpecPath,
+    testSpecId: plan.testSpecId,
+    testSpecVersion: plan.testSpecVersion,
+    testSpecHash: plan.testSpecHash,
+    testSpecApprovalEvidence: plan.testSpecApprovalEvidence,
+    sourceFeatureSpecHash: plan.sourceFeatureSpecHash,
     standardVersion: plan.standardVersion,
     qualityProfile: plan.qualityProfile,
     featureName: plan.featureName,
@@ -1223,6 +3096,9 @@ export function buildTestGateReport(
   const scopedResults = results.filter((result) => {
     const changeId = options.changeId ?? plan.changeId;
     if (result.specId !== plan.specId || result.specVersion !== plan.specVersion) return false;
+    if (plan.testSpecId && result.testSpecId !== plan.testSpecId) return false;
+    if (plan.testSpecVersion && result.testSpecVersion !== plan.testSpecVersion) return false;
+    if (plan.testSpecHash && result.testSpecHash !== plan.testSpecHash) return false;
     if (!changeId) return true;
     return result.changeId === changeId || result.workflowId === changeId || result.items.some((item) => item.changeId === changeId);
   });
@@ -1345,6 +3221,12 @@ export function buildTestGateReport(
     }
   }
 
+  const bindingGap = plan.testSpecStatus && plan.testSpecStatus !== "approved";
+  if (bindingGap) {
+    blockers.push(`Test Spec ${plan.testSpecId ?? plan.specId} is ${plan.testSpecStatus}, not approved`);
+    failedGates.push("test-spec-approval");
+  }
+
   const sourceIsDraft = plan.source === "draft";
   const hasBlockingStandardGap = standardCompliance.some(
     (item) =>
@@ -1358,6 +3240,13 @@ export function buildTestGateReport(
   return {
     specId: plan.specId,
     specVersion: plan.specVersion,
+    testSpecPath: plan.testSpecPath,
+    testSpecId: plan.testSpecId,
+    testSpecVersion: plan.testSpecVersion,
+    testSpecHash: plan.testSpecHash,
+    testSpecStatus: plan.testSpecStatus,
+    testSpecApprovalEvidence: plan.testSpecApprovalEvidence,
+    sourceFeatureSpecHash: plan.sourceFeatureSpecHash,
     changeId: options.changeId ?? plan.changeId,
     decision: sourceIsDraft ? "draft-only" : failedGates.length > 0 || hasBlockingStandardGap ? "blocked" : "ready",
     requiredGates: gates.map((gate) => ({
@@ -1443,6 +3332,32 @@ function buildAgentEvidenceSummary(compliance: TestGateStandardCompliance[]): Te
   return [...byAgent.values()].sort((left, right) => left.ownerAgent.localeCompare(right.ownerAgent));
 }
 
+function requireTestSpecBinding(
+  state: MutableValidation,
+  artifact: Record<string, any> | undefined,
+  code: SpecosErrorCode,
+  options: { required: boolean; approved: boolean },
+): void {
+  const fields = ["testSpecPath", "testSpecId", "testSpecVersion", "testSpecHash", "testSpecStatus"] as const;
+  const present = fields.filter((field) => artifact?.[field] !== undefined);
+  if (!options.required && present.length === 0) return;
+
+  for (const field of fields) {
+    requireString(state, artifact, field, code, field);
+  }
+  requireOneOf(
+    state,
+    artifact?.testSpecStatus,
+    options.approved ? ["approved"] : ["preview", "draft", "in-review", "approved", "stale", "superseded"],
+    code,
+    "testSpecStatus",
+  );
+  requireString(state, artifact, "testSpecApprovalEvidence", code, "testSpecApprovalEvidence");
+  if (artifact?.sourceFeatureSpecHash !== undefined) {
+    requireString(state, artifact, "sourceFeatureSpecHash", code, "sourceFeatureSpecHash");
+  }
+}
+
 export function validateTestPlan(value: unknown): ValidationResult {
   const state: MutableValidation = { errors: [] };
   const plan = asRecord(value);
@@ -1469,8 +3384,22 @@ export function validateTestPlan(value: unknown): ValidationResult {
   if (plan?.changeId !== undefined) {
     requireString(state, plan, "changeId", "SPECOS_TEST_PLAN_INVALID", "changeId");
   }
-  requireString(state, plan, "featureName", "SPECOS_TEST_PLAN_INVALID", "featureName");
-  requireOneOf(state, plan?.source, ["accepted-spec", "draft"], "SPECOS_TEST_PLAN_INVALID", "source");
+  if (plan?.testSpecPath !== undefined) {
+    requireString(state, plan, "testSpecPath", "SPECOS_TEST_PLAN_INVALID", "testSpecPath");
+  }
+  if (plan?.testSpecId !== undefined) {
+    requireString(state, plan, "testSpecId", "SPECOS_TEST_PLAN_INVALID", "testSpecId");
+  }
+  if (plan?.testSpecVersion !== undefined) {
+    requireString(state, plan, "testSpecVersion", "SPECOS_TEST_PLAN_INVALID", "testSpecVersion");
+  }
+  if (plan?.testSpecHash !== undefined) {
+    requireString(state, plan, "testSpecHash", "SPECOS_TEST_PLAN_INVALID", "testSpecHash");
+  }
+  if (plan?.testSpecStatus !== undefined) {
+    requireOneOf(state, plan.testSpecStatus, ["preview", "draft", "in-review", "approved", "stale", "superseded"], "SPECOS_TEST_PLAN_INVALID", "testSpecStatus");
+  }
+
   requireFlowPlanArray(state, plan?.flows);
   requireEndpointPlanArray(state, plan?.endpoints);
 
@@ -1510,8 +3439,15 @@ export function validateTestPlan(value: unknown): ValidationResult {
     requireSecurityPolicy(state, plan.securityPolicy);
   }
   if (hasProductionStandard) {
-    requireQualityProfile(state, plan?.qualityProfile, "SPECOS_TEST_PLAN_INVALID", "qualityProfile");
     requireOneOf(state, plan?.riskTier, ["P0", "P1", "P2"], "SPECOS_TEST_PLAN_INVALID", "riskTier");
+    requireOneOf(
+      state,
+      plan?.qualityProfile,
+      ["backend-api", "frontend-ui", "fullstack-flow", "data-migration", "agent-workflow"],
+      "SPECOS_TEST_PLAN_INVALID",
+      "qualityProfile",
+    );
+    requireTestSpecBinding(state, plan, "SPECOS_TEST_PLAN_INVALID", { required: true, approved: true });
     if (!Array.isArray(plan?.standardRequirements) || plan.standardRequirements.length === 0) {
       state.errors.push(makeError("SPECOS_TEST_PLAN_INVALID", "standardRequirements"));
     }
@@ -1537,6 +3473,29 @@ export function validateTestSchedule(value: unknown): ValidationResult {
 
   requireString(state, schedule, "specId", "SPECOS_TEST_SCHEDULE_INVALID", "specId");
   requireString(state, schedule, "specVersion", "SPECOS_TEST_SCHEDULE_INVALID", "specVersion");
+  if (schedule?.testSpecPath !== undefined) {
+    requireString(state, schedule, "testSpecPath", "SPECOS_TEST_SCHEDULE_INVALID", "testSpecPath");
+  }
+  if (schedule?.testSpecId !== undefined) {
+    requireString(state, schedule, "testSpecId", "SPECOS_TEST_SCHEDULE_INVALID", "testSpecId");
+  }
+  if (schedule?.testSpecVersion !== undefined) {
+    requireString(state, schedule, "testSpecVersion", "SPECOS_TEST_SCHEDULE_INVALID", "testSpecVersion");
+  }
+  if (schedule?.testSpecStatus !== undefined) {
+    requireOneOf(state, schedule.testSpecStatus, ["preview", "draft", "in-review", "approved", "stale", "superseded"], "SPECOS_TEST_SCHEDULE_INVALID", "testSpecStatus");
+  }
+
+  if (schedule?.sourceFeatureSpecHash !== undefined) {
+    requireString(state, schedule, "sourceFeatureSpecHash", "SPECOS_TEST_SCHEDULE_INVALID", "sourceFeatureSpecHash");
+  }
+  if (schedule?.testSpecApprovalEvidence !== undefined) {
+    requireString(state, schedule, "testSpecApprovalEvidence", "SPECOS_TEST_SCHEDULE_INVALID", "testSpecApprovalEvidence");
+  }
+  if (schedule?.testSpecPath !== undefined || schedule?.testSpecId !== undefined || schedule?.testSpecVersion !== undefined || schedule?.testSpecStatus !== undefined) {
+    requireTestSpecBinding(state, schedule, "SPECOS_TEST_SCHEDULE_INVALID", { required: true, approved: false });
+  }
+
   requireString(state, schedule, "featureName", "SPECOS_TEST_SCHEDULE_INVALID", "featureName");
   requireString(state, schedule, "changeId", "SPECOS_TEST_SCHEDULE_INVALID", "changeId");
   requireOneOf(
@@ -1562,6 +3521,33 @@ export function validateScenarioResult(value: unknown): ValidationResult {
   requireString(state, scenario, "runId", "SPECOS_SCENARIO_RESULT_INVALID", "runId");
   requireString(state, scenario, "specId", "SPECOS_SCENARIO_RESULT_INVALID", "specId");
   requireString(state, scenario, "specVersion", "SPECOS_SCENARIO_RESULT_INVALID", "specVersion");
+  if (scenario?.testSpecPath !== undefined) {
+    requireString(state, scenario, "testSpecPath", "SPECOS_SCENARIO_RESULT_INVALID", "testSpecPath");
+  }
+  if (scenario?.testSpecId !== undefined) {
+    requireString(state, scenario, "testSpecId", "SPECOS_SCENARIO_RESULT_INVALID", "testSpecId");
+  }
+  if (scenario?.testSpecVersion !== undefined) {
+    requireString(state, scenario, "testSpecVersion", "SPECOS_SCENARIO_RESULT_INVALID", "testSpecVersion");
+  }
+  if (scenario?.testSpecStatus !== undefined) {
+    requireOneOf(state, scenario.testSpecStatus, ["preview", "draft", "in-review", "approved", "stale", "superseded"], "SPECOS_SCENARIO_RESULT_INVALID", "testSpecStatus");
+  }
+
+  if (scenario?.sourceFeatureSpecHash !== undefined) {
+    requireString(state, scenario, "sourceFeatureSpecHash", "SPECOS_SCENARIO_RESULT_INVALID", "sourceFeatureSpecHash");
+  }
+  if (scenario?.testSpecApprovalEvidence !== undefined) {
+    requireString(state, scenario, "testSpecApprovalEvidence", "SPECOS_SCENARIO_RESULT_INVALID", "testSpecApprovalEvidence");
+  }
+
+  if (hasProductionStandard) {
+    requireString(state, scenario, "testSpecPath", "SPECOS_SCENARIO_RESULT_INVALID", "testSpecPath");
+    requireString(state, scenario, "testSpecId", "SPECOS_SCENARIO_RESULT_INVALID", "testSpecId");
+    requireString(state, scenario, "testSpecVersion", "SPECOS_SCENARIO_RESULT_INVALID", "testSpecVersion");
+    requireOneOf(state, scenario?.testSpecStatus, ["approved"], "SPECOS_SCENARIO_RESULT_INVALID", "testSpecStatus");
+  }
+
   if (scenario?.standardVersion !== undefined) {
     requireOneOf(
       state,
@@ -1681,8 +3667,10 @@ export function validateBundle(value: unknown): ValidationResult {
 
   requireString(state, bundle?.workflow, "default", "SPECOS_BUNDLE_INVALID", "workflow.default");
   requireStringArray(state, bundle?.workflow?.available, "SPECOS_BUNDLE_INVALID", "workflow.available");
-  requireString(state, bundle?.entrypoints, "draftTemplate", "SPECOS_BUNDLE_INVALID", "entrypoints.draftTemplate");
-  requireString(state, bundle?.entrypoints, "specTemplate", "SPECOS_BUNDLE_INVALID", "entrypoints.specTemplate");
+  requireString(state, bundle?.entrypoints, "prdTemplate", "SPECOS_BUNDLE_INVALID", "entrypoints.prdTemplate");
+  requireString(state, bundle?.entrypoints, "designTemplate", "SPECOS_BUNDLE_INVALID", "entrypoints.designTemplate");
+  requireString(state, bundle?.entrypoints, "featureTemplate", "SPECOS_BUNDLE_INVALID", "entrypoints.featureTemplate");
+  requireString(state, bundle?.entrypoints, "issueTemplate", "SPECOS_BUNDLE_INVALID", "entrypoints.issueTemplate");
   requireString(state, bundle?.entrypoints, "workflowId", "SPECOS_BUNDLE_INVALID", "entrypoints.workflowId");
   requireBoolean(state, bundle?.capabilities, "refineSpec", "SPECOS_BUNDLE_INVALID", "capabilities.refineSpec");
   requireBoolean(state, bundle?.capabilities, "generateTestPlan", "SPECOS_BUNDLE_INVALID", "capabilities.generateTestPlan");
@@ -1716,14 +3704,25 @@ export function validateWorkflow(value: unknown): ValidationResult {
   requireString(state, workflow, "id", "SPECOS_WORKFLOW_INVALID", "id");
   requireString(state, workflow, "name", "SPECOS_WORKFLOW_INVALID", "name");
 
-  if (!Array.isArray(workflow?.steps) || workflow.steps.length === 0) {
+  const isDeclarative = workflow?.inputs !== undefined || workflow?.outputs !== undefined || workflow?.gates !== undefined;
+  if (isDeclarative) {
+    requireStringArray(state, workflow?.inputs, "SPECOS_WORKFLOW_INVALID", "inputs");
+    requireStringArray(state, workflow?.outputs, "SPECOS_WORKFLOW_INVALID", "outputs");
+    requireStringArray(state, workflow?.gates, "SPECOS_WORKFLOW_INVALID", "gates");
+  }
+
+  if (workflow?.steps !== undefined) {
+    if (!Array.isArray(workflow.steps) || workflow.steps.length === 0) {
+      state.errors.push(makeError("SPECOS_WORKFLOW_INVALID", "steps"));
+    } else {
+      workflow.steps.forEach((step, index) => {
+        const path = `steps[${index}]`;
+        requireString(state, step, "id", "SPECOS_WORKFLOW_INVALID", `${path}.id`);
+        requireString(state, step, "run", "SPECOS_WORKFLOW_INVALID", `${path}.run`);
+      });
+    }
+  } else if (!isDeclarative) {
     state.errors.push(makeError("SPECOS_WORKFLOW_INVALID", "steps"));
-  } else {
-    workflow.steps.forEach((step, index) => {
-      const path = `steps[${index}]`;
-      requireString(state, step, "id", "SPECOS_WORKFLOW_INVALID", `${path}.id`);
-      requireString(state, step, "run", "SPECOS_WORKFLOW_INVALID", `${path}.run`);
-    });
   }
 
   return result(state.errors);
@@ -1748,6 +3747,18 @@ function makeError(code: SpecosErrorCode, path: string): SpecosError {
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function requireArtifactDirectory(
+  state: MutableValidation,
+  object: Record<string, any> | undefined,
+  key: string,
+  path: string,
+): void {
+  requireString(state, object, key, "SPECOS_MANIFEST_INVALID", path);
+  if (isNonEmptyString(object?.[key]) && !isSafeRelativePath(object[key])) {
+    state.errors.push(makeError("SPECOS_MANIFEST_INVALID", path));
+  }
 }
 
 function requireObject(state: MutableValidation, value: unknown, code: SpecosErrorCode, path: string): void {
@@ -2251,13 +4262,30 @@ function requireTestScheduleTasks(state: MutableValidation, value: unknown): voi
       "SPECOS_TEST_SCHEDULE_INVALID",
       `${path}.agentRole`,
     );
-    requireOneOf(
-      state,
-      task?.type,
-      ["implementation", "api-test", "ui-test-gap"],
-      "SPECOS_TEST_SCHEDULE_INVALID",
-      `${path}.type`,
-    );
+      requireOneOf(
+        state,
+        task?.type,
+        [
+          "implementation",
+          "api-test",
+          "integration-test",
+          "e2e-test",
+          "performance-test",
+          "load-test",
+          "stress-test",
+          "spike-test",
+          "soak-test",
+          "concurrency-test",
+          "security-test",
+          "migration-test",
+          "compatibility-test",
+          "observability-test",
+          "chaos-test",
+          "ui-test-gap",
+        ],
+        "SPECOS_TEST_SCHEDULE_INVALID",
+        `${path}.type`,
+      );
     requireOneOf(state, task?.status, ["ready", "blocked"], "SPECOS_TEST_SCHEDULE_INVALID", `${path}.status`);
     requireStringArray(state, task?.inputs, "SPECOS_TEST_SCHEDULE_INVALID", `${path}.inputs`);
     requireStringArray(state, task?.outputs, "SPECOS_TEST_SCHEDULE_INVALID", `${path}.outputs`);
@@ -2274,9 +4302,21 @@ function requireTestScheduleTasks(state: MutableValidation, value: unknown): voi
       "SPECOS_TEST_SCHEDULE_INVALID",
       `${path}.traceability.endpoints`,
     );
-    if (task?.status === "blocked") {
-      requireString(state, task, "reason", "SPECOS_TEST_SCHEDULE_INVALID", `${path}.reason`);
-    }
+      if (task?.trackId === "execution" && task?.agentRole !== "execution-editor") {
+        state.errors.push(makeError("SPECOS_TEST_SCHEDULE_INVALID", `${path}.agentRole`));
+      }
+      if (task?.trackId === "testing" && task?.agentRole === "execution-editor") {
+        state.errors.push(makeError("SPECOS_TEST_SCHEDULE_INVALID", `${path}.agentRole`));
+      }
+      if (task?.trackId === "execution" && task?.type !== "implementation") {
+        state.errors.push(makeError("SPECOS_TEST_SCHEDULE_INVALID", `${path}.type`));
+      }
+      if (task?.type === "ui-test-gap" && (task?.status !== "blocked" || task?.agentRole !== "playwright-test-agent")) {
+        state.errors.push(makeError("SPECOS_TEST_SCHEDULE_INVALID", `${path}.type`));
+      }
+      if (task?.status === "blocked") {
+        requireString(state, task, "reason", "SPECOS_TEST_SCHEDULE_INVALID", `${path}.reason`);
+      }
   });
 }
 

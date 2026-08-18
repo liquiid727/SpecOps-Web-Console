@@ -1,0 +1,333 @@
+{
+  "specId": "reward-order",
+  "specVersion": "1.2.0",
+  "changeId": "reward-order-ready",
+  "decision": "blocked",
+  "requiredGates": [
+    {
+      "id": "reward-order-ready-gate",
+      "type": "release",
+      "requiredTestTypes": [
+        "api",
+        "scenario",
+        "performance",
+        "concurrency"
+      ],
+      "blocking": true
+    }
+  ],
+  "passedGates": [],
+  "failedGates": [
+    "reward-order-ready-gate",
+    "production-standard"
+  ],
+  "missingEvidence": [],
+  "blockers": [
+    "std.p0.api.contract failed: happy/error 断言通过，limit 分支通过但 p95 偏高",
+    "std.p1.security.api failed: happy/error 断言通过，limit 分支通过但 p95 偏高",
+    "reward-order-ready-gate api failed: happy/error 断言通过，limit 分支通过但 p95 偏高"
+  ],
+  "runIds": [
+    "run-2026-05-28-ready",
+    "run-2026-05-31T11-30-43-046Z"
+  ],
+  "standardCompliance": [
+    {
+      "requirementId": "std.p0.api.contract",
+      "status": "passed",
+      "riskTier": "P0",
+      "ownerAgent": "test-editor",
+      "gateImpact": "blocking",
+      "evidence": [
+        "trace",
+        "raw-report"
+      ],
+      "summary": "happy/error/limit/flow 全部分支通过"
+    },
+    {
+      "requirementId": "std.p0.api.contract",
+      "status": "passed",
+      "riskTier": "P0",
+      "ownerAgent": "test-editor",
+      "gateImpact": "warning",
+      "evidence": [
+        "trace",
+        "raw-report"
+      ],
+      "summary": "happy/error/edge 全部分支通过"
+    },
+    {
+      "requirementId": "std.p0.api.contract",
+      "status": "failed",
+      "riskTier": "P0",
+      "ownerAgent": "test-editor",
+      "gateImpact": "blocking",
+      "evidence": [
+        "trace",
+        "raw-report"
+      ],
+      "summary": "happy/error 断言通过，limit 分支通过但 p95 偏高"
+    },
+    {
+      "requirementId": "std.p0.api.contract",
+      "status": "passed",
+      "riskTier": "P0",
+      "ownerAgent": "test-editor",
+      "gateImpact": "warning",
+      "evidence": [
+        "trace",
+        "raw-report"
+      ],
+      "summary": "happy/error/edge 全部通过"
+    },
+    {
+      "requirementId": "std.p0.scenario.e2e",
+      "status": "passed",
+      "riskTier": "P0",
+      "ownerAgent": "playwright-test-agent",
+      "gateImpact": "blocking",
+      "evidence": [
+        "trace",
+        "raw-report",
+        "screenshot"
+      ],
+      "summary": "主路径步骤全部通过"
+    },
+    {
+      "requirementId": "std.p0.scenario.e2e",
+      "status": "passed",
+      "riskTier": "P0",
+      "ownerAgent": "playwright-test-agent",
+      "gateImpact": "blocking",
+      "evidence": [
+        "trace",
+        "raw-report",
+        "screenshot"
+      ],
+      "summary": "库存不足错误码和页面提示一致"
+    },
+    {
+      "requirementId": "std.p0.performance.slo",
+      "status": "passed",
+      "riskTier": "P0",
+      "ownerAgent": "performance-test-agent",
+      "gateImpact": "blocking",
+      "evidence": [
+        "trace",
+        "raw-report"
+      ],
+      "summary": "p95 和错误率均满足 P0 SLO"
+    },
+    {
+      "requirementId": "std.p0.concurrency.invariant",
+      "status": "passed",
+      "riskTier": "P0",
+      "ownerAgent": "concurrency-test-agent",
+      "gateImpact": "blocking",
+      "evidence": [
+        "trace",
+        "raw-report"
+      ],
+      "summary": "并发库存不足场景保持稳定业务结果"
+    },
+    {
+      "requirementId": "std.p1.security.api",
+      "status": "passed",
+      "riskTier": "P0",
+      "ownerAgent": "test-editor",
+      "gateImpact": "blocking",
+      "evidence": [
+        "trace",
+        "raw-report"
+      ],
+      "summary": "happy/error/limit/flow 全部分支通过"
+    },
+    {
+      "requirementId": "std.p1.security.api",
+      "status": "passed",
+      "riskTier": "P0",
+      "ownerAgent": "test-editor",
+      "gateImpact": "warning",
+      "evidence": [
+        "trace",
+        "raw-report"
+      ],
+      "summary": "happy/error/edge 全部分支通过"
+    },
+    {
+      "requirementId": "std.p1.security.api",
+      "status": "failed",
+      "riskTier": "P0",
+      "ownerAgent": "test-editor",
+      "gateImpact": "blocking",
+      "evidence": [
+        "trace",
+        "raw-report"
+      ],
+      "summary": "happy/error 断言通过，limit 分支通过但 p95 偏高"
+    },
+    {
+      "requirementId": "std.p1.security.api",
+      "status": "passed",
+      "riskTier": "P0",
+      "ownerAgent": "test-editor",
+      "gateImpact": "warning",
+      "evidence": [
+        "trace",
+        "raw-report"
+      ],
+      "summary": "happy/error/edge 全部通过"
+    },
+    {
+      "requirementId": "std.p0.api.contract",
+      "status": "passed",
+      "riskTier": "P0",
+      "ownerAgent": "test-editor",
+      "gateImpact": "blocking",
+      "evidence": [
+        "trace",
+        "raw-report"
+      ],
+      "summary": "happy/error/limit/flow 全部分支通过"
+    },
+    {
+      "requirementId": "std.p0.api.contract",
+      "status": "passed",
+      "riskTier": "P0",
+      "ownerAgent": "test-editor",
+      "gateImpact": "warning",
+      "evidence": [
+        "trace",
+        "raw-report"
+      ],
+      "summary": "happy/error/edge 全部分支通过"
+    },
+    {
+      "requirementId": "std.p0.api.contract",
+      "status": "failed",
+      "riskTier": "P0",
+      "ownerAgent": "test-editor",
+      "gateImpact": "blocking",
+      "evidence": [
+        "trace",
+        "raw-report"
+      ],
+      "summary": "happy/error 断言通过，limit 分支通过但 p95 偏高"
+    },
+    {
+      "requirementId": "std.p0.api.contract",
+      "status": "passed",
+      "riskTier": "P0",
+      "ownerAgent": "test-editor",
+      "gateImpact": "warning",
+      "evidence": [
+        "trace",
+        "raw-report"
+      ],
+      "summary": "happy/error/edge 全部通过"
+    },
+    {
+      "requirementId": "std.p0.scenario.e2e",
+      "status": "passed",
+      "riskTier": "P0",
+      "ownerAgent": "playwright-test-agent",
+      "gateImpact": "blocking",
+      "evidence": [
+        "trace",
+        "raw-report",
+        "screenshot"
+      ],
+      "summary": "主路径步骤全部通过"
+    },
+    {
+      "requirementId": "std.p0.scenario.e2e",
+      "status": "passed",
+      "riskTier": "P0",
+      "ownerAgent": "playwright-test-agent",
+      "gateImpact": "blocking",
+      "evidence": [
+        "trace",
+        "raw-report",
+        "screenshot"
+      ],
+      "summary": "库存不足错误码和页面提示一致"
+    },
+    {
+      "requirementId": "std.p0.performance.slo",
+      "status": "passed",
+      "riskTier": "P0",
+      "ownerAgent": "performance-test-agent",
+      "gateImpact": "blocking",
+      "evidence": [
+        "trace",
+        "raw-report"
+      ],
+      "summary": "p95 和错误率均满足 P0 SLO"
+    },
+    {
+      "requirementId": "std.p0.concurrency.invariant",
+      "status": "passed",
+      "riskTier": "P0",
+      "ownerAgent": "concurrency-test-agent",
+      "gateImpact": "blocking",
+      "evidence": [
+        "trace",
+        "raw-report"
+      ],
+      "summary": "并发库存不足场景保持稳定业务结果"
+    }
+  ],
+  "riskSummary": {
+    "P0": {
+      "passed": 17,
+      "failed": 3,
+      "missing": 0,
+      "waived": 0,
+      "blocked": 3
+    },
+    "P1": {
+      "passed": 0,
+      "failed": 0,
+      "missing": 0,
+      "waived": 0,
+      "blocked": 0
+    },
+    "P2": {
+      "passed": 0,
+      "failed": 0,
+      "missing": 0,
+      "waived": 0,
+      "blocked": 0
+    }
+  },
+  "agentEvidenceSummary": [
+    {
+      "ownerAgent": "test-editor",
+      "passed": 9,
+      "failed": 3,
+      "missing": 0,
+      "waived": 0
+    },
+    {
+      "ownerAgent": "concurrency-test-agent",
+      "passed": 2,
+      "failed": 0,
+      "missing": 0,
+      "waived": 0
+    },
+    {
+      "ownerAgent": "performance-test-agent",
+      "passed": 2,
+      "failed": 0,
+      "missing": 0,
+      "waived": 0
+    },
+    {
+      "ownerAgent": "playwright-test-agent",
+      "passed": 4,
+      "failed": 0,
+      "missing": 0,
+      "waived": 0
+    }
+  ]
+}

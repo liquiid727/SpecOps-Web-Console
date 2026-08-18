@@ -7,7 +7,7 @@ import {
   getCollectionDragFeedback,
   getCollectionDropPlacement,
   getDragAutoScrollDelta
-} from "@/lib/discover-dnd";
+} from "@/features/catalog/dnd";
 
 const dragType = "application/spec-web-ui-collection-item";
 const scopeLabels = {

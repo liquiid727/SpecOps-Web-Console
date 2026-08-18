@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import * as discover from "@/lib/discover";
+import * as discover from "@/features/catalog/preferences";
 import type { CatalogAsset, DiscoverPreferences, PresetBundle } from "@/lib/types";
 
 const catalog: CatalogAsset[] = [
@@ -30,8 +30,8 @@ const catalog: CatalogAsset[] = [
     appliesTo: ["frontend"],
     dependsOn: [],
     conflictsWith: [],
-    sourcePath: "spec-draft/_template/feature/product-ui.template.md",
-    files: ["spec-draft/_template/feature/product-ui.template.md"],
+      sourcePath: ".requirements/templates/prd-feature-draft.template.md",
+      files: [".requirements/templates/prd-feature-draft.template.md"],
     version: "1.0.0"
   },
   {
@@ -50,18 +50,18 @@ const catalog: CatalogAsset[] = [
     version: "1.0.0"
   },
   {
-    id: "skill-tool-config-ui",
+    id: "skill-spec-to-test",
     type: "skill",
-    title: "Tool Config UI Skill",
-    summary: "Patterns for safe agent configuration interfaces.",
+    title: "Spec to Test Skill",
+    summary: "Independent Test Specs from approved Feature Specs.",
     direction: "frontend",
     stacks: ["react"],
     tags: ["skill", "config"],
     appliesTo: ["frontend"],
     dependsOn: [],
     conflictsWith: [],
-    sourcePath: ".skills/tool-config-ui/SKILL.md",
-    files: [".skills/tool-config-ui/SKILL.md"],
+    sourcePath: "skills/developer/spec-to-test/SKILL.md",
+    files: ["skills/developer/spec-to-test/SKILL.md"],
     version: "1.0.0"
   },
   {
@@ -123,13 +123,14 @@ describe("buildPresetBundlePreview", () => {
 
     expect(preview.assetCount).toBe(3);
     expect(preview.assetTypeCounts).toEqual({
-      agent_role: 1,
-      agent_team: 0,
-      rule: 1,
-      skill: 0,
-      spec_template: 1
+        agent_role: 1,
+        agent_team: 0,
+        engineering_pack: 0,
+        rule: 1,
+        skill: 0,
+        spec_template: 1
     });
-    expect(preview.exportDirectories).toEqual(["ai", "rules", "spec-draft"]);
+    expect(preview.exportDirectories).toEqual([".requirements", "ai", "rules"]);
   });
 });
 

@@ -5,10 +5,11 @@
 - Product intent: [spec-web-ui/README.md](../README.md)
 - Frontend delivery rule: [rules/frontend/react-workbench-delivery.md](../../rules/frontend/react-workbench-delivery.md)
 - UI handoff rule: [rules/ui/pencil-prototype-ui.md](../../rules/ui/pencil-prototype-ui.md)
-- UI role: [.agents/roles/ui-design-agent.md](../../.agents/roles/ui-design-agent.md)
-- Requirement flow draft: [spec-draft/requirement-intake-flow.md](../../spec-draft/requirement-intake-flow.md)
+- Shared UI role: [.agents/roles/ui-design-agent.md](../../.agents/roles/ui-design-agent.md)
+- Mode overlays: [GoalSpec](../../.agents/modes/goalspec/roles/) is the official mode; [LiteSpec](../../.agents/modes/litespec/roles/) and [EnterpriseSpec](../../.agents/modes/enterprisespec/roles/) remain as optional plugins.
+- Requirement flow: [GoalSpec / Agent-Native SDLC](../../docs/spec-modes/GoalSpec/README.md)
 
-This document is the working UX reference for `spec-web-ui`. It is draft-only until a SpecOS Contract accepts it.
+This document is the working UX reference for `spec-web-ui`. It is draft-only until a feature spec accepts it.
 
 ## Product Positioning
 
@@ -24,7 +25,7 @@ It helps developers discover, select, and assemble the reusable assets needed to
 - test patterns
 - project conventions
 
-It is not the requirement intake surface for a target project. A concrete project's requirement lifecycle belongs in that target repository, usually through `spec-draft/`, `specs/changes/`, `tests/`, review notes, and acceptance records. `spec-web-ui` may export assets into that repository, but it should not become the source of truth for `draft -> change -> test-plan -> result -> acceptance`.
+It is not the requirement intake surface for a target project. A concrete project's requirement lifecycle belongs in that target repository, usually through a `.requirements/` Requirement Package (`.requirements/requirements/R0NN-<slug>/{prd.md, spec.md, test.md, issues.md}`) alongside `design/` and review notes. `spec-web-ui` may export assets into that repository, but it should not become the source of truth for `PRD -> Spec -> Spec-Test -> Issues -> Issue execution -> Feature Verify`.
 
 The product is not a general admin dashboard. It should not make users feel they are managing a large back office system. Its main job is to help a developer answer:
 

@@ -1,0 +1,49 @@
+{
+  "id": "skill-error-logging-governance",
+  "type": "skill",
+  "title": "Error Logging Governance",
+  "summary": "Use when a Go backend task touches logging packages, error packages, handler error mapping, structured logging fields, audit logs, or transport-to-domain error conversion rules.",
+  "summaryZh": "适用于 Go 后端错误链路与日志治理，包括 handler 错误映射、结构化日志字段、审计日志和敏感信息脱敏边界。",
+  "direction": "fullstack",
+  "categories": [
+    "backend"
+  ],
+  "stacks": [
+    "go",
+    "react"
+  ],
+  "tags": [
+    "error",
+    "logging",
+    "errno",
+    "errcode",
+    "reusable",
+    "go-pack"
+  ],
+  "appliesTo": [
+    "backend",
+    "frontend"
+  ],
+  "dependsOn": [],
+  "conflictsWith": [],
+  "sourcePath": "assets/skills/error-logging-governance/SKILL.md",
+  "files": [
+    "skills/developer/error-logging-governance/SKILL.md",
+    "skills/developer/error-logging-governance/agents/openai.yaml",
+    "skills/developer/error-logging-governance/references/error-chain-rules.md",
+    "skills/developer/error-logging-governance/references/logging-rules.md",
+    "skills/developer/error-logging-governance/references/review-checklist.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "按项目类型确认是否启用该 skill，并检查引用资料是否适配目标仓库。"
+  ],
+  "sampleOutput": "可复用 skill 说明、触发条件、参考资料和运行边界。",
+  "contentFiles": {
+    "skills/developer/error-logging-governance/SKILL.md": "assets/skills/error-logging-governance/SKILL.md",
+    "skills/developer/error-logging-governance/agents/openai.yaml": "assets/skills/error-logging-governance/agents/openai.yaml",
+    "skills/developer/error-logging-governance/references/error-chain-rules.md": "assets/skills/error-logging-governance/references/error-chain-rules.md",
+    "skills/developer/error-logging-governance/references/logging-rules.md": "assets/skills/error-logging-governance/references/logging-rules.md",
+    "skills/developer/error-logging-governance/references/review-checklist.md": "assets/skills/error-logging-governance/references/review-checklist.md"
+  }
+}

@@ -2,12 +2,12 @@
 
 ## Mission
 
-Define end-to-end business journey coverage that validates SpecOS Contracts across UI, API, data setup, and normalized reporting.
+Define end-to-end business journey coverage that validates feature specs across UI, API, data setup, and normalized reporting.
 
 ## Required Inputs
 
 - Accepted spec or draft-only scenario with traceable flow names.
-- Existing `tests/plans/`, `tests/scenarios/`, and `tests/results/` conventions.
+- Existing `.requirements/plans/`, `.requirements/scenarios/`, and `.requirements/results/` conventions.
 - API, UI route, fixture, account, and environment preconditions when available.
 
 ## Required Outputs
@@ -26,3 +26,11 @@ Define end-to-end business journey coverage that validates SpecOS Contracts acro
 - Keep scenario names stable across spec, test plan, execution asset, and result report.
 - Mark missing P0/P1 cross-layer evidence as blocked until normalized results prove readiness.
 - Treat `.agents/manifest.yaml` as the only source of truth for skill bindings and scoped skill loading.
+
+## CLI GUI MVP02 Foundation Contract
+
+- Inputs: Feature/Test Spec business journeys, runtime/API contracts, seeded workspace/engine fixtures, and cleanup policy.
+- Outputs: UI/API/data/cleanup journey matrix, environment checklist, execution result, and normalized scenario mapping.
+- Do not: duplicate runtime business logic, bypass cleanup, or use unit/DOM fixtures as full cross-layer proof.
+- Handoff: `journey`, `preconditions`, `actions`, `apiAssertions`, `dataState`, `cleanup`, `artifactRefs`, `blockers`.
+- Block when: the journey cannot prove UI action, runtime/API result, persisted state, and cleanup together.

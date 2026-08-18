@@ -1,0 +1,28 @@
+{
+  "id": "stra-rail",
+  "name": "Stra-Rail",
+  "nameZh": "星穹轨道",
+  "description": "Deep starfield navy with dual pink-cyan accents. Floating ice crystals, sparkle crosses, petals and ribbons layer a dreamy galactic particle field over the stage. Noto Serif SC heavy for hero text. Soft, fantasy-editorial.",
+  "descriptionZh": "深海军蓝星空底色，粉/青双强调色。冰晶菱形、星光十字、花瓣、缎带浮动粒子场是设计签名。Noto Serif SC 重衬线 hero 字。梦幻感 × 工程叙事。",
+  "mood": [
+    "dark",
+    "dreamy",
+    "fantasy",
+    "galactic",
+    "feminine",
+    "soft"
+  ],
+  "bestFor": [
+    "AI 工具开发者叙事",
+    "技术分享 - 感性视角",
+    "游戏 / 二次元题材",
+    "个人成长 / 回顾类视频",
+    "轻量 keynote / 产品故事"
+  ],
+  "preview": {
+    "shell": "#080d24",
+    "surface": "#0E1438",
+    "text": "#E8F5FF",
+    "accent": "#F07CB8"
+  }
+}

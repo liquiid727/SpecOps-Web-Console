@@ -1,0 +1,37 @@
+{
+  "id": "template-basic-draft-example",
+  "type": "spec_template",
+  "title": "Basic Feature Draft Example",
+  "summary": "Lightweight feature draft example for quick goal, flow, API, rule, and note capture.",
+  "direction": "fullstack",
+  "stacks": [
+    "go",
+    "react",
+    "python"
+  ],
+  "tags": [
+    "draft",
+    "example",
+    "template"
+  ],
+  "appliesTo": [
+    "backend",
+    "frontend",
+    "ui"
+  ],
+  "dependsOn": [],
+  "conflictsWith": [],
+  "sourcePath": "assets/templates/specs/template-basic-draft-example/draft.example.md",
+  "files": [
+    ".requirements/examples/R000-example-basic/prd.example.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "先写清楚目标和主流程",
+    "把接口、规则和备注保持在同一份 draft 中"
+  ],
+  "sampleOutput": "一份轻量级 Feature Draft 示例。",
+  "contentFiles": {
+    ".requirements/examples/R000-example-basic/prd.example.md": "assets/templates/specs/template-basic-draft-example/draft.example.md"
+  }
+}

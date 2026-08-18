@@ -12,13 +12,14 @@ Keep SpecOS specs useful by making every semantic change declare which neighbori
 
 Require a `Sync Handoff` when a task changes meaning, behavior, ownership, routing, validation, or release evidence in any of these surfaces:
 
-- `spec-draft/`, `specs/changes/`, or `specs/current/`
+- `docs/spec-modes/`
+- `.requirements/requirements/R0NN-<slug>/`, `design/`, or `docs/spec-modes/`
 - `.agents/manifest.yaml`
-- `.agents/roles/` or `ai/agents/`
-- `.skills/`
+- `.agents/roles/`, `.agents/modes/`, `ai/agents/`, or `ai/agents/modes/`
+- `skills/developer/`
 - `rules/` or `.rules/`
 - `ai/workflows/`
-- `tests/`, `reviews/`, or `scripts/checks/`
+- `.requirements/plans/`, `.requirements/schedules/`, `.requirements/bruno/`, or `scripts/checks/`
 - generated bundle, export, or release evidence formats
 
 For typo-only, formatting-only, or comment-only edits, write `sync_handoff_status: not_applicable` in the CI Record and state the reason.
@@ -29,15 +30,17 @@ Use this matrix to decide what must be checked before handoff.
 
 | Changed surface | Neighbor assets to check | Typical owner agent |
 | --- | --- | --- |
-| `specs/changes/*/spec.md` | test plan, schedules, review reports, current context impact, agent ownership, release gates | `spec-editor` |
-| `specs/current/` | Project Memory, Change Workspace, archive notes, tests, rules, role context includes | `spec-editor` |
-| `.agents/manifest.yaml` | `.agents/roles/*`, `ai/agents/*`, `.agents/README.md`, route preview expectations, scoped skills | `pola` with affected role owner |
-| `.agents/roles/*` | matching `ai/agents/*`, manifest metadata, context includes, role outputs | affected role owner |
-| `ai/agents/*` | matching `.agents/roles/*`, manifest outputs, workflow docs | affected role owner |
-| `.skills/*` | manifest skill binding, role prompt assumptions, skill references, CI evidence if delivery-related | skill owner role |
+| `docs/spec-modes/*` | agent loading order, active handoff notes, release gates, template defaults | `pola` or `spec-editor` |
+| `design/*` | requirement packages, feature specs, UI design notes, rules, review gates | `spec-editor` |
+| `.requirements/README.md` | dependent feature specs, release gates, implementation ordering, tests | `spec-editor` |
+| `.requirements/requirements/*/spec.md` | implementation notes, tests, reviews, API contracts, release gates | `spec-editor` |
+| `.agents/manifest.yaml` | `.agents/roles/*`, `.agents/modes/*`, `ai/agents/*`, `ai/agents/modes/*`, `.agents/README.md`, route preview expectations, scoped skills | `pola` with affected role owner |
+| `.agents/roles/*` or `.agents/modes/*` | matching `ai/agents/*` or `ai/agents/modes/*`, manifest metadata, context includes, role outputs | affected role owner |
+| `ai/agents/*` or `ai/agents/modes/*` | matching `.agents/roles/*` or `.agents/modes/*`, manifest outputs, workflow docs | affected role owner |
+| `skills/developer/*` | manifest skill binding, role prompt assumptions, skill references, CI evidence if delivery-related | skill owner role |
 | `rules/*` or `.rules/*` | affected specs, tests, role prompts, release gates, rule map | `reviewer` or domain owner |
 | `ai/workflows/*` | `.agents/README.md`, route preview docs, role contracts, CI/release handoff | `execution-editor` |
-| `tests/*` | spec ids, requirement ids, owner agents, result normalization, gate reports | `test-editor` |
+| `.requirements/plans/*`, `.requirements/schedules/*`, `.requirements/results/*` | spec ids, requirement ids, owner agents, result normalization, gate reports | `test-editor` |
 | `scripts/checks/*` | local reproducibility docs, CI rule docs, package build/test commands, CI Record evidence | `ci-editor` |
 
 ## Sync Handoff Template
@@ -56,7 +59,7 @@ waived_assets:
 open_sync_risks:
   - <risk, or none>
 owner_agent: <registered role from .agents/manifest.yaml, or pola>
-next_gate: <review | test | ci | qa | promote | none>
+next_gate: <review | test | ci | qa | merge | none>
 ```
 
 ## Coordinator Rules
@@ -69,7 +72,7 @@ next_gate: <review | test | ci | qa | promote | none>
 
 ## CI Gateway Rules
 
-- `team-ci-agent` reads the latest task-relevant `Sync Handoff` before Git actions.
+- `review-it` and `ship-it` read the latest task-relevant `Sync Handoff` before Git actions.
 - Missing sync evidence for semantic changes means `sync_handoff_status: partial` or `fail`, never `pass`.
 - A `pass` status requires either updated neighbor assets or explicit waivers for every relevant neighbor surface.
 - A `not_applicable` status is allowed only for non-semantic edits and must include the reason under skipped checks or sync evidence.

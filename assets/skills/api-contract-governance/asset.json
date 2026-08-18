@@ -1,0 +1,45 @@
+{
+  "id": "skill-api-contract-governance",
+  "type": "skill",
+  "title": "Api Contract Governance",
+  "summary": "Use when a Go backend task touches interfaces or transport-layer request and response models, handler success payloads, Swagger request or response annotations, API time serialization, SafeTime, or response wrapping rules.",
+  "summaryZh": "适用于 Go 后端接口契约治理，包括显式 request/response 模型、Swagger 注解、API 时间序列化以及响应封装边界判断。",
+  "direction": "backend",
+  "categories": [
+    "backend"
+  ],
+  "stacks": [
+    "go"
+  ],
+  "tags": [
+    "api",
+    "request-response",
+    "safetime",
+    "swagger",
+    "reusable",
+    "go-pack"
+  ],
+  "appliesTo": [
+    "backend"
+  ],
+  "dependsOn": [],
+  "conflictsWith": [],
+  "sourcePath": "assets/skills/api-contract-governance/SKILL.md",
+  "files": [
+    "skills/developer/api-contract-governance/SKILL.md",
+    "skills/developer/api-contract-governance/agents/openai.yaml",
+    "skills/developer/api-contract-governance/references/api-contract-rules.md",
+    "skills/developer/api-contract-governance/references/review-checklist.md"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "按项目类型确认是否启用该 skill，并检查引用资料是否适配目标仓库。"
+  ],
+  "sampleOutput": "可复用 skill 说明、触发条件、参考资料和运行边界。",
+  "contentFiles": {
+    "skills/developer/api-contract-governance/SKILL.md": "assets/skills/api-contract-governance/SKILL.md",
+    "skills/developer/api-contract-governance/agents/openai.yaml": "assets/skills/api-contract-governance/agents/openai.yaml",
+    "skills/developer/api-contract-governance/references/api-contract-rules.md": "assets/skills/api-contract-governance/references/api-contract-rules.md",
+    "skills/developer/api-contract-governance/references/review-checklist.md": "assets/skills/api-contract-governance/references/review-checklist.md"
+  }
+}

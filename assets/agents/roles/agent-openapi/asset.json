@@ -1,0 +1,41 @@
+{
+  "id": "agent-openapi",
+  "type": "agent_role",
+  "tier": "specialist",
+  "managedBy": "architecture-agent",
+  "title": "OpenAPI Agent",
+  "summary": "Transforms feature spec decisions into stable API contracts and examples.",
+  "direction": "fullstack",
+  "stacks": [
+    "go",
+    "react"
+  ],
+  "tags": [
+    "openapi",
+    "api",
+    "contract"
+  ],
+  "appliesTo": [
+    "backend",
+    "frontend"
+  ],
+  "dependsOn": [
+    "agent-spec-editor"
+  ],
+  "conflictsWith": [],
+  "sourcePath": "assets/agents/roles/agent-openapi/openapi-agent.md",
+  "files": [
+    "ai/agents/openapi-agent.md",
+    ".requirements/templates/openapi.example.yaml"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "为 API 草案补 request/response 示例",
+    "标明哪些字段和状态仍待确认"
+  ],
+  "sampleOutput": "OpenAPI 合同、字段说明和待确认 schema 列表。",
+  "contentFiles": {
+    "ai/agents/openapi-agent.md": "assets/agents/roles/agent-openapi/openapi-agent.md",
+    ".requirements/templates/openapi.example.yaml": "assets/agents/roles/agent-openapi/openapi.example.yaml"
+  }
+}

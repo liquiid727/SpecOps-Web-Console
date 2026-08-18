@@ -1,0 +1,44 @@
+{
+  "id": "template-product-spec-yaml",
+  "type": "spec_template",
+  "title": "Product Spec YAML Template",
+  "summary": "Structured YAML template for product-level actors, flows, constraints, APIs, data, metrics, risks, and acceptance before formal SpecOS normalization.",
+  "direction": "fullstack",
+  "categories": [
+    "product"
+  ],
+  "stacks": [
+    "go",
+    "react",
+    "python",
+    "specos"
+  ],
+  "tags": [
+    "product",
+    "spec",
+    "yaml",
+    "template"
+  ],
+  "appliesTo": [
+    "backend",
+    "frontend",
+    "ui"
+  ],
+  "dependsOn": [
+    "template-prd-draft"
+  ],
+  "conflictsWith": [],
+  "sourcePath": "assets/templates/specs/template-product-spec-yaml/product-spec.template.yaml",
+  "files": [
+    ".requirements/templates/product-spec.template.yaml"
+  ],
+  "version": "1.0.0",
+  "draftHints": [
+    "保持 YAML key 为英文",
+    "至少补齐 product、actors、flows、constraints、apis、data、risks 和 acceptance"
+  ],
+  "sampleOutput": "一份可供后续 agent 消费的 Product Spec YAML。",
+  "contentFiles": {
+    ".requirements/templates/product-spec.template.yaml": "assets/templates/specs/template-product-spec-yaml/product-spec.template.yaml"
+  }
+}

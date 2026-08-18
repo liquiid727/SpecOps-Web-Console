@@ -1,7 +1,0 @@
-interface:
-  display_name: "Team CI Agent"
-  short_description: "Portable Git validation and CI record guidance"
-  default_prompt: "Use $team-ci-agent to validate this change for commit, PR, or merge, follow the repository commit emoji/type convention, and emit a CI Record."
-
-policy:
-  allow_implicit_invocation: true
