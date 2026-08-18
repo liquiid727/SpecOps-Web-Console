@@ -77,8 +77,14 @@ runs/
 .model-routing-loop-state.json
 memory/context-db/
 tests/results/*.json
-cli-gui/.ccpanes/
-cli-gui/data/
+.requirements/*.json
+.requirements/plans/*.json
+.requirements/schedules/*.json
+.requirements/bruno/
+.requirements/results/
+.requirements/performance/
+.requirements/concurrency/
+.requirements/scenarios/
 output/
 
 # private planning scratch
