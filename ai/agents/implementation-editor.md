@@ -13,7 +13,7 @@ Apply feature specs to code, scripts, contracts, and tests with minimal, reviewa
 ## Required Outputs
 
 - Focused code or artifact changes.
-- Implementation-coupled unit tests close to the changed modules, such as `tests/unit/` or existing local `*.test.*` files.
+- Implementation-coupled unit tests close to the changed modules, such as local `*.test.*` files.
 - Validation evidence or a clear note explaining why validation was skipped.
 - Remaining risks, assumptions, and next steps.
 

@@ -41,7 +41,7 @@ work_types:
 
   spec:
     rules:
-      - .features/_rules/README.md
+      - .requirements/README.md
       - rules/shared/artifact-locations.md
       - rules/testing/production-test-standards.md
       - rules/shared/error-code-governance.md
@@ -53,7 +53,7 @@ work_types:
 
   tests:
     rules:
-      - tests/README.md
+      - .requirements/README.md
       - rules/shared/artifact-locations.md
       - rules/testing/production-test-standards.md
       - rules/ci/spec-release-gates.md

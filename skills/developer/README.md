@@ -2,6 +2,8 @@
 
 这里集中存放 SpecOS 项目可复用的开发人员通用 Skill。当前共 29 个，覆盖需求分析、架构设计、编码测试、评审交付和技术写作等场景。
 
+> **本仓库的现行研发工作流是 GoalSpec（Agent-Native SDLC），统一入口为 `/requirement-package` skill（`.claude/skills/requirement-package/SKILL.md`）**：一个需求一个 Requirement Package（`.requirements/requirements/R0NN-<slug>/{prd,spec,test,issues}.md`），稳定 ID 串联 REQ→SPEC→TEST→ISSUE。下面的 `prd` / `prd-to-spec` / `spec-to-test` / `to-issues` / `loop-it` 是这套链路的旧版构建块，作为能力库保留；新项目请以 `requirement-package` 为准。
+
 每个 Skill 都是独立目录，入口为 `skills/developer/<skill-name>/SKILL.md`。项目路由不会自动加载整个目录；需要使用某个 Skill 时，应在 `.agents/manifest.yaml` 对应角色中显式声明，避免所有角色共享过多上下文。
 
 ## Skill 在交付体系中的位置
@@ -23,7 +25,7 @@ PRD
   -> ship-it
 ```
 
-主链路产物的存放位置由 `.specos/manifest.yaml` `artifacts` 统一声明（默认 PRD → `.prd/`，Feature Spec 与 Test Spec → `.features/<SPEC-ID>-<slug>/`，本地 Issue → `.issues/`），解析顺序与自定义协议见 `rules/shared/artifact-locations.md`。
+主链路产物的存放位置由 `.specos/manifest.yaml` `artifacts` 统一声明（现行默认：需求包 → `.requirements/requirements/R0NN-<slug>/`，模板 → `.requirements/templates/`；旧全局目录 `.prd/` `.features/` `.issues/` 已归档至 `archive/legacy/`），解析顺序与自定义协议见 `rules/shared/artifact-locations.md`。
 
 主链路中的职责不可互相替代：
 

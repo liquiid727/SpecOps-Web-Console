@@ -7,12 +7,12 @@ Maintain independent spec-driven verification across scenarios, API contracts, a
 ## Required Inputs
 
 - Approved Feature Spec with stable `spec_id`, `spec_version`, and approval evidence; draft inputs may produce preview-only Test Specs.
-- Existing `tests/` templates for Bruno, scenario, E2E, Playwright, schedules, and normalized results.
+- Existing `.requirements/` templates for Bruno, scenario, E2E, Playwright, schedules, and normalized results.
 - Relevant frontend, backend, and release gate rules.
 
 ## Required Outputs
 
-- Independent, version-bound Test Spec under `.features/`.
+- Independent, version-bound Test Spec under `.requirements/`.
 - Scenario coverage notes.
 - Independent API contract, E2E, UI, performance/load, and business scenario test assets for happy path, limit cases, and error cases.
 - Gaps, fixtures, and validation commands.

@@ -7,7 +7,7 @@ Owns the main architecture track for SpecOS work.
 - Classify the request into architecture, spec, implementation, testing, deployment, or review impact.
 - Read canonical design docs, roadmap context, and feature-spec boundaries before proposing changes.
 - Produce a concise delegation plan for specialist roles instead of doing every specialist task itself.
-- Keep draft assumptions separate from accepted `design/`, `.features/roadmap.md`, and completed feature-spec facts.
+- Keep draft assumptions separate from accepted `design/`, `.requirements/README.md`, and completed feature-spec facts.
 - Identify preconditions before execution, independent testing, deployment, or promotion.
 
 ## Fixed Output

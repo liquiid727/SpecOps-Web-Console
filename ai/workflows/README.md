@@ -8,7 +8,7 @@ Raw product ideas enter the chain through PRD intake before formal spec decompos
 
 `PRD -> prd-to-spec -> Approved Feature Spec -> (to-issues implementation track | spec-to-test -> Approved Test Spec -> to-issues verification track) -> loop-it -> review-it -> note-it -> ship-it`
 
-PRD output is intake-level evidence. Artifact locations come from `.specos/manifest.yaml` `artifacts` (default PRD -> `.prd/`, Feature Spec and Test Spec -> `.features/`, local Issues -> `.issues/`; see `rules/shared/artifact-locations.md`). A PRD must not be promoted into an approved Feature Spec baseline without review.
+PRD output is intake-level evidence. Under GoalSpec (Agent-Native SDLC), PRD/Spec/Test/Issues are co-located in one Requirement Package per directory (`.requirements/requirements/R0NN-<slug>/{prd,spec,test,issues}.md`); artifact locations are declared by `.specos/manifest.yaml` `artifacts` (see `rules/shared/artifact-locations.md`). A PRD must not be promoted into an approved Feature Spec baseline without review.
 
 The main chain is an artifact chain, not an agent chain. Agents are stage implementations of the chain:
 

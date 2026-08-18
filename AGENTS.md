@@ -10,16 +10,15 @@ Read context in this order before changing behavior:
 
 1. `README.md` or `readme.md` for product intent.
 2. `rules/` and `.rules/` for engineering governance.
-3. `docs/spec-modes/` and `current/` for active project mode and delivery state.
-4. `.prd/` for human-authored draft intent.
-5. `design/` for stable platform and system design truth.
-6. `.features/roadmap.md` and feature specs under `.features/`.
-7. `implementation/`, `reviews/`, and `tests/` for delivery evidence.
-8. `ai/agents/` and `.agents/` for role-specific responsibilities.
+3. `docs/spec-modes/` for the project mode (GoalSpec = Agent-Native SDLC).
+4. `design/` for stable platform and system design truth.
+5. `.requirements/` for active Requirement Packages: enter the target `requirements/R0NN-<slug>/` and read `prd.md` → `spec.md` → `test.md` → `issues.md`.
+6. `archive/legacy/` for historical delivery evidence (read-only reference).
+7. `ai/agents/` and `.agents/` for role-specific responsibilities.
 
 ## Required Workflow
 
-- Start from a design doc, roadmap entry, or feature spec, or clearly state that the work is draft-only.
+- Start from a design doc, feature spec, or a Requirement Package (`prd.md`), or clearly state that the work is draft-only.
 - Keep every generated artifact traceable to a spec, draft, or rule.
 - Prefer small, reviewable changes over broad rewrites.
 - Do not overwrite human-authored drafts, specs, reports, or review notes unless explicitly asked.
@@ -42,23 +41,17 @@ Read context in this order before changing behavior:
 ## Repository Boundaries
 
 - Artifact locations are declared once in `.specos/manifest.yaml` `artifacts`; see `rules/shared/artifact-locations.md` for the resolution order and customization protocol.
-- `.prd/`: PRD intake documents (`artifacts.draftsDir`).
-- `.features/`: Feature Specs, Test Specs, and roadmap (`artifacts.specsDir`).
-- `.issues/`: local Markdown implementation and verification issues (`artifacts.issuesDir`).
+- `.requirements/`: Requirement Package workflow root. `requirements/R0NN-<slug>/` holds co-located `prd.md` / `spec.md` / `test.md` / `issues.md`; `templates/`, `examples/`, and `skills/` hold authoring assets.
 - `rules/`: canonical reusable rule documents.
 - `.rules/`: agent-facing rule index and execution policy.
 - `ai/`: prompt, workflow, agent, and reviewer assets for SpecOS orchestration.
 - `.agents/`: local agent manifests and role routing for coding assistants.
 - `.codex/`: Codex-specific local configuration and operating notes.
-- `current/`: active delivery workspace and handoff state for the current mode.
 - `design/`: stable platform and system design documents. One canonical design doc per platform or system.
-- `.features/`: Feature Specs, Test Specs, roadmap, and their templates.
-- `implementation/`: implementation handoff and status by spec id.
-- `reviews/`: structured review evidence by spec id.
-- `tests/`: spec-driven verification assets and scenario test templates.
-- `docs/spec-modes/`: documented project operating modes: `LiteSpec`, `GoalSpec`, and `EnterpriseSpec`.
+- `archive/legacy/`: historical delivery evidence archived from the previous global-dir model (`.prd/`, `.features/`, `.issues/`, `implementation/`, `reviews/`, `tests/`). Read-only reference; do not create new work here.
+- `docs/spec-modes/`: project mode documentation. `GoalSpec` (Agent-Native SDLC) is the single official mode; `plugins/` holds optional lighter/heavier spec variants.
 - `spec-web-ui/`: Next.js UI for SpecOS.
-- `cli-gui/`: standalone Product AI OS CLI workspace launcher; route CLI GUI UI work through `cli-gui-agent` and preserve its i18n requirements.
+- Code: Bugrail is a separate repository (`liquiid727/bugrail`, local checkout `~/code/bugrail`). Do not recreate a `bugrail/` submodule or copy its source into this repo.
 
 ## Coding Standards
 

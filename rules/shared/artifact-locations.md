@@ -2,36 +2,42 @@
 
 ## Purpose
 
-Keep every spec-chain artifact (PRD, Feature Spec, Test Spec, Issue) in one predictable, configurable location so skills, agents, and humans never invent ad-hoc paths.
+Keep every spec-chain artifact (PRD, Spec, Spec-Test, Issue) in one predictable, configurable location so skills, agents, and humans never invent ad-hoc paths.
 
 ## Single Source Of Truth
 
-`.specos/manifest.yaml` `artifacts` is the only authoritative declaration of artifact directories:
+`.specos/manifest.yaml` `artifacts` is the only authoritative declaration of artifact directories. Under GoalSpec (Agent-Native SDLC), PRD/Spec/Test/Issues are co-located in one Requirement Package per directory:
 
 ```yaml
 artifacts:
-  draftsDir: .prd          # PRD intake documents
-  specsDir: .features      # Feature Specs, Test Specs, roadmap
-  issuesDir: .issues       # local Markdown issues
-  testsDir: tests          # executable test assets (plans, schedules, scenarios)
-  resultsDir: tests/results
+  draftsDir: .requirements   # Requirement Package root (prd.md lives inside each package)
+  specsDir: .requirements    # spec.md / test.md live inside each package
+  issuesDir: .requirements   # issues.md lives inside each package
+  testsDir: .requirements
+  resultsDir: .requirements
 ```
 
 ## Default Layout
 
 ```text
-.prd/
-  prd-<slug>.md
-.features/
-  roadmap.md
-  <SPEC-ID>-<slug>/
-    spec.md
-    test-spec.md
-.issues/
-  issue-NNN-<slug>.md
-tests/
-  plans/  schedules/  results/  scenarios/
+.requirements/
+  README.md
+  requirements/
+    R0NN-<slug>/
+      prd.md
+      spec.md
+      test.md
+      issues.md
+  templates/
+    prd.md  spec.md  test.md  issues.md
+  examples/
+    R000-example-<slug>/
+      prd.md  spec.md  test.md  issues.md
+  skills/
+    SKILL.md
 ```
+
+Historical artifacts from the previous global-dir model (`.prd/`, `.features/`, `.issues/`, `implementation/`, `reviews/`, `tests/`) are archived read-only under `archive/legacy/`.
 
 ## Path Resolution Order
 
@@ -39,7 +45,7 @@ Every skill that reads or writes spec-chain artifacts must resolve paths in this
 
 1. An explicit location the user gives in the current request.
 2. `.specos/manifest.yaml` `artifacts` values.
-3. Built-in defaults: `.prd/`, `.features/`, `.issues/`.
+3. Built-in defaults: `.requirements/`.
 
 Never invent a new directory outside this order.
 

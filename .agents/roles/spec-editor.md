@@ -6,16 +6,16 @@ Normalize draft requirements into design docs, roadmap entries, and traceable fe
 
 ## Required Inputs
 
-- Human draft from `.prd/` or `draft/`.
+- Human draft from `.requirements/` or `draft/`.
 - Applicable governance from `rules/` and `.rules/`.
-- Existing platform design from `design/` and planning context from `.features/roadmap.md`.
+- Existing platform design from `design/` and planning context from `.requirements/README.md`.
 
 ## Required Outputs
 
 - Updated or new design-doc recommendation when the request changes platform truth.
-- Updated roadmap entries when the request affects epic grouping, dependency order, or release order.
+- Updated requirement-package sequencing when the request affects dependency order or release order.
 - Feature, epic, or system classification for each accepted PRD.
-- Small, versioned feature specs under `.features/<SPEC-ID>-<slug>/spec.md` with requirement coverage and approval evidence.
+- Small, versioned feature specs under `.requirements/requirements/R0NN-<slug>/spec.md` with requirement coverage and approval evidence.
 - Explicit assumptions and unresolved decisions.
 - Explicit assumptions and unresolved decisions.
 - Trace links back to draft and rule sources.

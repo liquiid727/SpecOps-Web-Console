@@ -4,7 +4,7 @@
 
 Every meaningful change should preserve the chain:
 
-`draft -> design -> roadmap/epic -> feature spec -> implementation -> review -> merge`
+`draft -> prd -> spec -> spec-test -> issues -> implementation -> verify -> merge`
 
 If a task skips any link in the chain, call that out explicitly.
 
@@ -12,19 +12,17 @@ If a task skips any link in the chain, call that out explicitly.
 
 - Identify whether the request is draft, spec, implementation, test, CI, or review work.
 - Locate the closest source of truth before editing.
-- Read `docs/spec-modes/` and `current/` when project mode or active delivery state affects the task.
-- Use `.prd/` as intake material only.
+- Read `docs/spec-modes/` and the active Requirement Package when project mode or active delivery state affects the task.
+- Use the Requirement Package under `.requirements/requirements/R0NN-<slug>/` as the single source of truth: `prd.md` (intake/contract), `spec.md` (executable contract), `test.md` (verification contract), `issues.md` (issue execution).
 - Read `design/` as the stable platform and architecture truth.
-- Read `.features/roadmap.md` for epic grouping, release order, and spec dependency planning.
-- Read feature specs from `.features/<SPEC-ID>-<slug>/spec.md`.
-- Keep implementation evidence under `implementation/`, review evidence under `reviews/`, and test evidence under `tests/`.
+- Keep implementation and review evidence inside the Requirement Package (`issues.md` completion records, `review.md`), and test plans/schedules under `.requirements/plans/` and `.requirements/schedules/`.
 - Record assumptions when the source of truth is incomplete.
 
 ## Artifact Rules
 
 - Design docs must remain broad, durable, and singular for a platform or system.
-- `LiteSpec`, `GoalSpec`, and `EnterpriseSpec` are the three documented operating modes. Default to `GoalSpec`; use `GoalSpec` for a standing issue-driven dual-track delivery loop; use `EnterpriseSpec` when delivery governance requires it.
-- Feature specs must include: meta, goal, why this exists, out of scope, deliverables, domain, application, repository, API, database impact, test plan, and definition of done.
+- `GoalSpec` is the single official operating mode (Agent-Native SDLC). `LiteSpec` and `EnterpriseSpec` remain as optional plugin specs under `docs/spec-modes/plugins/`.
+- Requirement Packages must include: meta, goal, why this exists, out of scope, deliverables, domain, application, repository, API, database impact, test plan, and definition of done.
 - Specs must express dependencies by spec id and prerequisites as upstream contracts already provided.
 - API artifacts must include request/response examples and stable error semantics.
 - Test artifacts must map to business scenarios and cover happy path, limit cases, and error cases.

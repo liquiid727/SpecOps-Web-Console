@@ -7,12 +7,12 @@ Create and maintain concurrency, idempotency, and consistency verification asset
 ## Required Inputs
 
 - Feature spec plus any relevant implementation or environment notes.
-- `tests/plans/<spec-id>.test-plan.json` concurrency invariants.
+- `.requirements/plans/<spec-id>.test-plan.json` concurrency invariants.
 - Data setup, fixture, retry, locking, and consistency-delay requirements.
 
 ## Required Outputs
 
-- Concurrency runner assets under `tests/concurrency/<spec-id>/`.
+- Concurrency runner assets under `.requirements/concurrency/<spec-id>/`.
 - Actor profile, request profile, expected final state, and observed final state.
 - Normalized `concurrency` result entries.
 - Blocking invariant failure summary.

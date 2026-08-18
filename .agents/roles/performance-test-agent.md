@@ -7,12 +7,12 @@ Create and maintain performance, latency, and SLO verification assets derived fr
 ## Required Inputs
 
 - Feature spec plus any relevant design or environment notes.
-- `tests/plans/<spec-id>.test-plan.json` performance targets.
+- `.requirements/plans/<spec-id>.test-plan.json` performance targets.
 - Environment capacity notes and previous baseline result when available.
 
 ## Required Outputs
 
-- Load profiles under `tests/performance/<spec-id>/`.
+- Load profiles under `.requirements/performance/<spec-id>/`.
 - SLO threshold notes and baseline comparison notes.
 - Normalized `performance` or `latency` result entries.
 - Blocking performance regression summary.

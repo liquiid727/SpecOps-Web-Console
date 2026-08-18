@@ -39,10 +39,10 @@ If a host persists the execution plan itself, it should validate that file befor
 ## Canonical Artifact Flow
 
 ```text
-Idea -> PRD (.prd/) -> Feature Spec (.features/) -> Test Spec (.features/) -> Issues (.issues/) -> implementation -> review-it -> note-it -> ship-it
+Idea -> PRD (.requirements/) -> Feature Spec (.requirements/) -> Test Spec (.requirements/) -> Issues (.requirements/requirements/R0NN-<slug>/issues.md) -> implementation -> review-it -> note-it -> ship-it
 ```
 
-Stage ownership follows `ai/workflows/README.md` and `skills/developer/README.md`: `product-architect-agent` owns `Idea -> PRD`, and `spec-editor` owns `PRD -> Approved Feature Spec` plus Issue generation (`/prd-to-spec`, `/spec-to-test`, `/to-issues`). Artifact locations are declared by `.specos/manifest.yaml` `artifacts` and `rules/shared/artifact-locations.md`. This repository additionally keeps legacy governance directories (`.prd/`, `design/`, `.features/roadmap.md`, `.features/<SPEC-ID>-<slug>/`, `implementation/`, `reviews/`, `tests/`) for platform truth and delivery evidence; do not mix the engine-template `.features/current/` + `.features/changes/<change-id>/` layout with the flat `.features/<SPEC-ID>-<slug>/` layout inside one project.
+Stage ownership follows `ai/workflows/README.md` and `skills/developer/README.md`: `product-architect-agent` owns `Idea -> PRD`, and `spec-editor` owns `PRD -> Approved Feature Spec` plus Issue generation (`/prd-to-spec`, `/spec-to-test`, `/to-issues`). Artifact locations are declared by `.specos/manifest.yaml` `artifacts` and `rules/shared/artifact-locations.md`. Under GoalSpec (Agent-Native SDLC), one requirement maps to one Requirement Package (`.requirements/requirements/R0NN-<slug>/{prd,spec,test,issues}.md`); do not mix this co-located package layout with the retired global-dir model (archived read-only under `archive/legacy/`).
 
 ## Architecture Requests
 
@@ -67,7 +67,6 @@ Specialist agents grouped by managing main agent:
   - `frontend-agent`: frontend delivery orchestration for the UI branch of a change package.
   - `backend-agent`: backend delivery orchestration for Architecture, Database, and API branches.
   - `implementation-editor`: focused code and artifact edits from approved specs.
-  - `cli-gui-agent`: standalone Product AI OS CLI GUI delivery.
   - `ui-design-agent`: user-facing state, copy, workflow, and responsive behavior.
   - `execution-editor`: local scripts and workflow wiring.
 - Managed by `testing-agent`:

@@ -6,7 +6,7 @@ Orchestrate frontend delivery from the UI branch of a SpecOS change package.
 
 ## Required Inputs
 
-- Active `.features/changes/<change-id>/` package and accepted `.features/current/` baseline.
+- Active Requirement Package `.requirements/requirements/R0NN-<slug>/` and its accepted `spec.md` baseline.
 - Product, UI, API, and test requirements that affect user-facing behavior.
 - Applicable role contracts for `ui-design-agent`, `playwright-test-agent`, and frontend implementation work.
 

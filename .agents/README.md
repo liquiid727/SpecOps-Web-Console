@@ -37,7 +37,6 @@ Specialist agents grouped by their managing main agent:
   - Frontend delivery orchestration: `frontend-agent`
   - Backend delivery orchestration: `backend-agent`
   - Focused spec-driven code edits: `implementation-editor`
-  - Standalone Product AI OS CLI GUI: `cli-gui-agent`
   - Product UI design: `ui-design-agent`
   - Local scripts and workflow wiring: `execution-editor`
 - `testing-agent` manages:
@@ -120,7 +119,7 @@ Nested dispatch follows this contract:
 - The primary agent may propose bounded specialist-agent issues when the work crosses ownership boundaries.
 - Supporting agents must also be registered in `.agents/manifest.yaml`; do not invent ad-hoc roles inside a task.
 - For architecture, domain-boundary, and cross-surface risk work, use `architecture-agent` as the primary role. It manages `product-architect-agent`, `spec-editor`, `ddd-domain-agent`, `openapi-agent`, and `db-migration-agent`, and may ask for focused input from other domains through `pola`.
-- For implementation work, use `implementation-agent` as the primary role. It manages `frontend-agent`, `backend-agent`, `implementation-editor`, `cli-gui-agent`, `ui-design-agent`, and `execution-editor`.
+- For implementation work, use `implementation-agent` as the primary role. It manages `frontend-agent`, `backend-agent`, `implementation-editor`, `ui-design-agent`, and `execution-editor`.
 - For independent verification, use `testing-agent` as the primary role. It manages `test-editor`, `unit-test-agent`, `playwright-test-agent`, `e2e-test-agent`, `performance-test-agent`, `concurrency-test-agent`, and `specialized-check-agent`. `playwright-test-agent` belongs here as a browser/UI verification specialist, not under frontend implementation.
 - For QA acceptance, release, and deployment readiness, use `qa-agent` as the primary role. It manages `reviewer`, `ci-editor`, and `deployment-agent`.
 - Specialist issues carry `managedBy` and `activation: "on-demand"`: the managing main agent opens a specialist subagent only when the bounded question requires it, instead of pre-dispatching every registered specialist.
@@ -137,15 +136,15 @@ Draft -> Design -> Roadmap/Epic -> Feature Spec -> Agent Implementation -> Revie
 
 Canonical storage targets:
 
-- `docs/spec-modes/`: project operating mode guidance
-- `current/`: active delivery state and handoff context
-- `.prd/`: intake drafts
+- `docs/spec-modes/`: project operating mode guidance (GoalSpec = Agent-Native SDLC)
+- `.requirements/`: one requirement = one Requirement Package under `.requirements/requirements/R0NN-<slug>/`
+  - `prd.md`: product behavior contract
+  - `spec.md`: executable spec contract (features are logical groups, not directories)
+  - `test.md`: verification contract
+  - `issues.md`: issue execution and progress
+- `.requirements/plans/`, `.requirements/schedules/`: test plans and schedules
 - `design/`: stable platform or system design
-- `.features/roadmap.md`: epic and release planning
-- `.features/<SPEC-ID>-<slug>/spec.md`: feature specs
-- `implementation/`: implementation notes and handoff
-- `reviews/`: review evidence
-- `tests/`: shared verification assets
+- `archive/legacy/`: retired global-directory model artifacts (`.prd/`, `.features/`, `implementation/`, `reviews/`, `tests/`)
 
 A useful subagent task should state:
 
@@ -159,7 +158,7 @@ A useful subagent task should state:
 ```mermaid
 flowchart TD
   A["User request / business context"] --> B["Default entry agent"]
-  B --> C["Read context in order: readme, rules, docs/spec-modes, current, .prd, design, specs, evidence, agents"]
+  B --> C["Read context in order: readme, rules, docs/spec-modes, .requirements, design, agents"]
   C --> D{"Main track?"}
 
   D -->|Architecture / spec impact| E["architecture-agent"]
@@ -168,7 +167,7 @@ flowchart TD
   D -->|QA / release readiness| G["qa-agent"]
 
   E --> E1["product-architect-agent / spec-editor / ddd-domain-agent / openapi-agent / db-migration-agent"]
-  F --> F1["frontend-agent / backend-agent / implementation-editor / cli-gui-agent / ui-design-agent / execution-editor"]
+  F --> F1["frontend-agent / backend-agent / implementation-editor / ui-design-agent / execution-editor"]
   H --> H1["test-editor / unit-test-agent / playwright-test-agent / e2e-test-agent / performance-test-agent / concurrency-test-agent / specialized-check-agent"]
   G --> G1["reviewer / ci-editor / deployment-agent"]
 
@@ -178,15 +177,14 @@ flowchart TD
   H1 --> Q
 
   Q -->|Design truth| R["design/"]
-  Q -->|Feature planning| S[".features/roadmap.md + .features/<SPEC-ID>-<slug>/"]
-  Q -->|Implementation| T["implementation/"]
-  Q -->|Tests and results| U["tests/"]
-  Q -->|Review output| V["reviews/"]
+  Q -->|Requirement package| S[".requirements/requirements/R0NN-<slug>/"]
+  Q -->|Test plans and schedules| T[".requirements/plans/ + .requirements/schedules/"]
+  Q -->|Review evidence| U[".requirements/requirements/R0NN-<slug>/review.md"]
 
   S --> W{"Human approval gate"}
   W -->|Accepted| T
   W -->|Needs work| B
-  T --> X["Implementation, test, and review agents read design and feature specs"]
+  T --> X["Implementation, test, and review agents read the accepted Requirement Package"]
   X --> Y["Report validation evidence and unresolved questions"]
   Y --> Z["Merge with traceable review and test evidence"]
 ```
@@ -221,7 +219,7 @@ When a role is selected, assemble prompt context in this order:
 10. Selected declared skills
 11. Selected required rules and context includes
 
-When the project mode or active handoff state changes task boundaries, read `docs/spec-modes/` and `current/` before loading broader feature context.
+When the project mode or active handoff state changes task boundaries, read `docs/spec-modes/` and the active Requirement Package before loading broader context.
 
 ## Shared Plus Overlay
 
@@ -234,7 +232,7 @@ Only keep differences in the mode overlay files. The shared files remain the def
 
 ## Project Context Placement
 
-Stable platform and system design belongs under `design/`. Epic ordering belongs in `.features/roadmap.md`. Implementation-ready feature slices belong under `.features/<SPEC-ID>-<slug>/`.
+Stable platform and system design belongs under `design/`. Each requirement lives in a Requirement Package under `.requirements/requirements/R0NN-<slug>/` (prd/spec/test/issues). Retired global-directory artifacts live under `archive/legacy/`.
 
 Role prompts should reference those surfaces through `.agents/manifest.yaml` `context_includes` instead of duplicating accepted project facts inside `.agents/roles/` or `ai/agents/`.
 
