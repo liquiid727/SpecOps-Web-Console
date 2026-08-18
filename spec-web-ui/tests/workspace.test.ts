@@ -30,8 +30,8 @@ const catalog: CatalogAsset[] = [
     appliesTo: ["backend", "frontend"],
     dependsOn: ["rule-backend-governance"],
     conflictsWith: [],
-    sourcePath: ".prd/_template/feature/product-ui.template.md",
-    files: [".prd/_template/feature/product-ui.template.md"],
+    sourcePath: ".requirements/templates/prd-feature-draft.template.md",
+    files: [".requirements/templates/prd-feature-draft.template.md"],
     version: "1.0.0"
   },
   {
@@ -95,7 +95,7 @@ const project: ProjectManifest = {
   ],
   prdTemplateId: "template-feature-draft",
   prdPath: "spec-web-ui/workspace/projects/rewards-platform/prd.md",
-  exportTargets: ["docs/", "current/", "rules/", ".features/_template/", "ai/agents/", "agent-teams/", "project-manifest.yaml"]
+  exportTargets: ["docs/", "design/", "rules/", ".requirements/", "ai/agents/", "agent-teams/", "project-manifest.yaml"]
 };
 
 describe("resolveProjectWorkspace", () => {

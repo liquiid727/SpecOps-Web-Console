@@ -13,14 +13,13 @@ const project: ProjectManifest = {
     { assetId: "rule-backend-governance", enabled: true },
     { assetId: "template-feature-draft", enabled: true },
     { assetId: "template-project-modes", enabled: true },
-    { assetId: "template-current-workspace", enabled: true },
     { assetId: "agent-spec-editor", enabled: true },
     { assetId: "skill-spec-to-test", enabled: true },
     { assetId: "team-governance-pack", enabled: true }
   ],
   prdTemplateId: "template-feature-draft",
   prdPath: "spec-web-ui/workspace/projects/reward-center/prd.md",
-  exportTargets: ["docs/", "current/", "rules/", ".features/_template/", "ai/agents/", "agent-teams/", "project-manifest.yaml"]
+  exportTargets: ["docs/", "design/", "rules/", ".requirements/", "ai/agents/", "agent-teams/", "project-manifest.yaml"]
 };
 
 const selectedAssets: CatalogAsset[] = [
@@ -52,13 +51,13 @@ const selectedAssets: CatalogAsset[] = [
     conflictsWith: [],
     sourcePath: "assets/templates/specs/template-feature-draft/product-ui.template.md",
     files: [
-      ".prd/_template/feature/product-ui.template.md",
-      ".features/_template/feature/spec.example.md"
+      ".requirements/templates/prd-feature-draft.template.md",
+      ".requirements/templates/spec.example.md"
     ],
     contentFiles: {
-      ".prd/_template/feature/product-ui.template.md":
+      ".requirements/templates/prd-feature-draft.template.md":
         "assets/templates/specs/template-feature-draft/product-ui.template.md",
-      ".features/_template/feature/spec.example.md":
+      ".requirements/templates/spec.example.md":
         "assets/templates/specs/template-feature-spec/spec.example.md"
     },
     version: "1.0.0"
@@ -77,35 +76,20 @@ const selectedAssets: CatalogAsset[] = [
     sourcePath: "assets/templates/specs/template-project-modes/README.md",
     files: [
       "docs/spec-modes/README.md",
-      "docs/spec-modes/LiteSpec/README.md",
+      "docs/spec-modes/plugins/LiteSpec/README.md",
       "docs/spec-modes/GoalSpec/README.md",
-      "docs/spec-modes/EnterpriseSpec/README.md"
+      "docs/spec-modes/plugins/EnterpriseSpec/README.md"
     ],
     contentFiles: {
       "docs/spec-modes/README.md":
         "assets/templates/specs/template-project-modes/README.md",
-      "docs/spec-modes/LiteSpec/README.md":
+      "docs/spec-modes/plugins/LiteSpec/README.md":
         "assets/templates/specs/template-project-modes/LiteSpec.md",
       "docs/spec-modes/GoalSpec/README.md":
         "assets/templates/specs/template-project-modes/GoalSpec.md",
-      "docs/spec-modes/EnterpriseSpec/README.md":
+      "docs/spec-modes/plugins/EnterpriseSpec/README.md":
         "assets/templates/specs/template-project-modes/EnterpriseSpec.md"
     },
-    version: "1.0.0"
-  },
-  {
-    id: "template-current-workspace",
-    type: "spec_template",
-    title: "Current Workspace",
-    summary: "Active delivery workspace seed files.",
-    direction: "fullstack",
-    stacks: ["go", "react"],
-    tags: ["current", "workspace"],
-    appliesTo: ["backend", "frontend"],
-    dependsOn: [],
-    conflictsWith: [],
-    sourcePath: "current/README.md",
-    files: ["current/README.md"],
     version: "1.0.0"
   },
   {
@@ -166,18 +150,17 @@ describe("buildExportBundle", () => {
     expect(bundle.manifestYaml).toContain("prdTemplateId: template-feature-draft");
     expect(bundle.files.map((file) => file.targetPath)).toEqual([
       "rules/backend/go-backend-governance.md",
-      ".prd/_template/feature/product-ui.template.md",
-      ".features/_template/feature/spec.example.md",
+      ".requirements/templates/prd-feature-draft.template.md",
+      ".requirements/templates/spec.example.md",
       "docs/spec-modes/README.md",
-      "docs/spec-modes/LiteSpec/README.md",
+      "docs/spec-modes/plugins/LiteSpec/README.md",
       "docs/spec-modes/GoalSpec/README.md",
-      "docs/spec-modes/EnterpriseSpec/README.md",
-      "current/README.md",
+      "docs/spec-modes/plugins/EnterpriseSpec/README.md",
       "agent-teams/governance-pack/README.md",
       "skills/developer/spec-to-test/SKILL.md",
       "ai/agents/spec-editor.md"
     ]);
-    expect(bundle.summary).toContain("7 selected assets");
+    expect(bundle.summary).toContain("6 selected assets");
   });
 
   it("emits an installable SpecOS bundle payload alongside the review snapshot", () => {
@@ -192,11 +175,9 @@ describe("buildExportBundle", () => {
       { target: "skills/developer/", from: "files/skills/developer/" },
       { target: "agent-teams/", from: "files/agent-teams/" },
       { target: "ai/agents/", from: "files/ai/agents/" },
-      { target: "current/", from: "files/current/" },
+      { target: ".requirements/", from: "files/.requirements/" },
       { target: "docs/", from: "files/docs/" },
       { target: "rules/", from: "files/rules/" },
-      { target: ".prd/_template/", from: "files/.prd/_template/" },
-      { target: ".features/_template/", from: "files/.features/_template/" },
       { target: ".specos/workflows/", from: "files/.specos/workflows/" }
     ]);
     expect(bundle.bundleFiles.map((file) => file.targetPath)).toEqual([
@@ -216,13 +197,13 @@ describe("groupExportFilesByDirectory", () => {
       { sourcePath: "agent-teams/governance-pack/README.md", targetPath: "agent-teams/governance-pack/README.md" },
       { sourcePath: "rules/backend/go-backend-governance.md", targetPath: "rules/backend/go-backend-governance.md" },
       { sourcePath: "ai/agents/spec-editor.md", targetPath: "ai/agents/spec-editor.md" },
-      { sourcePath: ".features/_template/feature/spec.example.md", targetPath: ".features/_template/feature/spec.example.md" }
+      { sourcePath: ".requirements/templates/spec.example.md", targetPath: ".requirements/templates/spec.example.md" }
     ]);
 
     expect(groups).toEqual([
       {
-        directory: ".features",
-        files: [{ sourcePath: ".features/_template/feature/spec.example.md", targetPath: ".features/_template/feature/spec.example.md" }]
+        directory: ".requirements",
+        files: [{ sourcePath: ".requirements/templates/spec.example.md", targetPath: ".requirements/templates/spec.example.md" }]
       },
       {
         directory: "agent-teams",
@@ -369,7 +350,7 @@ describe("buildExportReviewFiles", () => {
       ],
       previousFiles: [
         { sourcePath: "ai/agents/spec-editor.md", targetPath: "ai/agents/spec-editor.md" },
-        { sourcePath: ".features/_template/feature/spec.example.md", targetPath: ".features/_template/feature/spec.example.md" }
+        { sourcePath: ".requirements/templates/spec.example.md", targetPath: ".requirements/templates/spec.example.md" }
       ],
       currentContents: {
         "rules/backend/go-backend-governance.md": "# New Rule\n",
@@ -377,7 +358,7 @@ describe("buildExportReviewFiles", () => {
       },
       previousContents: {
         "ai/agents/spec-editor.md": "# Spec Editor\n\nPrevious\n",
-        ".features/_template/feature/spec.example.md": "# Previous Spec\n"
+        ".requirements/templates/spec.example.md": "# Previous Spec\n"
       }
     });
 
@@ -387,7 +368,7 @@ describe("buildExportReviewFiles", () => {
         status: file.diff.status
       }))
     ).toEqual([
-      { path: ".features/_template/feature/spec.example.md", status: "removed" },
+      { path: ".requirements/templates/spec.example.md", status: "removed" },
       { path: "ai/agents/spec-editor.md", status: "changed" },
       { path: "rules/backend/go-backend-governance.md", status: "new" }
     ]);

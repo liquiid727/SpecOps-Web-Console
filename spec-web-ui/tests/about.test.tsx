@@ -11,37 +11,46 @@ vi.mock("next/headers", () => ({
 import AboutPage from "@/app/about/page";
 
 describe("AboutPage", () => {
-  it("shows the agent workflow on a dedicated about route", async () => {
+  it("shows the Agent-Native SDLC workflow and the single GoalSpec mode on a dedicated about route", async () => {
     render(await AboutPage());
 
-    expect(screen.getByRole("heading", { name: "Agent 工作方式与测试边界" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Agent-Native SDLC 工作流" })).toBeInTheDocument();
     expect(screen.getByText("Execution Agent")).toBeInTheDocument();
-    expect(screen.getByText("单元测试")).toBeInTheDocument();
-    expect(screen.getByText("E2E / 场景 / API / UI")).toBeInTheDocument();
+    expect(screen.getByText("实现耦合的单元测试")).toBeInTheDocument();
+    expect(screen.getByText(/E2E \/ 场景 \/ API \/ UI/)).toBeInTheDocument();
+    expect(screen.getByText("Feature Verify")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "项目模式说明" })).toBeInTheDocument();
-    expect(screen.getByText("Feature Driven")).toBeInTheDocument();
-    expect(screen.getByText("Workflow Driven")).toBeInTheDocument();
-    expect(screen.getByText("Delivery Driven")).toBeInTheDocument();
     expect(screen.getByText("GoalSpec")).toBeInTheDocument();
+    expect(screen.getAllByText("Agent-Native SDLC").length).toBeGreaterThan(0);
     expect(screen.getByText("共享约束")).toBeInTheDocument();
     expect(screen.getByText("选择原则")).toBeInTheDocument();
-    expect(screen.getAllByText("$ tree project/").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("$ tree .requirements/").length).toBeGreaterThan(0);
     expect(
-      screen.getAllByText((content, element) => element?.tagName === "SPAN" && content === "|-- implementation/").length
-    ).toBeGreaterThan(0);
-    expect(screen.getByText((content, element) => element?.tagName === "SPAN" && content.includes("tests.md"))).toBeInTheDocument();
-    expect(screen.getByText("按测试类型拆分")).toBeInTheDocument();
-    expect(screen.getByText("feature 内验证")).toBeInTheDocument();
+      screen.getByText((content, element) => element?.tagName === "SPAN" && content.includes("|-- requirements/"))
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText((content, element) => element?.tagName === "SPAN" && content.includes("|-- spec.md"))
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText((content, element) => element?.tagName === "SPAN" && content.includes("`-- issues.md"))
+    ).toBeInTheDocument();
     expect(screen.getAllByText("加载顺序").length).toBeGreaterThan(0);
-    expect(screen.getAllByText(".features/RP-xxx").length).toBeGreaterThan(0);
-    expect(screen.getByText("角色视角")).toBeInTheDocument();
-    expect(screen.getByText("按一条 feature 线加载，目标是让 agent 一次读完最小上下文。")).toBeInTheDocument();
-    expect(screen.getByText(".features/RP-xxx/ 下把 spec、tasks、test-spec、review、changelog 放在同一个 feature 目录里。")).toBeInTheDocument();
-    expect(screen.getByText("tests/ 按 unit、integration、e2e、performance、security、results 等测试类型拆开，适合多角色并行。")).toBeInTheDocument();
+    expect(screen.getAllByText(".requirements/README.md").length).toBeGreaterThan(0);
+    expect(
+      screen.getByText("按一个 Requirement Package 加载，一次读完 REQ→SPEC→TEST→ISSUE 整条链路。")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("prd.md 用 RFC-2119 语言写 Goal / Non-Goal / REQ / BR / INV / Edge / AC，稳定 ID 不重排。")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "test.md 覆盖 happy / negative / permission / state / invariant / retry / concurrency / external failure / observability。"
+      )
+    ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "测试 UI Demo" })).toBeInTheDocument();
     expect(screen.getByText("SpecOS Test Console")).toBeInTheDocument();
     expect(screen.getByText("测试流程图")).toBeInTheDocument();
-    expect(screen.getAllByText("reward-order spec v1.2.0").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("reward-order SPEC-R001-F01-001").length).toBeGreaterThan(0);
     expect(screen.getByText("测试场景")).toBeInTheDocument();
     expect(screen.getByText("测试链条")).toBeInTheDocument();
     expect(screen.getByText("测试标准")).toBeInTheDocument();

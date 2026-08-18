@@ -14,6 +14,7 @@ type NavItem =
       key:
         | "home"
         | "about"
+        | "requirements"
         | "specTemplates"
         | "skillTemplates"
         | "agentTemplates"
@@ -26,6 +27,7 @@ type NavItem =
 const baseNavItems: NavItem[] = [
   { href: "/", key: "home" },
   { href: "/about", key: "about" },
+  { href: "/requirements", key: "requirements" },
   { href: "/spec-templates", key: "specTemplates" },
   { href: "/skill-templates", key: "skillTemplates" },
   { href: "/agent-templates", key: "agentTemplates" },

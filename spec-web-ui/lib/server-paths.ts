@@ -20,7 +20,7 @@ const repoRootCandidates = [
 
 export const repoRoot =
   repoRootCandidates.find((candidate) =>
-    ["rules", ".prd", ".features", ".issues"].some((directory) =>
+    ["rules", ".requirements"].some((directory) =>
       existsSync(path.join(candidate, directory))
     )
   ) ?? path.resolve(appRoot, "..");

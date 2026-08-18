@@ -29,9 +29,9 @@
   "prdPath": "spec-web-ui/workspace/projects/merchant-console/prd.md",
   "exportTargets": [
     "docs/",
-    "current/",
+    "design/",
     "rules/",
-    ".features/_template/",
+    ".requirements/",
     "ai/agents/",
     "agent-teams/",
     "project-manifest.yaml"

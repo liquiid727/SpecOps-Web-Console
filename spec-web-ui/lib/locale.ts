@@ -21,6 +21,7 @@ export const localeCopy = {
         about: "关于",
         home: "主页",
         discover: "发现",
+        requirements: "需求包",
         "spec-templates": "Spec 模版",
         "skill-templates": "Skill 技能",
         "agent-templates": "Agent 模版",
@@ -110,168 +111,84 @@ export const localeCopy = {
     },
     about: {
       agentFlow: {
-        eyebrow: "$ cat .features/RP-002-decision-api/spec.md",
-        title: "Agent 工作方式与测试边界",
-        description: "从 PRD 进入 .prd，再到 design、roadmap、Feature Spec/Test Spec 和 Issues，执行与测试始终保持独立上下文。执行只管实现与实现耦合测试，测试只管测试计划、场景和真实执行。",
-        stages: ["需求", "PRD", "design", "roadmap", "Feature Spec/Test Spec", "Issues", "执行 + 测试分轨", "review / merge"],
-        gate: "先确认 design 和 feature spec，再把执行与测试拆成两个互不污染的 agent track。",
+        eyebrow: "$ cat .requirements/requirements/R001-decision-api/spec.md",
+        title: "Agent-Native SDLC 工作流",
+        description: "一个需求 = 一个 Requirement Package。所有契约（PRD、Spec、Test、Issues）在同一目录落盘，ID 从 REQ 到 SPEC / TEST / ISSUE 永久锚定。Agent 沿 8 个 mode 的链路推进，执行与验证始终可追踪、可回溯。",
+        stages: ["需求 / Idea", "PRD", "Spec", "Spec-Test", "Issues", "Issue 执行", "Feature Verify", "Done"],
+        gate: "PRD 与 Spec 必须先通过 review 才能进入下游；Spec 与代码冲突时执行 agent 必须 STOP 并记录 Deviation 退回 Spec Review，不得静默改写产品语义。",
         tracks: [
           {
             name: "Spec Agent",
-            role: "维护 design / roadmap / spec 文档链路",
-            description: "把 PRD 润色为可审查的 design、roadmap、Feature Spec/Test Spec 和 Issues，记录结论与边界。",
-            points: [".prd -> .features Feature Spec/Test Spec", "design / roadmap / .issues 更新", "review handoff"]
+            role: "维护 Requirement Package 的契约链路",
+            description: "按 prd-author → prd-review → spec-generate → spec-review → spec-test-generate → issue-generate 推进，产出并回写 prd.md / spec.md / test.md / issues.md。",
+            points: [".requirements/requirements/R001-<slug>/prd.md（REQ-R001-001）", "spec.md（SPEC-R001-F01-001）+ test.md（TEST-R001-F01-001）", "issues.md（ISSUE-R001-001）与 review gate"]
           },
           {
             name: "Execution Agent",
-            role: "实现业务代码与单元测试",
-            description: "只处理实现与实现耦合的单元测试，不读取独立测试计划。",
-            points: ["实现任务", "单元测试", "implementation-report"]
+            role: "按 Issue 实现，不擅改产品意图",
+            description: "执行前必读 prd / spec / test 与代码库；只改本 Issue 范围并写 Completion Record；Spec 与代码冲突时 STOP 记录 Deviation。",
+            points: ["遍历 ## ISSUE-R001-001 执行", "写 **Status:** 与 ### Completion Record", "实现耦合的单元测试"]
           },
           {
-            name: "Test Agent",
-            role: "编排独立验证",
-            description: "负责 test-plan、场景、API、E2E、UI 以及结果归一化。",
-            points: ["test-plan / test-schedule", "E2E / 场景 / API / UI", "test-result-summary"]
+            name: "Verify Agent",
+            role: "独立验证与追踪矩阵",
+            description: "跑 test.md 的 Exit Criteria（E2E / 场景 / API / UI），核对 Requirement|Spec|Test|Issue 的可追踪关系，收敛到 feature-verify gate。",
+            points: ["test.md 全场景覆盖（P0/P1 REQ）", "feature-verify 关卡", "traceability.md"]
           }
         ]
       },
       projectModes: {
-        eyebrow: "$ cat docs/spec-modes/README.md",
+        eyebrow: "$ cat docs/spec-modes/GoalSpec/README.md",
         title: "项目模式说明",
-        description: "SpecOS 有三种正式项目 mode。about 页这里直接说明它们的类型、结构重点和实际作用，方便在进入项目之前先选对交付模型。",
+        description: "SpecOS 只有一个官方模式：GoalSpec（Agent-Native SDLC）。LiteSpec 与 EnterpriseSpec 不再作为独立 mode，保留为可选插件规范。about 页直接说明模式的结构重点和实际作用，方便在进入项目之前先选对交付模型。",
         sharedLabel: "共享约束",
         sharedPoints: [
-          "三种 mode 都保留 README、design 和 current 作为稳定上下文入口。",
-          "三种 mode 都要求按 Spec ID 保持 feature、实现、评审和测试的可追踪关系。",
-          "差异不在命名，而在交付证据的拆分粒度、角色边界和治理强度。"
+          "一个需求 = 一个 Requirement Package（prd / spec / test / issues 同目录落盘）。",
+          "ID 是永久锚点：REQ / SPEC / TEST / ISSUE 不因改稿而重排复用。",
+          "Source Priority：approved PRD → approved Spec → ADR → 代码 → 测试，Agent 不得静默改写产品意图。"
         ],
         modes: [
           {
-            name: "LiteSpec",
-            typeLabel: "类型",
-            typeValue: "Feature Driven",
-            treeLabel: "目录树缩略图",
-            treeCommand: "$ tree project/",
-            tree: [
-              { text: "project/" },
-              { text: "|-- README.md", note: "入口说明" },
-              { text: "|-- design/", note: "稳定设计真相" },
-              { text: "|-- current/", note: "当前交付状态" },
-              { text: "|-- .features/", note: "feature 就地组织" },
-              { text: "|   |-- roadmap.md" },
-              { text: "|   `-- RP-001-feature/" },
-              { text: "|       |-- spec.md" },
-              { text: "|       |-- tasks.md" },
-              { text: "|       |-- tests.md", note: "feature 内验证" },
-              { text: "|       |-- review.md" },
-              { text: "|       `-- changelog.md" },
-              { text: "`-- .agents/", note: "轻量 agent 上下文" }
-            ],
-            loadLabel: "加载顺序",
-            loadPath: ["README", "current", "design", ".features/RP-xxx", "相关 skill"],
-            loadNote: "按一条 feature 线加载，目标是让 agent 一次读完最小上下文。",
-            purposeLabel: "作用",
-            purposeValue: "把 feature 当成最小执行单元，优先保证 agent 上下文小、迭代快、目录容易一次读完。",
-            structureLabel: "结构重点",
-            structure: [
-              ".features/RP-xxx/ 下把 spec、tasks、test-spec、review、changelog 放在同一个 feature 目录里。",
-              "current/ 维护 active-feature、active-context、active-tasks 和 handoff，偏向单线推进。",
-              ".agents/ 只保留少量通用 skill 文件，默认由一个工程师或一个 agent 端到端完成。"
-            ],
-            fitLabel: "适用场景",
-            fit: [
-              "MVP、个人项目、小团队日常开发。",
-              "希望低 token 成本快速迭代，交付证据可以紧贴 feature 保存。",
-              "平台、基础设施、内部工具这类需要频繁试错的工作。"
-            ]
-          },
-          {
             name: "GoalSpec",
             typeLabel: "类型",
-            typeValue: "Workflow Driven",
+            typeValue: "Agent-Native SDLC",
             treeLabel: "目录树缩略图",
-            treeCommand: "$ tree project/",
+            treeCommand: "$ tree .requirements/",
             tree: [
-              { text: "project/" },
-              { text: "|-- README.md", note: "入口说明" },
-              { text: "|-- design/", note: "稳定设计真相" },
-              { text: "|-- current/", note: "双轨交付进度" },
-              { text: "|-- docs/workflow.md", note: "版本化交付链路" },
-              { text: "|-- .features/", note: "issue 索引 + feature" },
-              { text: "|   |-- roadmap.md", note: "/to-issues 产出" },
-              { text: "|   `-- RP-001-feature/" },
-              { text: "|       |-- spec.md" },
-              { text: "|       |-- tasks.md" },
-              { text: "|       |-- review.md", note: "/review-it 产出" },
-              { text: "|       `-- changelog.md", note: "/ship-it 产出" },
-              { text: "|-- implementation/", note: "变更面记录" },
-              { text: "|-- .features/<feature>/test-spec.md", note: "/spec-to-test 产出" },
-              { text: "`-- .agents/", note: "轻量 agent 上下文" }
+              { text: ".requirements/" },
+              { text: "|-- README.md", note: "包索引 / 入口" },
+              { text: "|-- requirements/" },
+              { text: "|   `-- R001-decision-api/" },
+              { text: "|       |-- prd.md", note: "REQ-R001-001" },
+              { text: "|       |-- spec.md", note: "SPEC-R001-F01-001" },
+              { text: "|       |-- test.md", note: "TEST-R001-F01-001" },
+              { text: "|       `-- issues.md", note: "ISSUE-R001-001" },
+              { text: "|-- examples/", note: "R000-example-*" },
+              { text: "|-- templates/", note: "prd / spec / test / issues" },
+              { text: "`-- skills/", note: "8-mode 统一 skill" }
             ],
             loadLabel: "加载顺序",
-            loadPath: ["README", "current", "design", ".issues/", ".features/RP-xxx"],
-            loadNote: "在 feature 加载顺序之外增加 issue 与 Test Spec 索引，定位实现轨和验证轨的当前状态。",
+            loadPath: [".requirements/README.md", "R001-<slug>/prd.md", "spec.md", "test.md", "issues.md", "相关 skill"],
+            loadNote: "按一个 Requirement Package 加载，一次读完 REQ→SPEC→TEST→ISSUE 整条链路。",
             purposeLabel: "作用",
-            purposeValue: "先确认版本化 Feature Spec，再并行推进实现 Issue 与由 /spec-to-test 生成的独立验证 Issue，最后汇合到 review 和 ship。",
+            purposeValue: "让需求、契约、验证与执行进度在同一目录下可追踪：ID 永久锚定，变更走 type: change + affects，Agent 在任何 mode 都能找到决策来源。",
             structureLabel: "结构重点",
             structure: [
-              ".issues/ 分开维护实现与验证 issue 的索引和依赖，每个 issue 保持小而可独立审查。",
-              "review、ship 环节仍是 feature 内单文件（review.md、changelog.md），不引入 EnterpriseSpec 的多阶段 reviews/ 目录。",
-              "docs/workflow.md 把 Feature Spec 版本、Test Spec 版本和双轨汇合关卡写成团队标准操作说明。"
+              "prd.md 用 RFC-2119 语言写 Goal / Non-Goal / REQ / BR / INV / Edge / AC，稳定 ID 不重排。",
+              "spec.md 按业务逻辑做 F0N 分组，每条契约编号 SPEC-R001-F0N-###。",
+              "test.md 覆盖 happy / negative / permission / state / invariant / retry / concurrency / external failure / observability。",
+              "issues.md 用 ## ISSUE-R001-### 小节维护执行与进度。"
             ],
             fitLabel: "适用场景",
             fit: [
-              "已经习惯按 issue 拆解和推进的小团队。",
-              "希望有明确的 review 和 ship 关卡，但还不需要 EnterpriseSpec 的分角色治理。",
-              "从 LiteSpec 往 EnterpriseSpec 过渡，但暂时不需要全套交付证据体系的项目。"
-            ]
-          },
-          {
-            name: "EnterpriseSpec",
-            typeLabel: "类型",
-            typeValue: "Delivery Driven",
-            treeLabel: "目录树缩略图",
-            treeCommand: "$ tree project/",
-            tree: [
-              { text: "project/" },
-              { text: "|-- README.md", note: "入口说明" },
-              { text: "|-- design/", note: "稳定设计真相" },
-              { text: "|-- current/", note: "发布与阻塞状态" },
-              { text: "|-- .features/", note: "需求侧工件" },
-              { text: "|   `-- RP-001-feature/" },
-              { text: "|-- implementation/", note: "实施与发布记录" },
-              { text: "|   `-- RP-001/" },
-              { text: "|-- tests/", note: "按测试类型拆分" },
-              { text: "|   |-- unit/" },
-              { text: "|   |-- e2e/" },
-              { text: "|   |-- performance/" },
-              { text: "|   `-- security/" },
-              { text: "|-- reviews/", note: "分阶段评审" },
-              { text: "`-- docs/", note: "runbook / ops" }
-            ],
-            loadLabel: "加载顺序",
-            loadPath: ["README", "current", "角色视角", "owned artifacts"],
-            loadNote: "按角色切片加载，不要求 agent 一次读取 implementation、tests、reviews 和 docs 全量内容。",
-            purposeLabel: "作用",
-            purposeValue: "把交付证据当成最小治理单元，优先保证 QA、审计、发布和回滚链路都能被单独证明。",
-            structureLabel: "结构重点",
-            structure: [
-              ".features/ 只保留 spec、task-plan、model、api、migration 等需求侧工件，implementation/tests/reviews 独立成目录。",
-              "tests/ 按 unit、integration、e2e、performance、security、results 等测试类型拆开，适合多角色并行。",
-              "reviews/、docs/runbook/、rollout/rollback 让发布治理、审计留痕和运维交接有固定落点。"
-            ],
-            fitLabel: "适用场景",
-            fit: [
-              "支付、风控、权限、安全、审计或合规要求明显的系统。",
-              "需要正式 QA gate、发布记录、回滚证明和多团队协作的项目。",
-              "性能、并发、安全测试必须独立建档并长期留存的交付环境。"
+              "所有按需求包交付、要求可追踪链的团队。",
+              "需要 Agent 在多模式链路中稳定推进、且能回溯每个决策来源的项目。",
+              "LiteSpec / EnterpriseSpec 可作为可选插件叠加。"
             ]
           }
         ],
         decisionLabel: "选择原则",
-        decision:
-          "默认从 LiteSpec 开始；当团队想要一条标准化的 issue 拆解 -> 实现 -> 审查 -> 交付闭环、并且需要明确的 review/ship 关卡时，升级到 GoalSpec；当 feature 已经需要独立 QA、发布治理、性能或安全证明，或者一个 feature 不再适合由单个 agent 在一条链路里完成时，再升级到 EnterpriseSpec。"
+        decision: "默认直接使用 GoalSpec。需要轻量单线推进时可参考 LiteSpec 插件，需要重治理与审计证据时叠加 EnterpriseSpec 插件；但它们不再是独立的正式模式。"
       },
       testUiDemo: {
         eyebrow: "$ open test-console/demo",
@@ -287,7 +204,7 @@ export const localeCopy = {
         columnNotes: ["输入来源", "从 spec 拆出的用户行为", "场景落到可执行路径", "判断通过/失败的规则", "真实执行后的结论"],
         flows: [
           {
-            spec: "reward-order spec v1.2.0",
+            spec: "reward-order SPEC-R001-F01-001",
             scenario: "用户成功领取奖励",
             chain: "API + UI 主路径链条",
             standard: "200 / 扣减库存 / 成功提示",
@@ -295,7 +212,7 @@ export const localeCopy = {
             status: "pass"
           },
           {
-            spec: "reward-order spec v1.2.0",
+            spec: "reward-order SPEC-R001-F01-001",
             scenario: "用户成功领取奖励",
             chain: "结果一致性链条",
             standard: "订单 / 库存 / 权益一致",
@@ -303,7 +220,7 @@ export const localeCopy = {
             status: "pass"
           },
           {
-            spec: "reward-order spec v1.2.0",
+            spec: "reward-order SPEC-R001-F01-001",
             scenario: "库存不足时领取失败",
             chain: "异常分支链条",
             standard: "OUT_OF_STOCK / 可恢复失败提示",
@@ -311,7 +228,7 @@ export const localeCopy = {
             status: "fail"
           },
           {
-            spec: "reward-order spec v1.2.0",
+            spec: "reward-order SPEC-R001-F01-001",
             scenario: "库存不足时领取失败",
             chain: "测试资产链条",
             standard: "Bruno collection / adapter 可执行",
@@ -331,6 +248,7 @@ export const localeCopy = {
         about: "About",
         home: "Home",
         discover: "Discover",
+        requirements: "Requirements",
         "spec-templates": "Spec templates",
         "skill-templates": "Skill skills",
         "agent-templates": "Agent templates",
@@ -422,174 +340,88 @@ export const localeCopy = {
     },
     about: {
       agentFlow: {
-        eyebrow: "$ cat .features/RP-002-decision-api/spec.md",
-        title: "Agent workflow and test boundaries",
+        eyebrow: "$ cat .requirements/requirements/R001-decision-api/spec.md",
+        title: "Agent-Native SDLC workflow",
         description:
-          "From PRD intake through design, roadmap, Feature Spec/Test Spec, and Issues, execution and testing stay in separate contexts. Execution owns implementation and unit tests. Testing owns the test plan, scenarios, and real runs.",
-        stages: ["request", "PRD", "design", "roadmap", "Feature Spec/Test Spec", "Issues", "split execution + testing", "review / merge"],
-        gate: "Confirm design and feature-spec boundaries first, then split execution and testing into two isolated agent tracks.",
+          "One requirement = one Requirement Package. All contracts (PRD, Spec, Test, Issues) live in the same directory, with IDs anchored permanently from REQ through SPEC/TEST/ISSUE. Agents advance along an 8-mode chain, so execution and verification stay traceable end to end.",
+        stages: ["Idea", "PRD", "Spec", "Spec-Test", "Issues", "Issue execution", "Feature verify", "Done"],
+        gate: "PRD and Spec must pass review before downstream work. On a spec/code conflict the execution agent must STOP, record a Deviation, and hand back to Spec Review — never silently rewrite product intent.",
         tracks: [
           {
             name: "Spec Agent",
-            role: "Maintain the design and feature-spec chain",
-            description: "Refine the draft into reviewable design and feature-spec artifacts and record the resulting decisions.",
-            points: [".prd -> .features Feature Spec/Test Spec", "design / roadmap / .issues update", "review handoff"]
+            role: "Maintain the Requirement Package contract chain",
+            description: "Runs prd-author → prd-review → spec-generate → spec-review → spec-test-generate → issue-generate, producing and updating prd.md / spec.md / test.md / issues.md.",
+            points: [".requirements/requirements/R001-<slug>/prd.md (REQ-R001-001)", "spec.md (SPEC-R001-F01-001) + test.md (TEST-R001-F01-001)", "issues.md (ISSUE-R001-001) and review gates"]
           },
           {
             name: "Execution Agent",
-            role: "Deliver code and unit tests",
-            description: "Own implementation and implementation-coupled unit tests only. Do not consume independent test plans.",
-            points: ["implementation tasks", "unit tests", "implementation-report"]
+            role: "Deliver issues without rewriting product intent",
+            description: "Reads prd / spec / test and the codebase before executing; touches only the current Issue scope and writes a Completion Record; STOPs with a Deviation on spec/code conflicts.",
+            points: ["execute ## ISSUE-R001-001", "write **Status:** and ### Completion Record", "implementation-coupled unit tests"]
           },
           {
-            name: "Test Agent",
-            role: "Run isolated verification",
-            description: "Own test plan, scenarios, API, E2E, UI, and normalized result reporting.",
-            points: ["test-plan / test-schedule", "E2E / scenario / API / UI", "test-result-summary"]
+            name: "Verify Agent",
+            role: "Run isolated verification and the traceability matrix",
+            description: "Runs test.md Exit Criteria (E2E / scenario / API / UI) and checks the Requirement|Spec|Test|Issue trace links, converging at the feature-verify gate.",
+            points: ["test.md full coverage (P0/P1 REQs)", "feature-verify gate", "traceability.md"]
           }
         ]
       },
       projectModes: {
-        eyebrow: "$ cat docs/spec-modes/README.md",
+        eyebrow: "$ cat docs/spec-modes/GoalSpec/README.md",
         title: "Project modes",
         description:
-          "SpecOS has three official project modes. The about page spells out their type, structural focus, and operating purpose so the delivery model can be chosen before project assembly starts.",
+          "SpecOS has one official mode: GoalSpec (Agent-Native SDLC). LiteSpec and EnterpriseSpec are no longer independent modes; they remain as optional plugin specs. The about page spells out the structural focus and operating purpose so the delivery model can be chosen before project assembly starts.",
         sharedLabel: "Shared rules",
         sharedPoints: [
-          "All three modes keep README, design, and current as the stable context entry points.",
-          "All three modes require feature, implementation, review, and test artifacts to stay traceable by Spec ID.",
-          "The real difference is the granularity of delivery evidence, role boundaries, and governance strength."
+          "One requirement = one Requirement Package (prd / spec / test / issues co-located).",
+          "IDs are permanent anchors: REQ / SPEC / TEST / ISSUE are never renumbered or reused across drafts.",
+          "Source Priority: approved PRD → approved Spec → ADR → code → tests. Agents never silently rewrite product intent."
         ],
         modes: [
           {
-            name: "LiteSpec",
-            typeLabel: "Type",
-            typeValue: "Feature Driven",
-            treeLabel: "Tree preview",
-            treeCommand: "$ tree project/",
-            tree: [
-              { text: "project/" },
-              { text: "|-- README.md", note: "entry context" },
-              { text: "|-- design/", note: "stable system truth" },
-              { text: "|-- current/", note: "active delivery state" },
-              { text: "|-- .features/", note: "feature-local artifacts" },
-              { text: "|   |-- roadmap.md" },
-              { text: "|   `-- RP-001-feature/" },
-              { text: "|       |-- spec.md" },
-              { text: "|       |-- tasks.md" },
-              { text: "|       |-- tests.md", note: "feature-local checks" },
-              { text: "|       |-- review.md" },
-              { text: "|       `-- changelog.md" },
-              { text: "`-- .agents/", note: "small shared agent context" }
-            ],
-            loadLabel: "Loading order",
-            loadPath: ["README", "current", "design", ".features/RP-xxx", "relevant skill"],
-            loadNote: "Load along one feature track so the agent can read the smallest useful context in one pass.",
-            purposeLabel: "Purpose",
-            purposeValue:
-              "Treat the feature as the smallest execution unit so agent context stays small, iteration stays fast, and the directory can be loaded in one pass.",
-            structureLabel: "Structure focus",
-            structure: [
-              "Keep spec, tasks, tests, review, and changelog together under one feature directory in .features/RP-xxx/.",
-              "Use current/ for active-feature, active-context, active-tasks, and handoff so the project can move along a single active track.",
-              "Keep .agents/ small, with a few shared skill files, because one engineer or one agent is expected to finish the feature end to end."
-            ],
-            fitLabel: "Best for",
-            fit: [
-              "MVPs, personal projects, and small-team day-to-day development.",
-              "Low-token, fast-iteration work where delivery evidence can stay close to the feature.",
-              "Platform, infrastructure, and internal-tool projects that need rapid trial and adjustment."
-            ]
-          },
-          {
             name: "GoalSpec",
             typeLabel: "Type",
-            typeValue: "Workflow Driven",
+            typeValue: "Agent-Native SDLC",
             treeLabel: "Tree preview",
-            treeCommand: "$ tree project/",
+            treeCommand: "$ tree .requirements/",
             tree: [
-              { text: "project/" },
-              { text: "|-- README.md", note: "entry context" },
-              { text: "|-- design/", note: "stable system truth" },
-              { text: "|-- current/", note: "dual-track delivery status" },
-              { text: "|-- docs/workflow.md", note: "versioned delivery chain" },
-              { text: "|-- .features/", note: "issue index + feature" },
-              { text: "|   |-- roadmap.md", note: "produced by /to-issues" },
-              { text: "|   `-- RP-001-feature/" },
-              { text: "|       |-- spec.md" },
-              { text: "|       |-- tasks.md" },
-              { text: "|       |-- review.md", note: "produced by /review-it" },
-              { text: "|       `-- changelog.md", note: "produced by /ship-it" },
-              { text: "|-- implementation/", note: "changed-surface record" },
-              { text: "|-- .features/<feature>/test-spec.md", note: "produced by /spec-to-test" },
-              { text: "`-- .agents/", note: "small shared agent context" }
+              { text: ".requirements/" },
+              { text: "|-- README.md", note: "package index / entry" },
+              { text: "|-- requirements/" },
+              { text: "|   `-- R001-decision-api/" },
+              { text: "|       |-- prd.md", note: "REQ-R001-001" },
+              { text: "|       |-- spec.md", note: "SPEC-R001-F01-001" },
+              { text: "|       |-- test.md", note: "TEST-R001-F01-001" },
+              { text: "|       `-- issues.md", note: "ISSUE-R001-001" },
+              { text: "|-- examples/", note: "R000-example-*" },
+              { text: "|-- templates/", note: "prd / spec / test / issues" },
+              { text: "`-- skills/", note: "8-mode unified skill" }
             ],
             loadLabel: "Loading order",
-            loadPath: ["README", "current", "design", ".issues/", ".features/RP-xxx"],
-            loadNote: "Adds Issue and Test Spec indexes so an agent can resolve the current implementation and verification state.",
+            loadPath: [".requirements/README.md", "R001-<slug>/prd.md", "spec.md", "test.md", "issues.md", "relevant skill"],
+            loadNote: "Load along one Requirement Package so an agent reads the whole REQ→SPEC→TEST→ISSUE chain in a single pass.",
             purposeLabel: "Purpose",
             purposeValue:
-              "Approve a versioned Feature Spec, advance implementation and independent verification in parallel, then converge at review and ship.",
+              "Keep requirements, contracts, verification, and execution progress traceable in one directory: IDs are permanent, changes use type: change + affects, and every mode can resolve the source of a decision.",
             structureLabel: "Structure focus",
             structure: [
-              ".issues/ keeps implementation and verification issue indexes separate; each issue stays small and independently reviewable.",
-              "Review and ship stay single-file per feature (review.md, changelog.md), without EnterpriseSpec's multi-stage reviews/ tree.",
-              "docs/workflow.md records Feature Spec versions, Test Spec versions, and the dual-track convergence gates."
+              "prd.md writes Goal / Non-Goal / REQ / BR / INV / Edge / AC in RFC-2119 language, with stable IDs that never renumber.",
+              "spec.md groups contracts into logical F0N units, each numbered SPEC-R001-F0N-###.",
+              "test.md covers happy / negative / permission / state / invariant / retry / concurrency / external failure / observability.",
+              "issues.md tracks execution and progress as ## ISSUE-R001-### sections."
             ],
             fitLabel: "Best for",
             fit: [
-              "Small teams that already work issue by issue.",
-              "Projects that want explicit review and ship gates without EnterpriseSpec's role-separated governance.",
-              "Teams moving from LiteSpec toward EnterpriseSpec that don't need the full delivery-evidence apparatus yet."
-            ]
-          },
-          {
-            name: "EnterpriseSpec",
-            typeLabel: "Type",
-            typeValue: "Delivery Driven",
-            treeLabel: "Tree preview",
-            treeCommand: "$ tree project/",
-            tree: [
-              { text: "project/" },
-              { text: "|-- README.md", note: "entry context" },
-              { text: "|-- design/", note: "stable system truth" },
-              { text: "|-- current/", note: "release and blocker state" },
-              { text: "|-- .features/", note: "demand-side artifacts" },
-              { text: "|   `-- RP-001-feature/" },
-              { text: "|-- implementation/", note: "rollout and rollback evidence" },
-              { text: "|   `-- RP-001/" },
-              { text: "|-- tests/", note: "by test type" },
-              { text: "|   |-- unit/" },
-              { text: "|   |-- e2e/" },
-              { text: "|   |-- performance/" },
-              { text: "|   `-- security/" },
-              { text: "|-- reviews/", note: "staged approvals" },
-              { text: "`-- docs/", note: "runbook and ops" }
-            ],
-            loadLabel: "Loading order",
-            loadPath: ["README", "current", "role view", "owned artifacts"],
-            loadNote:
-              "Load by role slice instead of asking one agent to read implementation, tests, reviews, and docs all at once.",
-            purposeLabel: "Purpose",
-            purposeValue:
-              "Treat delivery evidence as the smallest governance unit so QA, audit, release, and rollback paths can each be proven independently.",
-            structureLabel: "Structure focus",
-            structure: [
-              "Keep demand-side artifacts such as spec, task-plan, model, api, and migration in .features/, while implementation, tests, and reviews live in separate top-level directories.",
-              "Split tests/ by type, including unit, integration, e2e, performance, security, and results, so specialist roles can work in parallel.",
-              "Use reviews/, docs/runbook/, and rollout or rollback records as fixed homes for release governance, audit evidence, and operations handoff."
-            ],
-            fitLabel: "Best for",
-            fit: [
-              "Systems with payment, risk, permission, security, audit, or compliance scope.",
-              "Projects that require formal QA gates, release records, rollback proof, or multi-team collaboration.",
-              "Delivery environments where performance, concurrency, or security testing must be isolated and retained."
+              "Any team delivering by requirement package with a demand for traceability.",
+              "Projects where agents must advance along a multi-mode chain and every decision can be traced to a source.",
+              "LiteSpec / EnterpriseSpec may be layered on as optional plugins."
             ]
           }
         ],
         decisionLabel: "Selection rule",
         decision:
-          "Start with LiteSpec by default. Move to GoalSpec when the team wants a standard issue-split -> implement -> review -> ship loop with explicit review/ship gates. Move to EnterpriseSpec when the feature needs independent QA, release governance, performance or security evidence, or when a single agent can no longer carry the whole change in one narrow execution track."
+          "Use GoalSpec by default. Reference the LiteSpec plugin for light single-track delivery, or layer EnterpriseSpec for heavy governance and audit evidence — but they are no longer official modes."
       },
       testUiDemo: {
         eyebrow: "$ open test-console/demo",
@@ -606,7 +438,7 @@ export const localeCopy = {
         columnNotes: ["Input source", "User behavior split from the spec", "Executable path for the scenario", "Rule for pass/fail judgement", "Conclusion from the real run"],
         flows: [
           {
-            spec: "reward-order spec v1.2.0",
+            spec: "reward-order SPEC-R001-F01-001",
             scenario: "User claims reward successfully",
             chain: "API + UI happy-path chain",
             standard: "200 / decrement inventory / success copy",
@@ -614,7 +446,7 @@ export const localeCopy = {
             status: "pass"
           },
           {
-            spec: "reward-order spec v1.2.0",
+            spec: "reward-order SPEC-R001-F01-001",
             scenario: "User claims reward successfully",
             chain: "Result consistency chain",
             standard: "Order / inventory / entitlement align",
@@ -622,7 +454,7 @@ export const localeCopy = {
             status: "pass"
           },
           {
-            spec: "reward-order spec v1.2.0",
+            spec: "reward-order SPEC-R001-F01-001",
             scenario: "Claim fails when inventory is low",
             chain: "Error branch chain",
             standard: "OUT_OF_STOCK / recoverable failure copy",
@@ -630,7 +462,7 @@ export const localeCopy = {
             status: "fail"
           },
           {
-            spec: "reward-order spec v1.2.0",
+            spec: "reward-order SPEC-R001-F01-001",
             scenario: "Claim fails when inventory is low",
             chain: "Test asset chain",
             standard: "Bruno collection / adapter executable",

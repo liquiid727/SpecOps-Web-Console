@@ -59,7 +59,7 @@ describe("HomePage", () => {
     expect(screen.getByRole("link", { name: "浏览目录" })).toHaveAttribute("href", "/discover");
     expect(screen.getByRole("link", { name: "组合工作区" })).toHaveAttribute("href", "/projects");
     expect(screen.getByRole("link", { name: "预览导出" })).toHaveAttribute("href", "/exports");
-    expect(screen.queryByRole("heading", { name: "Agent 工作方式与测试边界" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Agent-Native SDLC 工作流" })).not.toBeInTheDocument();
     expect(screen.queryByText("$ GO DISCOVER")).not.toBeInTheDocument();
     expect(screen.queryByText("目录快照")).not.toBeInTheDocument();
     expect(screen.queryByText("最近项目")).not.toBeInTheDocument();

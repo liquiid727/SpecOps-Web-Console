@@ -71,6 +71,48 @@ export interface ProjectManifest {
   exportTargets: string[];
 }
 
+export type RequirementType = "feature" | "change" | "bug" | "refactor";
+export type RequirementStatus = "draft" | "review" | "approved" | "implementing" | "done" | "example";
+export type RequirementDocument = "prd" | "spec" | "test" | "issues";
+export type RequirementGateStatus = "pass" | "warn" | "block";
+
+export interface RequirementFileState {
+  present: boolean;
+  status?: string;
+  ids: number;
+}
+
+export interface RequirementPackageSummary {
+  id: string;
+  slug: string;
+  title: string;
+  type: RequirementType;
+  status: RequirementStatus;
+  priority?: string;
+  updatedAt?: string;
+  files: Record<RequirementDocument, RequirementFileState>;
+  issueCounts: { total: number; done: number };
+  gates: {
+    package: RequirementGateStatus;
+    prd: RequirementGateStatus;
+    spec: RequirementGateStatus;
+    test: RequirementGateStatus;
+    feature: RequirementGateStatus;
+  };
+  warnings: string[];
+}
+
+export interface RequirementDocumentData {
+  document: RequirementDocument;
+  path: string;
+  source: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface RequirementPackageDetail extends RequirementPackageSummary {
+  documents: Partial<Record<RequirementDocument, RequirementDocumentData>>;
+}
+
 export interface MissingDependencyIssue {
   assetId: string;
   missingAssetIds: string[];

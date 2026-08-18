@@ -45,8 +45,8 @@ vi.mock("@/features/catalog/server", () => ({
       appliesTo: ["frontend"],
       dependsOn: [],
       conflictsWith: [],
-      sourcePath: ".prd/_template/feature/product-ui.template.md",
-      files: [".prd/_template/feature/product-ui.template.md"],
+      sourcePath: ".requirements/templates/prd-feature-draft.template.md",
+      files: [".requirements/templates/prd-feature-draft.template.md"],
       version: "1.0.0"
     },
     {

@@ -72,15 +72,9 @@ export async function createProject(input: {
     prdPath: `spec-web-ui/workspace/projects/${id}/prd.md`,
     exportTargets: [
       "docs/",
-      "current/",
       "design/",
-      "implementation/",
-      "reviews/",
       "rules/",
-      ".prd/_template/",
-      ".features/_rules/",
-      ".features/_template/",
-      ".issues/_template/",
+      ".requirements/",
       "ai/agents/",
       "agent-teams/",
       "project-manifest.yaml"
