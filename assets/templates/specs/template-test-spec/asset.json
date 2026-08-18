@@ -32,7 +32,7 @@
   "conflictsWith": [],
   "sourcePath": "assets/templates/specs/template-test-spec/test-spec.md",
   "files": [
-    ".features/_template/feature/test-spec.example.md"
+    ".requirements/templates/test-spec.example.md"
   ],
   "version": "1.0.0",
   "draftHints": [
@@ -42,6 +42,6 @@
   ],
   "sampleOutput": "独立 Test Spec、质量目标、测试矩阵、自动化计划和发布门禁。",
   "contentFiles": {
-    ".features/_template/feature/test-spec.example.md": "assets/templates/specs/template-test-spec/test-spec.md"
+    ".requirements/templates/test-spec.example.md": "assets/templates/specs/template-test-spec/test-spec.md"
   }
 }

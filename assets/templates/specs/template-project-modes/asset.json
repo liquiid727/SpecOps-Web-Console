@@ -29,9 +29,9 @@
   "sourcePath": "assets/templates/specs/template-project-modes/README.md",
   "files": [
     "docs/spec-modes/README.md",
-    "docs/spec-modes/LiteSpec/README.md",
+    "docs/spec-modes/plugins/LiteSpec/README.md",
     "docs/spec-modes/GoalSpec/README.md",
-    "docs/spec-modes/EnterpriseSpec/README.md"
+    "docs/spec-modes/plugins/EnterpriseSpec/README.md"
   ],
   "version": "1.1.0",
   "draftHints": [
@@ -42,8 +42,8 @@
   "sampleOutput": "一套说明 LiteSpec、GoalSpec 与 EnterpriseSpec 的项目模式文档。",
   "contentFiles": {
     "docs/spec-modes/README.md": "assets/templates/specs/template-project-modes/README.md",
-    "docs/spec-modes/LiteSpec/README.md": "assets/templates/specs/template-project-modes/LiteSpec.md",
+    "docs/spec-modes/plugins/LiteSpec/README.md": "assets/templates/specs/template-project-modes/LiteSpec.md",
     "docs/spec-modes/GoalSpec/README.md": "assets/templates/specs/template-project-modes/GoalSpec.md",
-    "docs/spec-modes/EnterpriseSpec/README.md": "assets/templates/specs/template-project-modes/EnterpriseSpec.md"
+    "docs/spec-modes/plugins/EnterpriseSpec/README.md": "assets/templates/specs/template-project-modes/EnterpriseSpec.md"
   }
 }

@@ -6,8 +6,7 @@ Each template asset can provide an `asset.json` manifest so the tool site can re
 
 The primary template surfaces are:
 
-- intake drafts under `.prd/_template/`
+- requirement package templates under `.requirements/templates/`
 - platform design under `design/_template/`
-- feature specs under `.features/_template/`
 - project mode guidance under `docs/spec-modes/`
-- active delivery workspace seeds under `current/`
+- Go engineering-pack templates under `ai/templates/`

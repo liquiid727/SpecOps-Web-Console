@@ -22,7 +22,7 @@
   "conflictsWith": [],
   "sourcePath": "assets/templates/specs/template-backend-domain/backend-domain.template.md",
   "files": [
-    ".prd/_template/feature/backend-domain.template.md"
+    ".requirements/templates/prd-backend-domain.template.md"
   ],
   "version": "1.0.0",
   "draftHints": [
@@ -31,6 +31,6 @@
   ],
   "sampleOutput": "后端域能力草稿模板。",
   "contentFiles": {
-    ".prd/_template/feature/backend-domain.template.md": "assets/templates/specs/template-backend-domain/backend-domain.template.md"
+    ".requirements/templates/prd-backend-domain.template.md": "assets/templates/specs/template-backend-domain/backend-domain.template.md"
   }
 }

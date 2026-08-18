@@ -2,4 +2,4 @@
 
 Repository-wide engineering and orchestration rules belong here.
 
-Read `docs/spec-modes/` first when the project needs to choose between `LiteSpec` and `EnterpriseSpec` behavior.
+The project runs the GoalSpec (Agent-Native SDLC) workflow by default; see `docs/spec-modes/` and `.requirements/README.md`.

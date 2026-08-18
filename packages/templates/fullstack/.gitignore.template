@@ -39,8 +39,8 @@ __pycache__/
 venv/
 
 # --- Editor / CLI tool local state ---
-# Keep AGENTS.md, CLAUDE.md, .claude/, .codex/, .features/, and docs/ under version
-# control. Only ignore the cache/session subpaths these tools generate locally.
+# Keep AGENTS.md, CLAUDE.md, .claude/, .codex/, .requirements/, and docs/ under
+# version control. Only ignore the cache/session subpaths these tools generate locally.
 .claude/settings.local.json
 .claude/todos/
 .claude/shell-snapshots/
@@ -51,6 +51,17 @@ venv/
 .codex/sessions/
 .codex/cache/
 .codex/logs/
+
+# --- Requirement Package generated scratch ---
+# Generated plans, schedules, results, and adapter output are reproducible, never source of truth.
+.requirements/*.json
+.requirements/plans/*.json
+.requirements/schedules/*.json
+.requirements/bruno/
+.requirements/results/
+.requirements/performance/
+.requirements/concurrency/
+.requirements/scenarios/
 
 # --- Agent development caches ---
 # Local run/handoff/inference caches produced by agent tooling. Reproducible

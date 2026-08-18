@@ -6,9 +6,9 @@ stacks:
   frontend: next
   backend: node-api
 artifacts:
-  draftsDir: .prd
-  issuesDir: .issues
-  specsDir: .features
+  draftsDir: .requirements
+  issuesDir: .requirements
+  specsDir: .requirements
   testsDir: tests
   resultsDir: tests/results
 rulePacks:

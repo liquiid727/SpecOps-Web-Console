@@ -23,7 +23,7 @@
   "conflictsWith": [],
   "sourcePath": "assets/templates/specs/template-basic-draft-example/draft.example.md",
   "files": [
-    ".prd/_template/feature/draft.example.md"
+    ".requirements/examples/R000-example-basic/prd.example.md"
   ],
   "version": "1.0.0",
   "draftHints": [
@@ -32,6 +32,6 @@
   ],
   "sampleOutput": "一份轻量级 Feature Draft 示例。",
   "contentFiles": {
-    ".prd/_template/feature/draft.example.md": "assets/templates/specs/template-basic-draft-example/draft.example.md"
+    ".requirements/examples/R000-example-basic/prd.example.md": "assets/templates/specs/template-basic-draft-example/draft.example.md"
   }
 }

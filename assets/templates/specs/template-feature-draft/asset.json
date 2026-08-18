@@ -23,7 +23,7 @@
   "conflictsWith": [],
   "sourcePath": "assets/templates/specs/template-feature-draft/product-ui.template.md",
   "files": [
-    ".prd/_template/feature/product-ui.template.md"
+    ".requirements/templates/prd-feature-draft.template.md"
   ],
   "version": "1.0.0",
   "draftHints": [
@@ -32,6 +32,6 @@
   ],
   "sampleOutput": "一份覆盖目标、用户流程、接口、数据库、埋点、异常情况和验收标准的 Feature Spec Draft Markdown。",
   "contentFiles": {
-    ".prd/_template/feature/product-ui.template.md": "assets/templates/specs/template-feature-draft/product-ui.template.md"
+    ".requirements/templates/prd-feature-draft.template.md": "assets/templates/specs/template-feature-draft/product-ui.template.md"
   }
 }

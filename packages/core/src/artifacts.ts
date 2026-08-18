@@ -222,7 +222,6 @@ export type RequestRouteAgentRole =
   | "product-architect-agent"
   | "spec-editor"
   | "ui-design-agent"
-  | "cli-gui-agent"
   | "frontend-agent"
   | "backend-agent"
   | "ddd-domain-agent"
@@ -261,7 +260,6 @@ export const specialistManagedBy: Record<RequestSpecialistAgentRole, RequestMain
   "frontend-agent": "implementation-agent",
   "backend-agent": "implementation-agent",
   "implementation-editor": "implementation-agent",
-  "cli-gui-agent": "implementation-agent",
   "ui-design-agent": "implementation-agent",
   "execution-editor": "implementation-agent",
   "test-editor": "testing-agent",
@@ -870,8 +868,7 @@ const requestRoutingRules: Record<RequestWorkType, string[]> = {
   architecture: [
     ".rules/project.md",
     "design/README.md",
-    ".features/roadmap.md",
-    ".features/_rules/README.md",
+    ".requirements/README.md",
     "rules/backend/go-backend-governance.md",
     "rules/shared/error-code-governance.md",
     "ai/workflows/nested-agent-orchestration.md",
@@ -883,8 +880,8 @@ const requestRoutingRules: Record<RequestWorkType, string[]> = {
   ],
   frontend: ["rules/frontend/react-workbench-delivery.md", "rules/shared/error-code-governance.md"],
   ui_prototype: ["rules/ui/pencil-prototype-ui.md", "rules/frontend/react-workbench-delivery.md"],
-  spec: [".features/_rules/README.md", "rules/testing/production-test-standards.md", "rules/shared/error-code-governance.md"],
-  tests: ["tests/README.md", "rules/testing/production-test-standards.md", "rules/ci/spec-release-gates.md"],
+  spec: [".requirements/README.md", "rules/testing/production-test-standards.md", "rules/shared/error-code-governance.md"],
+  tests: [".requirements/README.md", "rules/testing/production-test-standards.md", "rules/ci/spec-release-gates.md"],
   ci: ["rules/testing/production-test-standards.md", "rules/ci/spec-release-gates.md", "scripts/checks/README.md"],
   orchestration: ["ai/workflows/README.md", "scripts/orchestration/README.md", "rules/ci/spec-release-gates.md"],
 };
@@ -901,7 +898,7 @@ const requestRoutingAgents: Record<RequestWorkType, RequestRouteAgentRole[]> = {
     "reviewer",
   ],
   backend: ["backend-agent", "ddd-domain-agent", "openapi-agent", "db-migration-agent", "unit-test-agent"],
-  frontend: ["frontend-agent", "cli-gui-agent", "ui-design-agent", "test-editor"],
+  frontend: ["frontend-agent", "ui-design-agent", "test-editor"],
   ui_prototype: ["spec-editor", "ui-design-agent"],
   spec: ["product-architect-agent", "spec-editor", "ddd-domain-agent", "test-editor"],
   tests: [
@@ -970,7 +967,6 @@ const allRouteAgentRoles: RequestRouteAgentRole[] = [
   "product-architect-agent",
   "spec-editor",
   "ui-design-agent",
-  "cli-gui-agent",
   "frontend-agent",
   "backend-agent",
   "ddd-domain-agent",
@@ -1050,7 +1046,6 @@ const specialistRoleKeywords: Partial<Record<RequestRouteAgentRole, string[]>> =
   "openapi-agent": ["api", "contract", "schema", "swagger", "openapi", "接口"],
   "db-migration-agent": ["db", "database", "sql", "migration", "schema", "table", "迁移", "表"],
   "ui-design-agent": ["ui", "frontend", "react", "next", "console", "page", "页面", "前端", "交互", "prototype", "原型"],
-  "cli-gui-agent": ["cli gui", "cli-gui", "product ai os", "doc/todo/gui", "terminal", "session", "workspace", "i18n", "chrome", "语言切换", "多语言", "终端", "会话", "工作区"],
   "test-editor": ["test", "qa", "coverage", "scenario", "contract", "测试", "验收"],
   "performance-test-agent": ["performance", "latency", "throughput", "slo", "benchmark", "性能", "延迟"],
   "concurrency-test-agent": ["concurrency", "race", "lock", "idempot", "duplicate", "并发", "一致性", "重试"],
@@ -1181,7 +1176,6 @@ const primaryRoleDispatchPriority: Record<RequestRouteAgentRole, RequestRouteAge
   "product-architect-agent": allRouteAgentRoles,
   "spec-editor": allRouteAgentRoles,
   "ui-design-agent": allRouteAgentRoles,
-  "cli-gui-agent": allRouteAgentRoles,
   "frontend-agent": allRouteAgentRoles,
   "backend-agent": allRouteAgentRoles,
   "ddd-domain-agent": allRouteAgentRoles,
@@ -1222,7 +1216,7 @@ export function buildRequestRoute(
   const hasDraftSignal = match("draft-only", ["draft", "草稿", "设计文档", "文档", "整理一下"]);
   const hasActiveChangeSignal = match("active-change", [
     "feature spec",
-    ".features/",
+    ".requirements/",
     "roadmap",
     "变更",
     "spec package",
@@ -1326,10 +1320,10 @@ export function buildRequestRoute(
   const needsChangePackage = needsDraft || requestKind === "implementation" || requestKind === "test" || requestKind === "acceptance";
   const orderedRoles = [primaryAgent, ...[...supportingAgents].sort()] as RequestRouteAgentRole[];
   const modeReadme = projectMode === "enterprisespec"
-    ? "docs/spec-modes/EnterpriseSpec/README.md"
+    ? "docs/spec-modes/plugins/EnterpriseSpec/README.md"
     : projectMode === "goalspec"
       ? "docs/spec-modes/GoalSpec/README.md"
-      : "docs/spec-modes/LiteSpec/README.md";
+      : "docs/spec-modes/plugins/LiteSpec/README.md";
   const promptAssembly = buildHostPromptAssembly(defaultRoutePromptManifest, {
     projectMode,
     manifestPath: ".agents/manifest.yaml",
@@ -1355,10 +1349,7 @@ export function buildRequestRoute(
       ".agents/manifest.yaml",
       ".specos/manifest.yaml",
       modeReadme,
-      "current/",
-      ".prd/",
-      ".features/",
-      ".issues/",
+      ".requirements/",
       ".rules/rule-map.yaml",
       ...[...workTypes].map((workType) => `.rules work_type: ${workType}`),
     ],
@@ -2471,7 +2462,6 @@ function requireAgentRole(state: MutableValidation, value: unknown, path: string
       "product-architect-agent",
       "spec-editor",
       "ui-design-agent",
-      "cli-gui-agent",
       "frontend-agent",
       "backend-agent",
       "ddd-domain-agent",
@@ -2547,10 +2537,10 @@ function primaryAgentForRequest(kind: RequestKind, workTypes: Set<RequestWorkTyp
 
 function nextStepForRequest(kind: RequestKind, needsDraft: boolean, needsChangePackage: boolean): string {
   if (needsDraft) {
-    return "Create or update .prd/<stable-id>.md with raw request, assumptions, and open questions.";
+    return "Create or update the Requirement Package `.requirements/requirements/R0NN-<slug>/prd.md` with raw request, assumptions, and open questions.";
   }
   if (needsChangePackage) {
-    return "Attach the request to .prd/, design/, .features/roadmap.md, .features/<SPEC-ID>-<slug>/spec.md, and .issues/ before implementation, testing, or release gates.";
+    return "Attach the request to a Requirement Package `.requirements/requirements/R0NN-<slug>/` (prd.md -> spec.md -> test.md -> issues.md) before implementation, testing, or release gates.";
   }
   if (kind === "review") {
     return "Run the reviewer role against the active change, rules, tests, and validation evidence.";

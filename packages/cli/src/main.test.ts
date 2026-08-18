@@ -434,16 +434,14 @@ describe("specos cli", () => {
     await expect(readFile(join(cwd, ".specos/manifest.yaml"), "utf8")).resolves.toContain("projectMode: goalspec");
     await expect(readFile(join(cwd, "AGENTS.md"), "utf8")).resolves.toContain("SpecOS");
     await expect(readFile(join(cwd, "docs", "spec-modes", "README.md"), "utf8")).resolves.toContain("Spec Modes");
-    await expect(readFile(join(cwd, "docs", "spec-modes", "LiteSpec", "README.md"), "utf8")).resolves.toContain("LiteSpec");
-    await expect(readFile(join(cwd, "current", "README.md"), "utf8")).resolves.toContain("active delivery workspace");
-    await expect(readFile(join(cwd, "current", "project-status.md"), "utf8")).resolves.toContain("Project Status");
+    await expect(readFile(join(cwd, "docs", "spec-modes", "GoalSpec", "README.md"), "utf8")).resolves.toContain("GoalSpec");
+    await expect(readFile(join(cwd, ".requirements", "README.md"), "utf8")).resolves.toContain("Requirement Package");
+    await expect(readFile(join(cwd, ".requirements", "templates", "prd.md"), "utf8")).resolves.toContain("# PRD");
+    await expect(readFile(join(cwd, ".requirements", "templates", "test.md"), "utf8")).resolves.toContain("Spec-Test");
+    await expect(readFile(join(cwd, ".requirements", "examples", "R000-example-feature", "spec.md"), "utf8")).resolves.toContain("SPEC-R000-F01-001");
     await expect(readFile(join(cwd, "design", "README.md"), "utf8")).resolves.toContain("Stable platform");
-    await expect(readFile(join(cwd, "implementation", "README.md"), "utf8")).resolves.toContain("Implementation handoff");
-    await expect(readFile(join(cwd, ".features", "roadmap.md"), "utf8")).resolves.toContain("Spec Roadmap");
-    await expect(readFile(join(cwd, ".features", "_template", "feature", "spec.example.md"), "utf8")).resolves.toContain("Feature Spec Example");
-    await expect(readFile(join(cwd, "tests", "_template", "feature", "cases.example.md"), "utf8")).resolves.toContain("Test Cases Example");
-    await expect(readFile(join(cwd, "tests", "plans", "test-plan.schema.md"), "utf8")).resolves.toContain("Test Plan Schema");
-    await expect(readFile(join(cwd, "tests", "results", "scenario-result.schema.md"), "utf8")).resolves.toContain("Scenario Result Schema");
+    await expect(readFile(join(cwd, "docs", "workflow.md"), "utf8")).resolves.toContain("prd-author");
+    await expect(readFile(join(cwd, "tests", "README.md"), "utf8")).resolves.toContain("verification");
 
     const secondInit = await runCli(["init"], { cwd });
 
@@ -494,10 +492,9 @@ describe("specos cli", () => {
     expect(init.exitCode).toBe(0);
     expect(init.stdout).toContain("mode enterprisespec");
     await expect(readFile(join(cwd, ".specos/manifest.yaml"), "utf8")).resolves.toContain("projectMode: enterprisespec");
-    await expect(readFile(join(cwd, "current", "project-status.md"), "utf8")).resolves.toContain("EnterpriseSpec");
-    await expect(readFile(join(cwd, "current", "release-status.md"), "utf8")).resolves.toContain("Release Status");
+    await expect(readFile(join(cwd, "docs", "spec-modes", "plugins", "EnterpriseSpec", "README.md"), "utf8")).resolves.toContain("EnterpriseSpec");
+    await expect(readFile(join(cwd, ".requirements", "README.md"), "utf8")).resolves.toContain("Requirement Package");
     await expect(readFile(join(cwd, "design", "security.md"), "utf8")).resolves.toContain("# Security");
-    await expect(readFile(join(cwd, ".features", "release-plan.md"), "utf8")).resolves.toContain("Release Plan");
     await expect(readFile(join(cwd, "tests", "security", "README.md"), "utf8")).resolves.toContain("Security Tests");
     await expect(readFile(join(cwd, "reviews", "release", "README.md"), "utf8")).resolves.toContain("Release Reviews");
     await expect(readFile(join(cwd, "docs", "runbook", "README.md"), "utf8")).resolves.toContain("Runbook");
@@ -562,9 +559,9 @@ describe("specos cli", () => {
     expect(init.exitCode).toBe(0);
     expect(init.stdout).toContain("mode goalspec");
     await expect(readFile(join(cwd, ".specos/manifest.yaml"), "utf8")).resolves.toContain("projectMode: goalspec");
-    await expect(readFile(join(cwd, "current", "project-status.md"), "utf8")).resolves.toContain("GoalSpec");
-    await expect(readFile(join(cwd, ".issues", "README.md"), "utf8")).resolves.toContain("Issues");
-    await expect(readFile(join(cwd, "docs", "workflow.md"), "utf8")).resolves.toContain("/prd");
+    await expect(readFile(join(cwd, ".requirements", "README.md"), "utf8")).resolves.toContain("Requirement Package");
+    await expect(readFile(join(cwd, ".requirements", "templates", "issues.md"), "utf8")).resolves.toContain("Issues");
+    await expect(readFile(join(cwd, "docs", "workflow.md"), "utf8")).resolves.toContain("prd-author");
 
     const routed = await runCli(
       [
@@ -708,13 +705,11 @@ describe("specos cli", () => {
     await expect(readFile(join(cwd, ".specos/manifest.yaml"), "utf8")).resolves.toContain("type: spec-only");
     await expect(readFile(join(cwd, ".specos/manifest.yaml"), "utf8")).resolves.toContain("projectMode: goalspec");
     await expect(readFile(join(cwd, "docs", "spec-modes", "README.md"), "utf8")).resolves.toContain("Spec Modes");
-    await expect(readFile(join(cwd, "current", "README.md"), "utf8")).resolves.toContain("active delivery workspace");
+    await expect(readFile(join(cwd, ".requirements", "README.md"), "utf8")).resolves.toContain("Requirement Package");
+    await expect(readFile(join(cwd, ".requirements", "templates", "prd.md"), "utf8")).resolves.toContain("# PRD");
     await expect(readFile(join(cwd, "design", "README.md"), "utf8")).resolves.toContain("Stable platform");
-    await expect(readFile(join(cwd, ".features", "README.md"), "utf8")).resolves.toContain("feature-spec layer");
-    await expect(readFile(join(cwd, ".features", "roadmap.md"), "utf8")).resolves.toContain("Spec Roadmap");
-    await expect(readFile(join(cwd, ".features", "_template", "feature", "task-plan.example.md"), "utf8")).resolves.toContain("Task Plan Example");
-    await expect(readFile(join(cwd, "tests", "_template", "feature", "scenarios.example.md"), "utf8")).resolves.toContain("Test Scenarios Example");
-    await expect(readFile(join(cwd, "tests", "plans", "test-plan.schema.md"), "utf8")).resolves.toContain("Test Plan Schema");
+    await expect(readFile(join(cwd, "docs", "workflow.md"), "utf8")).resolves.toContain("GoalSpec");
+    await expect(readFile(join(cwd, "tests", "README.md"), "utf8")).resolves.toContain("verification");
   });
 
   it("rejects unknown init modes with a stable error code", async () => {
@@ -788,7 +783,7 @@ describe("specos cli", () => {
     const manifest = await readFile(join(cwd, ".specos/manifest.yaml"), "utf8");
     await writeFile(
       join(cwd, ".specos/manifest.yaml"),
-      manifest.replace("specsDir: .features", "specsDir: ../outside"),
+      manifest.replace("specsDir: .requirements", "specsDir: ../outside"),
     );
 
     const check = await runCli(["check"], { cwd });
@@ -891,11 +886,10 @@ describe("specos cli", () => {
     await expect(
       readFile(join(projectRoot, ".codex", "skills", "specos-ui-design", "SKILL.md"), "utf8"),
     ).rejects.toThrow();
-    await expect(readFile(join(projectRoot, "current", "README.md"), "utf8")).resolves.toContain("Current");
+    await expect(readFile(join(projectRoot, ".requirements", "README.md"), "utf8")).resolves.toContain("Requirement Package");
     await expect(readFile(join(projectRoot, "docs", "spec-modes", "README.md"), "utf8")).resolves.toContain("Spec Modes");
     await expect(readFile(join(projectRoot, "rules", "README.md"), "utf8")).resolves.toContain("Rules");
     await expect(readFile(join(projectRoot, "design", "README.md"), "utf8")).resolves.toContain("Stable platform");
-    await expect(readFile(join(projectRoot, ".features", "roadmap.md"), "utf8")).resolves.toContain("Spec Roadmap");
     await expect(readFile(join(projectRoot, ".specos", "manifest.yaml"), "utf8")).resolves.toContain("projectMode: goalspec");
     await expect(readFile(join(projectRoot, ".specos", "manifest.yaml"), "utf8")).resolves.toContain("artifacts:");
 
@@ -907,9 +901,9 @@ describe("specos cli", () => {
   it("generates a test plan and isolated test schedule from spec.md frontmatter", async () => {
     const cwd = await tempProject();
     await runCli(["init"], { cwd });
-    await mkdir(join(cwd, ".features", "RP-002-reward-order-create"), { recursive: true });
+    await mkdir(join(cwd, ".requirements", "requirements", "R001-reward-order-create"), { recursive: true });
     await writeFile(
-      join(cwd, ".features", "RP-002-reward-order-create", "spec.md"),
+      join(cwd, ".requirements", "requirements", "R001-reward-order-create", "spec.md"),
       [
         "---",
         "id: reward-order",
@@ -954,7 +948,7 @@ describe("specos cli", () => {
         "    - error",
         "    - flow",
         "traceability:",
-        "  prd: .prd/reward-order.md",
+        "  prd: .requirements/requirements/R001-reward-order-create/prd.md",
         "---",
         "",
         "# Reward Order Change Spec",
@@ -963,15 +957,15 @@ describe("specos cli", () => {
         "",
       ].join("\n"),
     );
-    const featureSpecPath = join(cwd, ".features", "RP-002-reward-order-create", "spec.md");
+    const featureSpecPath = join(cwd, ".requirements", "requirements", "R001-reward-order-create", "spec.md");
     const featureSpecHash = createHash("sha256").update(await readFile(featureSpecPath, "utf8")).digest("hex");
     await writeFile(
-      join(cwd, ".features", "RP-002-reward-order-create", "test-spec.md"),
+      join(cwd, ".requirements", "requirements", "R001-reward-order-create", "test.md"),
       [
         "---",
         "testSpecId: reward-order.test",
         "testSpecVersion: 1.0.0",
-        "sourceSpec: .features/RP-002-reward-order-create/spec.md",
+        "sourceSpec: .requirements/requirements/R001-reward-order-create/spec.md",
         `sourceSpecHash: ${featureSpecHash}`,
         "sourceSpecId: reward-order",
         "sourceSpecVersion: 1.0.0",
@@ -987,9 +981,9 @@ describe("specos cli", () => {
     const plan = await runCli(
       [
         "generate-test-plan",
-        ".features/RP-002-reward-order-create/spec.md",
+        ".requirements/requirements/R001-reward-order-create/spec.md",
         "--change",
-        "RP-002",
+        "R001",
       ],
       { cwd },
     );
@@ -1002,27 +996,27 @@ describe("specos cli", () => {
     const schedule = JSON.parse(await readFile(join(cwd, "tests", "schedules", "reward-order.test-schedule.json"), "utf8"));
 
     expect(testPlan).toMatchObject({
-      testSpecPath: ".features/RP-002-reward-order-create/test-spec.md",
+      testSpecPath: ".requirements/requirements/R001-reward-order-create/test.md",
       testSpecId: "reward-order.test",
       testSpecVersion: "1.0.0",
       testSpecStatus: "approved",
       testSpecApprovalEvidence: "review-001",
     });
     expect(schedule).toMatchObject({
-      testSpecPath: ".features/RP-002-reward-order-create/test-spec.md",
+      testSpecPath: ".requirements/requirements/R001-reward-order-create/test.md",
       testSpecId: "reward-order.test",
       testSpecVersion: "1.0.0",
       testSpecStatus: "approved",
       testSpecApprovalEvidence: "review-001",
     });
-    expect(schedule.changeId).toBe("RP-002");
+    expect(schedule.changeId).toBe("R001");
     expect(testPlan.scenarios.map((scenario: { branches: string[] }) => scenario.branches[0])).toEqual([
       "happy",
       "limit",
       "error",
       "flow",
     ]);
-    expect(schedule.changeId).toBe("RP-002");
+    expect(schedule.changeId).toBe("R001");
     expect(schedule.tracks.map((track: { id: string }) => track.id)).toEqual(["execution", "testing"]);
     expect(schedule.tasks.map((task: { agentRole: string }) => task.agentRole)).toEqual(
       expect.arrayContaining(["execution-editor", "test-editor", "playwright-test-agent"]),
@@ -1032,9 +1026,9 @@ describe("specos cli", () => {
   it("keeps supporting JSON spec inputs for generate-test-plan", async () => {
     const cwd = await tempProject();
     await runCli(["init"], { cwd });
-    await mkdir(join(cwd, ".features", "RP-002-reward-order-create"), { recursive: true });
+    await mkdir(join(cwd, ".requirements", "requirements", "R001-reward-order-create"), { recursive: true });
     await writeFile(
-      join(cwd, ".features", "RP-002-reward-order-create", "spec.json"),
+      join(cwd, ".requirements", "requirements", "R001-reward-order-create", "spec.json"),
       JSON.stringify(
         {
           id: "reward-order",
@@ -1050,22 +1044,22 @@ describe("specos cli", () => {
           api: [{ name: "Create reward order", method: "POST", path: "/api/reward-orders" }],
           observability: ["trace_id"],
           tests: { requiredBranches: ["happy", "limit", "error", "flow"] },
-          traceability: { prd: ".prd/reward-order.md" },
+          traceability: { prd: ".requirements/requirements/R001-reward-order-create/prd.md" },
         },
         null,
         2,
       ),
     );
 
-    const featureSpecPath = join(cwd, ".features", "RP-002-reward-order-create", "spec.json");
+    const featureSpecPath = join(cwd, ".requirements", "requirements", "R001-reward-order-create", "spec.json");
     const featureSpecHash = createHash("sha256").update(await readFile(featureSpecPath, "utf8")).digest("hex");
     await writeFile(
-      join(cwd, ".features", "RP-002-reward-order-create", "test-spec.md"),
+      join(cwd, ".requirements", "requirements", "R001-reward-order-create", "test.md"),
       [
         "---",
         "testSpecId: reward-order.test",
         "testSpecVersion: 1.0.0",
-        "sourceSpec: .features/RP-002-reward-order-create/spec.json",
+        "sourceSpec: .requirements/requirements/R001-reward-order-create/spec.json",
         `sourceSpecHash: ${featureSpecHash}`,
         "sourceSpecId: reward-order",
         "sourceSpecVersion: 1.0.0",
@@ -1081,9 +1075,9 @@ describe("specos cli", () => {
     const plan = await runCli(
       [
         "generate-test-plan",
-        ".features/RP-002-reward-order-create/spec.json",
+        ".requirements/requirements/R001-reward-order-create/spec.json",
         "--change",
-        "RP-002",
+        "R001",
       ],
       { cwd },
     );

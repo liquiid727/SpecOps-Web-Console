@@ -24,11 +24,11 @@
   "conflictsWith": [],
   "sourcePath": "assets/templates/specs/template-feature-spec/spec.example.md",
   "files": [
-    ".features/_template/feature/spec.example.md",
-    ".features/_template/feature/task-plan.example.md",
-    ".features/_template/feature/model.example.md",
-    ".features/_template/feature/changelog.example.md",
-    ".features/_template/feature/test-spec.example.md"
+    ".requirements/templates/spec.example.md",
+    ".requirements/templates/task-plan.example.md",
+    ".requirements/templates/model.example.md",
+    ".requirements/templates/changelog.example.md",
+    ".requirements/templates/test-spec.example.md"
   ],
   "version": "1.0.0",
   "draftHints": [
@@ -37,10 +37,10 @@
   ],
   "sampleOutput": "一套 Feature Spec、Task Plan、模型和变更记录模板。",
   "contentFiles": {
-    ".features/_template/feature/spec.example.md": "assets/templates/specs/template-feature-spec/spec.example.md",
-    ".features/_template/feature/task-plan.example.md": "assets/templates/specs/template-feature-spec/task-plan.example.md",
-    ".features/_template/feature/model.example.md": "assets/templates/specs/template-feature-spec/model.example.md",
-    ".features/_template/feature/changelog.example.md": "assets/templates/specs/template-feature-spec/changelog.example.md",
-    ".features/_template/feature/test-spec.example.md": "assets/templates/specs/template-test-spec/test-spec.md"
+    ".requirements/templates/spec.example.md": "assets/templates/specs/template-feature-spec/spec.example.md",
+    ".requirements/templates/task-plan.example.md": "assets/templates/specs/template-feature-spec/task-plan.example.md",
+    ".requirements/templates/model.example.md": "assets/templates/specs/template-feature-spec/model.example.md",
+    ".requirements/templates/changelog.example.md": "assets/templates/specs/template-feature-spec/changelog.example.md",
+    ".requirements/templates/test-spec.example.md": "assets/templates/specs/template-test-spec/test-spec.md"
   }
 }

@@ -65,7 +65,7 @@ describe("artifact validation", () => {
       expect.arrayContaining(["rules/testing/production-test-standards.md", "rules/ci/spec-release-gates.md"]),
     );
     expect(route.skills).toContain(".codex/skills/specos-ui-design/SKILL.md");
-    expect(route.requiredContext).toEqual(expect.arrayContaining([".specos/manifest.yaml", "current/", "docs/spec-modes/LiteSpec/README.md"]));
+    expect(route.requiredContext).toEqual(expect.arrayContaining([".specos/manifest.yaml", ".requirements/", "docs/spec-modes/plugins/LiteSpec/README.md"]));
     expect(route.promptAssembly).toMatchObject({
       manifestPath: ".agents/manifest.yaml",
       overlayManifest: ".agents/modes/litespec/manifest.overlay.yaml",
@@ -168,7 +168,7 @@ describe("artifact validation", () => {
       ]),
     );
     expect(route.rules).toEqual(expect.arrayContaining(["ai/workflows/nested-agent-orchestration.md"]));
-    expect(route.requiredContext).toContain("docs/spec-modes/EnterpriseSpec/README.md");
+    expect(route.requiredContext).toContain("docs/spec-modes/plugins/EnterpriseSpec/README.md");
     expect(route.promptAssembly.overlayManifest).toBe(".agents/modes/enterprisespec/manifest.overlay.yaml");
     expect(route.promptAssembly.roles).toEqual(
       expect.arrayContaining([
@@ -223,7 +223,7 @@ describe("artifact validation", () => {
             skill_mode: "scoped_only",
             skills: [],
             delegates_to: ["test-editor", "qa-agent"],
-            context_includes: ["tests/README.md", "tests/results/"],
+            context_includes: [".requirements/"],
             owns: ["independent verification strategy"],
             outputs: ["test strategy and owner map"],
           },
@@ -232,15 +232,15 @@ describe("artifact validation", () => {
             canonical: "ai/agents/test-editor.md",
             skill_mode: "scoped_only",
             skills: [],
-            context_includes: ["tests/README.md", ".features/"],
-            owns: ["tests/"],
+            context_includes: [".requirements/"],
+            owns: [".requirements/"],
             outputs: ["scenario coverage"],
           },
           "ddd-domain-agent": {
             role_prompt: "roles/ddd-domain-agent.md",
             canonical: "ai/agents/ddd-domain-agent.md",
             skills: [],
-            context_includes: ["design/", ".features/"],
+            context_includes: ["design/", ".requirements/"],
             owns: ["domain boundaries"],
             outputs: ["domain risk review"],
           },
@@ -280,19 +280,19 @@ describe("artifact validation", () => {
       overlayApplied: true,
       modeRolePrompt: ".agents/modes/enterprisespec/roles/testing-agent.md",
       skills: [],
-      contextIncludes: ["tests/README.md", "tests/results/"],
+      contextIncludes: [".requirements/"],
       delegatesTo: ["test-editor", "qa-agent"],
     });
     expect(testEditor).toMatchObject({
       role: "test-editor",
       overlayApplied: true,
       modeRolePrompt: ".agents/modes/enterprisespec/roles/test-editor.md",
-      contextIncludes: ["tests/README.md", ".features/"],
+      contextIncludes: [".requirements/"],
     });
     expect(domainAgent).toMatchObject({
       role: "ddd-domain-agent",
       overlayApplied: false,
-      contextIncludes: ["design/", ".features/"],
+      contextIncludes: ["design/", ".requirements/"],
     });
     expect(domainAgent?.modeRolePrompt).toBeUndefined();
   });
@@ -320,7 +320,7 @@ describe("artifact validation", () => {
               role_prompt: "roles/architecture-agent.md",
               canonical: "ai/agents/architecture-agent.md",
               skills: [],
-              context_includes: ["design/", ".features/roadmap.md"],
+              context_includes: ["design/", ".requirements/"],
               delegates_to: ["openapi-agent", "db-migration-agent", "reviewer"],
               owns: ["architecture decision synthesis"],
               outputs: ["architecture recommendation"],
@@ -329,14 +329,14 @@ describe("artifact validation", () => {
               role_prompt: "roles/openapi-agent.md",
               canonical: "ai/agents/openapi-agent.md",
               skills: [],
-              context_includes: [".features/", "rules/shared/error-code-governance.md"],
+              context_includes: [".requirements/", "rules/shared/error-code-governance.md"],
               outputs: ["OpenAPI contract updates"],
             },
             "ddd-domain-agent": {
               role_prompt: "roles/ddd-domain-agent.md",
               canonical: "ai/agents/ddd-domain-agent.md",
               skills: [],
-              context_includes: ["design/", ".features/"],
+              context_includes: ["design/", ".requirements/"],
               outputs: ["domain risk review"],
             },
           },
@@ -364,7 +364,7 @@ describe("artifact validation", () => {
       sharedPromptStack: expect.arrayContaining(["AGENTS.md", ".codex/instructions.md"]),
     });
     expect(plan.primaryTask.requiredContext).toEqual(
-      expect.arrayContaining(["design/", ".features/roadmap.md", "ai/workflows/nested-agent-orchestration.md"]),
+      expect.arrayContaining(["design/", ".requirements/", "ai/workflows/nested-agent-orchestration.md"]),
     );
     expect(plan.supportingTasks).toEqual(
       expect.arrayContaining([
@@ -684,12 +684,12 @@ describe("artifact validation", () => {
         role: "openapi-agent",
         sharedPromptStack: ["AGENTS.md"],
         rolePromptStack: ["ai/agents/openapi-agent.md"],
-        contextPaths: [".features/"],
+        contextPaths: [".requirements/"],
         requestedRuntimeSkills: [],
         taskBrief: {
           reason: "x",
           exactQuestion: "y",
-          inspectableSurfaces: [".features/"],
+          inspectableSurfaces: [".requirements/"],
           expectedOutput: ["contract"],
           nonGoals: ["none"],
         },
@@ -752,7 +752,7 @@ describe("artifact validation", () => {
       needsChangePackage: true,
     });
     expect(route.workTypes).toContain("spec");
-    expect(route.nextStep).toContain(".prd");
+    expect(route.nextStep).toContain(".requirements/requirements/R0NN-<slug>/prd.md");
   });
 
   it("accepts a minimal fullstack manifest", () => {
@@ -887,7 +887,7 @@ describe("artifact validation", () => {
       edgeCases: ["stock is zero"],
       observability: ["trace_id"],
       tests: { requiredBranches: ["happy"] },
-      traceability: { prd: ".prd/reward-order.md" },
+      traceability: { prd: ".requirements/requirements/R001-reward-order-create/prd.md" },
     });
 
     expect(result.ok).toBe(false);
@@ -910,11 +910,11 @@ describe("artifact validation", () => {
       ui: [{ name: "Reward page", route: "/rewards" }],
       observability: ["trace_id"],
       tests: { requiredBranches: ["happy", "limit", "error", "flow"] },
-      traceability: { prd: ".prd/reward-order.md" },
+      traceability: { prd: ".requirements/requirements/R001-reward-order-create/prd.md" },
     };
 
     const plan = buildDeterministicTestPlan(spec, {
-      testSpecPath: ".features/RP-002-reward-order-create/test-spec.md",
+      testSpecPath: ".requirements/requirements/R001-reward-order-create/test.md",
       testSpecId: "reward-order.test",
       testSpecVersion: "1.0.0",
       testSpecHash: "test-spec-hash",
@@ -959,11 +959,11 @@ describe("artifact validation", () => {
       ui: [{ name: "Reward page", route: "/rewards" }],
       observability: ["trace_id"],
       tests: { requiredBranches: ["happy", "limit", "error", "flow"] },
-      traceability: { prd: ".prd/reward-order.md" },
+      traceability: { prd: ".requirements/requirements/R001-reward-order-create/prd.md" },
     };
 
     const plan = buildDeterministicTestPlan(spec, {
-      testSpecPath: ".features/RP-002-reward-order-create/test-spec.md",
+      testSpecPath: ".requirements/requirements/R001-reward-order-create/test.md",
       testSpecId: "reward-order.test",
       testSpecVersion: "1.0.0",
       testSpecHash: "test-spec-hash",
@@ -1975,9 +1975,9 @@ describe("artifact validation", () => {
         { target: ".codex/instructions.md", from: "files/.codex/instructions.md" },
         { target: ".codex/skills/", from: "files/.codex/skills/" },
         { target: "skills/developer/", from: "files/skills/developer/" },
-        { target: ".prd/", from: "files/.prd/" },
-        { target: ".features/", from: "files/.features/" },
-        { target: "tests/", from: "files/tests/" },
+        { target: ".requirements/", from: "files/.requirements/" },
+        { target: "docs/spec-modes/", from: "files/docs/spec-modes/" },
+        { target: "design/", from: "files/design/" },
         { target: "scripts/README.md", from: "files/scripts/README.md" },
         { target: "scripts/orchestration/README.md", from: "files/scripts/orchestration/README.md" },
         { target: "scripts/checks/README.md", from: "files/scripts/checks/README.md" },
@@ -1989,10 +1989,10 @@ describe("artifact validation", () => {
         available: ["spec-driven-default"],
       },
       entrypoints: {
-        prdTemplate: ".prd/_template/feature/product-ui.template.md",
+        prdTemplate: ".requirements/templates/prd.md",
         designTemplate: "design/_template/platform-design.template.md",
-        featureTemplate: ".features/_template/feature/spec.example.md",
-        issueTemplate: ".issues/_template/issue.md",
+        featureTemplate: ".requirements/templates/spec.md",
+        issueTemplate: ".requirements/templates/issues.md",
         workflowId: "spec-driven-default",
       },
       capabilities: {

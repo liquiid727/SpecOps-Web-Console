@@ -1,15 +1,12 @@
 # Spec Modes
 
-This project supports three documented operating modes:
+This project runs one official mode: **GoalSpec** (Agent-Native SDLC).
 
-- `LiteSpec`: the secondary, feature-driven, low-token mode
-- `GoalSpec`: the workflow-driven mode where approved Feature Specs branch into implementation and version-bound independent verification
-- `EnterpriseSpec`: the governed, delivery-driven mode
-
-Start from `GoalSpec`; use its issue-driven loop with review and ship gates. Move to `EnterpriseSpec` when QA, audit, release governance, or multi-team delivery requires it.
+- `GoalSpec`: one requirement = one Requirement Package under `.requirements/requirements/R0NN-<slug>/`, with PRD -> Spec -> Test -> Issues -> Verify connected by stable IDs.
+- `LiteSpec` / `EnterpriseSpec` are demoted to optional plugin specs (see `docs/spec-modes/plugins/` when installed); they do not change the Requirement Package model.
 
 Read:
 
-- `docs/spec-modes/LiteSpec/README.md`
 - `docs/spec-modes/GoalSpec/README.md`
-- `docs/spec-modes/EnterpriseSpec/README.md`
+- `.requirements/README.md` — the Requirement Package index and templates
+- Full standard: `docs/spec-modes/GoalSpec/agent-native-sdlc-standard.md` when present

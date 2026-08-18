@@ -64,14 +64,14 @@ describe("bundler interface", () => {
         stacks: ["specos"],
         prdTemplateId: "template-feature-draft",
         prdPath: ".prd/test-spec.md",
-        exportTargets: [".features/_template/"]
+        exportTargets: [".requirements/templates/"]
       },
       [
         {
           id: "template-test-spec",
-          files: [".features/_template/feature/test-spec.example.md"],
+          files: [".requirements/templates/test-spec.example.md"],
           contentFiles: {
-            ".features/_template/feature/test-spec.example.md": "assets/templates/specs/template-test-spec/test-spec.md"
+            ".requirements/templates/test-spec.example.md": "assets/templates/specs/template-test-spec/test-spec.md"
           }
         }
       ],
@@ -84,17 +84,18 @@ describe("bundler interface", () => {
     expect(plan.files).toEqual([
       {
         sourcePath: "assets/templates/specs/template-test-spec/test-spec.md",
-        targetPath: ".features/_template/feature/test-spec.example.md"
+        targetPath: ".requirements/templates/test-spec.example.md"
       }
     ]);
     expect(plan.bundleManifest.installs).toContainEqual({
-      target: ".features/_template/",
-      from: "files/.features/_template/"
+      target: ".requirements/",
+      from: "files/.requirements/"
     });
   });
 
   it("resolves GoalSpec install targets in priority order", () => {
     expect(resolveInstallTarget("engineering-packs/go/pack.json")).toBe("engineering-packs/");
+    expect(resolveInstallTarget(".requirements/templates/spec.example.md")).toBe(".requirements/");
     expect(resolveInstallTarget(".prd/_template/feature/product-ui.template.md")).toBe(".prd/_template/");
     expect(resolveInstallTarget(".features/_rules/README.md")).toBe(".features/_rules/");
     expect(resolveInstallTarget(".features/_template/feature/spec.example.md")).toBe(".features/_template/");
@@ -102,15 +103,15 @@ describe("bundler interface", () => {
 
     expect(
       deriveInstallMappings([
+        { sourcePath: "prd", targetPath: ".requirements/templates/prd-feature-draft.template.md" },
         { sourcePath: "pack", targetPath: "engineering-packs/go/pack.json" },
-        { sourcePath: "prd", targetPath: ".prd/_template/feature/product-ui.template.md" },
         { sourcePath: "rules", targetPath: ".features/_rules/README.md" },
         { sourcePath: "feature", targetPath: ".features/_template/feature/spec.example.md" },
         { sourcePath: "issue", targetPath: ".issues/_template/issue.md" }
       ])
     ).toEqual([
+      { target: ".requirements/", from: "files/.requirements/" },
       { target: "engineering-packs/", from: "files/engineering-packs/" },
-      { target: ".prd/_template/", from: "files/.prd/_template/" },
       { target: ".features/_rules/", from: "files/.features/_rules/" },
       { target: ".features/_template/", from: "files/.features/_template/" },
       { target: ".issues/_template/", from: "files/.issues/_template/" },

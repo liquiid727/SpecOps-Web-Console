@@ -1,18 +1,15 @@
 id: default-fullstack
 name: Default Fullstack
 inputs:
-  - .prd
+  - .requirements
 outputs:
-  - .features
-  - .issues
-  - implementation
-  - reviews
+  - .requirements
   - tests
 gates:
   - PRD accepted by human
   - design updated or confirmed
-  - Feature Spec and Test Spec recorded in .features
-  - implementation and verification Issues generated in .issues
+  - Spec and Test recorded in the Requirement Package
+  - Issues generated in the Requirement Package
   - implementation handoff prepared
   - test plan reviewed by human
   - tests generated

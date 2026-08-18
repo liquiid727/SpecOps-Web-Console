@@ -26,7 +26,7 @@
   "sourcePath": "assets/agents/roles/agent-openapi/openapi-agent.md",
   "files": [
     "ai/agents/openapi-agent.md",
-    ".features/_template/feature/openapi.example.yaml"
+    ".requirements/templates/openapi.example.yaml"
   ],
   "version": "1.0.0",
   "draftHints": [
@@ -36,6 +36,6 @@
   "sampleOutput": "OpenAPI 合同、字段说明和待确认 schema 列表。",
   "contentFiles": {
     "ai/agents/openapi-agent.md": "assets/agents/roles/agent-openapi/openapi-agent.md",
-    ".features/_template/feature/openapi.example.yaml": "assets/agents/roles/agent-openapi/openapi.example.yaml"
+    ".requirements/templates/openapi.example.yaml": "assets/agents/roles/agent-openapi/openapi.example.yaml"
   }
 }

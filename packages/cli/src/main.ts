@@ -125,19 +125,9 @@ const agentKitSources: AgentKitSource[] = [
   { source: ".codex/instructions.md", target: ".codex/instructions.md" },
   { source: "assets/skills", target: ".codex/skills" },
   { source: "skills/developer", target: "skills/developer" },
-  { source: "current", target: "current" },
+  { source: ".requirements", target: ".requirements" },
   { source: "docs/spec-modes", target: "docs/spec-modes" },
   { source: "design", target: "design" },
-  { source: ".prd", target: ".prd" },
-  { source: ".features", target: ".features" },
-  { source: ".issues", target: ".issues" },
-  { source: "implementation", target: "implementation" },
-  { source: "reviews", target: "reviews" },
-  {
-    source: "tests",
-    target: "tests",
-    exclude: (relativePath) => relativePath.startsWith("results/") && relativePath.endsWith(".json"),
-  },
   { source: "scripts/README.md", target: "scripts/README.md" },
   { source: "scripts/orchestration/README.md", target: "scripts/orchestration/README.md" },
   { source: "scripts/checks/README.md", target: "scripts/checks/README.md" },
@@ -154,15 +144,9 @@ const agentKitInstalls: SpecosBundleManifest["installs"] = [
   { target: ".codex/instructions.md", from: "files/.codex/instructions.md" },
   { target: ".codex/skills/", from: "files/.codex/skills/" },
   { target: "skills/developer/", from: "files/skills/developer/" },
-  { target: "current/", from: "files/current/" },
+  { target: ".requirements/", from: "files/.requirements/" },
   { target: "docs/spec-modes/", from: "files/docs/spec-modes/" },
-  { target: ".prd/", from: "files/.prd/" },
   { target: "design/", from: "files/design/" },
-  { target: ".features/", from: "files/.features/" },
-  { target: "implementation/", from: "files/implementation/" },
-  { target: ".issues/", from: "files/.issues/" },
-  { target: "reviews/", from: "files/reviews/" },
-  { target: "tests/", from: "files/tests/" },
   { target: "scripts/README.md", from: "files/scripts/README.md" },
   { target: "scripts/orchestration/README.md", from: "files/scripts/orchestration/README.md" },
   { target: "scripts/checks/README.md", from: "files/scripts/checks/README.md" },
@@ -790,9 +774,9 @@ async function persistProjectMode(manifestPath: string, mode: ProjectMode) {
   const manifest = parseManifestYaml(source);
   manifest.projectMode = mode;
   const artifacts = typeof manifest.artifacts === "object" && manifest.artifacts !== null ? manifest.artifacts as Record<string, unknown> : {};
-  artifacts.draftsDir = ".prd";
-  artifacts.specsDir = ".features";
-  artifacts.issuesDir = ".issues";
+  artifacts.draftsDir = ".requirements";
+  artifacts.specsDir = ".requirements";
+  artifacts.issuesDir = ".requirements";
   manifest.artifacts = artifacts;
   await writeFile(manifestPath, stringify(manifest), "utf8");
 }
@@ -886,7 +870,7 @@ async function intakeCommand(cwd: string, options: IntakeOptions): Promise<RunCl
       "",
       "- Spec-draft agent owns requirement wording, assumptions, and open questions.",
       "- Architecture agent owns initial architecture impact and risk questions.",
-      "- Human confirmation is required before this PRD updates `design/`, `.features/roadmap.md`, or a Feature Spec/Test Spec under `.features/` and creates implementation/verification Issues under `.issues/`.",
+      "- Human confirmation is required before this PRD updates `design/` or a Requirement Package under `.requirements/requirements/R0NN-<slug>/` (spec.md/test.md/issues.md).",
       "",
     ].join("\n"),
     "utf8",
@@ -1250,13 +1234,13 @@ async function loadTestSpecBinding(
 ): Promise<{ ok: true; value: TestSpecBinding } | { ok: false; error: RunCliResult }> {
   const specsRoot = manifest.artifacts.specsDir;
   const relativeSpecPath = toPosixPath(relative(cwd, specPath));
-  const match = relativeSpecPath.match(new RegExp(`^${escapeRegExp(specsRoot.replace(/\\/g, "/"))}/([^/]+)/(?:spec\\.(?:md|json))$`));
+  const match = relativeSpecPath.match(new RegExp(`^${escapeRegExp(specsRoot.replace(/\\/g, "/"))}/(.+)/(?:spec\\.(?:md|json))$`));
   if (!match) {
     return { ok: false, error: failure("SPECOS_TEST_SPEC_INVALID", "Feature Spec must be inside the manifest specsDir feature directory") };
   }
 
-  const featureDir = match[1];
-  const testSpecPath = join(cwd, specsRoot, featureDir, "test-spec.md");
+  const featureDir = match[1].split("/").pop() as string;
+  const testSpecPath = join(cwd, specsRoot, match[1], "test.md");
   if (!(await pathExists(testSpecPath))) {
     return { ok: false, error: failure("SPECOS_TEST_SPEC_MISSING", `Test Spec not found: ${toPosixPath(relative(cwd, testSpecPath))}`) };
   }
@@ -1972,23 +1956,33 @@ function buildGateReportMarkdown(report: ReturnType<typeof buildTestGateReport>)
 
 function inferChangeIdFromSpecPath(cwd: string, specPath: string, manifest?: CliManifest): string | undefined {
   const parts = toPosixPath(relative(cwd, specPath)).split("/");
-  const featureRoot = manifest?.artifacts.specsDir ?? ".features";
+  const featureRoot = manifest?.artifacts.specsDir ?? ".requirements";
   const rootParts = featureRoot.split("/");
   const rootIndex = parts.findIndex((part, index) => rootParts.every((item, offset) => parts[index + offset] === item));
-  const featureDir = rootIndex >= 0 ? parts[rootIndex + rootParts.length] : undefined;
-  if (featureDir) {
-    const featureMatch = featureDir.match(/^([A-Z]+-\d{3})-/u);
-    if (featureMatch) return featureMatch[1];
+  if (rootIndex >= 0) {
+    for (let index = rootIndex + rootParts.length; index < parts.length; index += 1) {
+      const featureMatch = parts[index].match(/^([A-Z]+-\d{3})-/u);
+      if (featureMatch) return featureMatch[1];
+    }
   }
   return undefined;
 }
 
-async function findFeatureSpecDirectoryById(cwd: string, specId: string, specsDir = ".features"): Promise<string | undefined> {
+async function findFeatureSpecDirectoryById(cwd: string, specId: string, specsDir = ".requirements"): Promise<string | undefined> {
   const specsRoot = join(cwd, specsDir);
   if (!(await pathExists(specsRoot))) return undefined;
-  const entries = await readdir(specsRoot, { withFileTypes: true });
   const prefix = `${specId}-`;
-  return entries.find((entry) => entry.isDirectory() && entry.name.startsWith(prefix))?.name;
+  async function search(dir: string): Promise<string | undefined> {
+    const entries = await readdir(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      if (entry.name.startsWith(prefix)) return entry.name;
+      const nested = await search(join(dir, entry.name));
+      if (nested) return nested;
+    }
+    return undefined;
+  }
+  return search(specsRoot);
 }
 
 
@@ -2072,10 +2066,10 @@ function buildAgentKitBundleManifest(): SpecosBundleManifest {
       available: [agentKitWorkflowId],
     },
     entrypoints: {
-      prdTemplate: ".prd/_template/feature/product-ui.template.md",
+      prdTemplate: ".requirements/templates/prd.md",
       designTemplate: "design/_template/platform-design.template.md",
-      featureTemplate: ".features/_template/feature/spec.example.md",
-      issueTemplate: ".issues/_template/issue.md",
+      featureTemplate: ".requirements/templates/spec.md",
+      issueTemplate: ".requirements/templates/issues.md",
       workflowId: agentKitWorkflowId,
     },
     capabilities: {
@@ -2100,11 +2094,11 @@ function buildAgentKitProjectManifest(): string {
       backend: "node-api",
     },
     artifacts: {
-      draftsDir: ".prd",
-      specsDir: ".features",
-      issuesDir: ".issues",
-      testsDir: "tests",
-      resultsDir: "tests/results",
+      draftsDir: ".requirements",
+      specsDir: ".requirements",
+      issuesDir: ".requirements",
+      testsDir: ".requirements",
+      resultsDir: ".requirements",
     },
     rulePacks: ["spec-driven-delivery"],
     agentTemplates: [
@@ -2130,7 +2124,7 @@ function buildAgentKitWorkflow(): string {
     "name: Spec Driven Default",
     "steps:",
     "  - id: smoke-agent-kit",
-    `    run: "node -e \\"const fs=require('fs'); for (const p of ['.agents/manifest.yaml','ai/agents/spec-editor.md','rules/README.md','current/README.md','docs/spec-modes/README.md','design/README.md','.prd','.features','.issues','implementation/README.md','reviews/README.md','tests/README.md']) { if (!fs.existsSync(p)) throw new Error('Missing '+p); } console.log('agent-kit-smoke-ok');\\""`,
+    `    run: "node -e \\"const fs=require('fs'); for (const p of ['.agents/manifest.yaml','ai/agents/spec-editor.md','rules/README.md','.requirements/README.md','docs/spec-modes/README.md','design/README.md']) { if (!fs.existsSync(p)) throw new Error('Missing '+p); } console.log('agent-kit-smoke-ok');\\""`,
     "",
   ].join("\n");
 }

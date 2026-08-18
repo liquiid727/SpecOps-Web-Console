@@ -1,25 +1,51 @@
-# GoalSpec Workflow
+# GoalSpec Workflow — Agent-Native SDLC
 
-GoalSpec runs a versioned dual-track workflow as the project's standard delivery chain:
+GoalSpec runs one requirement = one Requirement Package. Each package carries its own PRD, Spec, Test, and Issues, connected by stable IDs.
 
+## Delivery Chain (8 modes)
+
+```text
+Idea / Requirement
+   ↓  prd-author → prd-review
+PRD (prd.md, REQ-/BR-/INV-/AC-/EDGE-)
+   ↓  spec-generate → spec-review
+Spec (spec.md, F01/F02 logical groups, SPEC-<R>-<F>-###)
+   ↓  spec-test-generate
+Test (test.md, TEST-<R>-<F>-###)
+   ↓  issue-generate
+Issues (issues.md, ISSUE-<R>-###)
+   ↓  issue-execute
+Code / Test / Status updates
+   ↓  feature-verify
+Traceability matrix + Done decision
 ```
-/prd -> /prd-to-spec -> approved Feature Spec
-  ├── /to-issues -> implementation
-  └── /spec-to-test -> approved Test Spec -> /to-issues -> verification
-      -> /review-it -> /ship-it
+
+## Package Layout
+
+```text
+.requirements/requirements/R001-<slug>/
+  prd.md      # product behavior contract (approved → spec)
+  spec.md     # executable contract (F01/F02 logical groups)
+  test.md     # verification contract
+  issues.md   # execution and progress (## ISSUE-R001-### sections)
 ```
 
-| Step | Command | Output |
+## Mode Mapping
+
+| Command / mode | Output | Gate |
 | --- | --- | --- |
-| Plan | `/prd` | PRD in `.prd/` |
-| Specify | `/prd-to-spec` | One or more modular, approved Feature Specs in `.features/` |
-| Split implementation | `/to-issues` | Implementation Issues linked to the exact Feature Spec version |
-| Specify verification | `/spec-to-test` | Independent Test Spec in `.features/`, bound to the approved Feature Spec version |
-| Split verification | `/to-issues` | Verification Issues linked to the exact Test Spec version |
-| Execute | host agent or `/loop-it` | Implementation and verification evidence |
-| Review | `/review-it` | `.features/RP-xxx/review.md` |
-| Ship | `/ship-it` | Commit, PR, merge, `.features/RP-xxx/changelog.md`, issue closed |
+| `prd` → prd-author + prd-review | `prd.md` | PRD Ready |
+| `prd-to-spec` → spec-generate + spec-review | `spec.md` | Spec Ready |
+| `to-issues` → issue-generate | `issues.md` | Issue Ready |
+| `loop-it-local` → issue-execute | code + status updates | Issue Done |
+| `review-it` / `ship-it` → feature-verify | traceability matrix | Feature Done |
 
-Even a small feature keeps one approved Feature Spec. A Test Spec may be lightweight, but it must identify the source Feature Spec version whenever independent verification is required.
+## Change / Delta
 
-Batch multiple issues with `/loop-it` when several independent issues are ready to run back to back.
+Existing system requirement changes create a new `type: change` package with `affects: [R001]`; the Spec states Added / Modified / Removed / Unchanged Guarantees explicitly. Never rewrite an approved Spec in place.
+
+## Rules
+
+- IDs are permanent anchors; never reuse or renumber.
+- Source priority: approved PRD → approved Spec → Architecture/ADR → actual code → existing tests.
+- Never silently rewrite product intent to match current implementation.

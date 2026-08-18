@@ -28,15 +28,15 @@
   "conflictsWith": [],
   "sourcePath": "assets/templates/specs/template-prd-draft/prd-draft.template.md",
   "files": [
-    ".prd/_template/product/prd-draft.template.md"
+    ".requirements/templates/prd-draft.template.md"
   ],
   "version": "1.0.0",
   "draftHints": [
     "不要把 PRD Draft 当作 accepted spec",
     "补齐背景、目标、用户画像、用户故事、功能列表、业务流程、边界条件、风险和里程碑"
   ],
-  "sampleOutput": "一份面向 .prd 的 PRD 草案。",
+  "sampleOutput": "一份面向 .requirements 的 PRD 草案。",
   "contentFiles": {
-    ".prd/_template/product/prd-draft.template.md": "assets/templates/specs/template-prd-draft/prd-draft.template.md"
+    ".requirements/templates/prd-draft.template.md": "assets/templates/specs/template-prd-draft/prd-draft.template.md"
   }
 }
