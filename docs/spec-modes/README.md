@@ -1,109 +1,40 @@
 # Spec Modes
 
-SpecOS supports three official project authoring modes:
+本仓库采用**唯一官方研发模式**：
 
-- `LiteSpec`: Feature Driven, optimized for agent development efficiency
-- `GoalSpec`: Workflow Driven, optimized for a repeatable dual-track loop (prd -> prd-to-spec -> spec approval -> implementation + independent test specification -> review -> ship)
-- `EnterpriseSpec`: Delivery Driven, optimized for QA, audit, release, and governance quality
+- `GoalSpec`（Agent-Native SDLC）：Spec-first、Agent 驱动，一个需求一个 Requirement Package，稳定 ID 串联 PRD → Spec → Spec-Test → Issues → Code/Test → Verify。
 
-Use these modes as project templates and operating conventions.
+> 说明：此前的 `LiteSpec` / `EnterpriseSpec` 只是同一套流程的不同配置档位（少一些 / 多一些设置），现降级为**可选插件规范**，见 [`plugins/`](./plugins/)。不推荐新项目使用。
 
-## Recommended Fit
+## 模式选择
 
-`LiteSpec` is the recommended default for:
+**默认使用 `GoalSpec`。** 它适用于：
 
-- AI agent development
-- personal projects
-- teams with 5 or fewer developers
-- MVP delivery
-- infrastructure and platform products that need fast iteration
+- AI Coding / Agent 驱动研发
+- 持续需求迭代、Spec-first 开发
+- 小团队按 Issue 逐个交付
+- 需要显式 review / ship gate 但不需要全量角色分离审计治理的项目
 
-`GoalSpec` is recommended for:
+如果将来需要更轻（更少 token）或更重（QA/审计/合规证据）的档位，可参考 `plugins/` 里的 LiteSpec / EnterpriseSpec 作为配置参考，而不是引入第二套模式。
 
-- small teams that already work issue by issue and want a named plan/design/split/implement/review/ship loop
-- projects that want explicit review and ship gates but not full role-separated governance
-- teams migrating from `LiteSpec` toward `EnterpriseSpec` who aren't ready for the full delivery-evidence apparatus yet
+## 目录
 
-`EnterpriseSpec` is recommended for:
+- [GoalSpec（唯一官方模式）](./GoalSpec/README.md)
+- 插件参考：[LiteSpec](./plugins/LiteSpec/README.md)（轻量档位）、[EnterpriseSpec](./plugins/EnterpriseSpec/README.md)（治理档位）
 
-- teams with 20 or more people
-- QA-heavy delivery environments
-- PM, audit, and compliance workflows
-- finance, risk, security, and SaaS systems
-- projects that require formal release and rollback evidence
+## 共享约定
 
-## Default Rule
+- 稳定 `Spec ID` 命名（本仓库新体系用 `R0NN` 需求包 + `SPEC-R0NN-F0N-NNN`）
+- 一个 durable `design/` 真相层（架构 / ADR）
+- Agent 加载：`README.md` → 当前状态 → `design/` → 目标需求包（`prd.md → spec.md → test.md → issues.md`）
+- 按需求包稳定归属与追踪
 
-Default to `LiteSpec`.
+## 与分层 Agent 模型
 
-Upgrade to `GoalSpec` when the team wants a standing issue-driven loop with versioned Feature Specs, independent Test Specs, review, and ship gates, but doesn't yet need the full EnterpriseSpec audit apparatus.
+所有工作都跑在 `.agents/manifest.yaml` 的分层注册表上：`pola` 协调、四个主 Agent（`architecture-agent` / `implementation-agent` / `testing-agent` / `qa-agent`）是唯一可路由入口，其余角色由主 Agent 按需打开。GoalSpec 只叠加行为，不改变路由层级。
 
-Upgrade to `EnterpriseSpec` when any of the following is true:
+## 速查
 
-- the feature touches payment, risk, permission, security, audit, or compliance
-- formal QA gate evidence is required
-- release, rollback, or rollout records are required
-- performance, concurrency, or security testing is mandatory
-- multiple teams or multiple specialist agents must collaborate
-- the feature needs durable delivery evidence beyond a single review pass
-
-## Mode Directories
-
-- [LiteSpec](./LiteSpec/README.md)
-- [GoalSpec](./GoalSpec/README.md)
-- [EnterpriseSpec](./EnterpriseSpec/README.md)
-
-## CLI
-
-Use `specos init --mode litespec` for the default project shape.
-
-Use `specos init --mode goalspec` when the scaffold should start with the dual-track implementation and independent verification workflow.
-
-Use `specos init --mode enterprisespec` when the scaffold should start with the governed delivery skeleton.
-
-## Shared Rules
-
-All three modes should keep these conventions consistent:
-
-- stable `Spec ID` naming such as `RP-001`
-- one durable `design/` truth layer
-- an explicit `current/` workspace for active delivery state
-- agent loading from `README.md` first, then current state, then design, then feature-specific content
-- stable feature ownership and traceability by `Spec ID`
-
-## Modes And The Layered Agent Model
-
-All three modes run on the same layered agent registry in `.agents/manifest.yaml`: `pola` coordinates, the four main agents (`architecture-agent`, `implementation-agent`, `testing-agent`, `qa-agent`) are the only routable entrypoints, and every other role is a specialist opened on demand by its `managed_by` main agent. A mode never changes who routes or who manages whom; it only overlays role behavior for its governance level:
-
-- `LiteSpec` overlays the implementation and testing chains plus `reviewer` for a single-pass, feature-local review. The QA family mostly runs on base prompts; `qa-agent` still owns acceptance, but the evidence stays feature-local.
-- `GoalSpec` overlays the dual-track loop end to end. `qa-agent` carries a mode overlay that owns the Review and Ship gates, opening `reviewer`, `ci-editor`, and `deployment-agent` on demand.
-- `EnterpriseSpec` overlays all four stages plus the full QA family (`qa-agent`, `reviewer`, `ci-editor`, `deployment-agent`) for categorized evidence, release gates, and explicit waivers.
-
-## Mode Selection Principle
-
-- `LiteSpec`: choose when feature delivery speed and low-token context matter most
-- `GoalSpec`: choose when the team wants a repeatable issue-driven loop with review and ship gates, but not full role-separated governance
-- `EnterpriseSpec`: choose when delivery traceability, QA rigor, and release governance matter most
-
-## Comparison
-
-| Dimension | LiteSpec | GoalSpec | EnterpriseSpec |
-| --- | --- | --- | --- |
-| Goal | agent development efficiency | repeatable Spec-driven dual-track loop | enterprise delivery quality |
-| Feature isolation | very strong | strong, indexed by issue | moderate |
-| Token cost | low | low-to-moderate | high |
-| QA model | simplified | review/ship gate, no categorized evidence | full process |
-| Test structure | feature-local | feature-local | categorized by test type |
-| Review shape | one feature review file | one feature review file, gated by `/review-it` | multi-stage review folders |
-| Agent context | small | small, plus issue index | loaded by role |
-| Multi-team collaboration | moderate | moderate | strong |
-| Auditability | moderate | moderate, traceable by issue | strong |
-| Learning cost | low | low-to-moderate | high |
-
-## Short Decision Rule
-
-Use `LiteSpec` when one engineer or one agent can finish a feature end to end with minimal governance overhead.
-
-Use `GoalSpec` when delivery should run through a named plan/design/split/implement/review/ship loop with an explicit issue index, but full delivery-evidence governance isn't needed yet.
-
-Use `EnterpriseSpec` when the project must also prove implementation quality, test evidence, review evidence, and release safety to multiple stakeholders.
+- 新需求：调用 `/requirement-package`（mode `prd-author`）或复制 `.requirements/templates/` 四件套。
+- 规范全文：`docs/spec-modes/GoalSpec/agent-native-sdlc-standard.md`
+- 工作区：`.requirements/`（需求包 / 模板 / 示例 / skill 入口）
