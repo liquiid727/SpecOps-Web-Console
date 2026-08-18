@@ -26,7 +26,6 @@ The target repository shape is:
 ```text
 apps/
   spec-web-ui/
-  cli-gui/
   test-console/
 
 packages/

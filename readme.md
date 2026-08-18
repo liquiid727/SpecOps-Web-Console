@@ -7,35 +7,29 @@ SpecOS is a spec-driven AI workspace for software teams. It keeps product design
 The canonical lifecycle is:
 
 ```text
-PRD (.prd) -> Feature Specs and Test Specs (.features) -> Issues (.issues) -> Implementation -> Review -> Ship
+PRD -> Feature Spec (Spec) -> Spec-Test -> Issues -> Code/Test -> Feature Verify -> Ship
 ```
 
 The canonical repository model is:
 
 ```text
-docs/spec-modes/  project operating modes: GoalSpec (default), LiteSpec, and EnterpriseSpec
-current/          active delivery workspace for the selected mode
-.prd/             PRD intake documents
+.requirements/     Requirement Package workflow root: requirements/R0NN-<slug>/{prd,spec,test,issues}.md, plus templates/, examples/, skills/
 design/            one canonical design doc per platform or system
-.features/roadmap.md   epic, release, order, and dependency planning
-.features/RP-001-.../  flat feature-spec directories
-implementation/    implementation handoff and status by spec id
-reviews/             review findings and approval evidence by spec id
-tests/               executable verification assets; Test Specs live in .features/
+docs/spec-modes/   GoalSpec (Agent-Native SDLC) is the single official mode; plugins/ holds optional variants
+archive/legacy/    historical delivery evidence from the previous global-dir model
 ```
 
-SpecOS favors one durable design document per system and many small feature specs. Feature specs stay narrow, explicit, and reviewable so agents can implement them end to end without inventing scope.
+SpecOS favors one durable design document per system and one co-located Requirement Package per requirement. Each package keeps PRD, Spec, Spec-Test, and Issues together so agents can implement end to end without inventing scope.
 
 ## What Is In This Repository
 
-This repository currently contains three main product surfaces:
+This repository currently contains these product surfaces:
 
 - `packages/cli`: CLI scaffolding, validation, bundle install, and workflow entrypoints
 - `spec-web-ui`: catalog, export preview, and bundle composition workbench
 - `test-console`: normalized test-plan and result console
-- `cli-gui/`: existing standalone Product AI OS CLI workspace launcher
 
-[Code: Bugrail](https://github.com/liquiid727/bugrail) is a sibling product (CodeG fork), not vendored here. Local checkout: `~/code/bugrail`.
+[Code: Bugrail](https://github.com/liquiid727/bugrail) is a sibling product (CodeG fork). It is not vendored here. Local checkout: `~/code/bugrail`.
 
 It also includes reusable project assets:
 
@@ -46,8 +40,8 @@ It also includes reusable project assets:
 - `packages/catalog/`: Catalog values, queries, and registry configuration
 - `packages/bundler/`: bundle planning and install-target configuration
 - `packages/installer/`: validated bundle installation
-- `docs/spec-modes/` and `current/`: project operating mode guidance and active delivery context
-- `design/`, `.prd/`, `.features/`, `implementation/`, `reviews/`, `tests/`: the spec delivery backbone
+- `docs/spec-modes/`: project mode guidance (GoalSpec = Agent-Native SDLC, single official mode)
+- `.requirements/`, `design/`: the spec delivery backbone; `archive/legacy/` holds historical evidence from the previous model
 
 ## Agent Model
 
@@ -62,13 +56,11 @@ The role registry lives in `.agents/manifest.yaml`. Project modes overlay role b
 
 ## Project Modes
 
-SpecOS now documents three official project authoring modes:
+SpecOS uses one official project authoring mode:
 
-- [GoalSpec](docs/spec-modes/GoalSpec/README.md): default workflow-driven mode using PRDs, Feature/Test Specs, Issues, review, and ship gates
-- [LiteSpec](docs/spec-modes/LiteSpec/README.md): optional low-token feature-driven mode
-- [EnterpriseSpec](docs/spec-modes/EnterpriseSpec/README.md): delivery-driven, high-governance, for QA-heavy and audited environments
+- [GoalSpec](docs/spec-modes/GoalSpec/README.md): Agent-Native SDLC — PRD → Spec → Spec-Test → Issues → Code/Test → Verify, with co-located Requirement Packages under `.requirements/`
 
-Mode selection guidance lives in [docs/spec-modes/README.md](docs/spec-modes/README.md). All three modes share the same layered agent registry; a mode overlay adjusts role behavior for its governance level, not the routing hierarchy.
+Lighter/heavier governance variants (LiteSpec, EnterpriseSpec) are demoted to optional plugin specs under [docs/spec-modes/plugins/](docs/spec-modes/plugins/). Mode guidance lives in [docs/spec-modes/README.md](docs/spec-modes/README.md). All work runs on the same layered agent registry; the mode overlays role behavior, not the routing hierarchy.
 
 ## Current Status
 
@@ -76,15 +68,12 @@ SpecOS is still in active prototype development. The repo already supports scaff
 
 Today the intended usage is:
 
-- initialize a project baseline with the CLI
-- choose the project mode from `docs/spec-modes/`
-- keep active delivery state in `current/`
-- write intake notes in `.prd/`
+- use the GoalSpec (Agent-Native SDLC) workflow documented in `docs/spec-modes/GoalSpec/`
+- create one Requirement Package per requirement under `.requirements/requirements/R0NN-<slug>/` (`prd.md` → `spec.md` → `test.md` → `issues.md`)
+- copy templates from `.requirements/templates/` or use the `/requirement-package` skill
 - keep stable platform decisions in `design/`
-- plan feature order and dependencies in `.features/roadmap.md`
-- author small feature specs under `.features/<SPEC-ID>-<slug>/`
-- implement and review against those specs
-- create implementation and verification Issues under `.issues/`, with tests traceable to the Feature/Test Spec version
+- reference examples under `.requirements/examples/`
+- implement and verify against those packages; historical evidence lives read-only in `archive/legacy/`
 
 ## Quick Start
 
@@ -102,10 +91,10 @@ npx @specos/cli init --template fullstack
 npx @specos/cli check
 ```
 
-To start with the governed enterprise skeleton:
+To start with the default GoalSpec workflow:
 
 ```bash
-npx @specos/cli init --template fullstack --mode enterprisespec
+npx @specos/cli init --template fullstack --mode goalspec
 ```
 
 For local workspace development:
@@ -135,7 +124,8 @@ make init
 make dev
 ```
 
-See [liquiid727/bugrail](https://github.com/liquiid727/bugrail) for desktop builds and upstream CodeG sync.
+See [liquiid727/bugrail](https://github.com/liquiid727/bugrail) for desktop
+builds and upstream CodeG sync.
 
 ## Repository Shape
 
@@ -150,14 +140,10 @@ test-console/        normalized test-plan and result console
 rules/               reusable engineering governance
 assets/              reusable role, team, skill, and template sources
 ai/agents/           agent role definitions
-docs/spec-modes/     mode playbooks for LiteSpec, GoalSpec, and EnterpriseSpec
-current/             active project status and handoff context
-.prd/          intake drafts
+docs/spec-modes/     GoalSpec (Agent-Native SDLC) mode guide; plugins/ optional variants
+.requirements/       requirement packages (requirements/, templates/, examples/, skills/)
 design/              canonical platform design documents
-.features/               roadmap, feature specs, rules, templates
-implementation/      implementation handoff by spec id
-reviews/             review outputs by spec id
-tests/               executable plans, schedules, and results
+archive/legacy/      historical delivery evidence from the previous model
 ```
 
 ## For Contributors
@@ -166,7 +152,8 @@ Start with:
 
 - [AGENTS.md](AGENTS.md)
 - [rules/README.md](rules/README.md)
-- [.features/roadmap.md](.features/roadmap.md)
+- [GoalSpec (Agent-Native SDLC) workflow](docs/spec-modes/GoalSpec/README.md)
+- [.requirements/ index](.requirements/README.md)
 - [spec-web-ui/README.md](spec-web-ui/README.md)
 
-Keep changes traceable to a draft, design doc, feature spec, rule, review, or test artifact.
+Keep changes traceable to a design doc, requirement package (`prd.md`/`spec.md`), rule, review, or test artifact.
