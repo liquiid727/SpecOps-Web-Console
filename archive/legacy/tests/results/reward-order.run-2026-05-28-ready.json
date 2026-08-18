@@ -1,0 +1,387 @@
+{
+  "runId": "run-2026-05-28-ready",
+  "specId": "reward-order",
+  "specVersion": "1.2.0",
+  "changeId": "reward-order-ready",
+  "featureName": "奖励订单发放",
+  "runner": {
+    "name": "specos-sample-runner",
+    "command": "node scripts/orchestration/test-runner.mjs reward-order 1.2.0 ready",
+    "exitCode": 0
+  },
+  "environment": {
+    "id": "local-sample",
+    "fixtureVersion": "reward-order-fixture-v1",
+    "externalDependencyMode": "stubbed"
+  },
+  "commitSha": "sample",
+  "status": "pass",
+  "releaseDecision": "ready",
+  "startedAt": "2026-05-28T00:00:00.000Z",
+  "endedAt": "2026-05-28T00:01:00.000Z",
+  "blockers": [],
+  "highRiskScenarios": [],
+  "coverageGaps": [],
+  "summary": {
+    "apiPassRate": 1,
+    "scenarioPassRate": 1,
+    "totalEndpoints": 2,
+    "totalScenarios": 2
+  },
+  "flowResults": [
+    {
+      "name": "奖励领取业务流",
+      "status": "pass",
+      "stages": [
+        {
+          "name": "进入场景",
+          "status": "pass",
+          "scenarios": [
+            {
+              "name": "用户成功领取奖励",
+              "status": "pass",
+              "branchType": "flow",
+              "currentStepName": "查看结果",
+              "relatedEndpointTargets": [
+                "POST /api/reward-orders",
+                "GET /api/reward-orders/:id"
+              ],
+              "steps": [
+                {
+                  "name": "打开奖励页",
+                  "status": "pass"
+                },
+                {
+                  "name": "点击领取",
+                  "status": "pass"
+                },
+                {
+                  "name": "提交订单",
+                  "status": "pass"
+                },
+                {
+                  "name": "查看结果",
+                  "status": "pass",
+                  "note": "主路径步骤全部通过",
+                  "traceId": "trace-scenario-happy"
+                }
+              ]
+            },
+            {
+              "name": "库存不足时领取失败",
+              "status": "pass",
+              "branchType": "limit",
+              "currentStepName": "查看失败提示",
+              "relatedEndpointTargets": [
+                "POST /api/reward-orders"
+              ],
+              "steps": [
+                {
+                  "name": "打开奖励页",
+                  "status": "pass"
+                },
+                {
+                  "name": "点击领取",
+                  "status": "pass"
+                },
+                {
+                  "name": "提交订单",
+                  "status": "pass"
+                },
+                {
+                  "name": "查看失败提示",
+                  "status": "pass",
+                  "note": "库存不足错误码和页面提示一致",
+                  "traceId": "trace-scenario-limit"
+                }
+              ]
+            }
+          ],
+          "endpoints": [
+            {
+              "target": "POST /api/reward-orders",
+              "name": "创建奖励订单",
+              "method": "POST",
+              "path": "/api/reward-orders",
+              "status": "pass",
+              "avgMs": 180,
+              "p95Ms": 280,
+              "errorRate": 0,
+              "relatedRule": "reward.order.create",
+              "summary": "happy/error/limit/flow 全部分支通过"
+            },
+            {
+              "target": "GET /api/reward-orders/:id",
+              "name": "查询奖励订单",
+              "method": "GET",
+              "path": "/api/reward-orders/:id",
+              "status": "pass",
+              "avgMs": 80,
+              "p95Ms": 140,
+              "errorRate": 0,
+              "relatedRule": "reward.order.read",
+              "summary": "happy/error/edge 全部分支通过"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "items": [
+    {
+      "runId": "run-2026-05-28-ready",
+      "specId": "reward-order",
+      "specVersion": "1.2.0",
+      "changeId": "reward-order-ready",
+      "testType": "api",
+      "target": "POST /api/reward-orders",
+      "flowName": "奖励领取业务流",
+      "status": "pass",
+      "durationMs": 280,
+      "summary": "happy/error/limit/flow 全部分支通过",
+      "gateImpact": "blocking",
+      "artifactRefs": [
+        {
+          "type": "trace",
+          "path": "trace-api-create"
+        },
+        {
+          "type": "raw-report",
+          "path": "tests/results/reward-order.run-2026-05-28-ready.json"
+        }
+      ],
+      "evidence": {
+        "traceId": "trace-api-create",
+        "requestSummary": "创建奖励订单请求已校验",
+        "responseSummary": "成功和库存不足响应均符合 spec"
+      },
+      "endpoint": {
+        "name": "创建奖励订单",
+        "method": "POST",
+        "path": "/api/reward-orders",
+        "coverage": [
+          "happy",
+          "error",
+          "limit",
+          "flow"
+        ],
+        "avgMs": 180,
+        "p95Ms": 280,
+        "errorRate": 0,
+        "relatedRule": "reward.order.create"
+      },
+      "requirementId": "std.p0.api.contract",
+      "ownerAgent": "test-editor",
+      "evidenceQuality": "complete",
+      "attempts": 1,
+      "flakeClassification": "not-flaky"
+    },
+    {
+      "runId": "run-2026-05-28-ready",
+      "specId": "reward-order",
+      "specVersion": "1.2.0",
+      "changeId": "reward-order-ready",
+      "testType": "api",
+      "target": "GET /api/reward-orders/:id",
+      "flowName": "奖励领取业务流",
+      "status": "pass",
+      "durationMs": 140,
+      "summary": "happy/error/edge 全部分支通过",
+      "gateImpact": "warning",
+      "artifactRefs": [
+        {
+          "type": "trace",
+          "path": "trace-api-read"
+        },
+        {
+          "type": "raw-report",
+          "path": "tests/results/reward-order.run-2026-05-28-ready.json"
+        }
+      ],
+      "evidence": {
+        "traceId": "trace-api-read",
+        "requestSummary": "查询奖励订单请求已校验",
+        "responseSummary": "存在、不存在、无权限响应均符合 spec"
+      },
+      "endpoint": {
+        "name": "查询奖励订单",
+        "method": "GET",
+        "path": "/api/reward-orders/:id",
+        "coverage": [
+          "happy",
+          "error",
+          "edge"
+        ],
+        "avgMs": 80,
+        "p95Ms": 140,
+        "errorRate": 0,
+        "relatedRule": "reward.order.read"
+      },
+      "requirementId": "std.p0.api.contract",
+      "ownerAgent": "test-editor",
+      "evidenceQuality": "complete",
+      "attempts": 1,
+      "flakeClassification": "not-flaky"
+    },
+    {
+      "runId": "run-2026-05-28-ready",
+      "specId": "reward-order",
+      "specVersion": "1.2.0",
+      "changeId": "reward-order-ready",
+      "testType": "scenario",
+      "target": "用户成功领取奖励",
+      "flowName": "奖励领取业务流",
+      "scenarioName": "用户成功领取奖励",
+      "branchType": "flow",
+      "stepName": "查看结果",
+      "relatedEndpointTargets": [
+        "POST /api/reward-orders",
+        "GET /api/reward-orders/:id"
+      ],
+      "status": "pass",
+      "durationMs": 1600,
+      "summary": "主路径步骤全部通过",
+      "gateImpact": "blocking",
+      "artifactRefs": [
+        {
+          "type": "trace",
+          "path": "trace-scenario-happy"
+        },
+        {
+          "type": "raw-report",
+          "path": "tests/results/reward-order.run-2026-05-28-ready.json"
+        },
+        {
+          "type": "screenshot",
+          "path": "screenshots/用户成功领取奖励.png"
+        }
+      ],
+      "evidence": {
+        "traceId": "trace-scenario-happy",
+        "note": "成功态与后端回调一致"
+      },
+      "requirementId": "std.p0.scenario.e2e",
+      "ownerAgent": "playwright-test-agent",
+      "evidenceQuality": "complete",
+      "attempts": 1,
+      "flakeClassification": "not-flaky"
+    },
+    {
+      "runId": "run-2026-05-28-ready",
+      "specId": "reward-order",
+      "specVersion": "1.2.0",
+      "changeId": "reward-order-ready",
+      "testType": "scenario",
+      "target": "库存不足时领取失败",
+      "flowName": "奖励领取业务流",
+      "scenarioName": "库存不足时领取失败",
+      "branchType": "limit",
+      "stepName": "查看失败提示",
+      "relatedEndpointTargets": [
+        "POST /api/reward-orders"
+      ],
+      "status": "pass",
+      "durationMs": 1400,
+      "summary": "库存不足错误码和页面提示一致",
+      "gateImpact": "blocking",
+      "artifactRefs": [
+        {
+          "type": "trace",
+          "path": "trace-scenario-limit"
+        },
+        {
+          "type": "raw-report",
+          "path": "tests/results/reward-order.run-2026-05-28-ready.json"
+        },
+        {
+          "type": "screenshot",
+          "path": "screenshots/库存不足时领取失败.png"
+        }
+      ],
+      "evidence": {
+        "traceId": "trace-scenario-limit",
+        "note": "错误码映射符合 spec"
+      },
+      "requirementId": "std.p0.scenario.e2e",
+      "ownerAgent": "playwright-test-agent",
+      "evidenceQuality": "complete",
+      "attempts": 1,
+      "flakeClassification": "not-flaky"
+    },
+    {
+      "runId": "run-2026-05-28-ready",
+      "specId": "reward-order",
+      "specVersion": "1.2.0",
+      "changeId": "reward-order-ready",
+      "testType": "performance",
+      "target": "POST /api/reward-orders",
+      "status": "pass",
+      "durationMs": 60000,
+      "summary": "p95 和错误率均满足 P0 SLO",
+      "gateImpact": "blocking",
+      "slo": {
+        "p95Ms": 500,
+        "p99Ms": 900,
+        "errorRate": 0.01
+      },
+      "metrics": {
+        "p50Ms": 120,
+        "p95Ms": 280,
+        "p99Ms": 610,
+        "requestRate": 80,
+        "errorRate": 0
+      },
+      "artifactRefs": [
+        {
+          "type": "trace",
+          "path": "trace-perf-create"
+        },
+        {
+          "type": "raw-report",
+          "path": "tests/results/reward-order.run-2026-05-28-ready.json"
+        }
+      ],
+      "requirementId": "std.p0.performance.slo",
+      "ownerAgent": "performance-test-agent",
+      "evidenceQuality": "complete",
+      "attempts": 1,
+      "flakeClassification": "not-flaky"
+    },
+    {
+      "runId": "run-2026-05-28-ready",
+      "specId": "reward-order",
+      "specVersion": "1.2.0",
+      "changeId": "reward-order-ready",
+      "testType": "concurrency",
+      "target": "库存不足时领取失败",
+      "status": "pass",
+      "durationMs": 1800,
+      "summary": "并发库存不足场景保持稳定业务结果",
+      "gateImpact": "blocking",
+      "concurrencyProfile": {
+        "actors": 50,
+        "requests": 50,
+        "invariant": "库存不足时不能创建成功订单，重复提交必须保持同一业务结果",
+        "expectedFinalState": "0 remaining inventory, 0 successful new orders, stable insufficient-stock response",
+        "observedFinalState": "0 remaining inventory, 0 successful new orders, 50 insufficient-stock responses"
+      },
+      "artifactRefs": [
+        {
+          "type": "trace",
+          "path": "trace-concurrency-limit"
+        },
+        {
+          "type": "raw-report",
+          "path": "tests/results/reward-order.run-2026-05-28-ready.json"
+        }
+      ],
+      "requirementId": "std.p0.concurrency.invariant",
+      "ownerAgent": "concurrency-test-agent",
+      "evidenceQuality": "complete",
+      "attempts": 1,
+      "flakeClassification": "not-flaky"
+    }
+  ],
+  "standardVersion": "specos-test-standard/v1",
+  "qualityProfile": "fullstack-flow"
+}

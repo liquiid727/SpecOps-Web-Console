@@ -1,0 +1,30 @@
+{
+  "runId": "session-2026-05-27T00-05-00-000Z-stale",
+  "specId": "reward-order",
+  "specVersion": "1.1.0",
+  "changeId": "reward-order-ready",
+  "featureName": "奖励订单发放",
+  "scope": "gate",
+  "status": "blocked",
+  "exitCode": 1,
+  "startedAt": "2026-05-27T00:05:00.000Z",
+  "endedAt": "2026-05-27T00:05:30.000Z",
+  "stdoutSummary": "",
+  "stderrSummary": "Spec version mismatch: requested 1.1.0, found 1.2.0",
+  "resultArtifacts": [],
+  "commands": [
+    {
+      "scope": "gate",
+      "command": "node",
+      "args": ["scripts/checks/spec-test-gates.mjs", "reward-order", "--change", "reward-order-ready"],
+      "cwd": "/Users/liquiid/code/specos-ai",
+      "status": "blocked",
+      "exitCode": 1,
+      "stdoutSummary": "",
+      "stderrSummary": "Spec version mismatch: requested 1.1.0, found 1.2.0",
+      "startedAt": "2026-05-27T00:05:00.000Z",
+      "endedAt": "2026-05-27T00:05:30.000Z",
+      "resultArtifacts": []
+    }
+  ]
+}
