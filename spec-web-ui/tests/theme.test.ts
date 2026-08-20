@@ -1,31 +1,57 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  applyThemeMode,
   buildNeoInteractiveClassName,
   buildNeoSurfaceClassName,
   buildThemeBootScript,
+  buildThemeState,
   coerceThemeMode,
   DEFAULT_THEME_MODE,
   resolveThemeMode
 } from "@/lib/theme";
 
+function installLocalStorage() {
+  const values = new Map<string, string>();
+
+  Object.defineProperty(window, "localStorage", {
+    configurable: true,
+    value: {
+      clear: () => values.clear(),
+      getItem: (key: string) => values.get(key) ?? null,
+      removeItem: (key: string) => values.delete(key),
+      setItem: (key: string, value: string) => values.set(key, String(value))
+    }
+  });
+}
+
+beforeEach(() => {
+  installLocalStorage();
+  document.documentElement.className = "";
+  document.documentElement.removeAttribute("data-theme");
+  document.documentElement.removeAttribute("data-theme-mode");
+});
+
 describe("resolveThemeMode", () => {
-  it("always resolves to the Neo visual system", () => {
-    expect(resolveThemeMode("light", { systemPrefersDark: true })).toBe("neo");
-    expect(resolveThemeMode("dark", { systemPrefersDark: false })).toBe("neo");
-    expect(resolveThemeMode("summer-surf", { systemPrefersDark: false })).toBe("neo");
+  it("resolves both supported visual systems", () => {
+    expect(resolveThemeMode("alro-pink", { systemPrefersDark: true })).toBe("alro-pink");
+    expect(resolveThemeMode("neo", { systemPrefersDark: false })).toBe("neo");
+    expect(resolveThemeMode("summer-surf", { systemPrefersDark: false })).toBe("alro-pink");
   });
 
-  it("coerces legacy and unknown values to the default mode", () => {
+  it("accepts Neo as a persisted legacy theme and falls back safely", () => {
+    expect(coerceThemeMode("alro-pink")).toBe("alro-pink");
+    expect(coerceThemeMode("neo")).toBe("neo");
     expect(coerceThemeMode("light")).toBe(DEFAULT_THEME_MODE);
-    expect(coerceThemeMode("summer-surf")).toBe(DEFAULT_THEME_MODE);
     expect(coerceThemeMode("invalid-mode")).toBe(DEFAULT_THEME_MODE);
     expect(coerceThemeMode(undefined)).toBe(DEFAULT_THEME_MODE);
   });
 
-  it("uses Neo as the default theme", () => {
-    expect(DEFAULT_THEME_MODE).toBe("neo");
-    expect(resolveThemeMode(DEFAULT_THEME_MODE, { systemPrefersDark: true })).toBe("neo");
+  it("uses Alro Pink as the default and preserves the selected state", () => {
+    expect(DEFAULT_THEME_MODE).toBe("alro-pink");
+    expect(resolveThemeMode(DEFAULT_THEME_MODE, { systemPrefersDark: true })).toBe("alro-pink");
+    expect(buildThemeState("neo").mode).toBe("neo");
+    expect(buildThemeState("neo").rootClassName).toBe("neo");
   });
 });
 
@@ -37,6 +63,30 @@ describe("buildThemeBootScript", () => {
     expect(script).toContain("specos-theme-change");
     expect(script).toContain("root.dataset.theme");
     expect(script).toContain("window.localStorage");
+    expect(script).toContain("alro-pink");
+    expect(script).toContain("supportedModes");
+  });
+});
+
+describe("applyThemeMode", () => {
+  it("updates the document and persists the selected mode", () => {
+    document.documentElement.className = "neo dark";
+    document.documentElement.dataset.theme = "neo";
+    document.documentElement.dataset.themeMode = "neo";
+
+    const eventHandler = vi.fn();
+    window.addEventListener("specos-theme-change", eventHandler);
+
+    expect(applyThemeMode("alro-pink")).toBe("alro-pink");
+    expect(document.documentElement.dataset.theme).toBe("alro-pink");
+    expect(document.documentElement.dataset.themeMode).toBe("alro-pink");
+    expect(document.documentElement.classList.contains("alro-pink")).toBe(true);
+    expect(document.documentElement.classList.contains("neo")).toBe(false);
+    expect(window.localStorage.getItem("specos-theme-mode")).toBe("alro-pink");
+    expect(document.cookie).toContain("specos-theme-mode=alro-pink");
+    expect(eventHandler).toHaveBeenCalledTimes(1);
+
+    window.removeEventListener("specos-theme-change", eventHandler);
   });
 });
 

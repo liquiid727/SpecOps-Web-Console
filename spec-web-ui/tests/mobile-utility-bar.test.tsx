@@ -36,11 +36,11 @@ describe("MobileUtilityBar", () => {
     });
   });
 
-  it("renders a floating home shortcut and language control for small screens", () => {
+  it("renders floating home, theme, and language controls for small screens", () => {
     render(<MobileUtilityBar />);
 
     expect(screen.getByRole("link", { name: "首页" })).toHaveAttribute("href", "/");
     expect(screen.getByRole("button", { name: "语言" })).toHaveAttribute("aria-haspopup", "menu");
-    expect(screen.queryByRole("button", { name: "主题" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "视觉系统" })).toHaveAttribute("aria-haspopup", "menu");
   });
 });

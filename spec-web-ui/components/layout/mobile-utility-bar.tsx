@@ -4,9 +4,17 @@ import Link from "next/link";
 import React from "react";
 
 import { LanguageToggle } from "@/components/layout/language-toggle";
+import { ThemeModeToggle } from "@/components/layout/theme-mode-toggle";
 import { getLocaleCopy, type Locale } from "@/lib/locale";
+import { DEFAULT_THEME_MODE, type ThemeMode } from "@/lib/theme";
 
-export function MobileUtilityBar({ locale = "zh" }: { locale?: Locale }) {
+export function MobileUtilityBar({
+  locale = "zh",
+  themeMode = DEFAULT_THEME_MODE
+}: {
+  locale?: Locale;
+  themeMode?: ThemeMode;
+}) {
   const copy = getLocaleCopy(locale);
 
   return (
@@ -19,6 +27,7 @@ export function MobileUtilityBar({ locale = "zh" }: { locale?: Locale }) {
         >
           {copy.shell.home}
         </Link>
+        <ThemeModeToggle compact initialMode={themeMode} locale={locale} />
         <LanguageToggle compact locale={locale} />
       </div>
     </div>

@@ -38,7 +38,11 @@ export const localeCopy = {
         exports: "导出"
       },
       home: "首页",
-      theme: "视觉系统"
+      theme: "视觉系统",
+      themeOptions: {
+        "alro-pink": "Alro Pink",
+        neo: "Neo"
+      }
     },
     home: {
       heroTitle: "把 AI 工程资产装进项目骨架。",
@@ -265,7 +269,11 @@ export const localeCopy = {
         exports: "Exports"
       },
       home: "Home",
-      theme: "Visual system"
+      theme: "Visual system",
+      themeOptions: {
+        "alro-pink": "Alro Pink",
+        neo: "Neo"
+      }
     },
     home: {
       heroTitle: "Pack your AI engineering assets into a project baseline.",

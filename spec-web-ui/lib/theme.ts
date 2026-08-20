@@ -2,13 +2,14 @@ export type NeoSurfaceVariant = "panel" | "hero" | "input" | "result" | "rail" |
 export type NeoSurfaceTint = "neutral" | "blue" | "emerald" | "lime" | "violet" | "amber" | "mint";
 export type NeoInteractiveVariant = "accent" | "neutral";
 
-export type ThemeMode = "neo";
-export type ResolvedThemeMode = "neo";
+export type ThemeMode = "neo" | "alro-pink";
+export type ResolvedThemeMode = ThemeMode;
 export type BrowserColorScheme = "light";
 
 export const THEME_MODE_STORAGE_KEY = "specos-theme-mode";
 export const THEME_CHANGE_EVENT = "specos-theme-change";
-export const DEFAULT_THEME_MODE: ThemeMode = "neo";
+export const THEME_MODES: readonly ThemeMode[] = ["alro-pink", "neo"];
+export const DEFAULT_THEME_MODE: ThemeMode = "alro-pink";
 
 export function buildNeoSurfaceClassName(
   variant: NeoSurfaceVariant,
@@ -37,17 +38,17 @@ export function buildNeoInteractiveClassName(variant: NeoInteractiveVariant) {
   return variant === "accent" ? "control control-primary" : "control control-secondary";
 }
 
-export function normalizeThemeMode(_value: unknown): ThemeMode {
-  return DEFAULT_THEME_MODE;
+export function normalizeThemeMode(value: unknown): ThemeMode {
+  return value === "neo" || value === "alro-pink" ? value : DEFAULT_THEME_MODE;
 }
 
 export const coerceThemeMode = normalizeThemeMode;
 
 export function resolveThemeMode(
-  _mode: ThemeMode | string,
+  mode: ThemeMode | string,
   _options: { now?: Date; systemPrefersDark?: boolean } = {}
 ): ResolvedThemeMode {
-  return DEFAULT_THEME_MODE;
+  return normalizeThemeMode(mode);
 }
 
 export type ThemeState = {
@@ -59,34 +60,72 @@ export type ThemeState = {
 };
 
 export function buildThemeState(
-  _mode: ThemeMode | string,
+  mode: ThemeMode | string,
   _options: { hour?: number; systemPrefersDark?: boolean } = {}
 ): ThemeState {
+  const normalizedMode = normalizeThemeMode(mode);
+
   return {
     colorScheme: "light",
     isDark: false,
-    mode: DEFAULT_THEME_MODE,
-    resolvedMode: DEFAULT_THEME_MODE,
-    rootClassName: DEFAULT_THEME_MODE
+    mode: normalizedMode,
+    resolvedMode: normalizedMode,
+    rootClassName: normalizedMode
   };
 }
 
 export function buildThemeBootScript(storageKey = THEME_MODE_STORAGE_KEY) {
   return `(() => {
   const storageKey = ${JSON.stringify(storageKey)};
+  const supportedModes = ["neo", "alro-pink"];
+  const fallbackMode = ${JSON.stringify(DEFAULT_THEME_MODE)};
   const root = document.documentElement;
+  const serverMode = root.dataset.themeMode;
+  let mode = supportedModes.includes(serverMode) ? serverMode : fallbackMode;
   try {
-    window.localStorage.getItem(storageKey);
+    const storedMode = window.localStorage.getItem(storageKey);
+    if (supportedModes.includes(storedMode)) mode = storedMode;
   } catch {}
-  const mode = "neo";
-  const resolvedMode = "neo";
+  const resolvedMode = mode;
   root.dataset.themeMode = mode;
   root.dataset.theme = resolvedMode;
   root.style.colorScheme = "light";
-  root.classList.remove("dark", "light", "summer-surf");
-  root.classList.add("neo");
+  root.classList.remove("dark", "light", "summer-surf", ...supportedModes);
+  root.classList.add(resolvedMode);
+  try {
+    document.cookie = \`${storageKey}=\${encodeURIComponent(mode)}; path=/; max-age=31536000; SameSite=Lax\`;
+  } catch {}
   window.dispatchEvent(new CustomEvent(${JSON.stringify(THEME_CHANGE_EVENT)}, {
     detail: { mode, resolvedMode }
   }));
 })();`;
+}
+
+export function applyThemeMode(mode: ThemeMode | string, { persist = true } = {}) {
+  const normalizedMode = normalizeThemeMode(mode);
+
+  if (typeof document === "undefined") return normalizedMode;
+
+  const root = document.documentElement;
+  root.dataset.themeMode = normalizedMode;
+  root.dataset.theme = normalizedMode;
+  root.style.colorScheme = "light";
+  root.classList.remove("dark", "light", "summer-surf", ...THEME_MODES);
+  root.classList.add(normalizedMode);
+
+  if (persist) {
+    try {
+      window.localStorage.setItem(THEME_MODE_STORAGE_KEY, normalizedMode);
+    } catch {}
+
+    try {
+      document.cookie = `${THEME_MODE_STORAGE_KEY}=${encodeURIComponent(normalizedMode)}; path=/; max-age=31536000; SameSite=Lax`;
+    } catch {}
+  }
+
+  window.dispatchEvent(new CustomEvent(THEME_CHANGE_EVENT, {
+    detail: { mode: normalizedMode, resolvedMode: normalizedMode }
+  }));
+
+  return normalizedMode;
 }
