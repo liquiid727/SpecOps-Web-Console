@@ -1,17 +1,12 @@
 import type {
-  BundlePlan,
-  ExportFile,
-  GeneratedExportFile,
-  SpecosBundleManifest
-} from "@specos/bundler";
-import type {
   CatalogAsset,
   CatalogCategory,
   CatalogDirection,
+  CatalogDirectionGroup,
   CatalogFilterOptions,
   CatalogFilters,
   CatalogAssetType,
-  PresetBundle,
+  ConfigurationPreset,
   ProjectType
 } from "@specos/catalog";
 
@@ -20,13 +15,11 @@ export type {
   CatalogAssetType,
   CatalogCategory,
   CatalogDirection,
+  CatalogDirectionGroup,
   CatalogFilterOptions,
   CatalogFilters,
-  ExportFile,
-  GeneratedExportFile,
-  PresetBundle,
-  ProjectType,
-  SpecosBundleManifest
+  ConfigurationPreset,
+  ProjectType
 };
 
 export interface SavedCompareSet {
@@ -68,12 +61,12 @@ export interface ProjectManifest {
   selectedAssets: ProjectAssetSelection[];
   prdTemplateId: string;
   prdPath: string;
-  exportTargets: string[];
+  configurationTargets: string[];
 }
 
 export type RequirementType = "feature" | "change" | "bug" | "refactor";
 export type RequirementStatus = "draft" | "review" | "approved" | "implementing" | "done" | "example";
-export type RequirementDocument = "prd" | "spec" | "test" | "issues";
+export type RequirementDocument = "prd" | "acceptance" | "spec" | "test" | "review" | "issues";
 export type RequirementGateStatus = "pass" | "warn" | "block";
 
 export interface RequirementFileState {
@@ -100,6 +93,7 @@ export interface RequirementPackageSummary {
     feature: RequirementGateStatus;
   };
   warnings: string[];
+  specCount: number;
 }
 
 export interface RequirementDocumentData {
@@ -110,7 +104,24 @@ export interface RequirementDocumentData {
 }
 
 export interface RequirementPackageDetail extends RequirementPackageSummary {
+  index: RequirementDocumentData;
   documents: Partial<Record<RequirementDocument, RequirementDocumentData>>;
+  specs: RequirementSpecSummary[];
+}
+
+export interface RequirementSpecSummary {
+  id: string;
+  slug: string;
+  title: string;
+  status: string;
+  path: string;
+  documents: Record<"spec" | "test" | "review" | "issues", RequirementFileState>;
+}
+
+export interface RequirementSpecDetail extends RequirementSpecSummary {
+  requirementId: string;
+  sources: Partial<Record<Exclude<RequirementDocument, "prd">, RequirementDocumentData>>;
+  evidence: string[];
 }
 
 export interface MissingDependencyIssue {
@@ -135,57 +146,3 @@ export interface DraftAdvice {
   missingSections: string[];
   ruleHints: string[];
 }
-
-export interface ExportFileGroup {
-  directory: string;
-  files: ExportFile[];
-}
-
-export interface ExportDiffPreview {
-  status: "new" | "changed" | "synced" | "removed";
-  preview: string;
-}
-
-export type ExportReviewDecision = "pending" | "accepted" | "needs_work" | "blocked";
-
-export interface ExportReviewDecisionEntry {
-  targetPath: string;
-  decision: ExportReviewDecision;
-  updatedAt: string;
-  note?: string;
-  noteUpdatedAt?: string;
-}
-
-export interface ExportReviewState {
-  decisions: ExportReviewDecisionEntry[];
-}
-
-export interface ExportReviewFile extends ExportFile {
-  diff: ExportDiffPreview;
-  diffLines: Array<{
-    kind: "meta" | "hunk" | "add" | "remove" | "context";
-    content: string;
-  }>;
-  decision?: ExportReviewDecision;
-  decisionUpdatedAt?: string;
-  note?: string;
-  noteUpdatedAt?: string;
-  owners?: Array<{
-    id: string;
-    title: string;
-  }>;
-}
-
-export interface ExportReviewGroup {
-  directory: string;
-  files: ExportReviewFile[];
-}
-
-export interface ExportTreeNode {
-  name: string;
-  path: string;
-  children?: ExportTreeNode[];
-  file?: ExportFile;
-}
-
-export type ExportBundle = BundlePlan;

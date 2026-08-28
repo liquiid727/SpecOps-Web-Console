@@ -29,7 +29,7 @@
   "dependsOn": [
     "template-spec-blueprint-yaml",
     "template-product-spec-yaml",
-    "template-feature-draft"
+    "template-requirement-workspace"
   ],
   "conflictsWith": [],
   "sourcePath": "assets/templates/specs/template-task-graph-yaml/task-graph.template.yaml",

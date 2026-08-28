@@ -1,0 +1,18 @@
+{
+  "id": "template-issue",
+  "type": "spec_template",
+  "title": "GoalSpec Issue",
+  "summary": "Canonical implementable Issue template owned by a child spec package with traceable evidence.",
+  "direction": "fullstack",
+  "stacks": ["go", "react", "python", "specos"],
+  "tags": ["goalspec", "issue", "implementation", "template"],
+  "appliesTo": ["backend", "frontend", "ui"],
+  "dependsOn": ["template-spec-package"],
+  "conflictsWith": [],
+  "sourcePath": "assets/templates/specs/template-issue/issue.example.md",
+  "files": [".requirements/templates/spec-package/issues/ISSUE-R001-S01-001-example.md"],
+  "version": "2.0.0",
+  "contentFiles": {
+    ".requirements/templates/spec-package/issues/ISSUE-R001-S01-001-example.md": "assets/templates/specs/template-issue/issue.example.md"
+  }
+}

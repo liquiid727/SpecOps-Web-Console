@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "modules:build": "npm -C .. run build --workspace @specos/catalog && npm -C .. run build --workspace @specos/bundler",
+    "modules:build": "npm -C .. run build --workspace @specos/catalog",
     "predev": "npm run modules:build",
     "dev": "next dev",
     "prebuild": "npm run modules:build",
@@ -14,7 +14,6 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@specos/bundler": "file:../packages/bundler",
     "@specos/catalog": "file:../packages/catalog",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

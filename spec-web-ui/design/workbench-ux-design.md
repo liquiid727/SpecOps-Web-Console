@@ -6,7 +6,7 @@
 - Frontend delivery rule: [rules/frontend/react-workbench-delivery.md](../../rules/frontend/react-workbench-delivery.md)
 - UI handoff rule: [rules/ui/pencil-prototype-ui.md](../../rules/ui/pencil-prototype-ui.md)
 - Shared UI role: [.agents/roles/ui-design-agent.md](../../.agents/roles/ui-design-agent.md)
-- Mode overlays: [GoalSpec](../../.agents/modes/goalspec/roles/) is the official mode; [LiteSpec](../../.agents/modes/litespec/roles/) and [EnterpriseSpec](../../.agents/modes/enterprisespec/roles/) remain as optional plugins.
+- GoalSpec is the repository workflow. Requirement Packages are read from `.requirements/requirements/R0NN-<slug>/`.
 - Requirement flow: [GoalSpec / Agent-Native SDLC](../../docs/spec-modes/GoalSpec/README.md)
 
 This document is the working UX reference for `spec-web-ui`. It is draft-only until a feature spec accepts it.
@@ -45,7 +45,6 @@ Use this rule of thumb:
 - Home page: orientation and starting point.
 - Discover: search and understand reusable assets.
 - Configuration Workspace: assemble a project baseline from selected assets.
-- Export Preview: review generated files, structure, and installable bundle output.
 
 Avoid using "draft" language in this UI unless it clearly means a reusable template draft. "Draft" is reserved for target project requirement intake and should not be presented as a canonical state inside this workbench.
 
@@ -60,7 +59,7 @@ Expected behavior:
 - Searches or browses available assets.
 - Picks a small set of relevant items.
 - Creates or opens a configuration workspace.
-- Exports a baseline that can be installed into the target repo.
+- Maintains the baseline configuration in the workbench.
 
 ### Team Lead
 
@@ -69,13 +68,13 @@ Wants consistent AI project scaffolding across a team.
 Expected behavior:
 
 - Reviews reusable rules and agent roles.
-- Assembles recommended bundles for common project types.
+- Assembles recommended configurations for common project types.
 - Checks conflicts and missing dependencies before handoff.
-- Exports a reviewable bundle snapshot.
+- Reviews the local configuration.
 
 ### Future Project Start Agent
 
-Uses the same catalog and project bundle concepts as retrieval context.
+Uses the same catalog and project configuration concepts as retrieval context.
 
 Expected behavior:
 
@@ -128,18 +127,7 @@ Core tasks:
 - Edit project profile metadata such as name, stack, domain, and target output path.
 - Preview how selected assets form a baseline configuration.
 
-Workspace screens should show current asset composition and readiness, not concrete project requirement state. If a user needs to write actual requirements, the UI should direct them to the generated target repo structure or exported templates, not store the requirement lifecycle here.
-
-### Export Preview
-
-Purpose: package the selected setup into a reviewable, installable bundle.
-
-Core tasks:
-
-- Generate or inspect export snapshots.
-- Review included files and generated bundle structure.
-- Compare changes before handoff.
-- Confirm the bundle can be installed by CLI or copied into a target project.
+Workspace screens should show current asset composition and readiness, not concrete project requirement state. If a user needs to write actual requirements, the UI should direct them to the target repository's Requirement Package, not store the requirement lifecycle here.
 
 ## Core Flow
 
@@ -150,8 +138,6 @@ Open workbench
 -> Add assets to a configuration workspace
 -> Resolve dependencies and conflicts
 -> Preview generated baseline structure and workflow relationships
--> Export bundle
--> Install baseline into target project
 ```
 
 The UI should keep this flow visible through labels and navigation, but should avoid turning every step into a large home-page module.
@@ -167,7 +153,7 @@ Expected interaction:
 - User sees one clear explanation of the workbench.
 - User can search immediately.
 - User can enter Discover or the Configuration Workspace.
-- First-use hint gives the simple path: Discover -> Workspace -> Export.
+- First-use hint gives the simple path: Discover -> Workspace -> Draft.
 
 Avoid:
 
@@ -200,7 +186,7 @@ Expected behavior:
 
 ### Baseline Preview Interaction
 
-Preview should make the generated baseline understandable before export.
+Preview should make the generated baseline understandable while it is configured locally.
 
 Expected behavior:
 
@@ -208,16 +194,6 @@ Expected behavior:
 - Users can inspect the generated directory structure.
 - Users can inspect a simple workflow diagram that explains how the selected assets relate.
 - Users can edit configuration metadata, but should not edit concrete target-project requirements here.
-
-### Export Interaction
-
-Export is a review step, not a blind download.
-
-Expected behavior:
-
-- Users see what files will be included.
-- Generated `.specos-bundle/` structure is visible.
-- Differences and warnings are reviewable before handoff.
 
 ## Visual Design Direction
 
@@ -248,7 +224,6 @@ Every user-facing flow should define these states.
 - No catalog assets found.
 - No configuration workspace exists yet.
 - No selected assets in the workspace.
-- No export snapshot exists.
 
 Empty states should tell users the next action, not describe the system.
 
@@ -257,7 +232,6 @@ Empty states should tell users the next action, not describe the system.
 - Loading catalog.
 - Loading configuration workspace.
 - Generating baseline preview.
-- Generating export preview.
 - Validating dependencies or conflicts.
 
 Loading states should preserve layout stability.
@@ -267,7 +241,6 @@ Loading states should preserve layout stability.
 - Asset added to workspace.
 - Configuration workspace created.
 - Baseline preview generated.
-- Export snapshot generated.
 
 Success states should confirm the result and expose the next step.
 
@@ -277,7 +250,6 @@ Success states should confirm the result and expose the next step.
 - Workspace save failed.
 - Baseline preview generation failed.
 - Dependency validation failed.
-- Export generation failed.
 
 Failure states should state what failed, why it matters, and what the user can do next.
 
@@ -289,7 +261,7 @@ Task pages may use multiple columns when useful:
 
 - Discover can use filters and result panels.
 - Configuration Workspace can use composition and detail panels.
-- Export Preview can use file list and preview/diff panels.
+- Configuration preview can use file list and preview panels.
 
 On mobile, each route should preserve the same task order:
 
@@ -307,7 +279,6 @@ Prefer:
 - "搜索规则、模板、Agent 角色"
 - "组合项目上下文"
 - "预览生成结构"
-- "导出 Bundle"
 - "查看依赖和冲突"
 
 Avoid:
@@ -321,9 +292,7 @@ Avoid:
 
 - Should Home eventually support a guided project-start wizard, or should that stay in Configuration Workspace?
 - Should agent and skill configuration become a dedicated route, or remain catalog assets inside Discover?
-- Should bundle presets be first-class project templates?
 - How much of the future `project-start-agent` flow should be visible before RAG automation exists?
-- What is the minimal export contract between `spec-web-ui` and a target project repository?
 
 ## Validation Notes
 

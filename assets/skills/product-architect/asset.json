@@ -31,7 +31,7 @@
     "template-task-graph-yaml",
     "template-prd-draft",
     "template-product-spec-yaml",
-    "template-feature-draft"
+    "template-requirement-workspace"
   ],
   "conflictsWith": [],
   "sourcePath": "assets/skills/product-architect/SKILL.md",

@@ -58,7 +58,6 @@ describe("HomePage", () => {
     expect(screen.getByText("三步开始")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "浏览目录" })).toHaveAttribute("href", "/discover");
     expect(screen.getByRole("link", { name: "组合工作区" })).toHaveAttribute("href", "/projects");
-    expect(screen.getByRole("link", { name: "预览导出" })).toHaveAttribute("href", "/exports");
     expect(screen.queryByRole("heading", { name: "Agent-Native SDLC 工作流" })).not.toBeInTheDocument();
     expect(screen.queryByText("$ GO DISCOVER")).not.toBeInTheDocument();
     expect(screen.queryByText("目录快照")).not.toBeInTheDocument();
@@ -76,7 +75,6 @@ describe("HomePage", () => {
 
       expect(screen.getByRole("link", { name: "浏览目录" })).toHaveAttribute("href", "/discover");
       expect(screen.queryByRole("link", { name: "组合工作区" })).not.toBeInTheDocument();
-      expect(screen.queryByRole("link", { name: "预览导出" })).not.toBeInTheDocument();
     } finally {
       if (previousMode === undefined) {
         delete process.env.SPECOS_RUNTIME_MODE;

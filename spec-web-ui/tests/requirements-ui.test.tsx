@@ -13,21 +13,14 @@ const fixture: RequirementPackageDetail = {
   type: "feature",
   status: "implementing",
   priority: "P1",
-  files: {
-    prd: { present: true, status: "approved", ids: 1 },
-    spec: { present: true, status: "approved", ids: 1 },
-    test: { present: true, status: "approved", ids: 1 },
-    issues: { present: true, status: "implementing", ids: 1 }
-  },
+  files: { prd: { present: true, status: "approved", ids: 1 }, acceptance: { present: true, ids: 1 }, spec: { present: false, ids: 0 }, test: { present: false, ids: 0 }, review: { present: false, ids: 0 }, issues: { present: false, ids: 0 } },
   issueCounts: { total: 1, done: 0 },
   gates: { package: "pass", prd: "pass", spec: "pass", test: "pass", feature: "warn" },
   warnings: [],
-  documents: {
-    prd: { document: "prd", path: ".requirements/requirements/R001-reward-order/prd.md", source: "# PRD\nREQ-R001-001", metadata: {} },
-    spec: { document: "spec", path: ".requirements/requirements/R001-reward-order/spec.md", source: "# Spec\nSPEC-R001-F01-001", metadata: {} },
-    test: { document: "test", path: ".requirements/requirements/R001-reward-order/test.md", source: "# Spec-Test\nTEST-R001-F01-001", metadata: {} },
-    issues: { document: "issues", path: ".requirements/requirements/R001-reward-order/issues.md", source: "# Issues\nISSUE-R001-001", metadata: {} }
-  }
+  index: { document: "acceptance", path: "index.yaml", source: "schemaVersion: goalspec/requirement-package", metadata: {} },
+  documents: { prd: { document: "prd", path: ".requirements/requirements/R001-reward-order/prd.md", source: "# PRD\nREQ-R001-001", metadata: {} } },
+  specCount: 1,
+  specs: [{ id: "S01-order", slug: "order", title: "Order", status: "approved", path: "specs/S01-order/spec.md", documents: { spec: { present: true, ids: 1 }, test: { present: true, ids: 1 }, review: { present: true, ids: 0 }, issues: { present: true, ids: 1 } } }]
 };
 
 describe("Requirement Package UI", () => {
@@ -39,12 +32,11 @@ describe("Requirement Package UI", () => {
   });
 
   it("shows package status, documents, gates, and traceability", () => {
-    render(<RequirementPackagePage requirement={fixture} selected="spec" />);
+    render(<RequirementPackagePage requirement={fixture} />);
 
     expect(screen.getByRole("heading", { name: "Reward Order" })).toBeInTheDocument();
-    expect(screen.getByText("Feature Verify")).toBeInTheDocument();
-    expect(screen.getByText("Spec source")).toBeInTheDocument();
-    expect(screen.getByText(/SPEC-R001-F01-001/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Issues" })).toHaveAttribute("href", "/requirements/R001-reward-order/issues");
+    expect(screen.getByText("Child specs")).toBeInTheDocument();
+    expect(screen.getByText("Order")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /S01-order/ })).toHaveAttribute("href", "/requirements/R001-reward-order/specs/S01-order");
   });
 });

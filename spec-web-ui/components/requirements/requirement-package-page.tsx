@@ -1,172 +1,31 @@
 import Link from "next/link";
 import React from "react";
-
 import { RequirementGateBadge, RequirementStatusBadge } from "@/components/requirements/requirement-status";
 import { WindowSection } from "@/components/ui/window-section";
 import { buildNeoSurfaceClassName } from "@/lib/theme";
-import { getRequirementDocumentLabel } from "@/lib/requirements";
-import type { RequirementDocument, RequirementPackageDetail } from "@/lib/types";
+import type { RequirementPackageDetail, RequirementSpecDetail } from "@/lib/types";
 
-const documentOrder: RequirementDocument[] = ["prd", "spec", "test", "issues"];
-
-function GateRow({ label, status }: { label: string; status: RequirementPackageDetail["gates"]["package"] }) {
-  return (
-    <div className="flex items-center justify-between gap-3 border-b border-line/70 py-2 last:border-b-0">
-      <span className="text-sm text-ink">{label}</span>
-      <RequirementGateBadge status={status} />
-    </div>
-  );
-}
-
-function PackageSummary({ requirement }: { requirement: RequirementPackageDetail }) {
-  return (
+export function RequirementPackagePage({ requirement }: { requirement: RequirementPackageDetail }) {
+  return <div className="space-y-5 md:space-y-6">
+    <Link href="/requirements" className="text-sm text-slate-500 underline underline-offset-4 hover:text-ink">← All requirements</Link>
     <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_300px]">
       <div className={`${buildNeoSurfaceClassName("panel", "blue")} space-y-3 p-4`}>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-slate-500">{requirement.id}</p>
-            <h1 className="mt-1 text-2xl font-semibold text-ink">{requirement.title}</h1>
-          </div>
-          <RequirementStatusBadge status={requirement.status} />
-        </div>
-        <div className="grid gap-2 text-sm text-slate-600 sm:grid-cols-3">
-          <span>type: {requirement.type}</span>
-          <span>priority: {requirement.priority ?? "-"}</span>
-          <span>updated: {requirement.updatedAt ?? "-"}</span>
-        </div>
-        {requirement.warnings.length ? (
-          <div className="border-l-2 border-red-500 pl-3 text-sm leading-6 text-red-800">
-            {requirement.warnings.join(" / ")}
-          </div>
-        ) : (
-          <p className="text-sm leading-6 text-slate-600">四件套文件完整，下面显示当前文件与门禁状态。</p>
-        )}
+        <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-slate-500">{requirement.id}</p>
+        <div className="flex flex-wrap items-start justify-between gap-3"><h1 className="text-2xl font-semibold text-ink">{requirement.title}</h1><RequirementStatusBadge status={requirement.status} /></div>
+        <p className="text-sm leading-6 text-slate-600">GoalSpec Requirement Package · {requirement.specCount} child specs</p>
+        {requirement.warnings.length ? <p className="border-l-2 border-red-500 pl-3 text-sm leading-6 text-red-800">{requirement.warnings.join(" / ")}</p> : null}
       </div>
-
-      <div className={`${buildNeoSurfaceClassName("panel", "mint")} p-4`}>
-        <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-slate-500">gates</p>
-        <div className="mt-2">
-          <GateRow label="package completeness" status={requirement.gates.package} />
-          <GateRow label="PRD" status={requirement.gates.prd} />
-          <GateRow label="Spec" status={requirement.gates.spec} />
-          <GateRow label="Spec-Test" status={requirement.gates.test} />
-          <GateRow label="Feature Verify" status={requirement.gates.feature} />
-        </div>
-      </div>
+      <div className={`${buildNeoSurfaceClassName("panel", "mint")} p-4`}><p className="font-mono text-[11px] uppercase tracking-[0.14em] text-slate-500">package gate</p><div className="mt-2 flex items-center justify-between"><span className="text-sm">index + PRD + child specs</span><RequirementGateBadge status={requirement.gates.package} /></div></div>
     </div>
-  );
-}
-
-function DocumentTabs({ requirement, selected }: { requirement: RequirementPackageDetail; selected: RequirementDocument }) {
-  return (
-    <nav className="flex flex-wrap gap-2" aria-label="Requirement documents">
-      {documentOrder.map((document) => (
-        <Link
-          key={document}
-          href={`/requirements/${encodeURIComponent(requirement.id)}/${document}`}
-          className={`rounded-md border px-3 py-2 text-sm ${selected === document ? "border-line bg-panel text-ink" : "border-line/60 text-slate-500 hover:text-ink"}`}
-        >
-          {getRequirementDocumentLabel(document)}
-          {!requirement.files[document].present ? " · missing" : ""}
-        </Link>
-      ))}
-      <a
-        href="#traceability"
-        className="rounded-md border border-line/60 px-3 py-2 text-sm text-slate-500 hover:text-ink"
-      >
-        Traceability
-      </a>
-    </nav>
-  );
-}
-
-function DocumentPanel({ requirement, selected }: { requirement: RequirementPackageDetail; selected: RequirementDocument }) {
-  const document = requirement.documents[selected];
-
-  return (
-    <WindowSection
-      title={`${getRequirementDocumentLabel(selected)} source`}
-      description={document ? document.path : "The document is not present in this package."}
-      variant="plain"
-      tint={document ? "neutral" : "amber"}
-    >
-      {document ? (
-        <pre className="max-h-[720px] overflow-auto whitespace-pre-wrap rounded-md border border-line/70 bg-canvas p-4 font-mono text-xs leading-6 text-slate-700">
-          {document.source}
-        </pre>
-      ) : (
-        <div className="border-l-2 border-amber-500 pl-3 text-sm leading-6 text-amber-900">
-          {selected}.md is missing. The package cannot pass completeness verification.
-        </div>
-      )}
+    <WindowSection title="Package overview" description="The package-level contract and acceptance criteria." variant="plain" tint="neutral">
+      <div className="grid gap-3 sm:grid-cols-2"><SourceLink href={`/requirements/${requirement.id}/prd`} label="PRD" path={`${requirement.id}/prd.md`} present={requirement.files.prd.present} /><SourceLink href={`/requirements/${requirement.id}/acceptance`} label="Acceptance" path={`${requirement.id}/acceptance.md`} present={requirement.files.acceptance.present} /></div>
     </WindowSection>
-  );
-}
-
-function TraceabilityPanel({ requirement }: { requirement: RequirementPackageDetail }) {
-  return (
-    <WindowSection
-      title="Traceability"
-      description="Counts are derived from stable IDs in the current Markdown package. They are not persisted in the UI."
-      variant="plain"
-      tint="violet"
-    >
-      <div id="traceability" className="overflow-x-auto">
-        <table className="min-w-full border-collapse text-left text-sm">
-          <thead>
-            <tr className="border-b border-line text-xs uppercase tracking-[0.12em] text-slate-500">
-              <th className="px-3 py-2 font-medium">Document</th>
-              <th className="px-3 py-2 font-medium">File</th>
-              <th className="px-3 py-2 font-medium">Stable IDs</th>
-              <th className="px-3 py-2 font-medium">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {documentOrder.map((document) => (
-              <tr key={document} className="border-b border-line/60 last:border-b-0">
-                <td className="px-3 py-2 text-ink">{getRequirementDocumentLabel(document)}</td>
-                <td className="px-3 py-2 font-mono text-xs text-slate-500">{document}.md</td>
-                <td className="px-3 py-2 text-ink">{requirement.files[document].ids}</td>
-                <td className="px-3 py-2">
-                  {requirement.files[document].present ? requirement.files[document].status ?? "not declared" : "missing"}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+    <WindowSection title="Child specs" description="Each SNN-slug is an independently reviewable implementation contract." variant="plain" tint="violet">
+      {requirement.specs.length ? <div className="grid gap-3 md:grid-cols-2">{requirement.specs.map((spec) => <Link key={spec.id} href={`/requirements/${requirement.id}/specs/${spec.id}`} className={`${buildNeoSurfaceClassName("row")} block p-4 transition hover:border-slate-400/50`}><div className="flex items-start justify-between gap-3"><div><p className="font-mono text-[11px] uppercase tracking-[0.14em] text-slate-500">{spec.id}</p><h3 className="mt-1 font-semibold text-ink">{spec.title}</h3></div><span className="text-xs text-slate-500">{spec.status}</span></div><p className="mt-3 text-xs text-slate-500">spec.md · test.md · review.md · issues/</p></Link>)}</div> : <p className="text-sm text-amber-900">No child specs are readable yet.</p>}
     </WindowSection>
-  );
+  </div>;
 }
-
-export function RequirementPackagePage({ requirement, selected = "prd" }: { requirement: RequirementPackageDetail; selected?: RequirementDocument }) {
-  return (
-    <div className="space-y-5 md:space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link href="/requirements" className="text-sm text-slate-500 underline underline-offset-4 hover:text-ink">
-          ← All requirements
-        </Link>
-        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">read-only source view</span>
-      </div>
-      <PackageSummary requirement={requirement} />
-      <DocumentTabs requirement={requirement} selected={selected} />
-      <DocumentPanel requirement={requirement} selected={selected} />
-      <TraceabilityPanel requirement={requirement} />
-    </div>
-  );
-}
-
-export function RequirementNotFound({ requirementId }: { requirementId: string }) {
-  return (
-    <WindowSection
-      title="Requirement package unavailable"
-      description={`No readable Requirement Package was found for ${requirementId}.`}
-      variant="plain"
-      tint="amber"
-    >
-      <div className="border-l-2 border-amber-500 pl-3 text-sm leading-6 text-amber-900">
-        Check that `.requirements/requirements/{requirementId}/` contains the expected package directory.
-      </div>
-    </WindowSection>
-  );
-}
+function SourceLink({ href, label, path, present }: { href: string; label: string; path: string; present: boolean }) { return <Link href={href} className="rounded-md border border-line/70 bg-canvas p-3"><span className="block text-sm font-medium text-ink">{label}</span><span className={`mt-1 block font-mono text-xs ${present ? "text-slate-500" : "text-red-700"}`}>{path} · {present ? "ready" : "missing"}</span></Link>; }
+export function RequirementSpecPage({ spec }: { spec: RequirementSpecDetail }) { return <div className="space-y-5 md:space-y-6"><Link href={`/requirements/${spec.requirementId}`} className="text-sm text-slate-500 underline underline-offset-4 hover:text-ink">← Package overview</Link><div className={`${buildNeoSurfaceClassName("panel", "blue")} space-y-2 p-4`}><p className="font-mono text-[11px] uppercase tracking-[0.14em] text-slate-500">{spec.id}</p><div className="flex flex-wrap items-start justify-between gap-3"><h1 className="text-2xl font-semibold text-ink">{spec.title}</h1><span className="text-sm text-slate-500">{spec.status}</span></div><p className="text-sm text-slate-600">{spec.path}</p></div><nav className="flex flex-wrap gap-2" aria-label="Spec documents">{(["spec", "test", "review", "issues"] as const).map((doc) => <a key={doc} href={`#${doc}`} className="rounded-md border border-line/60 px-3 py-2 text-sm text-slate-500 hover:text-ink">{doc}.md</a>)}</nav>{(["spec", "test", "review", "issues"] as const).map((doc) => <WindowSection key={doc} title={doc === "spec" ? "Spec" : doc} description={spec.sources[doc]?.path ?? `${doc}.md is missing`} variant="plain" tint={spec.sources[doc] ? "neutral" : "amber"}><div id={doc}>{spec.sources[doc] ? <pre className="max-h-[560px] overflow-auto whitespace-pre-wrap rounded-md border border-line/70 bg-canvas p-4 font-mono text-xs leading-6 text-slate-700">{spec.sources[doc]?.source}</pre> : <p className="text-sm text-amber-900">This artifact is missing.</p>}</div></WindowSection>)}<WindowSection title="Evidence" description="Evidence is scoped to this child spec." variant="plain" tint="mint">{spec.evidence.length ? <ul className="list-disc pl-5 text-sm text-slate-600">{spec.evidence.map((entry) => <li key={entry}>{entry}</li>)}</ul> : <p className="text-sm text-slate-600">No evidence artifacts recorded yet.</p>}</WindowSection></div>; }
+export function RequirementNotFound({ requirementId }: { requirementId: string }) { return <WindowSection title="Requirement package unavailable" description={`No readable Requirement Package was found for ${requirementId}.`} variant="plain" tint="amber"><p className="border-l-2 border-amber-500 pl-3 text-sm leading-6 text-amber-900">Check `.requirements/requirements/{requirementId}/index.yaml` and `specs/SNN-*/`.</p></WindowSection>; }
+export function RequirementSpecNotFound({ requirementId, specId }: { requirementId: string; specId: string }) { return <WindowSection title="Child spec unavailable" description={`No readable ${specId} was found in ${requirementId}.`} variant="plain" tint="amber"><p className="text-sm text-amber-900">The route reads child specs from the selected Requirement Package.</p></WindowSection>; }

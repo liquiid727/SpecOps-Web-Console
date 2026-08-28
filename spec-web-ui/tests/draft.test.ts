@@ -17,7 +17,7 @@ const project: ProjectManifest = {
   selectedAssets: [{ assetId: "rule-frontend-react", enabled: true }],
   prdTemplateId: "template-feature-draft",
   prdPath: "spec-web-ui/workspace/projects/wallet-console/prd.md",
-  exportTargets: ["docs/", "design/", "rules/", ".requirements/", "ai/agents/", "agent-teams/", "project-manifest.yaml"]
+  configurationTargets: ["docs/", "design/", "rules/", ".requirements/", "ai/agents/", "agent-teams/", "project-manifest.yaml"]
 };
 
 const selectedAssets: CatalogAsset[] = [

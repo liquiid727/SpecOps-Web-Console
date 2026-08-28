@@ -47,6 +47,14 @@ export function filterCatalogAssets(assets: CatalogAsset[], filters: CatalogFilt
       }
     }
 
+    if (filters.directionGroups?.length) {
+      const assetDirectionGroups = asset.directionGroups ?? [];
+
+      if (!filters.directionGroups.every((group) => assetDirectionGroups.includes(group))) {
+        return false;
+      }
+    }
+
     if (filters.directions?.length && !filters.directions.includes(asset.direction)) {
       return false;
     }
@@ -66,6 +74,7 @@ export function filterCatalogAssets(assets: CatalogAsset[], filters: CatalogFilt
 export function getCatalogFilterOptions(assets: CatalogAsset[]): CatalogFilterOptions {
   return {
     directions: sortStrings(uniq(assets.map((asset) => asset.direction))) as CatalogFilterOptions["directions"],
+    directionGroups: sortStrings(uniq(assets.flatMap((asset) => asset.directionGroups ?? []))) as CatalogFilterOptions["directionGroups"],
     stacks: sortStrings(uniq(assets.flatMap((asset) => asset.stacks))),
     tags: sortStrings(uniq(assets.flatMap((asset) => asset.tags))),
     types: sortStrings(uniq(assets.map((asset) => asset.type))) as CatalogFilterOptions["types"]
@@ -204,13 +213,13 @@ export function buildCatalogComparison(assets: CatalogAsset[], assetIds: string[
     }, [])
   ).sort((left, right) => left.localeCompare(right));
 
-  const exportDirectories = uniq(
+  const configurationDirectories = uniq(
     selectedAssets.flatMap((asset) => asset.files.map((file) => file.split("/")[0]))
   ).sort((left, right) => left.localeCompare(right));
 
   return {
     assets: selectedAssets,
     sharedStacks,
-    exportDirectories
+    configurationDirectories
   };
 }

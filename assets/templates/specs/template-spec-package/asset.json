@@ -1,0 +1,28 @@
+{
+  "id": "template-spec-package",
+  "type": "spec_template",
+  "title": "GoalSpec Spec Package",
+  "summary": "Canonical child spec package containing spec, test design, review, acceptance, and evidence structure.",
+  "direction": "fullstack",
+  "stacks": ["go", "react", "python", "specos"],
+  "tags": ["goalspec", "spec", "test", "evidence", "template"],
+  "appliesTo": ["backend", "frontend", "ui"],
+  "dependsOn": ["template-requirement-workspace"],
+  "conflictsWith": [],
+  "sourcePath": "assets/templates/specs/template-spec-package/spec.md",
+  "files": [
+    ".requirements/templates/spec-package/spec.md",
+    ".requirements/templates/spec-package/test.md",
+    ".requirements/templates/spec-package/review.md",
+    ".requirements/templates/spec-package/acceptance.md",
+    ".requirements/templates/spec-package/evidence/README.md"
+  ],
+  "version": "2.0.0",
+  "contentFiles": {
+    ".requirements/templates/spec-package/spec.md": "assets/templates/specs/template-spec-package/spec.md",
+    ".requirements/templates/spec-package/test.md": "assets/templates/specs/template-spec-package/test.md",
+    ".requirements/templates/spec-package/review.md": "assets/templates/specs/template-spec-package/review.md",
+    ".requirements/templates/spec-package/acceptance.md": "assets/templates/specs/template-spec-package/acceptance.md",
+    ".requirements/templates/spec-package/evidence/README.md": "assets/templates/specs/template-spec-package/evidence-README.md"
+  }
+}

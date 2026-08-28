@@ -1,7 +1,6 @@
 import { cookies } from "next/headers";
 import React from "react";
 
-import { ProjectModesPanel } from "@/components/about/project-modes-panel";
 import { TestUiDemoPanel } from "@/components/about/test-ui-demo-panel";
 import { AgentWorkflowPanel } from "@/components/home/agent-workflow-panel";
 import { getLocaleCopy, LOCALE_STORAGE_KEY, normalizeLocale } from "@/lib/locale";
@@ -13,7 +12,6 @@ export default async function AboutPage() {
   return (
     <div className="space-y-6 md:space-y-8">
       <AgentWorkflowPanel copy={copy.agentFlow} />
-      <ProjectModesPanel copy={copy.projectModes} />
       <TestUiDemoPanel copy={copy.testUiDemo} />
     </div>
   );

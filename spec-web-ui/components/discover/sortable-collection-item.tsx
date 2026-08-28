@@ -13,7 +13,7 @@ const dragType = "application/spec-web-ui-collection-item";
 const scopeLabels = {
   compareSets: "saved compare sets",
   favorites: "favorites",
-  presets: "preset bundles"
+  presets: "configuration presets"
 } as const;
 
 export function SortableCollectionItem({

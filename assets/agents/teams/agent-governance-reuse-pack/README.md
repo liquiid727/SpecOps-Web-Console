@@ -1,16 +1,16 @@
 # Agent Governance Reuse Pack
 
-This team pack contains a reusable agent governance baseline for importing into projects through `spec-web-ui` and `.specos-bundle`.
+This team pack contains a reusable agent governance baseline for use in the local `spec-web-ui` catalog.
 
-## Install Shape
+## Catalog Shape
 
-When exported and installed, this pack should land under:
+This pack is catalogued under:
 
 ```text
 agent-teams/agent-governance-reuse-pack/
 ```
 
-Projects should then reference the installed pack explicitly from their own `AGENTS.md` or local routing manifest.
+Projects can reference the pack explicitly from their own `AGENTS.md` or local routing manifest.
 
 ## Included Files
 

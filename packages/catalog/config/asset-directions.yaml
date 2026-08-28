@@ -1,0 +1,95 @@
+version: 1
+
+# Direction bundles are the human-maintained classification layer for
+# reusable Agent, Rule, and Skill assets. The referenced IDs are resolved
+# against catalog-assets.json and directory-backed asset.json manifests.
+directions:
+  product:
+    label: 产品
+    description: 产品目标、需求整理和规格编译。
+    agents:
+      - agent-product-architect
+      - agent-spec-editor
+    rules: []
+    skills:
+      - skill-prd
+      - skill-prd-to-spec
+
+  business:
+    label: 商业
+    description: 商业流程、业务约束和面向业务方的需求表达。
+    agents:
+      - agent-product-architect
+      - agent-spec-editor
+    rules: []
+    skills:
+      - skill-prd
+      - skill-prd-to-spec
+
+  frontend:
+    label: 前端
+    description: Web UI、交互状态和浏览器侧交付。
+    agents:
+      - agent-frontend
+      - agent-ui-design
+      - agent-playwright-test
+      - agent-test-editor
+      - agent-openapi
+    rules:
+      - rule-frontend-react
+      - rule-error-code-governance
+    skills:
+      - skill-prd-to-spec
+      - skill-to-issues
+
+  backend:
+    label: 后端
+    description: 服务、接口、领域模型、数据和迁移交付。
+    agents:
+      - agent-backend
+      - agent-openapi
+      - agent-ddd-domain
+      - agent-db-migration
+      - agent-implementation-editor
+      - agent-spec-editor
+    rules:
+      - rule-backend-governance
+      - rule-redis-governance
+      - rule-goose-migration
+      - rule-error-code-governance
+    skills:
+      - skill-prd-to-spec
+      - skill-to-issues
+
+  operations:
+    label: 运维
+    description: CI、发布、部署和运行过程治理。
+    agents:
+      - agent-ci-editor
+      - agent-execution-editor
+      - agent-qa
+      - agent-reviewer
+    rules:
+      - rule-ci-release-gates
+    skills:
+      - skill-review-it
+      - skill-ship-it
+
+  qa:
+    label: 测试 / QA
+    description: 独立验证、质量评审、测试证据和验收门禁。
+    agents:
+      - agent-qa
+      - agent-reviewer
+      - agent-test-editor
+      - agent-unit-test
+      - agent-e2e-test
+      - agent-playwright-test
+      - agent-specialized-check
+      - agent-ci-editor
+    rules:
+      - rule-ci-release-gates
+    skills:
+      - skill-spec-to-test
+      - skill-review-it
+      - skill-ship-it

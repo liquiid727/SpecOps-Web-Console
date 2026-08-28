@@ -10,7 +10,7 @@ riskTier: P1
 ownerAgent: test-editor
 sourceApprovalEvidence: <approval-record-or-none>
 testSpecApprovalEvidence: <approval-record-or-pending>
-standardVersion: specos-test-standard/v1
+standardVersion: specos-test-standard
 ---
 
 # Test Spec: <SPEC-ID> <Feature>
@@ -215,7 +215,7 @@ Tools are execution adapters. This section must not claim that an adapter ran.
 
 ## 13. Evidence and Release Decision
 
-- Standard: `specos-test-standard/v1`
+- Standard: `specos-test-standard`
 - Required owners: `<owner agents>`
 - Required evidence: `<types>`
 - P0/P1 blocking gaps: block release and merge readiness.

@@ -8,6 +8,7 @@ export type CatalogAssetType =
 export type CatalogAgentTier = "main" | "specialist";
 export type CatalogDirection = "backend" | "frontend" | "ui" | "fullstack";
 export type CatalogCategory = "product" | "operations" | "testing" | "deployment" | "frontend" | "backend";
+export type CatalogDirectionGroup = "product" | "business" | "frontend" | "backend" | "operations" | "qa";
 export type ProjectType = "backend" | "frontend" | "mixed";
 
 export interface CatalogAsset {
@@ -19,6 +20,7 @@ export interface CatalogAsset {
   summary: string;
   summaryZh?: string;
   direction: CatalogDirection;
+  directionGroups?: CatalogDirectionGroup[];
   categories?: CatalogCategory[];
   stacks: string[];
   tags: string[];
@@ -33,7 +35,7 @@ export interface CatalogAsset {
   sampleOutput?: string;
 }
 
-export interface PresetBundle {
+export interface ConfigurationPreset {
   id: string;
   title: string;
   summary: string;
@@ -45,6 +47,7 @@ export interface PresetBundle {
 export interface CatalogFilters {
   query?: string;
   categories?: CatalogCategory[];
+  directionGroups?: CatalogDirectionGroup[];
   types?: CatalogAssetType[];
   directions?: CatalogDirection[];
   stacks?: string[];
@@ -53,9 +56,23 @@ export interface CatalogFilters {
 
 export interface CatalogFilterOptions {
   directions: CatalogDirection[];
+  directionGroups: CatalogDirectionGroup[];
   stacks: string[];
   tags: string[];
   types: CatalogAssetType[];
+}
+
+export interface CatalogDirectionGroupDefinition {
+  label: string;
+  description: string;
+  agents: string[];
+  rules: string[];
+  skills: string[];
+}
+
+export interface CatalogDirectionManifest {
+  version: number;
+  directions: Record<CatalogDirectionGroup, CatalogDirectionGroupDefinition>;
 }
 
 export interface WorkspaceAssetContext {

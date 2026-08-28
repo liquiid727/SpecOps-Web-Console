@@ -173,6 +173,7 @@ describe("getCatalogFilterOptions", () => {
   it("collects sorted filter values from the catalog", () => {
     expect(getCatalogFilterOptions(assets)).toEqual({
       directions: ["backend", "frontend", "fullstack"],
+      directionGroups: [],
       stacks: ["go", "react"],
       tags: ["api", "auth", "ci", "config", "ddd", "errors", "layering", "openapi", "react", "routing", "skill", "team", "ui"],
       types: ["agent_role", "agent_team", "rule", "skill", "spec_template"]
@@ -192,7 +193,6 @@ describe("loadCatalogAssets", () => {
   it("loads spec and agent template assets from directory-backed manifests", async () => {
     const catalog = await loadCatalogAssets();
     const specTemplate = catalog.find((asset) => asset.id === "template-feature-draft");
-    const modesTemplate = catalog.find((asset) => asset.id === "template-project-modes");
     const agentTemplate = catalog.find((asset) => asset.id === "agent-spec-editor");
     const productArchitectAgent = catalog.find((asset) => asset.id === "agent-product-architect");
     const frontendAgent = catalog.find((asset) => asset.id === "agent-frontend");
@@ -223,15 +223,6 @@ describe("loadCatalogAssets", () => {
     expect(specTemplate?.contentFiles?.[".requirements/templates/prd-feature-draft.template.md"]).toBe(
       "assets/templates/specs/template-feature-draft/product-ui.template.md"
     );
-    expect(modesTemplate?.files).toEqual([
-      "docs/spec-modes/README.md",
-      "docs/spec-modes/plugins/LiteSpec/README.md",
-      "docs/spec-modes/GoalSpec/README.md",
-      "docs/spec-modes/plugins/EnterpriseSpec/README.md"
-    ]);
-    expect(modesTemplate?.contentFiles?.["docs/spec-modes/plugins/LiteSpec/README.md"]).toBe(
-      "assets/templates/specs/template-project-modes/LiteSpec.md"
-    );
     expect(agentTemplate?.sourcePath).toBe(
       "assets/agents/roles/agent-spec-editor/spec-editor.md"
     );
@@ -248,7 +239,7 @@ describe("loadCatalogAssets", () => {
         "template-task-graph-yaml",
         "template-prd-draft",
         "template-product-spec-yaml",
-        "template-feature-draft"
+        "template-requirement-workspace"
       ])
     );
     expect(productArchitectSkill?.sourcePath).toBe(
@@ -260,11 +251,11 @@ describe("loadCatalogAssets", () => {
         "template-task-graph-yaml",
         "template-prd-draft",
         "template-product-spec-yaml",
-        "template-feature-draft"
+        "template-requirement-workspace"
       ])
     );
     expect(specEditorAgent?.dependsOn).toEqual(
-      expect.arrayContaining(["template-feature-draft", "template-task-graph-yaml"])
+      expect.arrayContaining(["template-requirement-workspace", "template-task-graph-yaml"])
     );
     expect(specBlueprintTemplate?.contentFiles?.[".requirements/templates/spec-blueprint.template.yaml"]).toBe(
       "assets/templates/specs/template-spec-blueprint-yaml/spec-blueprint.template.yaml"
@@ -435,7 +426,7 @@ describe("buildAssetCompositionPreview", () => {
           ],
           prdTemplateId: "template-react-feature",
           prdPath: "spec-web-ui/workspace/projects/rewards-platform/prd.md",
-          exportTargets: ["docs/", "design/", "rules/", ".requirements/", "ai/agents/", "agent-teams/", "project-manifest.yaml"]
+          configurationTargets: ["docs/", "design/", "rules/", ".requirements/", "ai/agents/", "agent-teams/", "project-manifest.yaml"]
         },
         selectedAssets: assets.filter((asset) =>
           ["rule-go-backend", "template-react-feature"].includes(asset.id)
@@ -448,7 +439,7 @@ describe("buildAssetCompositionPreview", () => {
     );
 
     expect(preview.selectedAssetCount).toBe(3);
-    expect(preview.exportDirectories).toEqual(["ai"]);
+    expect(preview.configurationDirectories).toEqual(["ai"]);
     expect(preview.remainingMissingDependencies).toEqual([]);
   });
 });
@@ -469,7 +460,7 @@ describe("buildCatalogComparison", () => {
     const comparison = buildCatalogComparison(assets, ["rule-go-backend", "agent-openapi"]);
 
     expect(comparison.assets.map((asset) => asset.id)).toEqual(["rule-go-backend", "agent-openapi"]);
-    expect(comparison.exportDirectories).toEqual(["ai", "rules"]);
+    expect(comparison.configurationDirectories).toEqual(["ai", "rules"]);
     expect(comparison.sharedStacks).toEqual(["go"]);
   });
 });

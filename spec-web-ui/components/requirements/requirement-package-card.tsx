@@ -6,7 +6,7 @@ import { buildNeoSurfaceClassName } from "@/lib/theme";
 import type { RequirementPackageSummary } from "@/lib/types";
 
 export function RequirementPackageCard({ requirement }: { requirement: RequirementPackageSummary }) {
-  const missingFiles = Object.values(requirement.files).filter((file) => !file.present).length;
+  const missingFiles = [requirement.files.prd, requirement.files.acceptance].filter((file) => !file.present).length;
 
   return (
     <Link
@@ -27,11 +27,11 @@ export function RequirementPackageCard({ requirement }: { requirement: Requireme
       <div className="grid gap-2 text-xs text-slate-500 sm:grid-cols-3">
         <span>type: {requirement.type}</span>
         <span>priority: {requirement.priority ?? "-"}</span>
-        <span>issues: {requirement.issueCounts.done}/{requirement.issueCounts.total} done</span>
+        <span>specs: {requirement.specCount}</span>
       </div>
 
       <div className="flex flex-wrap gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-slate-500">
-        {(["prd", "spec", "test", "issues"] as const).map((document) => (
+        {(["prd", "acceptance"] as const).map((document) => (
           <span key={document} className={requirement.files[document].present ? "text-ink" : "text-red-700"}>
             {document}.md {requirement.files[document].present ? "ok" : "missing"}
           </span>

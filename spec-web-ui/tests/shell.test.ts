@@ -8,13 +8,6 @@ describe("buildShellBreadcrumbs", () => {
       { href: "/", label: "~" },
       { href: "/discover", label: "discover" }
     ]);
-
-    expect(buildShellBreadcrumbs("/projects/reward-engine/exports")).toEqual([
-      { href: "/", label: "~" },
-      { href: "/projects", label: "projects" },
-      { href: "/projects/reward-engine", label: "reward-engine" },
-      { href: "/projects/reward-engine/exports", label: "exports" }
-    ]);
   });
 });
 

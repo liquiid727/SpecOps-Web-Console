@@ -27,7 +27,7 @@
   ],
   "prdTemplateId": "template-ui-handoff",
   "prdPath": "spec-web-ui/workspace/projects/merchant-console/prd.md",
-  "exportTargets": [
+  "configurationTargets": [
     "docs/",
     "design/",
     "rules/",

@@ -21,7 +21,7 @@
     "ui"
   ],
   "dependsOn": [
-    "template-feature-spec"
+    "template-spec-package"
   ],
   "conflictsWith": [],
   "sourcePath": "assets/agents/roles/agent-e2e-test/e2e-test-agent.md",

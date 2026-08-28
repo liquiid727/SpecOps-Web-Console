@@ -1,9 +1,12 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { parse as parseYaml } from "yaml";
 
 export {
+  applyCatalogDirectionManifest,
   buildCatalogComparison,
   filterCatalogAssets,
+  getCatalogDirectionOptions,
   getCatalogFilterOptions,
   getFeaturedAssets,
   getMarketplaceRecommendations,
@@ -11,9 +14,12 @@ export {
   sortCatalogAssetsForWorkspace
 } from "@specos/catalog";
 import type { CatalogAsset } from "@/lib/types";
+import { applyCatalogDirectionManifest } from "@specos/catalog";
+import type { CatalogDirectionManifest } from "@specos/catalog";
 import { ensureRelativeRepoPath, repoRoot } from "@/lib/server-paths";
 
 const catalogRegistryPath = path.join(repoRoot, "packages", "catalog", "config", "catalog-assets.json");
+const directionManifestPath = path.join(repoRoot, "packages", "catalog", "config", "asset-directions.yaml");
 const catalogDirectories = [
   path.join(repoRoot, "assets", "templates", "specs"),
   path.join(repoRoot, "assets", "agents", "roles"),
@@ -52,7 +58,9 @@ async function readCatalogAssetsFromDirectory(directoryPath: string) {
 
 export async function loadCatalogAssets() {
   const raw = await fs.readFile(catalogRegistryPath, "utf8");
+  const directionManifestRaw = await fs.readFile(directionManifestPath, "utf8");
   const registryCatalog = JSON.parse(raw) as CatalogAsset[];
+  const directionManifest = parseYaml(directionManifestRaw) as CatalogDirectionManifest;
   const directoryCatalogs = await Promise.all(catalogDirectories.map(readCatalogAssetsFromDirectory));
   const catalog = [...registryCatalog, ...directoryCatalogs.flat()];
   const assetMap = new Map<string, CatalogAsset>();
@@ -61,7 +69,10 @@ export async function loadCatalogAssets() {
     assetMap.set(asset.id, asset);
   }
 
-  return [...assetMap.values()].sort((left, right) => left.title.localeCompare(right.title));
+  return applyCatalogDirectionManifest(
+    [...assetMap.values()].sort((left, right) => left.title.localeCompare(right.title)),
+    directionManifest
+  );
 }
 
 export async function loadCatalogAsset(assetId: string) {

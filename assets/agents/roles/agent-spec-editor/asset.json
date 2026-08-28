@@ -21,7 +21,7 @@
     "frontend"
   ],
   "dependsOn": [
-    "template-feature-draft",
+    "template-requirement-workspace",
     "template-task-graph-yaml"
   ],
   "conflictsWith": [],

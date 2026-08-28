@@ -2,7 +2,7 @@
   "id": "template-feature-spec",
   "type": "spec_template",
   "title": "Feature Spec Template",
-  "summary": "Primary feature-spec bundle for small, dependency-aware feature slices.",
+  "summary": "Primary feature-spec template for small, dependency-aware feature slices.",
   "direction": "fullstack",
   "stacks": [
     "go",

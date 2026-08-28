@@ -15,6 +15,7 @@ type NavItem =
         | "home"
         | "about"
         | "requirements"
+        | "rules"
         | "specTemplates"
         | "skillTemplates"
         | "agentTemplates"
@@ -28,6 +29,7 @@ const baseNavItems: NavItem[] = [
   { href: "/", key: "home" },
   { href: "/about", key: "about" },
   { href: "/requirements", key: "requirements" },
+  { href: "/rules", key: "rules" },
   { href: "/spec-templates", key: "specTemplates" },
   { href: "/skill-templates", key: "skillTemplates" },
   { href: "/agent-templates", key: "agentTemplates" },

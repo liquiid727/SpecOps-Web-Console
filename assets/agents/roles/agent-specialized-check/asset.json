@@ -21,7 +21,7 @@
     "frontend"
   ],
   "dependsOn": [
-    "template-feature-spec"
+    "template-spec-package"
   ],
   "conflictsWith": [],
   "sourcePath": "assets/agents/roles/agent-specialized-check/specialized-check-agent.md",

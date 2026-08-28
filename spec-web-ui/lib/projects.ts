@@ -68,9 +68,9 @@ export async function createProject(input: {
     architecture: input.architecture,
     stacks: input.stacks,
     selectedAssets: [],
-    prdTemplateId: "template-feature-draft",
+    prdTemplateId: "template-prd-draft",
     prdPath: `spec-web-ui/workspace/projects/${id}/prd.md`,
-    exportTargets: [
+    configurationTargets: [
       "docs/",
       "design/",
       "rules/",
@@ -209,13 +209,13 @@ export function buildAssetCompositionPreview(workspace: ProjectWorkspace, asset:
       selectedAsset.dependsOn.filter((dependencyId) => !nextSelectedIds.has(dependencyId))
     )
   );
-  const exportDirectories = uniq(asset.files.map((file) => file.split("/")[0])).sort((left, right) =>
+  const configurationDirectories = uniq(asset.files.map((file) => file.split("/")[0])).sort((left, right) =>
     left.localeCompare(right)
   );
 
   return {
     selectedAssetCount: nextSelectedAssets.length,
-    exportDirectories,
+    configurationDirectories,
     remainingMissingDependencies,
     introducedConflicts: nextSelectedAssets
       .filter((selectedAsset) => selectedAsset.id !== asset.id)

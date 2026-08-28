@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/features/catalog/server", () => ({
+  getCatalogDirectionOptions: () => ["product", "business", "frontend", "backend", "operations", "qa"],
   filterCatalogAssets: (
     assets: Array<{ title: string; summary: string; summaryZh?: string; tags: string[]; categories?: string[] }>,
     filters: { query?: string; categories?: string[] }
@@ -103,6 +104,7 @@ vi.mock("@/features/catalog/server", () => ({
 
 import AgentTemplatesPage from "@/app/agent-templates/page";
 import AgentTeamsPage from "@/app/agent-teams/page";
+import RulesPage from "@/app/rules/page";
 import SkillTemplatesPage from "@/app/skill-templates/page";
 import SpecTemplatesPage from "@/app/spec-templates/page";
 
@@ -123,6 +125,14 @@ describe("template library routes", () => {
     expect(screen.getByRole("searchbox", { name: "搜索 Agent 模版" })).toBeInTheDocument();
     expect(screen.getByText("Spec Editor Agent")).toBeInTheDocument();
     expect(screen.queryByText("Product UI Spec Template")).not.toBeInTheDocument();
+  });
+
+  it("renders rules with the shared direction filters", async () => {
+    render(await RulesPage({ searchParams: Promise.resolve({}) }));
+
+    expect(screen.getByRole("heading", { name: "Rule 规则" })).toBeInTheDocument();
+    expect(screen.getByRole("searchbox", { name: "搜索 Rule" })).toBeInTheDocument();
+    expect(screen.getByText("测试 / QA")).toBeInTheDocument();
   });
 
   it("renders skill templates on a dedicated route", async () => {

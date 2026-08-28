@@ -3,16 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import {
-  generateExportBundle,
-  updateExportReviewDecision,
-  updateExportReviewNote,
-  updateExportReviewTodo
-} from "@/features/exports/server";
 import { loadCatalogAssets } from "@/features/catalog/server";
 import {
   buildDiscoverReorderFeedback,
-  loadPresetBundles,
+  loadConfigurationPresets,
   moveCompareSetsToFront,
   moveCompareSetBefore,
   moveFavoriteEntriesToFront,
@@ -85,7 +79,6 @@ export async function setProjectAssetSelectionAction(formData: FormData) {
   revalidatePath("/projects");
   revalidatePath(`/projects/${projectId}`);
   revalidatePath(`/projects/${projectId}/draft`);
-  revalidatePath(`/projects/${projectId}/exports`);
 
   redirect(redirectTo);
 }
@@ -99,17 +92,6 @@ export async function saveDraftAction(formData: FormData) {
 
   revalidatePath(`/projects/${projectId}/draft`);
   redirect(`/projects/${projectId}/draft`);
-}
-
-export async function generateExportAction(formData: FormData) {
-  assertWorkspaceWritable();
-  const projectId = String(formData.get("projectId"));
-
-  await generateExportBundle(projectId);
-
-  revalidatePath("/exports");
-  revalidatePath(`/projects/${projectId}/exports`);
-  redirect(`/projects/${projectId}/exports`);
 }
 
 export async function toggleFavoriteAssetAction(formData: FormData) {
@@ -146,16 +128,16 @@ export async function saveCompareSetAction(formData: FormData) {
   redirect(redirectTo);
 }
 
-export async function applyPresetBundleAction(formData: FormData) {
+export async function applyConfigurationPresetAction(formData: FormData) {
   assertWorkspaceWritable();
   const projectId = String(formData.get("projectId"));
   const presetId = String(formData.get("presetId"));
   const redirectTo = String(formData.get("redirectTo") ?? `/discover?projectId=${projectId}`);
-  const presetBundles = await loadPresetBundles();
-  const preset = presetBundles.find((bundle) => bundle.id === presetId);
+  const presets = await loadConfigurationPresets();
+  const preset = presets.find((candidate) => candidate.id === presetId);
 
   if (!preset) {
-    throw new Error(`Unknown preset bundle: ${presetId}`);
+    throw new Error(`Unknown configuration preset: ${presetId}`);
   }
 
   await addProjectAssets(projectId, preset.assetIds);
@@ -164,7 +146,6 @@ export async function applyPresetBundleAction(formData: FormData) {
   revalidatePath("/projects");
   revalidatePath(`/projects/${projectId}`);
   revalidatePath(`/projects/${projectId}/draft`);
-  revalidatePath(`/projects/${projectId}/exports`);
   redirect(redirectTo);
 }
 
@@ -294,30 +275,6 @@ export async function batchUpdateDiscoverCollectionAction(formData: FormData) {
   redirect(redirectTo);
 }
 
-export async function setExportReviewDecisionAction(formData: FormData) {
-  assertWorkspaceWritable();
-  const projectId = String(formData.get("projectId") ?? "");
-  const redirectTo = String(formData.get("redirectTo") ?? `/projects/${projectId}/exports`);
-  const decision = String(formData.get("decision") ?? "pending") as
-    | "pending"
-    | "accepted"
-    | "needs_work"
-    | "blocked";
-  const targetPaths = formData
-    .getAll("targetPath")
-    .map((value) => String(value).trim())
-    .filter(Boolean);
-
-  if (!projectId || !targetPaths.length) {
-    redirect(redirectTo);
-  }
-
-  await updateExportReviewDecision(projectId, targetPaths, decision);
-
-  revalidatePath(`/projects/${projectId}/exports`);
-  redirect(redirectTo);
-}
-
 export async function moveDiscoverCollectionItemAction(formData: FormData) {
   assertWorkspaceWritable();
   const scope = String(formData.get("scope") ?? "");
@@ -368,39 +325,4 @@ export async function moveDiscoverCollectionItemAction(formData: FormData) {
   url.searchParams.set("undoBeforeId", feedback.undo.beforeId);
 
   redirect(`${url.pathname}?${url.searchParams.toString()}`);
-}
-
-export async function saveExportReviewNoteAction(formData: FormData) {
-  assertWorkspaceWritable();
-  const projectId = String(formData.get("projectId") ?? "");
-  const targetPath = String(formData.get("targetPath") ?? "");
-  const note = String(formData.get("note") ?? "");
-  const redirectTo = String(formData.get("redirectTo") ?? `/projects/${projectId}/exports`);
-
-  if (!projectId || !targetPath) {
-    redirect(redirectTo);
-  }
-
-  await updateExportReviewNote(projectId, targetPath, note);
-
-  revalidatePath(`/projects/${projectId}/exports`);
-  redirect(redirectTo);
-}
-
-export async function toggleExportReviewTodoAction(formData: FormData) {
-  assertWorkspaceWritable();
-  const projectId = String(formData.get("projectId") ?? "");
-  const targetPath = String(formData.get("targetPath") ?? "");
-  const itemIndex = Number(formData.get("itemIndex") ?? -1);
-  const checked = String(formData.get("checked") ?? "false") === "true";
-  const redirectTo = String(formData.get("redirectTo") ?? `/projects/${projectId}/exports`);
-
-  if (!projectId || !targetPath || Number.isNaN(itemIndex) || itemIndex < 0) {
-    redirect(redirectTo);
-  }
-
-  await updateExportReviewTodo(projectId, targetPath, itemIndex, checked);
-
-  revalidatePath(`/projects/${projectId}/exports`);
-  redirect(redirectTo);
 }

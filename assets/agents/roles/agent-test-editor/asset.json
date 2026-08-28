@@ -20,7 +20,7 @@
     "frontend"
   ],
   "dependsOn": [
-    "template-feature-spec"
+    "template-spec-package"
   ],
   "conflictsWith": [],
   "sourcePath": "assets/agents/roles/agent-test-editor/test-editor.md",

@@ -134,7 +134,7 @@
     "id": "rule-ci-release-gates",
     "type": "rule",
     "title": "Spec Release Gates",
-    "summary": "Release check guidance that keeps tests, contracts, and export bundles aligned with feature-spec metadata.",
+    "summary": "Release check guidance that keeps tests, contracts, and local configuration aligned with feature-spec metadata.",
     "direction": "fullstack",
     "stacks": [
       "go",
@@ -151,7 +151,7 @@
       "frontend"
     ],
     "dependsOn": [
-      "template-feature-spec"
+      "template-spec-package"
     ],
     "conflictsWith": [],
     "sourcePath": "rules/ci/spec-release-gates.md",
@@ -256,7 +256,7 @@
       "frontend"
     ],
     "dependsOn": [
-      "template-feature-draft"
+      "template-requirement-workspace"
     ],
     "conflictsWith": [],
     "sourcePath": "ai/agents/spec-editor.md",
@@ -368,7 +368,7 @@
       "agent-team",
       "governance",
       "routing",
-      "bundle"
+      "configuration"
     ],
     "appliesTo": [
       "backend",
@@ -436,7 +436,7 @@
       "frontend"
     ],
     "dependsOn": [
-      "template-feature-spec"
+      "template-spec-package"
     ],
     "conflictsWith": [],
     "sourcePath": "ai/agents/test-editor.md",
@@ -515,7 +515,7 @@
     ],
     "dependsOn": [
       "skill-prd",
-      "template-feature-spec"
+      "template-spec-package"
     ],
     "conflictsWith": [],
     "sourcePath": "skills/developer/prd-to-spec/SKILL.md",
@@ -558,8 +558,8 @@
     ],
     "dependsOn": [
       "skill-prd-to-spec",
-      "template-feature-spec",
-      "template-test-spec"
+      "template-spec-package",
+      "template-spec-package"
     ],
     "conflictsWith": [],
     "sourcePath": "skills/developer/spec-to-test/SKILL.md",
@@ -859,5 +859,129 @@
       "确认边界划分、系统职责和集成方式"
     ],
     "sampleOutput": "架构边界评审和演进建议。"
+  },
+  {
+    "id": "template-requirement-workspace",
+    "type": "spec_template",
+    "title": "GoalSpec Requirement Workspace",
+    "summary": "Canonical GoalSpec workspace for PRD intake, acceptance, and child spec packages.",
+    "direction": "fullstack",
+    "categories": [
+      "product"
+    ],
+    "stacks": [
+      "go",
+      "react",
+      "python",
+      "specos"
+    ],
+    "tags": [
+      "goalspec",
+      "prd",
+      "workspace",
+      "template"
+    ],
+    "appliesTo": [
+      "backend",
+      "frontend",
+      "ui"
+    ],
+    "dependsOn": [],
+    "conflictsWith": [],
+    "sourcePath": "assets/templates/specs/template-requirement-workspace/prd.md",
+    "files": [
+      ".requirements/templates/prd.md",
+      ".requirements/templates/index.yaml",
+      ".requirements/templates/acceptance.md",
+      ".requirements/templates/README.md"
+    ],
+    "version": "2.0.0",
+    "contentFiles": {
+      ".requirements/templates/prd.md": "assets/templates/specs/template-requirement-workspace/prd.md",
+      ".requirements/templates/index.yaml": "assets/templates/specs/template-requirement-workspace/index.yaml",
+      ".requirements/templates/acceptance.md": "assets/templates/specs/template-requirement-workspace/acceptance.md",
+      ".requirements/templates/README.md": "assets/templates/specs/template-requirement-workspace/README.md"
+    }
+  },
+  {
+    "id": "template-spec-package",
+    "type": "spec_template",
+    "title": "GoalSpec Spec Package",
+    "summary": "Canonical child spec package containing spec, test design, review, acceptance, and evidence structure.",
+    "direction": "fullstack",
+    "stacks": [
+      "go",
+      "react",
+      "python",
+      "specos"
+    ],
+    "tags": [
+      "goalspec",
+      "spec",
+      "test",
+      "evidence",
+      "template"
+    ],
+    "appliesTo": [
+      "backend",
+      "frontend",
+      "ui"
+    ],
+    "dependsOn": [
+      "template-requirement-workspace"
+    ],
+    "conflictsWith": [],
+    "sourcePath": "assets/templates/specs/template-spec-package/spec.md",
+    "files": [
+      ".requirements/templates/spec-package/spec.md",
+      ".requirements/templates/spec-package/test.md",
+      ".requirements/templates/spec-package/review.md",
+      ".requirements/templates/spec-package/acceptance.md",
+      ".requirements/templates/spec-package/evidence/README.md"
+    ],
+    "version": "2.0.0",
+    "contentFiles": {
+      ".requirements/templates/spec-package/spec.md": "assets/templates/specs/template-spec-package/spec.md",
+      ".requirements/templates/spec-package/test.md": "assets/templates/specs/template-spec-package/test.md",
+      ".requirements/templates/spec-package/review.md": "assets/templates/specs/template-spec-package/review.md",
+      ".requirements/templates/spec-package/acceptance.md": "assets/templates/specs/template-spec-package/acceptance.md",
+      ".requirements/templates/spec-package/evidence/README.md": "assets/templates/specs/template-spec-package/evidence-README.md"
+    }
+  },
+  {
+    "id": "template-issue",
+    "type": "spec_template",
+    "title": "GoalSpec Issue",
+    "summary": "Canonical implementable Issue template owned by a child spec package with traceable evidence.",
+    "direction": "fullstack",
+    "stacks": [
+      "go",
+      "react",
+      "python",
+      "specos"
+    ],
+    "tags": [
+      "goalspec",
+      "issue",
+      "implementation",
+      "template"
+    ],
+    "appliesTo": [
+      "backend",
+      "frontend",
+      "ui"
+    ],
+    "dependsOn": [
+      "template-spec-package"
+    ],
+    "conflictsWith": [],
+    "sourcePath": "assets/templates/specs/template-issue/issue.example.md",
+    "files": [
+      ".requirements/templates/spec-package/issues/ISSUE-R001-S01-001-example.md"
+    ],
+    "version": "2.0.0",
+    "contentFiles": {
+      ".requirements/templates/spec-package/issues/ISSUE-R001-S01-001-example.md": "assets/templates/specs/template-issue/issue.example.md"
+    }
   }
 ]

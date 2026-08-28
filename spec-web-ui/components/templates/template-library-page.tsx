@@ -3,12 +3,12 @@ import Link from "next/link";
 
 import { CatalogAssetSummary } from "@/components/catalog/asset-summary";
 import { WindowSection } from "@/components/ui/window-section";
-import { filterCatalogAssets, loadCatalogAssets } from "@/features/catalog/server";
+import { filterCatalogAssets, getCatalogDirectionOptions, loadCatalogAssets } from "@/features/catalog/server";
 import { buildShellCommandTitle } from "@/lib/shell";
 import { buildNeoSurfaceClassName } from "@/lib/theme";
-import type { CatalogAsset, CatalogCategory, CatalogAssetType } from "@/lib/types";
+import type { CatalogAsset, CatalogCategory, CatalogAssetType, CatalogDirectionGroup } from "@/lib/types";
 
-const categoryOptions: Array<{ label: string; value: CatalogCategory }> = [
+const legacyCategoryOptions: Array<{ label: string; value: CatalogCategory }> = [
   { label: "产品", value: "product" },
   { label: "运营", value: "operations" },
   { label: "测试", value: "testing" },
@@ -17,20 +17,32 @@ const categoryOptions: Array<{ label: string; value: CatalogCategory }> = [
   { label: "后端", value: "backend" }
 ];
 
+const directionLabels: Record<CatalogDirectionGroup, string> = {
+  product: "产品",
+  business: "商业",
+  frontend: "前端",
+  backend: "后端",
+  operations: "运维",
+  qa: "测试 / QA"
+};
+
+const directionAssetTypes = new Set<CatalogAssetType>(["agent_role", "rule", "skill"]);
+
 function getQueryValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
 }
 
-function getCategoryValue(value: string | string[] | undefined) {
+function getCategoryValue(value: string | string[] | undefined, options: Array<{ label: string; value: string }>) {
   const selected = Array.isArray(value) ? value[0] ?? "" : value ?? "";
-  return categoryOptions.find((option) => option.value === selected)?.value ?? "";
+  return options.find((option) => option.value === selected)?.value ?? "";
 }
 
 function getTemplateAssets(
   catalog: CatalogAsset[],
   type: CatalogAssetType,
   query: string,
-  category: CatalogCategory | ""
+  category: string,
+  useDirectionGroups: boolean
 ) {
   const templates = catalog.filter((asset) => asset.type === type);
 
@@ -38,11 +50,17 @@ function getTemplateAssets(
     return templates;
   }
 
-  return filterCatalogAssets(templates, { query, categories: category ? [category] : [] });
+  return filterCatalogAssets(
+    templates,
+    useDirectionGroups
+      ? { query, directionGroups: category ? [category as CatalogDirectionGroup] : [] }
+      : { query, categories: category ? [category as CatalogCategory] : [] }
+  );
 }
 
 function TemplateCard({ asset }: { asset: CatalogAsset }) {
   const categories = asset.categories ?? [];
+  const directionGroups = asset.directionGroups ?? [];
 
   return (
     <Link
@@ -76,6 +94,15 @@ function TemplateCard({ asset }: { asset: CatalogAsset }) {
         />
       </div>
       <div className="mt-3 flex flex-wrap gap-1.5">
+        {directionGroups.length ? directionGroups.map((directionGroup) => (
+          <span key={directionGroup} className="rounded-md border border-accent/30 px-2 py-0.5 font-mono text-[10px] text-accent">
+            {directionLabels[directionGroup]}
+          </span>
+        )) : directionAssetTypes.has(asset.type) ? (
+          <span className="rounded-md border border-dashed border-line px-2 py-0.5 font-mono text-[10px] text-slate-500">
+            未归类
+          </span>
+        ) : null}
         {categories.slice(0, 3).map((category) => (
           <span key={category} className="rounded-md border border-line px-2 py-0.5 font-mono text-[10px] text-slate-500">
             {category}
@@ -109,13 +136,26 @@ export async function TemplateLibraryPage({
   route: string;
   searchLabel: string;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
-  templateType: Extract<CatalogAssetType, "agent_role" | "spec_template" | "agent_team" | "skill">;
+  templateType: Extract<CatalogAssetType, "agent_role" | "spec_template" | "agent_team" | "skill" | "rule">;
   title: string;
 }) {
-  const [resolvedSearchParams, catalog] = await Promise.all([searchParams, loadCatalogAssets()]);
+  const [resolvedSearchParams, catalogResult] = await Promise.all([
+    searchParams,
+    loadCatalogAssets()
+      .then((catalog) => ({ catalog, error: "" }))
+      .catch((error: unknown) => ({
+        catalog: [] as CatalogAsset[],
+        error: error instanceof Error ? error.message : "无法读取 Catalog 方向配置"
+      }))
+  ]);
+  const catalog = catalogResult.catalog;
   const query = getQueryValue(resolvedSearchParams.q);
-  const selectedCategory = getCategoryValue(resolvedSearchParams.category);
-  const assets = getTemplateAssets(catalog, templateType, query, selectedCategory);
+  const useDirectionGroups = directionAssetTypes.has(templateType);
+  const categoryOptions = useDirectionGroups
+    ? getCatalogDirectionOptions(catalog).map((value) => ({ label: directionLabels[value], value }))
+    : legacyCategoryOptions;
+  const selectedCategory = getCategoryValue(resolvedSearchParams.category, categoryOptions);
+  const assets = getTemplateAssets(catalog, templateType, query, selectedCategory, useDirectionGroups);
 
   return (
     <div className="space-y-5 md:space-y-6">
@@ -175,7 +215,9 @@ export async function TemplateLibraryPage({
           </div>
           <div className="grid gap-2.5 md:grid-cols-[minmax(0,1fr)_112px]">
             <div className="text-xs text-slate-500">
-              支持按产品、运营、测试、部署、前端、后端分类浏览当前模块资产。
+              {useDirectionGroups
+                ? "支持按产品、商业、前端、后端、运维和测试 / QA 分类浏览当前资产。"
+                : "支持按产品、运营、测试、部署、前端、后端分类浏览当前模块资产。"}
             </div>
             <button className="control control-primary rounded-[16px] px-3.5 py-2.5 text-sm font-medium" type="submit">
               搜索
@@ -183,6 +225,13 @@ export async function TemplateLibraryPage({
           </div>
         </form>
       </WindowSection>
+
+      {catalogResult.error ? (
+        <div className="surface-base surface-field rounded-lg border border-rose-300/30 px-4 py-4" role="alert">
+          <p className="text-sm font-medium text-rose-300">Catalog 配置读取失败</p>
+          <p className="mt-1 text-xs leading-5 text-rose-200/80">{catalogResult.error}</p>
+        </div>
+      ) : null}
 
       <section aria-label={title} className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-3">

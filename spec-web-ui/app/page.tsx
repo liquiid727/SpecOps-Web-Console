@@ -12,7 +12,7 @@ export default async function HomePage() {
   const locale = normalizeLocale((await cookies()).get(LOCALE_STORAGE_KEY)?.value);
   const copy = getLocaleCopy(locale).home;
   const readOnly = isReadOnlyMode();
-  const firstUseLinks = copy.firstUseLinks.filter((item) => !readOnly || !["/projects", "/exports"].includes(item.href));
+  const firstUseLinks = copy.firstUseLinks.filter((item) => !readOnly || item.href !== "/projects");
 
   return (
     <div className="space-y-6 md:space-y-8">

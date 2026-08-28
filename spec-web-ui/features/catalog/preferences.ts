@@ -4,7 +4,7 @@ import path from "node:path";
 import type {
   CatalogAsset,
   DiscoverPreferences,
-  PresetBundle,
+  ConfigurationPreset,
   SavedCompareSet
 } from "@/lib/types";
 import { appRoot, repoRoot } from "@/lib/server-paths";
@@ -12,7 +12,7 @@ import { createSlug, uniq } from "@/lib/utils";
 
 const preferencesDirectory = path.join(appRoot, "workspace", "preferences");
 const preferencesPath = path.join(preferencesDirectory, "discover-preferences.json");
-const presetBundlesPath = path.join(repoRoot, "packages", "catalog", "config", "preset-bundles.json");
+const configurationPresetsPath = path.join(repoRoot, "packages", "catalog", "config", "configuration-presets.json");
 
 const defaultPreferences: DiscoverPreferences = {
   favoriteEntries: [],
@@ -23,7 +23,7 @@ const defaultPreferences: DiscoverPreferences = {
 const discoverScopeLabels = {
   compareSets: "saved compare sets",
   favorites: "favorites",
-  presets: "preset bundles"
+  presets: "configuration presets"
 } as const;
 
 function moveEntryBefore<T>(
@@ -98,8 +98,8 @@ export function createSavedCompareSet(input: {
   };
 }
 
-export function buildPresetBundlePreview(bundle: PresetBundle, catalog: CatalogAsset[]) {
-  const assets = bundle.assetIds
+export function buildConfigurationPresetPreview(preset: ConfigurationPreset, catalog: CatalogAsset[]) {
+  const assets = preset.assetIds
     .map((assetId) => catalog.find((asset) => asset.id === assetId))
     .filter((asset): asset is CatalogAsset => Boolean(asset));
 
@@ -119,7 +119,7 @@ export function buildPresetBundlePreview(bundle: PresetBundle, catalog: CatalogA
         spec_template: 0
       }
     ),
-    exportDirectories: uniq(assets.flatMap((asset) => asset.files.map((file) => file.split("/")[0]))).sort(
+    configurationDirectories: uniq(assets.flatMap((asset) => asset.files.map((file) => file.split("/")[0]))).sort(
       (left, right) => left.localeCompare(right)
     )
   };
@@ -184,11 +184,11 @@ export async function saveCompareSet(input: {
   return compareSet;
 }
 
-export async function loadPresetBundles() {
-  const raw = await fs.readFile(presetBundlesPath, "utf8");
-  const bundles = JSON.parse(raw) as PresetBundle[];
+export async function loadConfigurationPresets() {
+  const raw = await fs.readFile(configurationPresetsPath, "utf8");
+  const presets = JSON.parse(raw) as ConfigurationPreset[];
 
-  return bundles.sort((left, right) => left.title.localeCompare(right.title));
+  return presets.sort((left, right) => left.title.localeCompare(right.title));
 }
 
 export function renameFavoriteEntry(

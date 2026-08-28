@@ -51,7 +51,7 @@ vi.mock("@/features/catalog/server", () => ({
 vi.mock("@/lib/projects", () => ({
   buildAssetCompositionPreview: () => ({
     selectedAssetCount: 2,
-    exportDirectories: ["skills"],
+    configurationDirectories: ["skills"],
     remainingMissingDependencies: [],
     introducedConflicts: []
   }),
@@ -74,7 +74,7 @@ vi.mock("@/lib/projects", () => ({
       selectedAssets: [],
       prdTemplateId: "template-feature-draft",
       prdPath: "spec-web-ui/workspace/projects/backend-kit/prd.md",
-      exportTargets: []
+      configurationTargets: []
     },
     selectedAssets: [],
     missingDependencies: [],

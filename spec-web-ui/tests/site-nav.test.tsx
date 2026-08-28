@@ -15,6 +15,7 @@ describe("SiteNav", () => {
 
     expect(screen.getByRole("link", { name: "主页/" })).toHaveAttribute("href", "/");
     expect(screen.getByRole("link", { name: "关于/" })).toHaveAttribute("href", "/about");
+    expect(screen.getByRole("link", { name: "Rule 规则/" })).toHaveAttribute("href", "/rules");
     expect(screen.getByRole("link", { name: "Spec 模版/" })).toHaveAttribute(
       "href",
       "/spec-templates"

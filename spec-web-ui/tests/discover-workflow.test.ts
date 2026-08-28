@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import * as discover from "@/features/catalog/preferences";
-import type { CatalogAsset, DiscoverPreferences, PresetBundle } from "@/lib/types";
+import type { CatalogAsset, ConfigurationPreset, DiscoverPreferences } from "@/lib/types";
 
 const catalog: CatalogAsset[] = [
   {
@@ -109,17 +109,17 @@ describe("createSavedCompareSet", () => {
   });
 });
 
-describe("buildPresetBundlePreview", () => {
-  it("summarizes preset bundle contents by asset type and directory", () => {
-    const preset: PresetBundle = {
+describe("buildConfigurationPresetPreview", () => {
+  it("summarizes configuration preset contents by asset type and directory", () => {
+    const preset: ConfigurationPreset = {
       id: "backend-starter",
       title: "Backend Starter",
-      summary: "Rule, template, and contract starter bundle.",
+      summary: "Rule, template, and contract starter configuration.",
       assetIds: ["rule-go-backend", "agent-openapi", "template-react-feature"],
       projectTypes: ["backend", "mixed"]
     };
 
-    const preview = discover.buildPresetBundlePreview(preset, catalog);
+    const preview = discover.buildConfigurationPresetPreview(preset, catalog);
 
     expect(preview.assetCount).toBe(3);
     expect(preview.assetTypeCounts).toEqual({
@@ -130,7 +130,7 @@ describe("buildPresetBundlePreview", () => {
         skill: 0,
         spec_template: 1
     });
-    expect(preview.exportDirectories).toEqual([".requirements", "ai", "rules"]);
+    expect(preview.configurationDirectories).toEqual([".requirements", "ai", "rules"]);
   });
 });
 

@@ -8,4 +8,4 @@ management, build and test gates, CI/CD, release, security, observability, and
 the `goforge` CLI scaffold contract.
 
 The pack manifest is [pack.json](pack.json). The long-form constraint source is
-under `constraints/` and is exported to the target project's `rules/` tree.
+under `constraints/` and is referenced from the target project's `rules/` tree.

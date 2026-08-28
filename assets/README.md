@@ -1,7 +1,7 @@
 # Reusable Assets
 
-`assets/` contains reusable source material that Catalog can preview and Bundler
-can export. These files do not activate runtime behavior for this repository.
+`assets/` contains reusable source material that Catalog can preview in the
+local configuration workbench. These files do not activate runtime behavior for this repository.
 
 ```text
 assets/
@@ -29,3 +29,8 @@ Catalog manifests keep source paths separate from installation targets:
 
 Active local routing remains under `.agents/`; canonical project rules remain
 under `rules/`.
+
+Catalog direction grouping is maintained separately in
+`packages/catalog/config/asset-directions.yaml`. It maps asset IDs to product,
+business, frontend, backend, operations, and QA without moving or duplicating
+the source assets in this directory.

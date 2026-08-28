@@ -95,7 +95,7 @@ const project: ProjectManifest = {
   ],
   prdTemplateId: "template-feature-draft",
   prdPath: "spec-web-ui/workspace/projects/rewards-platform/prd.md",
-  exportTargets: ["docs/", "design/", "rules/", ".requirements/", "ai/agents/", "agent-teams/", "project-manifest.yaml"]
+  configurationTargets: ["docs/", "design/", "rules/", ".requirements/", "ai/agents/", "agent-teams/", "project-manifest.yaml"]
 };
 
 describe("resolveProjectWorkspace", () => {

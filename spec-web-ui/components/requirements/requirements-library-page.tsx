@@ -13,7 +13,7 @@ export function RequirementsLibraryPage({ requirements }: { requirements: Requir
       <WindowSection
         eyebrow={buildShellCommandTitle("find", ".requirements/requirements")}
         title="Requirement Packages"
-        description="读取目标仓库的 PRD、Spec、Spec-Test 和 Issues；Markdown 是唯一事实来源，页面不复制需求状态。"
+        description="读取 GoalSpec Requirement Packages；index.yaml、prd.md 与 specs/SNN-* 是唯一事实来源。"
         variant="plain"
         tint="blue"
         actions={
@@ -43,7 +43,7 @@ export function RequirementsLibraryPage({ requirements }: { requirements: Requir
           {requirements.map((requirement) => <RequirementPackageCard key={requirement.id} requirement={requirement} />)}
         </section>
       ) : (
-        <WindowSection title="No active packages" description="The repository has no .requirements/requirements/R0NN-* directory yet." variant="plain" tint="amber">
+        <WindowSection title="No active packages" description="The repository has no .requirements/requirements/R0NN-* package yet." variant="plain" tint="amber">
           <div className="space-y-3 text-sm leading-6 text-slate-600">
             <p>Examples and templates are intentionally excluded from this view.</p>
             <Link href="/spec-templates" className="inline-block text-ink underline underline-offset-4 hover:text-accent-strong">

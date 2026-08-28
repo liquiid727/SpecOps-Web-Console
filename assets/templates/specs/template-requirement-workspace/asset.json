@@ -1,0 +1,27 @@
+{
+  "id": "template-requirement-workspace",
+  "type": "spec_template",
+  "title": "GoalSpec Requirement Workspace",
+  "summary": "Canonical GoalSpec workspace for PRD intake, acceptance, and child spec packages.",
+  "direction": "fullstack",
+  "categories": ["product"],
+  "stacks": ["go", "react", "python", "specos"],
+  "tags": ["goalspec", "prd", "workspace", "template"],
+  "appliesTo": ["backend", "frontend", "ui"],
+  "dependsOn": [],
+  "conflictsWith": [],
+  "sourcePath": "assets/templates/specs/template-requirement-workspace/prd.md",
+  "files": [
+    ".requirements/templates/prd.md",
+    ".requirements/templates/index.yaml",
+    ".requirements/templates/acceptance.md",
+    ".requirements/templates/README.md"
+  ],
+  "version": "2.0.0",
+  "contentFiles": {
+    ".requirements/templates/prd.md": "assets/templates/specs/template-requirement-workspace/prd.md",
+    ".requirements/templates/index.yaml": "assets/templates/specs/template-requirement-workspace/index.yaml",
+    ".requirements/templates/acceptance.md": "assets/templates/specs/template-requirement-workspace/acceptance.md",
+    ".requirements/templates/README.md": "assets/templates/specs/template-requirement-workspace/README.md"
+  }
+}

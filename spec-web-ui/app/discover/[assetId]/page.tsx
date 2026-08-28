@@ -5,7 +5,6 @@ import { setProjectAssetSelectionAction } from "@/app/actions";
 import { CatalogAssetSummary } from "@/components/catalog/asset-summary";
 import { Badge } from "@/components/ui/badge";
 import { loadAssetSourcePreview, loadCatalogAsset, loadCatalogAssets } from "@/features/catalog/server";
-import { buildExportDiffPreview } from "@/features/exports/server";
 import { buildAssetCompositionPreview, listProjects, loadProjectWorkspace } from "@/lib/projects";
 import { isReadOnlyMode } from "@/lib/runtime";
 import { buildShellCommandTitle } from "@/lib/shell";
@@ -36,12 +35,7 @@ export default async function AssetDetailPage({
   const activeWorkspace = activeProject ? await loadProjectWorkspace(activeProject.id) : null;
   const compositionPreview =
     activeWorkspace && asset ? buildAssetCompositionPreview(activeWorkspace, asset) : null;
-  const exampleOutputPreview = buildExportDiffPreview({
-    sourcePath: asset.sourcePath,
-    targetPath: asset.files[0] ?? asset.sourcePath,
-    sourceContent: `# Example Output\n\n${asset.sampleOutput ?? "Catalog asset output preview"}\n`,
-    generatedContent: null
-  });
+  const exampleOutputPreview = asset.sampleOutput ?? "Catalog asset output preview";
 
   return (
     <div className="grid items-start gap-4 md:gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -65,6 +59,10 @@ export default async function AssetDetailPage({
               <div className="flex flex-wrap gap-2">
                 <Badge>{asset.type.replace("_", " ")}</Badge>
                 <Badge>{asset.direction}</Badge>
+                {asset.directionGroups?.map((directionGroup) => <Badge key={directionGroup}>{directionGroup}</Badge>)}
+                {asset.type === "agent_role" || asset.type === "rule" || asset.type === "skill"
+                  ? !asset.directionGroups?.length ? <Badge>unclassified</Badge> : null
+                  : null}
                 {asset.tier ? <Badge>{asset.tier === "main" ? "main agent" : "specialist"}</Badge> : null}
                 {asset.managedBy ? <Badge>managed by {asset.managedBy}</Badge> : null}
               </div>
@@ -117,11 +115,11 @@ export default async function AssetDetailPage({
                 {buildShellCommandTitle("preview", "example-output")}
               </p>
               <pre className="surface-base surface-field mt-3 max-h-56 whitespace-pre-wrap break-words overflow-auto rounded-xl px-4 py-3 text-xs leading-6 text-ink">
-                {exampleOutputPreview.preview}
+                {exampleOutputPreview}
               </pre>
             </div>
             <div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-slate-500">bundle footprint</p>
+              <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-slate-500">recommended directories</p>
               <div className="mt-3 space-y-2">
                 {asset.files.map((file) => (
                   <div key={file} className="surface-base surface-row break-all rounded-xl px-3 py-3 text-xs text-slate-300">
@@ -179,9 +177,9 @@ export default async function AssetDetailPage({
                   </p>
                 </div>
                 <div>
-                  <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-slate-500">export directories</p>
+                  <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-slate-500">composition directories</p>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {compositionPreview.exportDirectories.map((directory) => (
+                    {compositionPreview.configurationDirectories.map((directory) => (
                       <span
                         key={directory}
                         className="rounded-md border border-line px-2.5 py-1 font-mono text-[11px] text-slate-300"

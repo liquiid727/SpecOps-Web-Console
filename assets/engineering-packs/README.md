@@ -16,5 +16,5 @@ assets/engineering-packs/
 ```
 
 The Web UI reads pack manifests and renders them under `/engineering-packs`.
-The CLI and bundler consume the same manifest; the UI is not the source of
-truth for pack contents.
+The local configuration workbench reads the same manifest; the UI is not the
+source of truth for pack contents.

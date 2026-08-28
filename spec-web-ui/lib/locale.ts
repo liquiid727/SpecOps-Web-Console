@@ -22,6 +22,7 @@ export const localeCopy = {
         home: "主页",
         discover: "发现",
         requirements: "需求包",
+        rules: "Rule 规则",
         "spec-templates": "Spec 模版",
         "skill-templates": "Skill 技能",
         "agent-templates": "Agent 模版",
@@ -34,8 +35,7 @@ export const localeCopy = {
         engineeringPacks: "工程包",
         workflowTemplates: "Workflow 模版",
         projects: "项目",
-        drafts: "草稿",
-        exports: "导出"
+        drafts: "草稿"
       },
       home: "首页",
       theme: "视觉系统",
@@ -63,11 +63,6 @@ export const localeCopy = {
           label: "组合工作区",
           description: " 形成项目基线",
           href: "/projects"
-        },
-        {
-          label: "预览导出",
-          description: " 确认交付内容",
-          href: "/exports"
         }
       ],
       stats: {
@@ -96,21 +91,19 @@ export const localeCopy = {
       resources: {
         discover: "发现目录资产",
         projects: "查看项目工作区",
-        drafts: "打开草稿工作台",
-        exports: "评审导出快照"
+        drafts: "打开草稿工作台"
       },
       projectShortcutsTitle: "最近项目",
       projectShortcutsDescription: "保留工作区入口，不在首页展开项目细节。",
       workflowTitle: "资产工作流",
-      workflowDescription: "从目录选择开始，到项目基线交付结束。",
+      workflowDescription: "从目录选择开始，到结构化草稿结束。",
       workflowBodyA:
         "`spec-web-ui` 是目录优先的工作台。目录保持仓库驱动，项目把规则、模板和 Agent 角色作为可组合资产使用。",
-      workflowBodyB: "产品循环刻意收窄：发现资产、组装项目、细化草稿，然后在交付前评审导出差异。",
+      workflowBodyB: "产品循环刻意收窄：发现资产、组装项目、细化草稿。",
       workflowSteps: [
         "1. discover - 搜索可复用资产",
         "2. workspace - 组装项目组合",
-        "3. draft - 编写结构化 Spec",
-        "4. export - 评审生成的 Bundle"
+        "3. draft - 编写结构化 Spec"
       ]
     },
     about: {
@@ -140,59 +133,6 @@ export const localeCopy = {
             points: ["test.md 全场景覆盖（P0/P1 REQ）", "feature-verify 关卡", "traceability.md"]
           }
         ]
-      },
-      projectModes: {
-        eyebrow: "$ cat docs/spec-modes/GoalSpec/README.md",
-        title: "项目模式说明",
-        description: "SpecOS 只有一个官方模式：GoalSpec（Agent-Native SDLC）。LiteSpec 与 EnterpriseSpec 不再作为独立 mode，保留为可选插件规范。about 页直接说明模式的结构重点和实际作用，方便在进入项目之前先选对交付模型。",
-        sharedLabel: "共享约束",
-        sharedPoints: [
-          "一个需求 = 一个 Requirement Package（prd / spec / test / issues 同目录落盘）。",
-          "ID 是永久锚点：REQ / SPEC / TEST / ISSUE 不因改稿而重排复用。",
-          "Source Priority：approved PRD → approved Spec → ADR → 代码 → 测试，Agent 不得静默改写产品意图。"
-        ],
-        modes: [
-          {
-            name: "GoalSpec",
-            typeLabel: "类型",
-            typeValue: "Agent-Native SDLC",
-            treeLabel: "目录树缩略图",
-            treeCommand: "$ tree .requirements/",
-            tree: [
-              { text: ".requirements/" },
-              { text: "|-- README.md", note: "包索引 / 入口" },
-              { text: "|-- requirements/" },
-              { text: "|   `-- R001-decision-api/" },
-              { text: "|       |-- prd.md", note: "REQ-R001-001" },
-              { text: "|       |-- spec.md", note: "SPEC-R001-F01-001" },
-              { text: "|       |-- test.md", note: "TEST-R001-F01-001" },
-              { text: "|       `-- issues.md", note: "ISSUE-R001-001" },
-              { text: "|-- examples/", note: "R000-example-*" },
-              { text: "|-- templates/", note: "prd / spec / test / issues" },
-              { text: "`-- skills/", note: "8-mode 统一 skill" }
-            ],
-            loadLabel: "加载顺序",
-            loadPath: [".requirements/README.md", "R001-<slug>/prd.md", "spec.md", "test.md", "issues.md", "相关 skill"],
-            loadNote: "按一个 Requirement Package 加载，一次读完 REQ→SPEC→TEST→ISSUE 整条链路。",
-            purposeLabel: "作用",
-            purposeValue: "让需求、契约、验证与执行进度在同一目录下可追踪：ID 永久锚定，变更走 type: change + affects，Agent 在任何 mode 都能找到决策来源。",
-            structureLabel: "结构重点",
-            structure: [
-              "prd.md 用 RFC-2119 语言写 Goal / Non-Goal / REQ / BR / INV / Edge / AC，稳定 ID 不重排。",
-              "spec.md 按业务逻辑做 F0N 分组，每条契约编号 SPEC-R001-F0N-###。",
-              "test.md 覆盖 happy / negative / permission / state / invariant / retry / concurrency / external failure / observability。",
-              "issues.md 用 ## ISSUE-R001-### 小节维护执行与进度。"
-            ],
-            fitLabel: "适用场景",
-            fit: [
-              "所有按需求包交付、要求可追踪链的团队。",
-              "需要 Agent 在多模式链路中稳定推进、且能回溯每个决策来源的项目。",
-              "LiteSpec / EnterpriseSpec 可作为可选插件叠加。"
-            ]
-          }
-        ],
-        decisionLabel: "选择原则",
-        decision: "默认直接使用 GoalSpec。需要轻量单线推进时可参考 LiteSpec 插件，需要重治理与审计证据时叠加 EnterpriseSpec 插件；但它们不再是独立的正式模式。"
       },
       testUiDemo: {
         eyebrow: "$ open test-console/demo",
@@ -253,6 +193,7 @@ export const localeCopy = {
         home: "Home",
         discover: "Discover",
         requirements: "Requirements",
+        rules: "Rules",
         "spec-templates": "Spec templates",
         "skill-templates": "Skill skills",
         "agent-templates": "Agent templates",
@@ -265,8 +206,7 @@ export const localeCopy = {
         engineeringPacks: "Engineering packs",
         workflowTemplates: "Workflow templates",
         projects: "Projects",
-        drafts: "Drafts",
-        exports: "Exports"
+        drafts: "Drafts"
       },
       home: "Home",
       theme: "Visual system",
@@ -295,11 +235,6 @@ export const localeCopy = {
           label: "composing a workspace",
           description: " to form your baseline",
           href: "/projects"
-        },
-        {
-          label: "previewing the export",
-          description: " before handoff",
-          href: "/exports"
         }
       ],
       stats: {
@@ -328,22 +263,19 @@ export const localeCopy = {
       resources: {
         discover: "discover catalog assets",
         projects: "inspect project workspaces",
-        drafts: "open draft studio",
-        exports: "review export snapshots"
+        drafts: "open draft studio"
       },
       projectShortcutsTitle: "Recent projects",
       projectShortcutsDescription: "Keep workspace entry points visible without expanding project detail.",
       workflowTitle: "Asset workflow",
-      workflowDescription: "Start with catalog selection and finish with a reviewable project baseline.",
+      workflowDescription: "Start with catalog selection and finish with a structured draft.",
       workflowBodyA:
         "`spec-web-ui` is a catalog-first workspace. The catalog stays repo-backed. Projects consume rules, templates, and agent roles as composable assets.",
-      workflowBodyB:
-        "The product loop is intentionally narrow: discover assets, assemble a project, refine the draft, then review export diffs before handoff.",
+      workflowBodyB: "The product loop is intentionally narrow: discover assets, assemble a project, and refine the draft.",
       workflowSteps: [
         "1. discover - search reusable assets",
         "2. workspace - assemble project composition",
-        "3. draft - write the structured spec",
-        "4. export - review the generated bundle"
+        "3. draft - write the structured spec"
       ]
     },
     about: {
@@ -374,62 +306,6 @@ export const localeCopy = {
             points: ["test.md full coverage (P0/P1 REQs)", "feature-verify gate", "traceability.md"]
           }
         ]
-      },
-      projectModes: {
-        eyebrow: "$ cat docs/spec-modes/GoalSpec/README.md",
-        title: "Project modes",
-        description:
-          "SpecOS has one official mode: GoalSpec (Agent-Native SDLC). LiteSpec and EnterpriseSpec are no longer independent modes; they remain as optional plugin specs. The about page spells out the structural focus and operating purpose so the delivery model can be chosen before project assembly starts.",
-        sharedLabel: "Shared rules",
-        sharedPoints: [
-          "One requirement = one Requirement Package (prd / spec / test / issues co-located).",
-          "IDs are permanent anchors: REQ / SPEC / TEST / ISSUE are never renumbered or reused across drafts.",
-          "Source Priority: approved PRD → approved Spec → ADR → code → tests. Agents never silently rewrite product intent."
-        ],
-        modes: [
-          {
-            name: "GoalSpec",
-            typeLabel: "Type",
-            typeValue: "Agent-Native SDLC",
-            treeLabel: "Tree preview",
-            treeCommand: "$ tree .requirements/",
-            tree: [
-              { text: ".requirements/" },
-              { text: "|-- README.md", note: "package index / entry" },
-              { text: "|-- requirements/" },
-              { text: "|   `-- R001-decision-api/" },
-              { text: "|       |-- prd.md", note: "REQ-R001-001" },
-              { text: "|       |-- spec.md", note: "SPEC-R001-F01-001" },
-              { text: "|       |-- test.md", note: "TEST-R001-F01-001" },
-              { text: "|       `-- issues.md", note: "ISSUE-R001-001" },
-              { text: "|-- examples/", note: "R000-example-*" },
-              { text: "|-- templates/", note: "prd / spec / test / issues" },
-              { text: "`-- skills/", note: "8-mode unified skill" }
-            ],
-            loadLabel: "Loading order",
-            loadPath: [".requirements/README.md", "R001-<slug>/prd.md", "spec.md", "test.md", "issues.md", "relevant skill"],
-            loadNote: "Load along one Requirement Package so an agent reads the whole REQ→SPEC→TEST→ISSUE chain in a single pass.",
-            purposeLabel: "Purpose",
-            purposeValue:
-              "Keep requirements, contracts, verification, and execution progress traceable in one directory: IDs are permanent, changes use type: change + affects, and every mode can resolve the source of a decision.",
-            structureLabel: "Structure focus",
-            structure: [
-              "prd.md writes Goal / Non-Goal / REQ / BR / INV / Edge / AC in RFC-2119 language, with stable IDs that never renumber.",
-              "spec.md groups contracts into logical F0N units, each numbered SPEC-R001-F0N-###.",
-              "test.md covers happy / negative / permission / state / invariant / retry / concurrency / external failure / observability.",
-              "issues.md tracks execution and progress as ## ISSUE-R001-### sections."
-            ],
-            fitLabel: "Best for",
-            fit: [
-              "Any team delivering by requirement package with a demand for traceability.",
-              "Projects where agents must advance along a multi-mode chain and every decision can be traced to a source.",
-              "LiteSpec / EnterpriseSpec may be layered on as optional plugins."
-            ]
-          }
-        ],
-        decisionLabel: "Selection rule",
-        decision:
-          "Use GoalSpec by default. Reference the LiteSpec plugin for light single-track delivery, or layer EnterpriseSpec for heavy governance and audit evidence — but they are no longer official modes."
       },
       testUiDemo: {
         eyebrow: "$ open test-console/demo",
