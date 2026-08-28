@@ -1,0 +1,17 @@
+id: R000
+title: Department Restriction（变更示例）
+type: change
+version: 1.0.0
+status: accepted
+owner: product-architect-agent
+source_prd: ./prd.md
+source_prd_version: 1.0.0
+
+specs:
+  - id: S01
+    path: ./specs/S01-department-filter/
+    status: accepted
+    owner: implementation-agent
+    required: true
+    covers:
+      - REQ-R000-001

@@ -52,16 +52,9 @@ venv/
 .codex/cache/
 .codex/logs/
 
-# --- Requirement Package generated scratch ---
-# Generated plans, schedules, results, and adapter output are reproducible, never source of truth.
-.requirements/*.json
-.requirements/plans/*.json
-.requirements/schedules/*.json
-.requirements/bruno/
-.requirements/results/
-.requirements/performance/
-.requirements/concurrency/
-.requirements/scenarios/
+# --- Requirement Package local execution state ---
+# Evidence under each child package is source material and remains versioned.
+.loop-local-state/
 
 # --- Agent development caches ---
 # Local run/handoff/inference caches produced by agent tooling. Reproducible

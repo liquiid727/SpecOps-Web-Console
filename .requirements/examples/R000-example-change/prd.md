@@ -1,10 +1,11 @@
 ---
 id: R000
 title: Department Restriction（变更示例）
-type: change # 示例包，展示 Change/Delta 管理
-status: example # draft | review | approved | implementing | done | example
+type: change
+version: 1.0.0
+status: accepted
 priority: P1
-owner: spec-editor
+owner: product-architect-agent
 created_at: 2026-08-13
 updated_at: 2026-08-13
 affects:
@@ -13,7 +14,8 @@ affects:
 
 # PRD — Department Restriction（变更示例）
 
-> 本目录是 `.requirements/examples/` 下的变更示例包。变更不改写旧 Spec，而是新建一个 `type: change` 的需求包，通过 `affects: [R001]` 指向被影响的需求，Spec 内用 `# Change Delta` 表达四种变化。
+> 这是一个 Delta Workspace 示例。变更不重写被影响需求；通过 affects 指向
+> R001，并由 S01 的 Change Delta 明确增加、修改、删除和保持不变的行为。
 
 ## 1. Background
 
@@ -33,10 +35,33 @@ affects:
 ### ACT-R000-001 企业用户
 
 允许：
-- 查看自己部门内的子系统
+- 查看自己部门内的子系统。
 
 禁止：
-- 查看其他部门的子系统
+- 查看其他部门的子系统。
+
+## 5. Scope
+
+### In Scope
+- 在会话签发前按部门过滤授权子系统清单。
+- 对无部门归属用户返回空清单。
+
+### Out of Scope
+- 修改 SSO redirect、state 校验和授权码消费。
+- 修改会话令牌轮换。
+- 新建部门目录同步能力。
+
+## 6. User / Business Flow
+
+### FLOW-R000-001 部门过滤会话签发
+
+    企业用户完成 SSO 认证
+      ↓
+    系统解析部门归属
+      ↓
+    系统计算角色授权 ∩ 部门授权
+      ↓
+    签发会话与过滤后的子系统清单
 
 ## 7. Functional Requirements
 
@@ -44,21 +69,13 @@ affects:
 
 System MUST 在签发会话时，将授权子系统清单限制为用户所属部门可访问的子系统。
 
-Actor:
-- 企业用户
-
-Trigger:
-- 用户完成 SSO 认证
-
-Expected:
-- 授权清单 = 用户角色授权 ∩ 用户部门授权
-
-Observable Result:
-- 会话中的子系统清单不包含其他部门条目
-
 ## 8. Business Rules
 
 - BR-R000-001: 部门无任何可访问子系统时，会话仍可签发，但清单为空。
+
+## 9. Lifecycle / State Expectations
+
+- 复用既有 SESSION_ISSUED 生命周期；本次不引入新状态。
 
 ## 10. Edge Cases
 
@@ -69,11 +86,29 @@ Observable Result:
 ## 11. Invariants / Forbidden Behavior
 
 - INV-R000-001: 本次变更 MUST NOT 改变 SSO 认证流程与 state/授权码校验逻辑。
+- INV-R000-002: 本次变更 MUST NOT 改变会话刷新令牌轮换机制。
+- INV-R000-003: 本次变更 MUST NOT 改变 Identity 唯一性和登录/会话审计行为。
 
 ## 12. Acceptance Criteria
 
 - AC-R000-001: Given 用户属于 A 部门，When 签发会话，Then 授权清单仅含 A 部门子系统。
+- AC-R000-002: Given 用户无部门归属，When 签发会话，Then 会话可签发且授权清单为空。
+
+## 13. Spec Package Decomposition
+
+### S01 部门过滤
+
+Covers:
+- REQ-R000-001
+
+Business Outcome:
+- 用户只能看见角色和部门共同授权的子系统，且认证与令牌机制不回归。
+
+Path:
+- ./specs/S01-department-filter/
 
 ## 14. Open Questions
 
 - Q-R000-001: 部门信息从哪个权威源读取？
+
+> 示例假定权威源已由运行环境提供；生产包必须在实施前解析该问题。

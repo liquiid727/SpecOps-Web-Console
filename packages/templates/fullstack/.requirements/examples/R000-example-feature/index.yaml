@@ -1,0 +1,25 @@
+id: R000
+title: Enterprise SSO Login（示例）
+type: feature
+version: 1.0.0
+status: accepted
+owner: product-architect-agent
+source_prd: ./prd.md
+source_prd_version: 1.0.0
+
+specs:
+  - id: S01
+    path: ./specs/S01-sso-login/
+    status: accepted
+    owner: implementation-agent
+    required: true
+    covers:
+      - REQ-R000-001
+      - REQ-R000-002
+  - id: S02
+    path: ./specs/S02-session-management/
+    status: accepted
+    owner: implementation-agent
+    required: true
+    covers:
+      - REQ-R000-002

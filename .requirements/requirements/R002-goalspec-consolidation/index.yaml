@@ -1,0 +1,46 @@
+id: R002
+title: GoalSpec consolidation
+type: change
+version: 1.0.0
+status: implementing
+owner: pola
+source_prd: ./prd.md
+source_prd_version: 1.0.0
+updated_at: 2026-08-26
+
+specs:
+  - id: S01
+    path: ./specs/S01-artifact-contract/
+    status: implementing
+    owner: architecture-agent
+    required: true
+    covers: [REQ-R002-001, REQ-R002-002]
+    business_outcome: A single GoalSpec artifact and evidence contract
+  - id: S02
+    path: ./specs/S02-cli/
+    status: implementing
+    owner: implementation-agent
+    required: true
+    covers: [REQ-R002-003]
+    business_outcome: CLI emits canonical GoalSpec workspaces
+  - id: S03
+    path: ./specs/S03-explorer-catalog/
+    status: implementing
+    owner: implementation-agent
+    required: true
+    covers: [REQ-R002-004]
+    business_outcome: Explorer and catalog understand only Requirement Packages
+  - id: S04
+    path: ./specs/S04-test-evidence-console/
+    status: implementing
+    owner: testing-agent
+    required: true
+    covers: [REQ-R002-005]
+    business_outcome: Test execution and gates use child-package evidence
+  - id: S05
+    path: ./specs/S05-skills-agents-cleanup/
+    status: implementing
+    owner: qa-agent
+    required: true
+    covers: [REQ-R002-006, REQ-R002-007]
+    business_outcome: Agents, skills, templates, and docs expose one workflow

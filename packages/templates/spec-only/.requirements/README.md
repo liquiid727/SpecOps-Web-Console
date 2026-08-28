@@ -1,37 +1,55 @@
-# .requirements — Requirement Package Workflow
+# .requirements — PRD Workspace Workflow
 
-本目录是仓库的**规范研发工作区**。一个需求 = 一个 Requirement Package（co-located 目录），PRD、Spec、Test、Issues 放在一起，通过稳定 ID 串联全链路。
+本目录是仓库的规范研发工作区。一个需求 = 一个 PRD Workspace：根 PRD
+表达产品真相，多个子 Spec Package 独立实现、验证、Review 与 QA 验收。
 
-## 结构
+## 新建包结构
 
-```text
-.requirements/
-├── requirements/                 # 真实需求包（一个目录一个需求）
-│   └── R001-<slug>/
-│       ├── prd.md                # 产品行为契约
-│       ├── spec.md               # 可执行契约（F01/F02 为逻辑分组）
-│       ├── test.md               # 验证契约
-│       └── issues.md             # 执行与进度
-├── examples/                     # 示例包（R000- 前缀，勿当真实需求）
-│   ├── R000-example-feature/     # 完整 feature 链路示例
-│   └── R000-example-change/      # Change/Delta 示例
-├── templates/                    # 空白模板（prd/spec/test/issues）
-└── skills/
-    └── SKILL.md                  # 统一 skill（8 个 mode）
-```
+    .requirements/
+    ├── requirements/                         # 真实需求包
+    │   └── R0NN-<slug>/
+    │       ├── prd.md                         # 产品行为契约
+    │       ├── index.yaml                     # 子 Spec Package 汇总
+    │       ├── acceptance.md                  # PRD AC / UAT 汇总
+    │       └── specs/
+    │           └── S01-<slug>/
+    │               ├── spec.md                # 可执行契约
+    │               ├── test.md                # 验证设计
+    │               ├── issues/ISSUE-R0NN-S0N-NNN-<slug>.md # 一文件一个执行单
+    │               ├── review.md              # Review finding
+    │               ├── acceptance.md          # QA 决策
+    │               └── evidence/              # 运行证据
+    ├── examples/                              # R000- 示例，不是活动需求
+    ├── templates/                             # v2 根与 Spec Package 模板
+    └── skills/SKILL.md
 
-## 链路
+## 关系与状态
 
-```text
-Idea → PRD → Feature Decomposition → Spec → Spec-Test → Issues → Issue Execution → Feature Verify → Done
-```
+    R001 PRD Workspace
+    ├── S01 Spec Package
+    │   ├── SPEC-R001-S01-001
+    │   ├── TEST-R001-S01-001
+    │   └── ISSUE-R001-S01-001
+    └── S02 Spec Package
 
-- ID 体系：`R001` / `REQ-R001-001` / `SPEC-R001-F01-001` / `TEST-R001-F01-001` / `ISSUE-R001-001`；ID 是永久锚点，不复用不重排。
-- 变更：新建 `type: change` 包 + `affects: [R001]`，Spec 含 `# Change Delta`（Added/Modified/Removed/Unchanged Guarantees）。
-- 完整规范见 [`docs/spec-modes/GoalSpec/README.md`](../docs/spec-modes/GoalSpec/README.md)。
+- PRD 1:N Spec Package；Spec Package 1:N Issue。
+- 每个 Issue 有一个 primary_spec；跨 Spec 只用 covers 显式引用。
+- test.md 描述计划，不写最终执行结果；证据在所属 Spec Package 的 evidence/。
+- Spec Package acceptance.md 记录 QA 的 accepted、blocked 或
+  accepted-with-waiver 决策。
+- 根 acceptance.md 汇总所有 required Spec Package 与 PRD AC/UAT。
+- ID 是永久锚点，不复用、不重排。
+
+## Authoring Contract
+
+仓库只支持 GoalSpec v2。所有新需求从 `templates/` 的 v2 结构创建，不提供
+旧布局、兼容读取或迁移路径。
 
 ## 使用
 
-- 新需求：复制 `templates/` 四件套到 `requirements/R0NN-<slug>/` 填写，或调用统一 skill（`/requirement-package`，如有安装）。
-- 参考：示例包在 `examples/`，与模板 1:1 对照。
-- 规范入口：`.requirements/skills/SKILL.md`（或项目级 `.claude/skills/requirement-package/SKILL.md`）。
+- 新需求：复制 templates/ 的根文件，以及 templates/spec-package/ 为每个 S0N
+  子目录初始化。
+- 模板字段与 ID 约定见 [templates/README.md](templates/README.md)。
+- 示例：R000-example-feature 展示一个 PRD 下两个独立 Spec Package；
+  R000-example-change 展示 Delta Spec Package。
+- 规范入口：docs/spec-modes/GoalSpec/agent-native-sdlc-standard.md。

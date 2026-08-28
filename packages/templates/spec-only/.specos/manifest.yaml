@@ -1,16 +1,12 @@
 project:
   name: specos-spec-only
   type: spec-only
-projectMode: goalspec
 stacks:
   frontend: none
   backend: none
 artifacts:
-  draftsDir: .requirements
-  issuesDir: .requirements
-  specsDir: .requirements
-  testsDir: tests
-  resultsDir: tests/results
+  requirementsDir: .requirements/requirements
+  templatesDir: .requirements/templates
 rulePacks:
   - spec-driven-delivery
 agentTemplates:

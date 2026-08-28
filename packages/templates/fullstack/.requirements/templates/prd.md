@@ -2,7 +2,8 @@
 id: R001
 title: <Requirement Title>
 type: feature # feature | change | bug | refactor
-status: draft # draft | review | approved | implementing | done
+version: 1.0.0
+status: draft # draft | review | approved | implementing | accepted | blocked | done
 priority: P1
 owner: <owner>
 created_at: YYYY-MM-DD
@@ -76,6 +77,13 @@ Expected:
 Observable Result:
 - ...
 
+Agent Behavior Contract (conditional):
+- Success metric(s): ...
+- Dataset / sampled-input source and version: ...
+- Passing threshold: ...
+- Trajectory fields and anomaly signals: ...
+- Automatic degradation and human handoff threshold: ...
+
 ### REQ-R001-002 <Requirement Name>
 
 ...
@@ -112,9 +120,14 @@ PENDING
 - AC-R001-001: Given ..., When ..., Then ...
 - AC-R001-002: Given ..., When ..., Then ...
 
-## 13. Feature Decomposition
+> For Agent behavior, each applicable AC must also identify the success metric,
+> Dataset/sample version, passing threshold, and human handoff condition. For
+> ordinary behavior, record `Not applicable` rather than inventing an Agent
+> evaluation requirement.
 
-### F01 <Feature Name>
+## 13. Spec Package Decomposition
+
+### S01 <Spec Package Name>
 
 Covers:
 - REQ-R001-001
@@ -123,7 +136,10 @@ Covers:
 Business Outcome:
 - ...
 
-### F02 <Feature Name>
+Path:
+- ./specs/S01-<slug>/
+
+### S02 <Spec Package Name>
 
 Covers:
 - REQ-R001-003
@@ -131,8 +147,13 @@ Covers:
 Business Outcome:
 - ...
 
+Path:
+- ./specs/S02-<slug>/
+
 ## 14. Open Questions
 
-- Q-R001-001: ...
+| ID | Question | Blocking | Decision / Approver | Status |
+|---|---|---|---|---|
+| Q-R001-001 | ... | true | ... | open |
 
 > Open Question 未确认前，Agent MUST NOT 自行作为已确认需求实现。
