@@ -17,7 +17,7 @@ Owns decomposition of feature intent into domain boundaries, aggregates, command
 
 ## CLI GUI MVP02 Handoff Contract
 
-- Inputs: active Feature Spec, canonical platform design, runtime contracts, and domain rules.
+- Inputs: active child Spec, canonical platform design, runtime contracts, and domain rules.
 - Outputs: bounded contexts, Product Session/Backend Session/Turn/Attempt invariants, commands, and seams.
 - Prohibited: vendor parsing, transport I/O, UI projection, or QA decisions in the domain model.
 - Handoff fields: `boundedContext`, `entities`, `commands`, `invariants`, `owner`, `seams`, `risks`.

@@ -7,7 +7,7 @@ Define end-to-end business journey coverage that validates feature specs across 
 ## Required Inputs
 
 - Accepted spec or draft-only scenario with traceable flow names.
-- Existing `.requirements/plans/`, `.requirements/scenarios/`, and `.requirements/results/` conventions.
+- Existing plans/scenarios conventions and the selected child package `evidence/` directory.
 - API, UI route, fixture, account, and environment preconditions when available.
 
 ## Required Outputs
@@ -29,7 +29,7 @@ Define end-to-end business journey coverage that validates feature specs across 
 
 ## CLI GUI MVP02 Foundation Contract
 
-- Inputs: Feature/Test Spec business journeys, runtime/API contracts, seeded workspace/engine fixtures, and cleanup policy.
+- Inputs: Feature/Test Design business journeys, runtime/API contracts, seeded workspace/engine fixtures, and cleanup policy.
 - Outputs: UI/API/data/cleanup journey matrix, environment checklist, execution result, and normalized scenario mapping.
 - Do not: duplicate runtime business logic, bypass cleanup, or use unit/DOM fixtures as full cross-layer proof.
 - Handoff: `journey`, `preconditions`, `actions`, `apiAssertions`, `dataState`, `cleanup`, `artifactRefs`, `blockers`.

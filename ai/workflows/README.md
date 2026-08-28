@@ -1,35 +1,52 @@
 # Workflows
 
-Use this directory for documented orchestration flows that connect prompts, agent roles, review stages, and execution gates.
+Use this directory for orchestration flows connecting prompts, roles, review
+stages and execution gates.
 
 ## PRD To Ship Main Chain
 
-Raw product ideas enter the chain through PRD intake before formal spec decomposition. The canonical main chain is defined by `skills/developer/README.md`:
+The GoalSpec chain is:
 
-`PRD -> prd-to-spec -> Approved Feature Spec -> (to-issues implementation track | spec-to-test -> Approved Test Spec -> to-issues verification track) -> loop-it -> review-it -> note-it -> ship-it`
+    PRD Workspace
+    → N × Approved Spec Package
+    → N × Test Design
+    → N × Issue files
+    → implementation / evidence / review
+    → child QA acceptance
+    → root PRD AC/UAT acceptance
+    → ship
 
-PRD output is intake-level evidence. Under GoalSpec (Agent-Native SDLC), PRD/Spec/Test/Issues are co-located in one Requirement Package per directory (`.requirements/requirements/R0NN-<slug>/{prd,spec,test,issues}.md`); artifact locations are declared by `.specos/manifest.yaml` `artifacts` (see `rules/shared/artifact-locations.md`). A PRD must not be promoted into an approved Feature Spec baseline without review.
+The root lives at .requirements/requirements/R0NN-<slug>/. Each child Spec
+Package owns spec.md, test.md, issues/, review.md, acceptance.md and evidence/.
+A PRD is not an approved Spec baseline, and an Issue Done is not QA acceptance.
 
-The main chain is an artifact chain, not an agent chain. Agents are stage implementations of the chain:
+## Quality Delivery Pipeline
 
-- `Idea -> PRD`: `product-architect-agent` runs `/prd` intake and produces an accepted PRD.
-- `PRD -> Approved Feature Spec`: `spec-editor` runs `/prd-to-spec` and keeps design, roadmap, and feature specs consistent.
-- `Approved Feature Spec -> Issues`: `spec-editor` runs `/to-issues` for the implementation track and `/spec-to-test` plus `/to-issues` for the version-bound verification track.
-- `Issues -> Code`: execution runs contextual capability sets such as `frontend-agent` and `backend-agent`, optionally driven by `/loop-it`.
-- `Code -> Verified Release`: `qa-agent`, `ci-editor`, and `reviewer` close out through `/review-it`, `/note-it`, and `/ship-it` gates.
+The main chain also defines the operating quality pipeline:
 
-Narrow specialists such as UI design, domain, OpenAPI, migration, Bruno, Playwright, performance, and concurrency agents are loaded as capability sets only when an Issue needs their narrower context.
+    PRD / Spec testable acceptance
+    → code + unit tests in the same change
+    → PR gate: unit + critical path + Agent smoke Eval (when applicable)
+    → post-merge / nightly: regression + full Eval + contract + performance
+    → pre-production: canary + sampled evaluation + trajectory alerts
+    → production: observability + degradation / human handoff
+    → incident learning: dataset and test-case updates
 
-## Test Console Workflow
+- PRD and Spec define testable functional AC. Agent workflows additionally
+  declare success metrics, Eval data, thresholds, and handoff conditions.
+- AI may draft cases and analyze failures; a human owner reviews them before
+  they become test evidence or influence a release gate.
+- The detailed lifecycle and Gate requirements live in
+  `docs/spec-modes/GoalSpec/agent-native-sdlc-standard.md`; evidence, Eval,
+  CI, and quality-platform rules live in
+  `rules/testing/production-test-standards.md`.
 
-The `test-console-v1.yaml` workflow documents the minimal independent verification loop:
+- product-architect-agent owns raw idea → root PRD.
+- spec-editor owns PRD → child Spec Packages and Issue generation.
+- testing-agent owns independent verification strategy and evidence gaps.
+- qa-agent owns child/root acceptance decisions after test, review and gate
+  evidence exist.
 
-`Feature Spec -> task-plan -> test-plan -> API/Scenario execution -> normalized result -> report UI -> QA acceptance`
-
-`qa-agent` owns the final acceptance pass after implementation, independent test evidence, reviewer findings, and gate reports exist. It does not create test assets or replace CI; it records the final quality decision, blockers, residual risks, waivers, and promotion recommendation.
-
-## Nested Agent Orchestration
-
-`nested-agent-orchestration.md` documents the entry-agent to main-primary-agent to specialist-agent model used by host runtimes. It keeps `.agents/manifest.yaml` as the only role registry, treats `route-request` as a preview, and assigns `pola` responsibility for task boundaries, report merge, and final actionable synthesis.
-
-`sync-handoff-gateway.md` documents the semantic synchronization gate between specs, rules, agents, workflows, tests, checks, and release evidence. Use it before CI, PR, release, or promotion claims whenever a change can affect neighboring assets.
+Artifact root locations come from .specos/manifest.yaml and
+rules/shared/artifact-locations.md. Legacy root four-file packages remain
+read-only evidence.

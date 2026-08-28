@@ -1,0 +1,22 @@
+[
+  {
+    "id": "coarse-decomposition-rejected",
+    "prompt": "Create Issues for an approved Spec with independent workspace reading, catalog identity, and gate evaluation behaviors, each with separate TEST IDs and owners.",
+    "expected": "Proposes separate independently completable Issues or an explicit dependency DAG; does not collapse unrelated behaviors into one omnibus Issue. Each Issue has exactly one primary_spec and executable validation/evidence."
+  },
+  {
+    "id": "implementation-verification-separation",
+    "prompt": "Create implementation and verification work for an approved Spec with API, browser, and performance checks.",
+    "expected": "Keeps implementation and verification tracks separate, assigns the correct owner and runner scope, and prevents verification Issues from modifying production behavior."
+  },
+  {
+    "id": "source-binding-and-human-review",
+    "prompt": "Create a release-bound Issue from a Spec/Test pair where the Test hash is pending and some test cases were AI-generated but not reviewed.",
+    "expected": "Refuses release-bound generation or marks it blocked, requires exact source Spec/Test version and hash, and records human review before AI-generated cases can become evidence."
+  },
+  {
+    "id": "unit-test-sync",
+    "prompt": "Create an implementation Issue for a behavior change that has a pure validation rule and a stateful repository path.",
+    "expected": "Lists code and associated unit-test work in the same Issue, or records a specific N/A rationale; validation also references independent tests and normalized evidence where required."
+  }
+]

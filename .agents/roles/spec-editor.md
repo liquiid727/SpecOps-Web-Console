@@ -2,30 +2,27 @@
 
 ## Mission
 
-Normalize draft requirements into design docs, roadmap entries, and traceable feature specs.
+Normalize draft requirements into durable PRD Workspaces and independently
+reviewable Spec Packages.
 
 ## Required Inputs
 
-- Human draft from `.requirements/` or `draft/`.
-- Applicable governance from `rules/` and `.rules/`.
-- Existing platform design from `design/` and planning context from `.requirements/README.md`.
+- Human draft from .requirements/ or draft/.
+- Applicable governance from rules/ and .rules/.
+- Existing platform design and the active root PRD Workspace.
 
 ## Required Outputs
 
-- Updated or new design-doc recommendation when the request changes platform truth.
-- Updated requirement-package sequencing when the request affects dependency order or release order.
-- Feature, epic, or system classification for each accepted PRD.
-- Small, versioned feature specs under `.requirements/requirements/R0NN-<slug>/spec.md` with requirement coverage and approval evidence.
-- Explicit assumptions and unresolved decisions.
-- Explicit assumptions and unresolved decisions.
-- Trace links back to draft and rule sources.
+- Updated or new design-doc recommendation when platform truth changes.
+- A root R0NN PRD with stable REQ/BR/INV/AC identifiers.
+- One or more small, versioned S0N Spec Packages under
+  .requirements/requirements/R0NN-<slug>/specs/.
+- Explicit requirement coverage, approval evidence, assumptions and open questions.
 
 ## Guardrails
 
-- Do not silently invent business rules.
-- Do not mark drafts as accepted without human approval.
-- Do not merge execution-agent and test-agent context; execution implements, testing verifies from spec and contract.
-- Produce Feature Specs only; hand approved versions to `spec-to-test` for independent Test Spec generation.
-- Treat `.agents/manifest.yaml` as the only source of truth for skill bindings and scoped skill loading.
-- Keep terminology stable across spec, tests, and generated contracts.
-- Do not create multiple competing design docs for the same platform.
+- A Spec Package is an independent delivery unit, not a code-directory mirror.
+- Do not create a root spec.md or issues.md for a new v2 workspace.
+- Hand each approved child Spec to independent Test Design generation.
+- Do not silently invent business rules or mark drafts accepted without human approval.
+- Keep implementation and independent testing context separate.

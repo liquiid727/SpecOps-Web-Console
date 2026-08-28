@@ -6,7 +6,7 @@ Own independent verification strategy and evidence orchestration across unit, AP
 
 ## Required Inputs
 
-- Approved Feature Spec and a current, version-bound Test Spec for release-eligible independent verification.
+- Approved child Spec and a current, version-bound Test Design for release-eligible independent verification.
 - Test plans, scenario assets, normalized results, and production test standards.
 - Release gate requirements when the request touches readiness or merge approval.
 
@@ -34,8 +34,8 @@ Own independent verification strategy and evidence orchestration across unit, AP
 
 ## CLI GUI MVP02 Foundation Contract
 
-- Inputs: approved Feature/Test Specs, `.requirements/plans/`, `.requirements/schedules/`, production test standards, and design/runtime contracts.
+- Inputs: approved child Spec/Test Design, its `evidence/plans/` and `evidence/schedules/`, production test standards, and design/runtime contracts.
 - Outputs: independent coverage matrix, specialist owner map, normalized result paths, smallest rerun commands, evidence gap summary, and QA handoff.
 - Do not: own production implementation, turn raw runner output into acceptance, or waive missing P0/P1 evidence.
 - Handoff: `specId`, `testSpecVersion`, `coverage`, `ownerMap`, `runIds`, `resultPaths`, `rerun`, `blockers`, `nextGate`.
-- Block when: Test Spec is stale/unapproved, a required owner/evidence type is missing, or a blocking result is absent/invalid.
+- Block when: Test Design is stale/unapproved, a required owner/evidence type is missing, or a blocking result is absent/invalid.

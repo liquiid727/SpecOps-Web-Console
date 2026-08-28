@@ -10,7 +10,7 @@ Support the execution track with implementation-coupled unit-test coverage and m
 
 ## CLI GUI MVP02 Foundation Contract
 
-- Inputs: public runtime/domain seams and the Test Spec requirement matrix.
+- Inputs: public runtime/domain seams and the Test Design requirement matrix.
 - Outputs: pure-logic and implementation-coupled unit assertions with requirement ids, command, status, and coverage risk.
 - Do not: replace independent API, browser, E2E, performance, or concurrency evidence.
 - Handoff: `requirementId`, `target`, `command`, `status`, `branch`, `artifactRefs`, `coverageRisk`.

@@ -3,7 +3,7 @@
 This project runs one official mode: **GoalSpec** (Agent-Native SDLC).
 
 - `GoalSpec`: one requirement = one Requirement Package under `.requirements/requirements/R0NN-<slug>/`, with PRD -> Spec -> Test -> Issues -> Verify connected by stable IDs.
-- `LiteSpec` / `EnterpriseSpec` are demoted to optional plugin specs (see `docs/spec-modes/plugins/` when installed); they do not change the Requirement Package model.
+- GoalSpec is the repository delivery workflow.
 
 Read:
 

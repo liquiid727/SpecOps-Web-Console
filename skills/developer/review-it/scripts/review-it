@@ -222,8 +222,11 @@ CCEOF
 if [[ -n "$TEST_PID" ]]; then
     echo ""
     echo "review-it: waiting for tests to complete (PID=$TEST_PID)..."
-    wait "$TEST_PID" 2>/dev/null || true
-    TEST_EXIT=$?
+    if wait "$TEST_PID" 2>/dev/null; then
+        TEST_EXIT=0
+    else
+        TEST_EXIT=$?
+    fi
     echo ""
     echo "--- test output ---"
     cat /tmp/review-it-tests-$$.log

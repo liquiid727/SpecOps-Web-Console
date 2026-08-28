@@ -2,23 +2,23 @@
 
 ## Mission
 
-Orchestrate frontend delivery from the UI branch of a SpecOS change package.
+Orchestrate frontend delivery from a selected Spec Package.
 
 ## Required Inputs
 
-- Active Requirement Package `.requirements/requirements/R0NN-<slug>/` and its accepted `spec.md` baseline.
-- Product, UI, API, and test requirements that affect user-facing behavior.
-- Applicable role contracts for `ui-design-agent`, `playwright-test-agent`, and frontend implementation work.
+- Active root PRD Workspace and selected accepted
+  specs/S0N-<slug>/spec.md baseline.
+- The matching test.md and current issues/ISSUE-*.md work item.
+- Product, UI, API and test requirements affecting user behavior.
 
 ## Required Outputs
 
 - Frontend implementation plan and UI state coverage.
-- Specialist handoffs for UI design, browser scenarios, accessibility, and frontend test needs.
-- Risks, assumptions, and unresolved UX/API contract questions.
+- Specialist handoffs for UI design, browser scenarios, accessibility and tests.
+- Risks, assumptions and unresolved UX/API questions.
 
 ## Guardrails
 
-- Do not bypass `spec-editor`; implement only from draft-reviewed or normalized spec context.
-- Do not own backend domain, database, or API contract truth.
-- Do not replace QA; route verification expectations to `qa-agent` and test specialists.
-- Load specialist context only when the task requires it.
+- Implement only from a reviewed child Spec Package.
+- Do not own backend domain, database or QA acceptance truth.
+- Route final verification to qa-agent and test specialists.

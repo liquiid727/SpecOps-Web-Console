@@ -7,26 +7,25 @@ SpecOS is a spec-driven AI workspace for software teams. It keeps product design
 The canonical lifecycle is:
 
 ```text
-PRD -> Feature Spec (Spec) -> Spec-Test -> Issues -> Code/Test -> Feature Verify -> Ship
+PRD Workspace -> Spec Packages -> Test Design -> Issue Files
+-> Evidence / Review -> QA Acceptance -> PRD Acceptance -> Ship
 ```
 
 The canonical repository model is:
 
 ```text
-.requirements/     Requirement Package workflow root: requirements/R0NN-<slug>/{prd,spec,test,issues}.md, plus templates/, examples/, skills/
+.requirements/     PRD Workspace root: requirements/R0NN-<slug>/ with root PRD and child Spec Packages
 design/            one canonical design doc per platform or system
-docs/spec-modes/   GoalSpec (Agent-Native SDLC) is the single official mode; plugins/ holds optional variants
-archive/legacy/    historical delivery evidence from the previous global-dir model
+docs/spec-modes/   GoalSpec (Agent-Native SDLC) delivery guide
 ```
 
-SpecOS favors one durable design document per system and one co-located Requirement Package per requirement. Each package keeps PRD, Spec, Spec-Test, and Issues together so agents can implement end to end without inventing scope.
+SpecOS favors one durable design document per system and one co-located PRD Workspace per requirement. A Workspace keeps the root PRD and all child Spec Packages together; each child owns its Spec, test design, Issue files, review, evidence, and QA acceptance.
 
 ## What Is In This Repository
 
 This repository currently contains these product surfaces:
 
-- `packages/cli`: CLI scaffolding, validation, bundle install, and workflow entrypoints
-- `spec-web-ui`: catalog, export preview, and bundle composition workbench
+- `spec-web-ui`: catalog and local configuration workbench
 - `test-console`: normalized test-plan and result console
 
 [Code: Bugrail](https://github.com/liquiid727/bugrail) is a sibling product (CodeG fork). It is not vendored here. Local checkout: `~/code/bugrail`.
@@ -38,10 +37,8 @@ It also includes reusable project assets:
 - `ai/agents/`: canonical agent role definitions
 - `assets/`: Catalog-ready role, team, skill, and template sources
 - `packages/catalog/`: Catalog values, queries, and registry configuration
-- `packages/bundler/`: bundle planning and install-target configuration
-- `packages/installer/`: validated bundle installation
-- `docs/spec-modes/`: project mode guidance (GoalSpec = Agent-Native SDLC, single official mode)
-- `.requirements/`, `design/`: the spec delivery backbone; `archive/legacy/` holds historical evidence from the previous model
+- `docs/spec-modes/`: GoalSpec (Agent-Native SDLC) delivery guide
+- `.requirements/`, `design/`: the GoalSpec delivery backbone
 
 ## Agent Model
 
@@ -52,28 +49,24 @@ SpecOS routes all agent work through a five-category layered model:
 - Every other registered role is a specialist with a `managed_by` owner; main agents open specialists as on-demand subagents.
 - `qa-agent` owns final acceptance and release readiness, including `reviewer`, `ci-editor`, and `deployment-agent` work.
 
-The role registry lives in `.agents/manifest.yaml`. Project modes overlay role behavior on top of this hierarchy without changing it.
+The role registry lives in `.agents/manifest.yaml`. All work uses the same GoalSpec role hierarchy.
 
-## Project Modes
+## GoalSpec Delivery
 
-SpecOS uses one official project authoring mode:
-
-- [GoalSpec](docs/spec-modes/GoalSpec/README.md): Agent-Native SDLC — PRD → Spec → Spec-Test → Issues → Code/Test → Verify, with co-located Requirement Packages under `.requirements/`
-
-Lighter/heavier governance variants (LiteSpec, EnterpriseSpec) are demoted to optional plugin specs under [docs/spec-modes/plugins/](docs/spec-modes/plugins/). Mode guidance lives in [docs/spec-modes/README.md](docs/spec-modes/README.md). All work runs on the same layered agent registry; the mode overlays role behavior, not the routing hierarchy.
+- [GoalSpec](docs/spec-modes/GoalSpec/README.md): Agent-Native SDLC — one PRD Workspace with independently deliverable Spec Packages under `.requirements/`
 
 ## Current Status
 
-SpecOS is still in active prototype development. The repo already supports scaffolding, catalog browsing, export, and validation, but the lifecycle and templates are still evolving.
+SpecOS is still in active prototype development. The repo already supports scaffolding, catalog browsing, local configuration, and validation, but the lifecycle and templates are still evolving.
 
 Today the intended usage is:
 
 - use the GoalSpec (Agent-Native SDLC) workflow documented in `docs/spec-modes/GoalSpec/`
-- create one Requirement Package per requirement under `.requirements/requirements/R0NN-<slug>/` (`prd.md` → `spec.md` → `test.md` → `issues.md`)
+- create one PRD Workspace per requirement under `.requirements/requirements/R0NN-<slug>/`: root `prd.md` + `index.yaml` + `acceptance.md`, then one `specs/S0N-<slug>/` package per delivery unit
 - copy templates from `.requirements/templates/` or use the `/requirement-package` skill
 - keep stable platform decisions in `design/`
 - reference examples under `.requirements/examples/`
-- implement and verify against those packages; historical evidence lives read-only in `archive/legacy/`
+- implement and verify against those packages.
 
 ## Quick Start
 
@@ -84,27 +77,7 @@ npm install
 npm run build
 ```
 
-### 2. Initialize a project
-
-```bash
-npx @specos/cli init --template fullstack
-npx @specos/cli check
-```
-
-To start with the default GoalSpec workflow:
-
-```bash
-npx @specos/cli init --template fullstack --mode goalspec
-```
-
-For local workspace development:
-
-```bash
-node packages/cli/dist/main.js init --template fullstack
-node packages/cli/dist/main.js check
-```
-
-### 3. Run the web workspace
+### 2. Run the web workspace
 
 ```bash
 cd spec-web-ui
@@ -130,20 +103,16 @@ builds and upstream CodeG sync.
 ## Repository Shape
 
 ```text
-packages/cli/        CLI entry points
 packages/catalog/    catalog values, queries, and registry configuration
-packages/bundler/    bundle planning and install-target configuration
-packages/installer/  validated bundle installation
 packages/templates/  bootstrap template source of truth
-spec-web-ui/         asset workbench, export preview, bundle composer
+spec-web-ui/         asset and local configuration workbench
 test-console/        normalized test-plan and result console
 rules/               reusable engineering governance
 assets/              reusable role, team, skill, and template sources
 ai/agents/           agent role definitions
-docs/spec-modes/     GoalSpec (Agent-Native SDLC) mode guide; plugins/ optional variants
+docs/spec-modes/     GoalSpec (Agent-Native SDLC) delivery guide
 .requirements/       requirement packages (requirements/, templates/, examples/, skills/)
 design/              canonical platform design documents
-archive/legacy/      historical delivery evidence from the previous model
 ```
 
 ## For Contributors
@@ -156,4 +125,4 @@ Start with:
 - [.requirements/ index](.requirements/README.md)
 - [spec-web-ui/README.md](spec-web-ui/README.md)
 
-Keep changes traceable to a design doc, requirement package (`prd.md`/`spec.md`), rule, review, or test artifact.
+Keep changes traceable to a design doc, root PRD, child Spec Package, rule, review, or evidence artifact. All new work uses the GoalSpec package layout.

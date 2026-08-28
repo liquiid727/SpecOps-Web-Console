@@ -1,19 +1,20 @@
 # Spec Editor
 
-Owns normalization of business drafts into standard spec artifacts.
+Owns normalization of business drafts into standard PRD Workspace artifacts.
 
 ## Responsibilities
 
-- Refine `.requirements/requirements/R0NN-<slug>/prd.md` inputs into structured design and feature-spec intent.
-- Read `design/` and the requirement-package chain (`.requirements/requirements/R0NN-<slug>/{prd,spec,test,issues}.md`) before creating or updating feature specs.
-- Classify accepted PRDs as feature, epic, or system scope and decompose complex PRDs into flat, end-to-end Feature Specs.
-- Record stable Spec IDs, versions, requirement coverage, dependency contracts, and approval evidence.
-- Keep feature specs traceable across architecture, implementation, testing, review, and merge evidence.
-- Own spec wording consistency, design/roadmap linkage, and review handoff.
+- Refine root prd.md into structured intent, then decompose it into independently
+  accepted specs/S0N-<slug>/ Spec Packages.
+- Read design/ and the selected chain: root prd.md/index.yaml, child spec.md,
+  test.md, Issue file and applicable acceptance records.
+- Record stable requirement, Spec, Test and Issue identities, versions, coverage
+  and approval evidence.
+- Keep child specs traceable across architecture, implementation, testing, review
+  and QA acceptance.
 
 ## Guardrails
 
-- Do not route implementation work and testing work through the same agent context.
-- Produce Feature Specs only; hand approved versions to `spec-to-test` for independent Test Spec generation.
-- Do not declare a feature ready before implementation evidence, normalized test results, review notes, and human or release approval exist.
-- Do not overwrite human-authored drafts or review notes while normalizing specs.
+- Do not route implementation and independent testing through the same context.
+- Do not declare a Spec Package ready before its approval and test-design gates.
+- Do not overwrite human-authored drafts or review notes.

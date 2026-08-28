@@ -23,19 +23,12 @@ calling_convention:
   selection_source: .agents/manifest.yaml
   role_path_base: .agents/
   canonical_path_base: repository root
-  mode_overlay_roots:
-    role_overlays: .agents/modes/
-    canonical_overlays: ai/agents/modes/
   prompt_assembly_order:
     - AGENTS.md
     - .codex/instructions.md
-    - .specos/manifest.yaml projectMode
     - selected role metadata from .agents/manifest.yaml
-    - selected mode overlay manifest from .agents/modes/<projectMode>/manifest.overlay.yaml
     - selected shared role_prompt
     - selected shared canonical
-    - selected mode overlay role_prompt when present
-    - selected mode overlay canonical when present
     - selected skills
     - selected context_includes
   routing_rules:
@@ -47,21 +40,10 @@ calling_convention:
     - "User-facing routing targets only tier: main agents: architecture-agent, implementation-agent, testing-agent, and qa-agent; pola coordinates across them."
     - "Roles with tier: specialist are never default entrypoints; open them as on-demand subagents through their managed_by main agent."
     - Treat route-request and classify-request as routing previews, not agent execution.
-    - route-request and classify-request should resolve projectMode first, then expose the resulting overlay manifest and role prompt load order.
+    - route-request and classify-request expose the GoalSpec v2 role prompt and context load order.
     - For nested host-side dispatch, use pola as coordinator and follow ai/workflows/nested-agent-orchestration.md.
     - Route raw idea, one-line requirement, and product intake requests to architecture-agent, which opens product-architect-agent for /prd before spec-editor runs /prd-to-spec.
-    - Shared prompts are the default backbone; mode overlay prompts add only the selected mode's differences.
-
-mode_overlays:
-  litespec:
-    manifest_overlay: .agents/modes/litespec/manifest.overlay.yaml
-    purpose: Feature-driven, low-token, daily delivery mode.
-  goalspec:
-    manifest_overlay: .agents/modes/goalspec/manifest.overlay.yaml
-    purpose: Workflow-driven mode where an approved Feature Spec branches into implementation Issues and version-bound Test Spec verification before review and ship.
-  enterprisespec:
-    manifest_overlay: .agents/modes/enterprisespec/manifest.overlay.yaml
-    purpose: Governed delivery mode with stronger QA, release, and audit evidence requirements.
+    - Shared prompts are the complete GoalSpec v2 behavior; no mode overlay is loaded.
 
 coordinator:
   name: pola
@@ -183,7 +165,7 @@ roles:
       - name: spec-to-test
         path: skills/developer/spec-to-test/SKILL.md
         required: false
-        purpose: Derive an independent versioned Test Spec from an approved Feature Spec.
+        purpose: Derive an independent versioned Test Design from an approved child Spec.
     delegates_to:
       - test-editor
       - unit-test-agent
@@ -280,11 +262,11 @@ roles:
       - name: prd-to-spec
         path: skills/developer/prd-to-spec/SKILL.md
         required: false
-        purpose: Produce one or more modular Feature Specs from an accepted PRD.
+        purpose: Produce one or more modular child Specs from an accepted PRD.
       - name: spec-to-test
         path: skills/developer/spec-to-test/SKILL.md
         required: false
-        purpose: Hand approved Feature Specs into independent verification design.
+        purpose: Hand approved child Specs into independent verification design.
       - name: to-issues
         path: skills/developer/to-issues/SKILL.md
         required: false
@@ -679,10 +661,6 @@ roles:
         path: skills/developer/loop-it/SKILL.md
         required: false
         purpose: Run dependency-aware implementation and verification Issue loops.
-      - name: note-it
-        path: skills/developer/note-it/SKILL.md
-        required: false
-        purpose: Capture implementation decisions, deviations, and open questions.
     context_includes:
       - .rules/project.md
       - docs/spec-modes/
@@ -707,7 +685,7 @@ roles:
       - name: spec-to-test
         path: skills/developer/spec-to-test/SKILL.md
         required: false
-        purpose: Generate independent Test Specs and coverage from approved Feature Specs.
+        purpose: Generate independent Test Designs and coverage from approved child Specs.
     context_includes:
       - .rules/project.md
       - docs/spec-modes/

@@ -27,7 +27,7 @@ Maintain release gates that ensure specs, tests, generated artifacts, and report
 
 ## CLI GUI MVP02 Foundation Contract
 
-- Inputs: Feature/Test Specs, plan/schedule/result schemas, package commands, and release rules.
+- Inputs: Feature/Test Designs, plan/schedule/result schemas, package commands, and release rules.
 - Outputs: reproducible CLI/CI commands, schema validation, Gate Report interpretation, standard compliance, and sync-handoff status.
 - Do not: weaken P0/P1 gates, promote raw logs, or add packaged/real-engine claims without a runnable command and artifact path.
 - Handoff: `command`, `scope`, `expectedExit`, `resultPath`, `gateImpact`, `standardCompliance`, `syncHandoffStatus`.

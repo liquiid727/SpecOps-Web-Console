@@ -69,7 +69,7 @@ Agent output must remain traceable to an authoritative requirement, and completi
 
 - Complete specification and delivery lifecycle.
 - Clear separation between draft intent, stable design, implementation, and evidence.
-- LiteSpec, GoalSpec, and EnterpriseSpec support different governance levels.
+- GoalSpec provides the repository delivery workflow and governance baseline.
 - Agent roles, review responsibilities, and test evidence can be traced by Spec ID.
 
 ### Current Learning Gap

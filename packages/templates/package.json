@@ -1,6 +1,6 @@
 {
   "name": "@specos/templates",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "publishConfig": {
     "registry": "https://npm.pkg.github.com",
@@ -12,12 +12,10 @@
   "exports": {
     "./package.json": "./package.json",
     "./fullstack/*": "./fullstack/*",
-    "./spec-only/*": "./spec-only/*",
-    "./modes/*": "./modes/*"
+    "./spec-only/*": "./spec-only/*"
   },
   "files": [
     "fullstack",
-    "spec-only",
-    "modes"
+    "spec-only"
   ]
 }

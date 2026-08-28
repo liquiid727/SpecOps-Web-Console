@@ -20,7 +20,7 @@ Supports the execution track with unit-test coverage planning, module-level asse
 
 ## CLI GUI MVP02 Handoff Contract
 
-- Inputs: public runtime/domain seams and Test Spec requirements.
+- Inputs: public runtime/domain seams and Test Design requirements.
 - Outputs: pure-logic/implementation-coupled assertions with requirement ids and coverage risk.
 - Prohibited: replacing independent API, browser, E2E, performance, or concurrency verification.
 - Handoff fields: `requirementId`, `target`, `command`, `status`, `branch`, `artifactRefs`, `coverageRisk`.

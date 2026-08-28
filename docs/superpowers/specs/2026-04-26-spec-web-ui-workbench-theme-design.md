@@ -127,6 +127,6 @@ Likely implementation touches:
 
 ## Assumptions
 
-- This is draft-only UI work traced to rules and current frontend implementation, not to a finalized accepted UI spec bundle
+- This is draft-only UI work traced to rules and current frontend implementation, not to a finalized accepted UI spec package
 - Existing data flow, actions, and route behavior stay unchanged
 - No new dependencies will be added for styling

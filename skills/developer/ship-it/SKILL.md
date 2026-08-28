@@ -1,200 +1,168 @@
 ---
 name: ship-it
-description: Code commit, PR creation, merge, and issue closure workflow via GitHub CLI with Spec, review, and test-evidence gates. Use when implementation and independent verification are complete and the user asks to commit, push, create or merge a PR, close an Issue, or ship a Spec-driven change.
+description: Use when implementation, review, QA acceptance, and verification are complete and the user requests a local commit, remote push, PR, merge, or Issue delivery for a Spec-driven change.
 allowed-tools:
   - Bash(git:*)
   - Bash(gh:*)
 ---
 
-# After-Goal: 代码提交、PR 合入、Issue 关闭工作流（GitHub）
+# GoalSpec Ship
 
-完成 GitHub Issue 实现后的标准收尾流程：提交代码 → 推送分支 → 创建 PR → 合入 → 关闭 Issue。
+`ship-it` delivers an already-verified GoalSpec Issue. The canonical local
+Issue remains the source of truth; GitHub is an optional projection and must
+never be assumed from a bare number.
 
-## 前置条件
+## Modes
 
-- 当前 git 仓库有已实现的代码变更
-- 已知 Issue 编号（如 `#42`）
-- gh CLI 已登录（`gh auth status` 可验证）
-- 受影响的 Feature Spec 已批准并具有稳定版本
-- 需要独立验证时，Test Spec 与 Feature Spec 版本一致且不是 `stale`
-- `/review-it` 没有遗留阻断项
-- P0/P1 测试结果和 Gate Report 已满足项目发布规则
+Select the mode from explicit user intent:
 
-## Spec/Test Gate
+| Mode | Actions | External Issue behavior |
+|---|---|---|
+| local | commit the scoped change locally | no push, PR, comment, or close |
+| remote | commit and push, optionally create a PR | GitHub Issue is optional |
+| remote-merge | commit, push, create/check/merge PR | close only an explicitly mapped Issue |
 
-在任何不可逆 Git 操作前记录：
+Do not infer remote operations from “done” or from the existence of a GitHub
+CLI. Push, PR creation, merge, and remote Issue closure are state-changing
+operations and require explicit authorization.
 
-- `spec_id`
-- `spec_version`
-- Test Spec 版本与源 Spec 版本
-- Review 状态
-- Test Gate 状态
-- Waiver 及批准人
+## Hard preconditions
 
-缺少、失败、失效或版本不匹配的阻断证据必须停止合入与关闭 Issue。允许在项目策略许可时创建 Draft PR，但不得把 Draft PR 描述为可合入。
+Resolve a canonical local Issue path or an explicit `R0NN`, `S0N`, or Issue ID.
+Read the Requirement Workspace and owning Spec Package before any Git action:
 
-## 工作流
+```text
+prd.md → index.yaml → specs/S0N-<slug>/spec.md
+       → test.md → issues/ISSUE-*.md
+       → review.md → evidence/ → acceptance.md
+```
 
-### Step 1: 提交代码
+The local Issue MUST have:
+
+- `primary_spec`, `source_spec_version`, `source_spec_hash`, and `depends_on`;
+- all dependencies complete or explicitly waived;
+- a complete Completion Record with changed files, tests, evidence, and Spec Deviation;
+- a matching, approved, non-`stale` Test Design when independent verification is required;
+- normalized required evidence under the same child `evidence/` directory and registered in `evidence/index.yaml`;
+- a resolved Review Gate with no open blocking finding;
+- child `acceptance.md` with `decision: accepted` or `accepted-with-waiver` and
+  `promotion: allowed`.
+
+`feature-verify` owns child and root QA decisions. `ship-it` MUST NOT create,
+rewrite, or infer `acceptance.md`. A missing, blocked, stale, failed, or
+version-mismatched gate stops shipping. A Draft PR is allowed only when the
+user explicitly requests one and its body clearly says it is blocked.
+
+## Record the delivery target
+
+Before staging, record or resolve:
+
+- canonical Issue ID and absolute local path;
+- `spec_id`, Spec version/hash, Test Design version, and evidence references;
+- Review status and QA decision;
+- local-only, remote, or remote-merge mode;
+- optional GitHub Issue number and its explicit mapping to the local Issue.
+
+Never put `Closes #N` in a PR merely because a number is available. Use it only
+when the user supplied or approved the mapping. Without that mapping, the PR
+must link the canonical local Issue path and must not close any GitHub Issue.
+
+## Step 1: inspect and stage only the scoped change
 
 ```bash
-# 1a. 检查变更状态
 git status
 git diff --stat HEAD
-
-# 1b. 暂存本次 Issue 相关的文件（不要 add 不相关的文件）
-git add <files related to this issue>
-
-# 1c. 提交，commit message 关联 Issue
-git commit -m "$(cat <<'EOF'
-{简要描述} (#issue-number)
-
-{可选的详细说明}
-EOF
-)"
+git diff -- <implementation files> <tests> <evidence> <Issue file> <review.md>
+git add <files related to this Issue>
 ```
 
-**关键规则：**
-- commit message 中包含 `#issue-number` 以关联 Issue
-- 只暂存当前 Issue 相关的文件，不要混入其他变更
+Do not stage unrelated dirty-worktree changes. Do not stage secrets, caches,
+generated local state, or another Issue's artifacts.
 
-### Step 2: 推送分支
+## Step 2: commit with the canonical Issue ID
+
+Use the local ID in the commit message. Add a GitHub number only when an
+explicit remote mapping exists:
 
 ```bash
-# 如果还在 main/master 上，先创建功能分支
-git checkout -b {branch-name}  # 如已在功能分支则跳过
-
-# 推送到远程
-git push -u origin {branch-name}
+git commit -m "Implement ISSUE-R001-S01-001-login"
 ```
 
-分支命名建议：`feat/issue-42-short-desc` 或 `fix/issue-42-short-desc`
+If the final commit hash must be recorded in the Completion Record, update the
+record in a narrowly scoped follow-up commit or amend only with authorization.
+Do not silently rewrite an already reviewed commit.
 
-### Step 3: 创建 PR
+## Step 3: remote push and PR (remote modes only)
+
+Create a feature branch before pushing when currently on `main`/`master`:
 
 ```bash
-gh pr create \
-  --title "{简要描述}" \
-  --body "$(cat <<'EOF'
+git checkout -b feat/issue-r001-s01-001-login
+git push -u origin feat/issue-r001-s01-001-login
+```
+
+The PR body MUST include:
+
+```text
 ## Summary
-- 实现内容概述
+- <implementation summary>
 
-Closes #{issue-number}
+## GoalSpec trace
+- Local Issue: .requirements/requirements/R001-<slug>/specs/S01-<slug>/issues/ISSUE-R001-S01-001-login.md
+- Spec: SPEC-R001-S01-001@<version>
+- Test Design: TEST-R001-S01@<version>
+- Review: specs/S01-<slug>/review.md
+- QA acceptance: specs/S01-<slug>/acceptance.md
+- Evidence: specs/S01-<slug>/evidence/<run-id>
 
 ## Test plan
-- Spec: {spec-id}@{spec-version}
-- Test Spec: {test-spec-version}
-- Gate Report: {artifact path or URL}
-- [ ] Blocking verification evidence is complete
-EOF
-)"
+- <commands and results>
 ```
 
-**关键规则：**
-- PR body 中写 `Closes #N` 或 `Fixes #N`，合入后 GitHub 自动关闭 Issue
-- title 简洁，不超过 70 字符
+Add `Closes #N` only for the approved explicit mapping. Otherwise omit all
+automatic-close keywords.
 
-### Step 4: 合入 PR
-
-```bash
-# 4a. 查看 PR 状态（确认 checks 通过）
-gh pr checks
-
-# 4b. 合入（默认 merge commit，可选 --squash 或 --rebase）
-gh pr merge --squash --delete-branch
-```
-
-**参数说明：**
-- `--squash`: 压缩为单个 commit 合入（推荐）
-- `--rebase`: rebase 合入
-- `--merge`: 普通 merge commit
-- `--delete-branch`: 合入后删除远程分支
-
-### Step 5: 添加实现总结评论
-
-PR 合入后，始终在 Issue 上添加实现总结评论，方便后续直接从 Issue 回溯代码变更。
+## Step 4: checks and merge
 
 ```bash
-gh issue comment {issue-number} --body "$(cat <<'EOF'
-## 实现总结
-- **核心变更**：{从 PR body 提取的实现摘要}
-- **PR**: #{pr-number}
-- **Commit**: {hash}
-EOF
-)"
-```
-
-**关键规则：**
-- 无论是 auto-close 还是手动 close，都必须添加此评论
-- 评论内容从 PR body 的 Summary 部分提取，保持简洁（3-5 条 bullet）
-- 附加 PR 编号和 commit hash，方便直接跳转
-
-### Step 6: 手动关闭 Issue（仅当未自动关闭时）
-
-如果 PR body 中已写 `Closes #N`，合入后 Issue 会自动关闭，跳过此步。否则手动关闭：
-
-```bash
-gh issue close {issue-number} --reason completed
-```
-
-## 错误处理
-
-| 场景 | 处理方式 |
-|------|---------|
-| `gh pr checks` 有失败项 | 查看失败原因，修复后追加 commit 推送 |
-| PR 有 merge conflict | `git fetch origin main && git rebase origin/main`，解决冲突后 force push |
-| `gh pr merge` 被 branch protection 阻止 | 确认 required reviews 已满足，或请 reviewer approve |
-| Issue 合入后未自动关闭 | 确认 PR body 包含 `Closes #N`，或执行 Step 6 手动 `gh issue close` |
-
-## 完整示例
-
-```bash
-# 创建分支并提交
-git checkout -b feat/issue-42-case-model
-git add cases/case.go cases/case_test.go
-git commit -m "$(cat <<'EOF'
-Add Case data model and Markdown read/write (#42)
-
-Define Case struct with YAML frontmatter + Markdown body
-serialization. Provide WriteCase/ReadCase/ListCases/UpdateCase.
-EOF
-)"
-
-# 推送
-git push -u origin feat/issue-42-case-model
-
-# 创建 PR
-gh pr create \
-  --title "Add Case data model and Markdown read/write" \
-  --body "$(cat <<'EOF'
-## Summary
-- Define Case struct with YAML frontmatter + Markdown body
-- Implement WriteCase/ReadCase/ListCases/UpdateCase functions
-- Add comprehensive test coverage
-
-Closes #42
-
-## Test plan
-- [x] Unit tests pass
-- [x] go vet / lint clean
-EOF
-)"
-
-# 确认 checks 通过后合入
 gh pr checks
 gh pr merge --squash --delete-branch
-
-# 添加实现总结评论
-gh issue comment 42 --body "$(cat <<'EOF'
-## 实现总结
-- **核心变更**：Define Case struct with YAML frontmatter + Markdown body
-- **核心变更**：Implement WriteCase/ReadCase/ListCases/UpdateCase
-- **PR**: #43
-- **Commit**: abc1234
-EOF
-)"
-
-# 切回主分支
-git checkout main
-git pull
 ```
+
+Do not merge with failed checks, unresolved review blockers, missing QA
+acceptance, stale evidence, or an unapproved waiver. Resolve conflicts and
+rerun the relevant review/tests before retrying. When branch protection
+requires human approval, stop and report the missing approval.
+
+## Step 5: close the delivery record
+
+After a remote merge, update the local Issue Completion Record with the final
+commit, PR, merge revision, and evidence references. If an external GitHub
+Issue was explicitly mapped, add a concise implementation comment containing:
+
+- canonical local Issue ID/path;
+- Spec/Test Design versions;
+- PR and final commit;
+- test/evidence summary.
+
+Only close the external Issue if the approved PR mapping or the user's explicit
+instruction authorizes it. A local Issue is not “QA accepted” merely because a
+GitHub Issue was closed; preserve the separate `Issue Done`, `Spec Package
+Accepted`, and `Requirement Done` meanings. Do not create a separate
+implementation-notes file such as `docs/issue#*.html`; decisions, deviations,
+tradeoffs, and open questions stay in the Issue Completion Record.
+
+## Stop conditions
+
+Stop and report the exact blocker when:
+
+- the local Issue or parent Spec Package cannot be resolved;
+- a dependency, source version/hash, Test Design, evidence, or Completion Record is missing;
+- `review.md` has an open blocking finding;
+- child QA acceptance is absent, blocked, or promotion is denied;
+- the user has not authorized the requested external Git operation;
+- the worktree contains unrelated changes that cannot be safely isolated.
+
+The final report must name the mode, canonical Issue, commit/PR/merge result,
+Spec/Test/evidence references, QA decision, external Issue mapping, and any
+skipped or blocked action.

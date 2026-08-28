@@ -1,0 +1,22 @@
+[
+  {
+    "id": "incomplete-contract-blocked",
+    "prompt": "Generate a child Spec from an approved PRD with one P0 REQ, an external dependency, an invariant, an edge case, and an AC. The draft behavior has no public seam, error semantics, observability, risk tier, or concrete assertions.",
+    "expected": "Does not produce an approved or release-bound Spec. Reports each missing contract field and any unmapped REQ/BR/INV/EDGE/AC; keeps the result draft/review until the product decision is supplied."
+  },
+  {
+    "id": "conditional-agent-contract",
+    "prompt": "Generate child Specs for an ordinary CRUD API and an Agent workflow that can trigger an external action.",
+    "expected": "The CRUD Spec records Agent Behavior Contract as not applicable. The Agent Spec requires success metrics, Dataset/sample version, threshold, retained trajectory fields, anomaly signals, automatic degradation, and human handoff owner/trigger."
+  },
+  {
+    "id": "change-delta-and-unchanged-guarantees",
+    "prompt": "Generate a child Spec for a type: change PRD that removes a legacy selector while preserving unrelated workspace behavior.",
+    "expected": "Includes Added, Modified, Removed, and testable Unchanged Guarantees with verification methods; does not silently rewrite unaffected behavior."
+  },
+  {
+    "id": "decomposition-coverage",
+    "prompt": "Generate child Specs from an approved PRD with REQ, BR, INV, EDGE, and AC identifiers across API, UI, and scheduled-job outcomes.",
+    "expected": "Assigns every identifier to an owning independently deliverable package or records an explicit root-level rationale, with stable S0N IDs, paths, business outcomes, and no code-directory-based split."
+  }
+]

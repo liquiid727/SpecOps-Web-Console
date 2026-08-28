@@ -17,7 +17,7 @@ Owns review pass decisions for SpecOS changes, focusing on traceability, correct
 
 ## CLI GUI MVP02 Handoff Contract
 
-- Inputs: exact Feature/Test Specs, design/UI rules, implementation handoffs, normalized results, and sync handoff.
+- Inputs: the owning child Spec Package (`spec.md`, `test.md`, Issue, `evidence/`), design/UI rules, implementation handoffs, normalized results, and sync handoff.
 - Outputs: severity-ordered findings with file/line, spec/rule mapping, evidence reference, and approval blockers.
 - Prohibited: creating tests, making QA acceptance decisions, or waiving missing evidence.
 - Handoff fields: `severity`, `file`, `finding`, `specRule`, `evidenceRef`, `recommendation`, `nextOwner`.

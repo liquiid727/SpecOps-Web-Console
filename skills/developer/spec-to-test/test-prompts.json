@@ -23,5 +23,20 @@
     "id": "stale-source-version",
     "prompt": "Update an existing approved Test Spec after its Feature Spec changed from version 1.2.0 to 1.3.0 and the authentication acceptance criteria changed.",
     "expected": "Marks the previous Test Spec stale, diffs affected requirements, increments the Test Spec version, preserves unaffected verification IDs, records new approval evidence, and prevents historical results from being rewritten to the new version."
+  },
+  {
+    "id": "hash-and-path-contract",
+    "prompt": "Generate a Test Design from an approved Spec at ./spec.md with stable ID SPEC-R014-S02, version 1.4.0, and hash H1.",
+    "expected": "Uses source_spec as the relative path and source_spec_id as the stable ID, records the exact source version and hash, and refuses release eligibility when either is missing or pending."
+  },
+  {
+    "id": "conditional-agent-eval",
+    "prompt": "Generate Test Designs for one ordinary API behavior and one Agent workflow with a versioned Dataset, trajectory logging, and human handoff threshold.",
+    "expected": "Marks Agent Eval not applicable for the ordinary API behavior; for the Agent workflow, includes PR 20–50 smoke cases, merge/nightly full Eval, metrics, thresholds, online sampling, trajectory alerts, degradation, handoff, and human review of AI-generated cases."
+  },
+  {
+    "id": "incomplete-spec-blocked",
+    "prompt": "Create a release-ready Test Design from an approved-looking Spec whose behavior has only a title and a Given/When/Then sentence, with no public seam, error semantics, observability, or source hash.",
+    "expected": "Refuses release-ready output and lists the missing contract fields and source hash as blocking gaps; it does not fill them from private implementation details or invent thresholds."
   }
 ]

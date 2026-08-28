@@ -1,270 +1,105 @@
 ---
 name: prd-to-spec
-description: Transform an accepted PRD into one or more small, modular Feature Specs with stable identifiers, requirement coverage, dependency contracts, review status, and versioned public behavior. Use when converting product requirements into implementation-ready specs, deciding whether a small PRD maps to one spec or a complex PRD must be decomposed into multiple end-to-end feature slices, or normalizing legacy requirements into a spec roadmap. Produces Feature Specs only; generate independent Test Specs later with spec-to-test after approval.
+description: Use when converting an approved GoalSpec root PRD into one or more independently deliverable child Spec Packages.
 ---
 
-# PRD to Spec
+# PRD to Spec — GoalSpec
 
-Turn an accepted PRD into implementation-ready Feature Specs. Keep stable platform decisions in design documents, epic order in the roadmap, feature behavior in small Feature Specs, and independent verification in downstream Test Specs.
+Transform product intent into executable system contracts. This skill decides the `S01`, `S02` delivery boundaries and writes child `spec.md` files; it does not generate Test Designs or implementation code.
 
-## Boundary
+## Inputs and canonical output
 
-This skill owns:
+Input must be an approved root Workspace:
 
-- classifying PRD scope
-- designing the Feature Spec decomposition
-- mapping every PRD requirement to a Feature Spec
-- generating one or more versioned Feature Specs
-- updating epic, order, and dependency recommendations
-- driving Feature Spec review and approval
+```text
+.requirements/requirements/R0NN-<slug>/
+├── prd.md
+└── index.yaml
+```
 
-This skill does not:
+For each approved decomposition entry, write exactly one child package:
 
-- generate a Test Spec
-- generate executable tests
-- implement code
-- turn database, backend, frontend, or test layers into separate specs unless they deliver independently valuable behavior
+```text
+.requirements/requirements/R0NN-<slug>/specs/S0N-<slug>/
+└── spec.md
+```
 
-After an approved Feature Spec exists, use `spec-to-test` for independent verification design.
-
-## Read Order
-
-Read:
-
-1. project README and active mode
-2. repository rules and spec rules
-3. current delivery context
-4. source PRD or structured draft
-5. stable design documents
-6. roadmap and existing Feature Specs
-7. relevant public API, event, schema, error, and compatibility contracts
-
-For an existing system, compare the requested behavior with current contracts. For a greenfield system, propose only the minimum architecture needed to make the feature contracts explicit.
+The child package path in `index.yaml` is authoritative. Do not create a root `spec.md` or a competing roadmap as the child Spec output.
 
 ## Workflow
 
-### 1. Validate the PRD
+1. Read the repository context in order: `README.md`, `rules/`, `docs/spec-modes/GoalSpec/`, relevant `design/`, root `prd.md`, and `index.yaml`.
+2. Require PRD status `approved` for canonical output. An explicitly requested
+   draft preview may be returned for discussion, but MUST NOT be written as a
+   canonical child package or create implementation authority.
+3. Validate that every `REQ`, `BR`, `INV`, `EDGE`, and `AC` has an owning child package or an explicit reason to remain root-level.
+4. Use one `S0N` per independently deliverable business outcome, actor/lifecycle boundary, authorization boundary, risk profile, or acceptance result. Do not split by frontend/backend/database directory.
+5. Allocate the next unused numeric `S0N` within the Workspace. Preserve all
+   existing IDs; never reuse, renumber, or silently change a package boundary
+   after approval.
+6. Present the decomposition and dependency order for review.
+7. After approval, copy `.requirements/templates/spec-package/` for each child, fill `spec.md`, and update only the aggregate `index.yaml`.
 
-Require:
+## Child Spec contract
 
-- a clear product goal
-- explicit in-scope and out-of-scope behavior
-- numbered User Stories or equivalent requirements
-- verifiable acceptance criteria
-- known constraints and unresolved product questions
+Each `spec.md` must begin with:
 
-Ask at most three to five blocking questions. Record reasonable non-blocking assumptions instead of expanding the PRD.
-
-### 2. Classify PRD Scope
-
-Classify the PRD before writing a Spec.
-
-Use `feature` when:
-
-- it has one primary business or user outcome
-- it can be independently reviewed, verified, and shipped
-- one owner or small team can deliver it end to end
-- upstream contracts are stable
-- its acceptance criteria form one coherent release slice
-
-Use `epic` or `system` when any of these is true:
-
-- it contains multiple independently valuable outcomes
-- different parts can be released separately
-- it spans multiple owners or bounded contexts
-- it needs a dependency DAG
-- it contains multiple workflows with separate acceptance boundaries
-- one focused implementation cycle cannot deliver it safely
-
-Do not use document length alone as the decision rule.
-
-### 3. Create the Decomposition Plan
-
-For a `feature` PRD, propose one Feature Spec.
-
-For an `epic` or `system` PRD, first present a decomposition plan:
-
-| Proposed Spec ID | Feature Slice | Covered Requirements | Depends On | Stable Prerequisites | Release Order |
-| --- | --- | --- | --- | --- | --- |
-| `RP-001` | Event ingestion | `US-001`, `FR-1` | none | tenant identity contract | 1 |
-| `RP-002` | Decision API | `US-002`, `FR-2..4` | `RP-001` | event schema v1 | 2 |
-
-Also present:
-
-- a complete PRD requirement coverage matrix
-- a dependency DAG
-- shared public contracts
-- cross-Spec integration or joint acceptance points
-- requirements intentionally deferred or excluded
-
-Get human approval or accepted automated review evidence for the decomposition before writing multiple Specs.
-
-### 4. Slice Vertically
-
-Each Feature Spec must:
-
-- deliver one observable business or user outcome
-- cross domain, application, repository, API, and UI layers when the outcome requires them
-- have one explicit owner
-- be independently reviewable and verifiable
-- be independently shippable or have an explicit dependency contract
-- fit a focused implementation and review cycle
-
-Do not create separate Feature Specs named only after technical layers such as database, backend service, frontend components, or tests. Those are deliverables or Issues inside a feature slice unless they expose a separately reusable product contract.
-
-Keep Feature Specs flat by ID. Express composition through epic membership, `Depends On`, `Prerequisites`, and the roadmap rather than nested Spec directories.
-
-### 5. Generate Each Feature Spec
-
-Use this exact core order:
-
-```markdown
-# <SPEC-ID> <Title>
-
-## Meta
-
-## Goal
-
-## Why This Exists
-
-## Out of Scope
-
-## Deliverables
-
-## Domain
-
-## Application
-
-## Repository
-
-## API
-
-## Database Impact
-
-## Test Plan
-
-## Definition of Done
+```yaml
+requirement: R001
+spec_package: S01
+title: <Spec Package Name>
+status: draft # draft | review | approved | implementing | accepted | blocked
+version: 1.0.0
+source_prd: ../../prd.md
+source_prd_version: 1.0.0
+qualityProfile: <backend-api | frontend-ui | fullstack-flow | data-migration | agent-workflow>
+riskTier: P1
 ```
 
-#### Meta
-
-Include:
-
-- `Spec ID`
-- `Spec Version`
-- `Title`
-- `Epic`
-- `Status`: `draft | in-review | approved | superseded`
-- `Owner Agent`
-- `Source PRD`
-- `Covered Requirements`
-- `Depends On`
-- `Prerequisites`
-- `Risk Tier`: `P0 | P1 | P2`
-- `Quality Profile`
-- `Approval Evidence`
-
-#### Goal and Scope
-
-- State one measurable outcome.
-- Explain why it is a standalone slice.
-- Block neighboring work explicitly under `Out of Scope`.
-- Keep deliverables concrete.
-
-#### Contracts
-
-Describe public behavior rather than implementation code:
-
-- domain rules, invariants, and state transitions
-- use-case orchestration and external dependency behavior
-- persistence expectations and compatibility constraints
-- API or event request, response, authentication, error, idempotency, and versioning semantics
-- database impact, migration, rollback, and backward compatibility
-
-Write `none` with a reason when API or database impact does not apply.
-
-#### Test Plan
-
-Define verification intent only:
-
-- requirement and acceptance identifiers
-- happy, error, edge, and limit branches
-- applicable API, scenario, UI/E2E, performance, load, concurrency, security, migration, and compatibility risks
-- measurable SLO or capacity targets when required
-- expected evidence and blocking priority
-
-Do not create the independent Test Spec or executable scripts here. Preserve enough stable contract information for `spec-to-test` to derive them after approval.
-
-#### Definition of Done
-
-Use a checklist covering:
-
-- declared deliverables
-- contract updates
-- implementation-coupled unit coverage
-- downstream independent Test Spec approval before ship when the quality profile requires it; this is not a prerequisite for Feature Spec approval
-- required normalized test evidence
-- review approval
-- migration, rollout, rollback, or documentation evidence when applicable
-
-### 6. Verify Coverage and Composition
-
-Before review:
-
-- map every PRD requirement to exactly one owning Feature Spec
-- identify intentional cross-Spec verification without duplicating ownership
-- ensure every dependency names the consumed stable contract
-- ensure no Spec is only a horizontal technical layer
-- ensure each acceptance criterion is testable
-- ensure API, error, state, and performance contracts are explicit enough for independent test design
-
-Stop on orphaned requirements, circular dependencies, duplicated ownership, or unresolved blocking contracts.
-
-### 7. Review, Version, and Save
-
-Review each Spec for product coverage, architecture fit, dependency correctness, contract completeness, and slice size.
-
-Use the lifecycle:
+Every contract behavior uses a stable ID:
 
 ```text
-draft -> in-review -> approved -> superseded
+SPEC-R001-S01-001
 ```
 
-Only mark a Spec `approved` when human approval or repository-authorized automated review evidence is recorded. Approval freezes the source version used by downstream Test Specs.
+Each behavior must map to at least one `REQ-R001-NNN` and define:
 
-Resolve `<featuresDir>` from `.specos/manifest.yaml` `artifacts.specsDir` (required; default `.features/`; see `rules/shared/artifact-locations.md`). Do not inspect or fall back to legacy directories. When the user picks a custom location, write it back to `artifacts.specsDir` and record a project configuration memory.
+- a public seam and observable result;
+- preconditions and a concrete Given/When/Then scenario;
+- authorization and actor rules;
+- state and transitions, including invalid transitions;
+- input, persistence, consistency, privacy, and retention semantics;
+- error codes/outcomes, dependency failures, retry, and rollback behavior;
+- side effects and observability fields, metrics, traces, and alerts;
+- risk tier, required evidence, gate impact, and acceptance mapping to `AC-R001-NNN`.
 
-Default paths:
+When the PRD or package includes Agent behavior, add the conditional Agent
+Behavior Contract with success metrics, Dataset/sample version, passing
+threshold, retained trajectory fields, anomaly signals, automatic degradation,
+and human handoff trigger/owner. For ordinary behavior, write `Not applicable`;
+do not invent Agent requirements.
+
+Do not leave `...`, generic "public interface exercised", or unspecified error
+semantics in an approved or release-bound Spec. If the PRD does not provide a
+needed product decision, stop at draft/review and record the blocking Open
+Question instead of guessing.
+
+For `type: change`, include `Added`, `Modified`, `Removed`, and testable `Unchanged Guarantees` in every affected child Spec.
+
+## Version and approval
+
+Approval freezes the source version used by `spec-to-test` and `to-issues`. When approved public behavior changes:
+
+1. increment the child Spec version;
+2. record the affected REQs and contract IDs;
+3. mark downstream Test Designs and Issues bound to the old version as stale or superseded;
+4. never rewrite historical evidence to point at the new version.
+
+## Handoff
 
 ```text
-<featuresDir>/<SPEC-ID>-<slug>/spec.md
-<featuresDir>/roadmap.md
+approved R0NN PRD
+  → S0N/spec.md
+  ├── /spec-to-test → S0N/test.md
+  └── /to-issues (implementation) → S0N/issues/ISSUE-R0NN-S0N-NNN.md
 ```
-
-Do not default to legacy paths or invent directories outside the canonical manifest path.
-
-## Version Change Rules
-
-- Increment `Spec Version` whenever approved public behavior changes.
-- Record affected requirements and contracts.
-- Mark Test Specs derived from an older version `stale`.
-- Do not rewrite historical implementation, review, or test evidence to reference a newer version.
-- Use `superseded` when a Spec is replaced rather than silently reusing its ID for a different feature boundary.
-
-## Relationship to Other Skills
-
-```text
-prd
-  -> prd-to-spec
-  -> spec approval
-      ├── to-issues -> implementation
-      └── spec-to-test -> independent verification
-  -> review-it
-  -> ship-it
-```
-
-- `prd` produces the source product intent.
-- `prd-to-spec` produces one or more modular Feature Specs.
-- `spec-to-test` derives one Test Spec from each approved Feature Spec.
-- `to-issues` decomposes an approved Feature Spec into implementation Issues.
-- `code-to-spec` establishes a reviewable baseline when a legacy project has code but no current Spec.

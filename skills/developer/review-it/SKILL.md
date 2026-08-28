@@ -1,180 +1,138 @@
 ---
 name: review-it
-description: "Review implementation changes and delivery evidence before commit or ship. Supports local dirty changes, branch/PR diffs, parallel checks, and Spec-driven closeout that validates source Spec version, approved Test Spec, normalized test evidence, requirement coverage, and remaining release blockers."
+description: Use when reviewing implementation changes, a local GoalSpec Issue, a branch or PR diff, or delivery evidence before commit or ship.
 ---
 
-# CC Review
+# GoalSpec Review Closeout
 
-Run automated code review as a closeout check before committing or shipping. Works across multiple AI coding agents.
+`review-it` produces two separate results:
+
+1. code and design findings from the current diff;
+2. a traceable Review record in the owning Spec Package.
+
+It never makes the QA acceptance decision. `acceptance.md` belongs to
+`feature-verify`, and a clean code review does not by itself make a change
+ready to merge or promote.
+
+## Triggers
 
 Use when:
-- user asks for code review / review-it / autoreview
-- after non-trivial code edits, before final/commit/ship
-- reviewing a local branch or PR branch after fixes
 
-## Supported Agents
+- the user asks for `review-it`, code review, autoreview, or review closeout;
+- an implementation Issue is complete and must be reviewed before commit or ship;
+- a local branch, PR branch, or delivery evidence set needs re-review after fixes.
 
-| Agent | Review Command | Notes |
-|-------|---------------|-------|
-| Claude Code | `/review` | Built-in, works on uncommitted changes or diff |
-| Codex | `codex review` | Pass diff file or let it auto-detect |
-| OpenCode | `/review` | Same as Claude Code |
-| DeepSeek TUI | `/review` or manual diff review | Pass diff content for analysis |
-| Antigravity CLI | `/code-review` | Built-in slash command, auto-detects diff |
+## Resolve the GoalSpec target first
 
-## Contract
+Resolve a canonical local Issue path or an explicit `R0NN`, `S0N`,
+or Issue selector. Read the chain in this order:
 
-- Treat review output as advisory. Never blindly apply it.
-- Verify every finding by reading the real code path and adjacent files.
-- Read dependency docs/source/types when the finding depends on external behavior.
-- Reject unrealistic edge cases, speculative risks, broad rewrites, and fixes that over-complicate the codebase.
-- Prefer small fixes at the right ownership boundary; no refactor unless it clearly improves the bug class.
-- Keep going until review returns no accepted/actionable findings.
-- If a review-triggered fix changes code, rerun focused tests and rerun review.
-- Stop as soon as the review comes back clean with no actionable findings.
-- If rejecting a finding as intentional/not worth fixing, add a brief inline code comment only when it explains a real invariant or ownership decision that future reviewers should know.
-- Do not push just to review. Push only when the user requested push/ship/PR update.
+1. Requirement Workspace `prd.md`, `index.yaml`, and root `acceptance.md` when relevant;
+2. owning `specs/S0N-<slug>/spec.md` and its exact `version`;
+3. owning `test.md` and its `source_spec_version`, `source_spec_hash`, and status;
+4. the Issue file, its `primary_spec`, `depends_on`, and Completion Record;
+5. the child `review.md`, `evidence/`, and `acceptance.md`.
 
-## Spec-Driven Evidence Gate
+Do not substitute a GitHub issue number for the local Issue ID. A GitHub Issue
+is an optional external projection; the local file remains the source of truth.
 
-When the repository uses Feature Specs:
+## Review gates
 
-1. Resolve the affected `spec_id` and exact `spec_version`.
-2. Confirm the implementation maps to an approved Feature Spec.
-3. Confirm an approved Test Spec exists for the same source version when independent verification is required.
-4. Reject a Test Spec or result marked `stale`, or one whose source version/hash no longer matches.
-5. Verify required P0/P1 results and evidence exist.
-6. Check every changed requirement has implementation and verification coverage, or an approved waiver.
-7. Report code findings separately from missing or invalid delivery evidence.
+Before calling the code review clean, verify:
 
-Code review may run in parallel with test execution, but the final review decision stays pending until blocking test evidence is complete.
+- the Issue is under its owning Spec Package `issues/` directory;
+- `primary_spec` resolves to the selected Spec and its source version/hash is current;
+- all `depends_on` Issues are complete, or the dependency is explicitly waived;
+- an approved, non-`stale` Test Design exists when independent verification is required;
+- required P0/P1 results are normalized under the same `evidence/` directory and registered in `evidence/index.yaml`;
+- every changed requirement has implementation and verification coverage, or an explicit waiver;
+- the Completion Record lists changed files, tests, evidence, commit/PR when known, and Spec Deviation.
 
-## Review Focus
+Separate the verdicts in the report:
 
-请 review 当前 diff。不要只看语法和明显 bug，请重点检查以下维度，最后按严重程度排序：
+| Verdict | Meaning |
+|---|---|
+| Code review | clean, actionable findings, or blocked by unresolved findings |
+| Review artifact | `review.md` is updated with traceable findings and resolution |
+| Delivery evidence | complete, stale, missing, failed, or waived |
+| QA acceptance | read-only input; owned by `feature-verify` |
 
-1. **隐藏副作用 (Hidden Side Effects)** — 变更是否在非显而易见的地方产生级联影响？是否修改了共享状态、全局变量、或外部依赖的行为？
-2. **破坏兼容性 (Breaking Compatibility)** — 是否改变了 API 签名、数据结构、配置文件格式、或命令行接口？现有调用方是否会受影响？
-3. **边界情况 (Edge Cases)** — null/空值/空集合、极大/极小值、并发/竞态条件、异常路径是否被正确处理？
-4. **性能风险 (Performance Risks)** — 是否引入了不必要的循环嵌套、N+1 查询、大对象分配、阻塞 I/O、或锁竞争？
-5. **安全风险 (Security Risks)** — 是否存在注入、越权、敏感信息泄露、不安全的反序列化、或依赖版本漏洞？
-6. **命名误导 (Naming Misleading)** — 变量/函数/类型名称是否与实际行为不一致？是否存在名不副实或语义模糊的命名？
-7. **测试不足 (Insufficient Testing)** — 关键路径、边界条件、错误处理是否缺少测试覆盖？现有测试是否真正验证了期望行为？
-8. **未来维护成本 (Future Maintenance Cost)** — 是否引入了不必要的抽象、重复代码、隐式耦合、或难以追踪的控制流？后来者是否容易理解和修改？
+Missing QA acceptance is a delivery blocker for ship, but `review-it` must not
+write or invent `acceptance.md`.
 
-## Pick Target
+## Write the canonical Review record
 
-### Claude Code / OpenCode / DeepSeek TUI
+Write findings to the owning child package's `review.md`; preserve existing
+human-authored findings and append stable IDs such as
+`REVIEW-R001-S01-001`. Every finding records:
 
-Dirty local work (default — `/review` works on uncommitted changes):
-
-```
-/review
+```text
+ID, Severity, Status, Source, Covers, Owner, Evidence, Resolution
 ```
 
-Branch/PR work — review all changes against base:
+Use `open` for unresolved findings, `resolved` after verification, and
+`waived` only with approver, rationale, and expiry. A clean review sets the
+Review Gate checkboxes and records the reviewed commit/diff and evidence
+references. Never overwrite `acceptance.md`, the Test Design, or raw evidence.
+Implementation decisions belong in the Issue Completion Record; do not create
+a separate implementation-notes file such as `docs/issue#*.html`.
 
-First generate a diff, then review it:
+## Code review focus
+
+Review the diff and adjacent code for:
+
+1. hidden side effects and shared-state changes;
+2. API, data, configuration, and CLI compatibility;
+3. empty, error, boundary, retry, concurrency, and migration paths;
+4. performance regressions and unnecessary I/O or allocations;
+5. security and sensitive-data exposure;
+6. misleading names or ownership boundaries;
+7. missing tests, stale bindings, and weak evidence;
+8. unnecessary abstraction or future maintenance cost.
+
+Treat findings as advisory until verified against the real code and the parent
+Spec. Reject speculative or broad rewrite suggestions; keep accepted fixes at
+the smallest correct ownership boundary.
+
+## Review target and commands
+
+For dirty local changes, review the working tree. For committed or pushed work,
+review the branch diff against the actual PR base:
 
 ```bash
 git diff origin/main...HEAD > /tmp/review-it.diff
 ```
 
-Then review the diff file with a focused prompt:
+Supported review commands:
 
-```
-/review the changes in /tmp/review-it.diff against origin/main
-```
+| Agent | Command |
+|---|---|
+| Claude Code / OpenCode | `/review` |
+| Codex | `codex review` or `codex review /tmp/review-it.diff` |
+| Antigravity | `/code-review` |
+| DeepSeek TUI | `/review` or manual diff review |
 
-If an open PR exists, use its actual base:
-
-```bash
-base=$(gh pr view --json baseRefName --jq .baseRefName)
-git diff "origin/$base"...HEAD > /tmp/review-it.diff
-```
-
-### Antigravity CLI (`agy`)
-
-Dirty local work:
-
-```
-/code-review
-```
-
-Branch/PR work — review all changes against base:
+The repository helper supports target detection and optional parallel tests:
 
 ```bash
-git diff origin/main...HEAD > /tmp/review-it.diff
+skills/developer/review-it/scripts/review-it --dry-run
+skills/developer/review-it/scripts/review-it --parallel-tests "<focused test command>"
 ```
 
-Then pass the diff to the review command:
+If a review-triggered fix changes code or evidence, rerun focused tests and the
+review until no accepted/actionable finding remains. Do not push merely to
+obtain a review.
 
-```
-/code-review the changes in /tmp/review-it.diff against origin/main
-```
-
-If an open PR exists, use its actual base:
-
-```bash
-base=$(gh pr view --json baseRefName --jq .baseRefName)
-git diff "origin/$base"...HEAD > /tmp/review-it.diff
-```
-
-### Codex
-
-```bash
-# Review uncommitted changes
-codex review
-
-# Review branch diff
-git diff origin/main...HEAD > /tmp/review-it.diff
-codex review /tmp/review-it.diff
-```
-
-## Parallel Closeout
-
-Format first if formatting can change line locations. Then it's OK to run tests and review in parallel:
-
-```bash
-scripts/review-it --parallel-tests "<focused test command>"
-```
-
-Tradeoff: tests may force code changes that stale the review. If tests or review lead to code edits, rerun the affected tests and rerun review until no accepted/actionable findings remain.
-
-## Uncommitted vs Branch Review
-
-Choose the right mode:
-
-- **Uncommitted changes** (staged/unstaged): use `/review` directly (Antigravity: `/code-review`, Codex: `codex review`)
-- **Committed, not pushed**: use `git diff origin/main...HEAD` + review
-- **Pushed/PR**: same as committed, against the PR base
-- **Clean working tree**: skip review if there's truly nothing to review
-
-## Helper
-
-Bundled helper script for parallel test + review orchestration:
-
-```bash
-skills/developer/review-it/scripts/review-it --help
-```
-
-The helper:
-- Detects which agent is running (Claude Code, Antigravity CLI, Codex) via `--agent auto`
-- Detects whether to use uncommitted review or branch diff review
-- For branch mode: generates diff against `origin/main` (or PR base), then triggers review
-- Supports `--parallel-tests` for concurrent test + review execution
-- Supports `--dry-run` for checking what command would be used
-- Prints `review-it clean: no accepted/actionable findings reported` when review is clean
-
-## Final Report
+## Final report
 
 Include:
-- review target (uncommitted / branch / PR base)
-- source Spec ID and version when applicable
-- Test Spec version and freshness when applicable
-- tests/proof run
-- missing, failed, stale, or waived evidence
-- findings accepted/rejected, briefly why
-- the clean review result, or why a remaining finding was consciously rejected
 
-Do not run another review solely to improve the final report wording. If review exited clean with no actionable findings, report that as clean.
+- local Issue ID and owning Spec Package path;
+- reviewed commit, branch, PR base, or dirty-tree target;
+- `spec_id`, Spec version/hash, and Test Design version/freshness;
+- tests and normalized evidence inspected;
+- findings accepted, rejected, resolved, or waived;
+- Review Gate status and any separate QA/ship blockers.
+
+Do not claim “ready to ship” unless the Review artifact, delivery evidence, and
+QA acceptance gates are all independently satisfied.

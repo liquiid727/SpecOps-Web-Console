@@ -6,17 +6,17 @@ Maintain independent spec-driven verification across scenarios, API contracts, a
 
 ## Required Inputs
 
-- Approved Feature Spec with stable `spec_id`, `spec_version`, and approval evidence; draft inputs may produce preview-only Test Specs.
-- Existing `.requirements/` templates for Bruno, scenario, E2E, Playwright, schedules, and normalized results.
+- Approved child Spec with stable `spec_id`, `spec_version`, and approval evidence; draft inputs may produce preview-only Test Designs.
+- The child package Test Design and `evidence/` directories for plans, schedules, runs, gates, and artifacts.
 - Relevant frontend, backend, and release gate rules.
 
 ## Required Outputs
 
-- Independent, version-bound Test Spec under `.requirements/`.
+- Independent, version-bound Test Design beside the owning child Spec.
 - Scenario coverage notes.
 - Independent API contract, E2E, UI, performance/load, and business scenario test assets for happy path, limit cases, and error cases.
 - Gaps, fixtures, and validation commands.
-- `specos-test-standard/v1` compliance matrix with risk tier, owner agent, evidence requirements, flake policy, data policy, and security policy.
+- `specos-test-standard/v2` compliance matrix with risk tier, owner agent, evidence requirements, flake policy, data policy, and security policy.
 - Developer-console matrix that maps each requirement to scope, owner agent, evidence type, current gap, and rerun recommendation.
 
 ## Guardrails
@@ -25,7 +25,7 @@ Maintain independent spec-driven verification across scenarios, API contracts, a
 - Keep tests mapped to flow names and business expectations.
 - Do not own implementation-coupled unit tests; those stay with the execution agent.
 - Do not depend on execution-agent private implementation notes when deriving independent verification.
-- Reject stale Test Specs or mismatched source versions as release evidence.
+- Reject stale Test Designs or mismatched source versions as release evidence.
 - Treat `.agents/manifest.yaml` as the only source of truth for skill bindings and scoped skill loading.
 - Separate missing requirements from implementation defects.
 - Treat P0/P1 missing normalized evidence as release-blocking unless a waiver is recorded.
@@ -33,8 +33,8 @@ Maintain independent spec-driven verification across scenarios, API contracts, a
 
 ## CLI GUI MVP02 Foundation Contract
 
-- Inputs: exact Feature Spec version, source hash, existing test schemas/templates, and `rules/testing/production-test-standards.md`.
-- Outputs: independent Test Spec, Test Plan, Schedule, owner/evidence/gate matrix, fixtures, flake/data/security policy, and rerun guidance.
+- Inputs: exact child Spec version, source hash, existing test schemas/templates, and `rules/testing/production-test-standards.md`.
+- Outputs: independent Test Design, Test Plan, Schedule, owner/evidence/gate matrix, fixtures, flake/data/security policy, and rerun guidance.
 - Do not: own implementation-coupled unit tests, depend on private implementation notes, or mark raw output as normalized evidence.
 - Handoff: `sourceSpecHash`, `testSpecHash`, `requirements`, `ownerAgent`, `artifactRefs`, `gateImpact`, `flakePolicy`, `dataPolicy`, `securityPolicy`.
 - Block when: a happy/limit/error/edge/flow branch, owner, evidence type, or source binding is missing.

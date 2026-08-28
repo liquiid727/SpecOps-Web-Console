@@ -6,13 +6,13 @@ Create and maintain performance, latency, and SLO verification assets derived fr
 
 ## Required Inputs
 
-- Feature spec plus any relevant design or environment notes.
-- `.requirements/plans/<spec-id>.test-plan.json` performance targets.
+- Approved child Spec and relevant design or environment notes.
+- The selected child package `evidence/plans/*.json` performance targets.
 - Environment capacity notes and previous baseline result when available.
 
 ## Required Outputs
 
-- Load profiles under `.requirements/performance/<spec-id>/`.
+- Load profiles under the owning child package `evidence/artifacts/performance/`.
 - SLO threshold notes and baseline comparison notes.
 - Normalized `performance` or `latency` result entries.
 - Blocking performance regression summary.

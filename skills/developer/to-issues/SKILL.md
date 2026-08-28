@@ -1,167 +1,121 @@
 ---
 name: to-issues
-description: Decompose an approved, versioned Feature Spec into small implementation Issues, or an approved Test Spec into independent verification Issues, and create them in GitHub, local Markdown, or Baidu iCafe. Use after prd-to-spec approval for the implementation track or after spec-to-test approval for the testing track. Preserves spec, requirement, dependency, owner, evidence, and track traceability.
+description: Use when decomposing an approved GoalSpec child Spec or Test Design into independently completable implementation or verification Issues.
 ---
 
-# Spec to Issues
+# Spec to Issues — GoalSpec
 
-Create executable work items from approved Specs. Keep implementation and independent verification in separate tracks so test work does not inherit private implementation assumptions.
+Create one local Issue file per independently completable work item. The Issue belongs to exactly one child Spec Package and must remain traceable to the root Requirement, contract behavior, Test Design, and evidence gate.
 
 ## Inputs
 
-Prefer:
-
-- an approved Feature Spec for `track: implementation`
-- an approved Test Spec for `track: verification`
-
-Allow a PRD-only fallback only when the user explicitly accepts that technical contracts and independent test traceability are incomplete.
-
-For each source, require:
-
-- `spec_id`
-- exact source version
-- status `approved`
-- covered requirement identifiers
-- dependencies and prerequisites
-- acceptance or verification evidence
-
-Reject stale Test Specs and unapproved source baselines.
-
-## Workflow
-
-### 1. Select the Track
+Choose exactly one track:
 
 ```text
-A. Implementation Issues from an approved Feature Spec
-B. Verification Issues from an approved Test Spec
-C. PRD-only fallback with recorded limitations
+A. implementation Issues from an approved specs/S0N-<slug>/spec.md
+B. verification Issues from an approved specs/S0N-<slug>/test.md
 ```
 
-Do not mix A and B into the same Issue. They may be created as two batches and scheduled in parallel.
+Read in order: root `prd.md` and `index.yaml`, selected child `spec.md`, selected child `test.md` when present, relevant rules/design, existing dependencies, and current review/evidence/acceptance records. A PRD-only fallback requires explicit user approval and must record incomplete technical/test traceability.
 
-### 2. Decompose Vertically
+Reject draft or stale source artifacts for release-bound Issues.
 
-For implementation:
+## Canonical output
 
-- cover Feature Spec deliverables and Definition of Done
-- keep one independently implementable behavior slice per Issue
-- include implementation-coupled unit tests with the implementation Issue
-- split when one focused agent session cannot finish safely
-- preserve cross-Spec dependencies by Spec ID
+Write only inside the selected child package:
 
-For verification:
+```text
+.requirements/requirements/R0NN-<slug>/specs/S0N-<slug>/issues/
+└── ISSUE-R0NN-S0N-NNN-<slug>.md
+```
 
-- decompose by independent profile or coherent business flow
-- keep API contract, scenario, UI/E2E, performance, load/stress, concurrency, and security ownership explicit
-- attach environment, data, evidence, and gate requirements
-- do not assign implementation source changes to verification Issues
+A remote GitHub/iCafe Issue may be an external projection, but the local file remains the canonical source.
 
-Do not create one Issue for every document heading. Merge tiny related work and split large cross-owner work.
+Start from `.requirements/templates/spec-package/issues/ISSUE-R001-S01-001-example.md`, rename the file with the real stable ID and slug, and preserve its frontmatter contract.
 
-### 3. Use the Issue Contract
+## Issue identity and frontmatter
+
+Allocate the next unused sequence within the child Spec Package. IDs are permanent and are never reused or renumbered:
+
+```yaml
+id: ISSUE-R001-S01-001
+requirement: R001
+spec_package: S01
+kind: implementation # implementation | verification
+track: implementation # implementation | verification
+status: todo # todo | in-progress | implemented_pending_verification | verified | blocked
+primary_spec: SPEC-R001-S01-001
+source_spec: ../spec.md
+source_spec_id: SPEC-R001-S01-001
+source_spec_version: 1.0.0
+source_spec_hash: <sha256-or-immutable-revision>
+source_test: ../test.md
+source_test_id: TEST-R001-S01
+source_test_version: 1.0.0
+source_test_hash: <sha256-or-immutable-revision>
+priority: P1
+owner: <owner>
+depends_on: []
+```
+
+Every Issue must have exactly one `primary_spec`. Cross-package references go in `covers` and do not change the owning directory.
+
+## Issue body contract
+
+Require these sections:
 
 ```markdown
-# <Title>
+# ISSUE-R001-S01-001 — <Title>
 
-## Traceability
-- Track: implementation | verification
-- Spec ID:
-- Source Spec:
-- Source Version:
-- Requirement IDs:
-- Depends On:
+## Covers
+- REQ-R001-001
+- SPEC-R001-S01-001
+- TEST-R001-S01-001
 
 ## Goal
-
 ## Scope
-
-## Out of Scope
-
-## Acceptance Criteria
-- [ ] Observable criterion
-
-## Inputs
-
-## Outputs
-
-## Owner
-
+### Must
+### Must Not
+## Tasks
+## Validation
+## Dependencies
 ## Required Evidence
-
-## Gate Impact
-- blocking | warning | informational
+## Completion Record
 ```
 
-Every Issue must have one owning track, exact source version, requirement identifiers, and acceptance evidence.
+Implementation Issues MUST include an explicit code-and-unit-test task (or a
+written `N/A` rationale). Verification Issues MUST identify the test assets,
+runner scope, normalized evidence, and `evidence/index.yaml` registration they
+own. Add an Acceptance Criteria section with observable Given/When/Then results.
 
-### 4. Check the Issue Graph
+For AI-generated test drafts, include the human reviewer and review decision in
+the Issue or Completion Record. A draft is not evidence until the review is
+complete and the resulting run is normalized.
 
-Before creation:
+Implementation Issues may include implementation-coupled unit tests but must not claim independent QA acceptance. Verification Issues own test assets, execution, and evidence; they must not silently modify production behavior.
+Planned `TEST-*` coverage is not execution evidence. Required Evidence is
+satisfied only by a normalized run/artifact registered in `evidence/index.yaml`.
 
-- ensure all required source requirements are covered
-- ensure no requirement has conflicting owners
-- detect circular dependencies
-- keep implementation and verification contexts isolated
-- allow verification asset preparation to begin before implementation completes
-- mark live execution dependencies on a deployable target explicitly
+The Completion Record must eventually contain changed files, tests executed, evidence references, commit/PR, design decisions, tradeoffs, open questions, and any Spec Deviation. It is the only implementation-note record; do not create a separate notes document. `Issue Done` is not child QA acceptance or root Requirement Done.
 
-Present the proposed Issue table for user approval.
+## Decomposition rules
 
-### 5. Create the Issues
+- Split by independently completable vertical behavior, not by document heading or technical layer.
+- Keep implementation and verification tracks separate.
+- Make `depends_on` explicit; detect missing, duplicate, or circular ownership before writing.
+- Include acceptance criteria that are observable and executable.
+- Reject an Issue when its source Spec/Test is draft, stale, superseded, or
+  version/hash mismatched for a release-bound track.
+- Split independent public behaviors, risk profiles, or verification owners
+  into separate Issues; do not create one omnibus Issue spanning unrelated
+  SPECs or mix implementation and verification tracks.
+- Present the Issue table and dependency order for user approval before creating external Issues.
 
-Support:
-
-- GitHub through `gh issue create`
-- local Markdown under the project issue directory; resolve it in order: explicit user request > `.specos/manifest.yaml` `artifacts.issuesDir` > default `.issues/` (see `rules/shared/artifact-locations.md`), with filenames `issue-NNN-<slug>.md`
-- Baidu iCafe through the available CLI
-
-When the user picks a custom local issue directory, write it back to `artifacts.issuesDir` and record a project configuration memory so later sessions reuse it.
-
-Use repository label conventions when present. Otherwise include:
-
-- `track:implementation` or `track:verification`
-- owner/type
-- risk or priority
-- source Spec ID
-
-Never create external Issues before user approval.
-
-## Parallel Scheduling
-
-After Feature Spec approval:
+## Handoff
 
 ```text
-approved Feature Spec
-├── to-issues (implementation) -> implementation work
-└── spec-to-test
-    └── approved Test Spec
-        └── to-issues (verification) -> test asset and execution work
-```
-
-Implementation and verification-asset preparation may run concurrently. Verification execution that requires a live service must depend on a deployable test target.
-
-## Completion Report
-
-Report:
-
-- source Spec and version
-- selected track
-- created Issue identifiers
-- requirement coverage
-- dependency order
-- blockers and waived gaps
-- next owner
-
-## Relationship to Other Skills
-
-```text
-prd
-  -> prd-to-spec
-  -> Feature Spec approval
-      ├── to-issues (implementation)
-      └── spec-to-test
-          -> Test Spec approval
-          -> to-issues (verification)
-  -> review-it
-  -> ship-it
+approved S0N/spec.md
+  ├── /to-issues (implementation)
+  └── approved S0N/test.md → /to-issues (verification)
+       → /loop-it
 ```

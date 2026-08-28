@@ -19,7 +19,7 @@ Owns browser-level scenario coverage for UI workflows that come from accepted dr
 
 ## CLI GUI MVP02 Handoff Contract
 
-- Inputs: approved browser Test Spec, DOM contracts, viewport/locale/a11y requirements, and runtime fixtures.
+- Inputs: approved browser Test Design, DOM contracts, viewport/locale/a11y requirements, and runtime fixtures.
 - Outputs: browser state journeys, screenshots/traces, focus/DOM assertions, flaky classification, and normalized scenario items.
 - Prohibited: frontend implementation edits or screenshot-only passes without semantic assertions.
 - Handoff fields: `requirementId`, `flow`, `viewport`, `locale`, `domAssertions`, `artifactRefs`, `attempts`, `flakeClassification`.

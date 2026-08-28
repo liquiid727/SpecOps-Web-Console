@@ -21,7 +21,7 @@ Owns cross-layer end-to-end verification strategy for business journeys that com
 
 ## CLI GUI MVP02 Handoff Contract
 
-- Inputs: business Test Spec journeys, runtime/API contracts, seeded workspace/engine fixtures, and cleanup policy.
+- Inputs: business Test Design journeys, runtime/API contracts, seeded workspace/engine fixtures, and cleanup policy.
 - Outputs: UI/API/data/cleanup matrix, environment checklist, execution result, and normalized scenario mapping.
 - Prohibited: duplicated runtime logic, bypassed cleanup, or treating unit/DOM fixtures as full journey proof.
 - Handoff fields: `journey`, `preconditions`, `actions`, `apiAssertions`, `dataState`, `cleanup`, `artifactRefs`, `blockers`.

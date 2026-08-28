@@ -2,15 +2,13 @@
 
 This directory defines local agent routing, role contracts, and scoped skill loading for SpecOS.
 
-Shared role prompts live under `.agents/roles/`.
-
-Mode-specific differences live under `.agents/modes/<mode>/roles/`.
+GoalSpec v2 role prompts live under `.agents/roles/`.
 
 ## How To Use
 
 - Start with `manifest.yaml` to choose the correct agent role.
 - Resolve `role_prompt` paths relative to `.agents/`; resolve `canonical`, `skills[*].path`, and `context_includes` from the repository root unless noted otherwise.
-- After selecting a role, load the shared prompt first, then the selected mode overlay when one exists.
+- After selecting a role, load its registered local and canonical prompts directly.
 - Use `roles/` for local role-specific responsibilities, inputs, outputs, and guardrails.
 - Keep role outputs aligned with canonical assets under `ai/agents/`.
 - Prefer assigning one role per bounded task.
@@ -62,7 +60,7 @@ For a deterministic local route preview, run:
 node packages/cli/dist/main.js route-request --request "<需求文本>"
 ```
 
-The command returns `projectMode`, `requestKind`, `workTypes`, `primaryAgent`, `supportingAgents`, required rules, role-bound skills, prompt assembly load order, and the next lifecycle step. It resolves `projectMode` from `.specos/manifest.yaml` first, then points at the selected mode overlay manifest and per-role overlay prompt paths. It does not execute the selected agents; it makes the routing decision explicit before intake, implementation, testing, review, or release work starts.
+The command returns `requestKind`, `workTypes`, `primaryAgent`, `supportingAgents`, required rules, role-bound skills, prompt assembly load order, and the next lifecycle step. It does not execute the selected agents; it makes the GoalSpec v2 routing decision explicit before intake, implementation, testing, review, or release work starts.
 
 For host runtimes that only need subagent dispatch payloads, use:
 
@@ -131,20 +129,17 @@ Nested dispatch follows this contract:
 SpecOS now routes work through this model:
 
 ```text
-Draft -> Design -> Roadmap/Epic -> Feature Spec -> Agent Implementation -> Review -> Merge
+PRD Workspace -> Child Spec/Test/Issues -> Implementation -> Evidence/Review -> QA Acceptance -> Ship
 ```
 
 Canonical storage targets:
 
-- `docs/spec-modes/`: project operating mode guidance (GoalSpec = Agent-Native SDLC)
-- `.requirements/`: one requirement = one Requirement Package under `.requirements/requirements/R0NN-<slug>/`
-  - `prd.md`: product behavior contract
-  - `spec.md`: executable spec contract (features are logical groups, not directories)
-  - `test.md`: verification contract
-  - `issues.md`: issue execution and progress
-- `.requirements/plans/`, `.requirements/schedules/`: test plans and schedules
+- `docs/spec-modes/GoalSpec/`: Agent-Native SDLC standard
+- `.requirements/`: one requirement = one PRD Workspace under `.requirements/requirements/R0NN-<slug>/`
+  - root `prd.md`, `index.yaml`, and `acceptance.md`: product truth, child summary, PRD acceptance
+  - `specs/S0N-<slug>/`: independently deliverable Spec Package with `spec.md`, `test.md`, `issues/ISSUE-*.md`, `review.md`, `acceptance.md`, and `evidence/`
+- `specs/S0N-<slug>/evidence/`: indexed plans, schedules, runs, gates, and artifacts
 - `design/`: stable platform or system design
-- `archive/legacy/`: retired global-directory model artifacts (`.prd/`, `.features/`, `implementation/`, `reviews/`, `tests/`)
 
 A useful subagent task should state:
 
@@ -178,8 +173,8 @@ flowchart TD
 
   Q -->|Design truth| R["design/"]
   Q -->|Requirement package| S[".requirements/requirements/R0NN-<slug>/"]
-  Q -->|Test plans and schedules| T[".requirements/plans/ + .requirements/schedules/"]
-  Q -->|Review evidence| U[".requirements/requirements/R0NN-<slug>/review.md"]
+  Q -->|Test evidence| T["selected S0N/evidence/"]
+  Q -->|Review evidence| U[".requirements/requirements/R0NN-<slug>/specs/S0N-<slug>/review.md"]
 
   S --> W{"Human approval gate"}
   W -->|Accepted| T
@@ -209,30 +204,22 @@ When a role is selected, assemble prompt context in this order:
 
 1. Root `AGENTS.md`
 2. `.codex/instructions.md`
-3. `.specos/manifest.yaml` `projectMode`
-4. Selected role metadata from `manifest.yaml`
-5. Selected mode overlay manifest under `.agents/modes/<projectMode>/manifest.overlay.yaml`
-6. Selected shared `role_prompt`
-7. Selected shared canonical file under `ai/agents/`
-8. Selected mode overlay role prompt when present
-9. Selected mode overlay canonical prompt when present
-10. Selected declared skills
-11. Selected required rules and context includes
+3. Selected role metadata from `manifest.yaml`
+4. Selected `role_prompt`
+5. Selected canonical file under `ai/agents/`
+6. Selected declared skills
+7. Selected required rules and context includes
 
-When the project mode or active handoff state changes task boundaries, read `docs/spec-modes/` and the active Requirement Package before loading broader context.
+When the active delivery state changes task boundaries, read `docs/spec-modes/GoalSpec/` and the active Requirement Workspace before loading broader context.
 
-## Shared Plus Overlay
+## Prompt Sources
 
-- Shared local role prompts: `.agents/roles/<role>.md`
-- Shared canonical prompts: `ai/agents/<role>.md`
-- Mode overlay local prompts: `.agents/modes/<mode>/roles/<role>.md`
-- Mode overlay canonical prompts: `ai/agents/modes/<mode>/<role>.md`
-
-Only keep differences in the mode overlay files. The shared files remain the default backbone.
+- Local role prompts: `.agents/roles/<role>.md`
+- Canonical prompts: `ai/agents/<role>.md`
 
 ## Project Context Placement
 
-Stable platform and system design belongs under `design/`. Each requirement lives in a Requirement Package under `.requirements/requirements/R0NN-<slug>/` (prd/spec/test/issues). Retired global-directory artifacts live under `archive/legacy/`.
+Stable platform and system design belongs under `design/`. Each new requirement lives in a PRD Workspace under `.requirements/requirements/R0NN-<slug>/`, with child Spec Packages under `specs/S0N-<slug>/`.
 
 Role prompts should reference those surfaces through `.agents/manifest.yaml` `context_includes` instead of duplicating accepted project facts inside `.agents/roles/` or `ai/agents/`.
 

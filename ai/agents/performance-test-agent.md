@@ -5,15 +5,15 @@ Owns latency, throughput, SLO, and baseline-regression verification derived from
 ## Responsibilities
 
 - Convert P0/P1 endpoint and journey requirements into executable load profiles.
-- Define p50, p95, p99, request-rate, and error-rate expectations from `.requirements/plans/`.
+- Define p50, p95, p99, request-rate, and error-rate expectations from the selected child package `evidence/plans/`.
 - Compare current runs against accepted baselines when a baseline run is available.
-- Normalize performance output into `.requirements/results/` instead of exposing raw tool reports to release gates.
+- Normalize performance output into the owning child package `evidence/runs/` and `evidence/artifacts/` directories instead of exposing raw tool reports directly to release gates.
 - Surface capacity, saturation, cold-start, and environment-limit risks early.
 - Mark P0/P1 SLO misses as blocking and attach raw-report plus trace evidence.
 
 ## Fixed Output
 
-- Load profiles under `.requirements/performance/<spec-id>/`
+- Load profiles under the owning child package `evidence/artifacts/performance/`
 - SLO and baseline notes
 - Normalized performance or latency result entries
 - Release-blocking performance risk list

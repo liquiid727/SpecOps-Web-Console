@@ -10,11 +10,10 @@ Read context in this order before changing behavior:
 
 1. `README.md` or `readme.md` for product intent.
 2. `rules/` and `.rules/` for engineering governance.
-3. `docs/spec-modes/` for the project mode (GoalSpec = Agent-Native SDLC).
+3. `docs/spec-modes/GoalSpec/` for the Agent-Native SDLC standard.
 4. `design/` for stable platform and system design truth.
-5. `.requirements/` for active Requirement Packages: enter the target `requirements/R0NN-<slug>/` and read `prd.md` → `spec.md` → `test.md` → `issues.md`.
-6. `archive/legacy/` for historical delivery evidence (read-only reference).
-7. `ai/agents/` and `.agents/` for role-specific responsibilities.
+5. `.requirements/` for active Requirement Workspaces: read root `prd.md` and `index.yaml`, then the selected `specs/S0N-<slug>/spec.md` → `test.md` → `issues/ISSUE-*.md` → `review.md` / `evidence/` / `acceptance.md`.
+6. `ai/agents/` and `.agents/` for role-specific responsibilities.
 
 ## Required Workflow
 
@@ -41,15 +40,14 @@ Read context in this order before changing behavior:
 ## Repository Boundaries
 
 - Artifact locations are declared once in `.specos/manifest.yaml` `artifacts`; see `rules/shared/artifact-locations.md` for the resolution order and customization protocol.
-- `.requirements/`: Requirement Package workflow root. `requirements/R0NN-<slug>/` holds co-located `prd.md` / `spec.md` / `test.md` / `issues.md`; `templates/`, `examples/`, and `skills/` hold authoring assets.
+- `.requirements/`: Requirement Workspace root. `requirements/R0NN-<slug>/` holds root `prd.md` / `index.yaml` / `acceptance.md`; each `specs/S0N-<slug>/` holds `spec.md`, `test.md`, one-file-per-Issue, review, acceptance, and evidence.
 - `rules/`: canonical reusable rule documents.
 - `.rules/`: agent-facing rule index and execution policy.
 - `ai/`: prompt, workflow, agent, and reviewer assets for SpecOS orchestration.
 - `.agents/`: local agent manifests and role routing for coding assistants.
 - `.codex/`: Codex-specific local configuration and operating notes.
 - `design/`: stable platform and system design documents. One canonical design doc per platform or system.
-- `archive/legacy/`: historical delivery evidence archived from the previous global-dir model (`.prd/`, `.features/`, `.issues/`, `implementation/`, `reviews/`, `tests/`). Read-only reference; do not create new work here.
-- `docs/spec-modes/`: project mode documentation. `GoalSpec` (Agent-Native SDLC) is the single official mode; `plugins/` holds optional lighter/heavier spec variants.
+- `docs/spec-modes/`: GoalSpec Agent-Native SDLC documentation. There are no selectable project modes or overlays.
 - `spec-web-ui/`: Next.js UI for SpecOS.
 - Code: Bugrail is a separate repository (`liquiid727/bugrail`, local checkout `~/code/bugrail`). Do not recreate a `bugrail/` submodule or copy its source into this repo.
 

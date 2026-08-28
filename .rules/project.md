@@ -4,7 +4,7 @@
 
 Every meaningful change should preserve the chain:
 
-`draft -> prd -> spec -> spec-test -> issues -> implementation -> verify -> merge`
+`prd -> child spec -> test design/issues -> implementation -> evidence/review -> acceptance -> ship`
 
 If a task skips any link in the chain, call that out explicitly.
 
@@ -12,16 +12,16 @@ If a task skips any link in the chain, call that out explicitly.
 
 - Identify whether the request is draft, spec, implementation, test, CI, or review work.
 - Locate the closest source of truth before editing.
-- Read `docs/spec-modes/` and the active Requirement Package when project mode or active delivery state affects the task.
-- Use the Requirement Package under `.requirements/requirements/R0NN-<slug>/` as the single source of truth: `prd.md` (intake/contract), `spec.md` (executable contract), `test.md` (verification contract), `issues.md` (issue execution).
+- Read `docs/spec-modes/GoalSpec/` and the active Requirement Workspace when delivery state affects the task.
+- Use `.requirements/requirements/R0NN-<slug>/` as the single source of truth: root `prd.md` / `index.yaml`, then one selected `specs/S0N-<slug>/` with `spec.md`, `test.md`, `issues/ISSUE-*.md`, `review.md`, `evidence/`, and `acceptance.md`.
 - Read `design/` as the stable platform and architecture truth.
-- Keep implementation and review evidence inside the Requirement Package (`issues.md` completion records, `review.md`), and test plans/schedules under `.requirements/plans/` and `.requirements/schedules/`.
+- Keep implementation decisions in Issue Completion Records and all test plans, schedules, runs, gates, and artifacts under the owning child package `evidence/` directory.
 - Record assumptions when the source of truth is incomplete.
 
 ## Artifact Rules
 
 - Design docs must remain broad, durable, and singular for a platform or system.
-- `GoalSpec` is the single official operating mode (Agent-Native SDLC). `LiteSpec` and `EnterpriseSpec` remain as optional plugin specs under `docs/spec-modes/plugins/`.
+- GoalSpec v2 is the only Agent-Native SDLC contract. Do not add project-mode selectors, overlays, or compatibility paths.
 - Requirement Packages must include: meta, goal, why this exists, out of scope, deliverables, domain, application, repository, API, database impact, test plan, and definition of done.
 - Specs must express dependencies by spec id and prerequisites as upstream contracts already provided.
 - API artifacts must include request/response examples and stable error semantics.

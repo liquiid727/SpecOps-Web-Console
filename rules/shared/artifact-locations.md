@@ -2,57 +2,54 @@
 
 ## Purpose
 
-Keep every spec-chain artifact (PRD, Spec, Spec-Test, Issue) in one predictable, configurable location so skills, agents, and humans never invent ad-hoc paths.
+Keep every spec-chain artifact in a predictable, configurable PRD Workspace.
+A workspace keeps related work below one R0NN directory without forcing a
+single Spec or Issue file to represent many independent delivery units.
 
 ## Single Source Of Truth
 
-`.specos/manifest.yaml` `artifacts` is the only authoritative declaration of artifact directories. Under GoalSpec (Agent-Native SDLC), PRD/Spec/Test/Issues are co-located in one Requirement Package per directory:
+.specos/manifest.yaml artifacts is the authoritative declaration of the
+Requirement Workspace root. Under GoalSpec, a root PRD Workspace contains
+child Spec Packages:
 
-```yaml
-artifacts:
-  draftsDir: .requirements   # Requirement Package root (prd.md lives inside each package)
-  specsDir: .requirements    # spec.md / test.md live inside each package
-  issuesDir: .requirements   # issues.md lives inside each package
-  testsDir: .requirements
-  resultsDir: .requirements
-```
+    artifacts:
+      requirementsDir: .requirements/requirements
+      templatesDir: .requirements/templates
 
-## Default Layout
+The manifest identifies the root only. Within each R0NN workspace, paths
+are fixed by the GoalSpec standard:
 
-```text
-.requirements/
-  README.md
-  requirements/
     R0NN-<slug>/
-      prd.md
-      spec.md
-      test.md
-      issues.md
-  templates/
-    prd.md  spec.md  test.md  issues.md
-  examples/
-    R000-example-<slug>/
-      prd.md  spec.md  test.md  issues.md
-  skills/
-    SKILL.md
-```
+    ├── prd.md
+    ├── index.yaml
+    ├── acceptance.md
+    └── specs/S0N-<slug>/
+        ├── spec.md
+        ├── test.md
+        ├── issues/ISSUE-*.md
+        ├── review.md
+        ├── acceptance.md
+        └── evidence/
 
-Historical artifacts from the previous global-dir model (`.prd/`, `.features/`, `.issues/`, `implementation/`, `reviews/`, `tests/`) are archived read-only under `archive/legacy/`.
+Evidence for a child Spec Package MUST live or be referenced under that
+package's evidence/ directory. Do not create a competing workspace-level
+test or result store for new packages.
 
 ## Path Resolution Order
 
-Every skill that reads or writes spec-chain artifacts must resolve paths in this order:
+Every skill that reads or writes spec-chain artifacts resolves paths in this
+order:
 
-1. An explicit location the user gives in the current request.
-2. `.specos/manifest.yaml` `artifacts` values.
-3. Built-in defaults: `.requirements/`.
+1. An explicit location from the user.
+2. .specos/manifest.yaml artifact values.
+3. Built-in `.requirements/requirements` and `.requirements/templates` defaults.
 
-Never invent a new directory outside this order.
+Never invent a directory outside this order.
 
 ## Customization Protocol
 
-When the user asks for a non-default location, the skill must:
+When a user asks for a non-default root location:
 
-1. Write the new value back to the matching `.specos/manifest.yaml` `artifacts` key so the choice is durable.
-2. Record one project configuration memory (category `project_environment_configuration`) stating where PRD/Spec/Issue artifacts live in this project.
-3. Use only the manifest for all later reads and writes; do not guess per session.
+1. Update the matching .specos/manifest.yaml artifacts key.
+2. Record the durable project configuration for later agents.
+3. Continue using the manifest rather than guessing paths per session.

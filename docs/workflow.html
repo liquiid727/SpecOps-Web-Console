@@ -159,7 +159,7 @@
         <text x="670" y="1072" fill="#78716c" font-size="8" text-anchor="middle">细化结构化 Spec / 配置草稿</text>
         <rect x="835" y="1030" width="180" height="60" rx="6" fill="#faf6f0" stroke="#d97706" stroke-width="1.1"/>
         <text x="925" y="1054" fill="#1c1917" font-size="12" font-weight="600" text-anchor="middle">export</text>
-        <text x="925" y="1072" fill="#78716c" font-size="8" text-anchor="middle">评审差异并导出 bundle</text>
+        <text x="925" y="1072" fill="#78716c" font-size="8" text-anchor="middle">评审差异并更新配置</text>
         <text x="550" y="1125" fill="#b45309" font-size="8" text-anchor="middle" font-family="'Geist Mono', monospace">spec-web-ui 负责资产组合与导出，不执行目标项目的 Agent workflow、CLI、测试或 CI</text>
 
         <!-- ========================= C: GOALSPEC ARROWS ========================= -->
@@ -276,7 +276,7 @@
         <p class="card-eyebrow">CURRENT MODE</p>
         <div class="card-header"><div class="card-dot blue"></div><h3>项目当前处境</h3></div>
         <ul>
-          <li>• `.specos/manifest.yaml` → `projectMode: goalspec`</li>
+          <li>• `.specos/manifest.yaml` → `schemaVersion: specos/goalspec`</li>
           <li>• 当前真实包：R001，状态 `implementing`</li>
           <li>• Spec / Test 已 approved，Issue 仍 `IN REVIEW`</li>
         </ul>
@@ -301,7 +301,7 @@
       </div>
     </div>
 
-    <div class="footer">specos-ai · generated from readme.md, .agents/manifest.yaml, packages/core/src/artifacts.ts, packages/cli/src/main.ts, docs/spec-modes/GoalSpec/, ai/workflows/</div>
+    <div class="footer">specos-ai · generated from readme.md, .agents/manifest.yaml, packages/core/src/artifacts.ts, docs/spec-modes/GoalSpec/, ai/workflows/</div>
   </div>
   <script>
     function captureOptions(button) {
