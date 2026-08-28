@@ -5,9 +5,22 @@ import {
   getAllTestRuns,
   getLatestRunsBySpec,
   getSpecBundle,
+  getEvidencePaths,
 } from "@/lib/data";
 
 describe("file-backed data layer", () => {
+  it("resolves GoalSpec evidence under the selected requirement child spec", () => {
+    expect(getEvidencePaths("R001-requirement-package-explorer/S01-requirement-package-explorer")).toEqual({
+      requirementId: "R001",
+      specId: "S01-requirement-package-explorer",
+      root: "test-console/tests/fixtures/requirements/R001-requirement-package-explorer/specs/S01-requirement-package-explorer/evidence",
+      plans: "test-console/tests/fixtures/requirements/R001-requirement-package-explorer/specs/S01-requirement-package-explorer/evidence/plans",
+      schedules: "test-console/tests/fixtures/requirements/R001-requirement-package-explorer/specs/S01-requirement-package-explorer/evidence/schedules",
+      runs: "test-console/tests/fixtures/requirements/R001-requirement-package-explorer/specs/S01-requirement-package-explorer/evidence/runs",
+      gates: "test-console/tests/fixtures/requirements/R001-requirement-package-explorer/specs/S01-requirement-package-explorer/evidence/gates",
+      artifacts: "test-console/tests/fixtures/requirements/R001-requirement-package-explorer/specs/S01-requirement-package-explorer/evidence/artifacts",
+    });
+  });
   it("loads plans and runs from repository test artifacts", async () => {
     const [plans, runs] = await Promise.all([getAllTestPlans(), getAllTestRuns()]);
 
@@ -24,9 +37,9 @@ describe("file-backed data layer", () => {
   });
 
   it("hydrates SpecOS Contract with plan and latest run", async () => {
-    const bundle = await getSpecBundle("reward-order");
-    expect(bundle.plan?.featureName).toBe("奖励订单发放");
-    expect(bundle.latestRun?.specId).toBe("reward-order");
+    const bundle = await getSpecBundle("R002-goalspec-console/S01-evidence-console");
+    expect(bundle.plan?.featureName).toBe("GoalSpec Evidence Console");
+    expect(bundle.latestRun?.specId).toBe("R002-goalspec-console/S01-evidence-console");
     expect(bundle.latestRun?.flowResults?.length).toBeGreaterThan(0);
   });
 
@@ -42,7 +55,7 @@ describe("file-backed data layer", () => {
     expect(runs.every((run) => !run.runId.includes("session"))).toBe(true);
     expect(sessions.length).toBeGreaterThan(0);
     expect(sessions[0]).toMatchObject({
-      specId: "reward-order",
+      specId: "R002-goalspec-console/S01-evidence-console",
       scope: expect.any(String),
       commands: expect.any(Array),
     });
@@ -51,9 +64,9 @@ describe("file-backed data layer", () => {
   it("derives performance, concurrency, gate, and evidence readiness from plan and run", () => {
     const summary = buildReadinessSummary(
       {
-        specId: "reward-order",
+        specId: "R002-goalspec-console/S01-evidence-console",
         specVersion: "1.0.0",
-        changeId: "reward-order-create",
+        changeId: "R002-goalspec-console/S01-evidence-console-create",
         featureName: "Reward Order",
         source: "accepted-spec",
         flows: [],
@@ -61,7 +74,7 @@ describe("file-backed data layer", () => {
           {
             name: "Create reward order",
             method: "POST",
-            path: "/api/reward-orders",
+            path: "/api/R002-goalspec-console/S01-evidence-consoles",
             priority: "P0",
             branches: ["happy", "limit", "error", "flow"],
             preconditions: ["user logged in"],
@@ -81,7 +94,7 @@ describe("file-backed data layer", () => {
         ],
         performanceTargets: [
           {
-            endpoint: "POST /api/reward-orders",
+            endpoint: "POST /api/R002-goalspec-console/S01-evidence-consoles",
             priority: "P0",
             slo: { p95Ms: 300 },
             gateImpact: "blocking",
@@ -108,9 +121,9 @@ describe("file-backed data layer", () => {
       },
       {
         runId: "run-demo",
-        specId: "reward-order",
+        specId: "R002-goalspec-console/S01-evidence-console",
         specVersion: "1.0.0",
-        changeId: "reward-order-create",
+        changeId: "R002-goalspec-console/S01-evidence-console-create",
         featureName: "Reward Order",
         status: "warning",
         releaseDecision: "blocked",
@@ -124,11 +137,11 @@ describe("file-backed data layer", () => {
         items: [
           {
             runId: "run-demo",
-            specId: "reward-order",
+            specId: "R002-goalspec-console/S01-evidence-console",
             specVersion: "1.0.0",
-            changeId: "reward-order-create",
+            changeId: "R002-goalspec-console/S01-evidence-console-create",
             testType: "api",
-            target: "POST /api/reward-orders",
+            target: "POST /api/R002-goalspec-console/S01-evidence-consoles",
             status: "pass",
             durationMs: 120,
             summary: "api passed",
@@ -137,11 +150,11 @@ describe("file-backed data layer", () => {
           },
           {
             runId: "run-demo",
-            specId: "reward-order",
+            specId: "R002-goalspec-console/S01-evidence-console",
             specVersion: "1.0.0",
-            changeId: "reward-order-create",
+            changeId: "R002-goalspec-console/S01-evidence-console-create",
             testType: "performance",
-            target: "POST /api/reward-orders",
+            target: "POST /api/R002-goalspec-console/S01-evidence-consoles",
             status: "pass",
             durationMs: 60000,
             summary: "p95 ok",

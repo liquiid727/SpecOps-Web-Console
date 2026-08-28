@@ -64,7 +64,7 @@ export default async function Page() {
           </p>
           <h1 className="text-4xl font-semibold text-white">验证总览</h1>
           <p className="text-sm text-muted">
-            还没有发现 `tests/results/*.json`。请先运行测试 runner 生成规范化结果；首页会展示测试矩阵、运行入口和发布门禁。
+            还没有发现 GoalSpec child spec evidence。请先运行测试 runner 生成规范化结果；首页会展示测试矩阵、运行入口和发布门禁。
           </p>
         </header>
       </main>

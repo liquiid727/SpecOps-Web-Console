@@ -68,13 +68,13 @@ function summarize(value: string): string {
 function extractArtifacts(stdout: string): string[] {
   return stdout
     .split(/\s+/)
-    .filter((item) => item.startsWith("tests/results/") && item.endsWith(".json"));
+    .filter((item) => item.includes("/evidence/artifacts/") && item.endsWith(".json"));
 }
 
 function extractGateReportPath(stdout: string): string | undefined {
   return stdout
     .split(/\s+/)
-    .find((item) => item.startsWith("tests/results/") && item.endsWith(".gate-report.json"));
+    .find((item) => item.includes("/evidence/gates/") && item.endsWith(".json"));
 }
 
 function commandForScope(
@@ -103,7 +103,9 @@ function commandForScope(
 }
 
 async function writeSessionArtifact(session: RunSession, repoRoot: string): Promise<void> {
-  const outputPath = path.join(repoRoot, "tests", "results", `${session.specId}.${session.runId}.session.json`);
+  const [requirementSelector, specSelector] = session.specId.split("/");
+  if (!requirementSelector || !specSelector) throw new Error(`Invalid GoalSpec child selector: ${session.specId}`);
+  const outputPath = path.join(repoRoot, ".requirements", "requirements", requirementSelector, "specs", specSelector, "evidence", "runs", `${session.runId}.session.json`);
   await mkdir(path.dirname(outputPath), { recursive: true });
   await writeFile(outputPath, `${JSON.stringify(session, null, 2)}\n`, "utf8");
 }
@@ -114,7 +116,7 @@ export async function triggerTestRunAction(formData: FormData, deps?: TriggerDep
   const runScope = normalizeRunScope(String(formData.get("runScope") ?? "all"));
 
   const plans = await getAllTestPlans();
-  const plan = plans.find((item) => item.specId === specId);
+  const plan = plans.find((item) => item.selector === specId);
 
   if (!plan) {
     throw new Error(`Unknown specId: ${specId}`);

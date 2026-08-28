@@ -4,19 +4,12 @@ Repository validation commands such as `xcli check`-style gates belong here.
 
 ## Spec Test Gates
 
-Use `spec-test-gates.mjs` after building the CLI to validate normalized test evidence for one spec or every `tests/plans/*.test-plan.json` file.
+Use `spec-test-gates.mjs` to validate normalized test evidence for one canonical child selector.
 
 ```bash
 npm run build
-node scripts/checks/spec-test-gates.mjs reward-order
-node scripts/checks/spec-test-gates.mjs reward-order --change reward-order-create
-node scripts/checks/spec-test-gates.mjs
-```
-
-The script delegates to:
-
-```bash
-node packages/cli/dist/main.js validate-test-gates <specId> [--change <changeId>]
+node scripts/checks/spec-test-gates.mjs R002-goalspec-console/S01-evidence-console
+node scripts/checks/spec-test-gates.mjs R002-goalspec-console/S01-evidence-console --change evidence-console
 ```
 
 It exits non-zero when required normalized evidence is missing, failed, or mismatched. Missing evidence is a release blocker, not a pass.

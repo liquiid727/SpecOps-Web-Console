@@ -1,0 +1,17 @@
+{
+  "specId": "S01-evidence-console",
+  "specVersion": "2.0.0",
+  "standardVersion": "specos-test-standard",
+  "changeId": "evidence-console",
+  "featureName": "GoalSpec Evidence Console",
+  "source": "accepted-spec",
+  "riskTier": "P0",
+  "qualityProfile": "fullstack-flow",
+  "flows": [{"name":"Evidence control flow","stages":[{"name":"Select child spec","scenarioNames":["Load selected child spec"],"stepNames":["Select child spec","Read evidence","Evaluate gate"]}]}],
+  "endpoints": [{"name":"Evidence index","method":"GET","path":"/.requirements/requirements/R002-goalspec-console/specs/S01-evidence-console/evidence/index.yaml","priority":"P0","branches":["happy","error"],"preconditions":[],"expectedResults":["canonical evidence index"],"relatedRule":"goalspec.evidence.index"}],
+  "scenarios": [{"name":"Load selected child spec","priority":"P0","branches":["happy","error"],"preconditions":["valid R/S selector"],"expectedResults":["only selected package is read"],"steps":["Select child spec","Read evidence","Evaluate gate"]}],
+  "performanceTargets": [],
+  "concurrencyInvariants": [],
+  "standardRequirements": [{"id":"std.p0.scenario.e2e","layer":"scenario","requiredFor":["P0"],"ownerAgent":"playwright-test-agent","gateImpact":"blocking","appliesTo":["Load selected child spec"],"requiredEvidence":["trace"]}],
+  "releaseGates": [{"id":"release-p0","type":"release","requiredTestTypes":["api","scenario"],"blocking":true,"evidenceRequired":["trace"]}]
+}

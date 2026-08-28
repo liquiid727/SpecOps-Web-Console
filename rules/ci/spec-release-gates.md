@@ -7,12 +7,12 @@ Define release checks that ensure generated artifacts still match feature-spec d
 ## Required Practices
 
 - CI should verify feature specs, generated contracts, tests, and evidence outputs stay aligned.
-- Release validation should respect `projectMode`; `EnterpriseSpec` requires explicit release, review, and categorized test evidence, `GoalSpec` requires a passing `/review-it` and `/ship-it` gate traceable to an issue, while `LiteSpec` may keep more evidence close to the feature slice.
+- Release validation uses the GoalSpec evidence contract. Every affected Spec Package must have review, normalized test, and acceptance evidence.
 - Failing scenario tests must block release for affected flows.
 - Reviewers should see which `spec_id` and spec revision a release references.
-- Human approval is required before irreversible workflow steps in V1.
+- Human approval is required before irreversible workflow steps.
 - Production test plans must satisfy `rules/testing/production-test-standards.md`.
-- P0/P1 blocking evidence must be normalized under `tests/results/` before merge readiness.
+- P0/P1 blocking evidence must be normalized and referenced from the owning GoalSpec Spec Package `evidence/` directory before merge readiness.
 
 ## Gate Levels
 
@@ -25,7 +25,7 @@ Define release checks that ensure generated artifacts still match feature-spec d
 ### Change Verification Gate
 
 - Run or validate API P0 evidence, scenario P0 evidence, and affected UI state evidence.
-- Run `node packages/cli/dist/main.js validate-test-gates <specId>`.
+- Run `node scripts/checks/spec-test-gates.mjs <specId>`.
 - Block on P0/P1 API/scenario failure, missing normalized result, missing trace/raw-report evidence, spec version mismatch, or unclassified flaky P0 evidence.
 
 ### Release Gate
@@ -33,7 +33,7 @@ Define release checks that ensure generated artifacts still match feature-spec d
 - Run the full API and business E2E suite.
 - Run performance and latency checks for P0/P1 paths.
 - Run concurrency checks for changed invariants and consistency rules.
-- When `projectMode: enterprisespec`, also require release-facing evidence under categorized `tests/`, `reviews/`, and rollout/rollback surfaces before approval.
+- Require release-facing evidence under the affected Spec Package's `evidence/` and `review.md` before approval.
 - Block on P0/P1 SLO failure, concurrency invariant failure, migration failure, security failure, compatibility failure, invalid evidence quality, or missing human approval.
 
 ### Promote Gate

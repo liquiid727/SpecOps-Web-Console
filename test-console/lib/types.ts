@@ -161,7 +161,7 @@ export type TestRun = {
   runId: string;
   specId: string;
   specVersion: string;
-  standardVersion?: "specos-test-standard/v1";
+  standardVersion?: "specos-test-standard";
   qualityProfile?: QualityProfile;
   changeId?: string;
   featureName: string;
@@ -220,7 +220,10 @@ export type RunSession = {
 };
 
 export type TestPlan = {
-  standardVersion?: "specos-test-standard/v1";
+  requirementId?: string;
+  requirementDir?: string;
+  selector?: string;
+  standardVersion?: "specos-test-standard";
   qualityProfile?: QualityProfile;
   riskTier?: "P0" | "P1" | "P2";
   specId: string;

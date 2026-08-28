@@ -44,7 +44,7 @@ export default async function TestPlanPage({
         </div>
       </SectionCard>
 
-      <SectionCard title="Production Standard Compliance" description="按 specos-test-standard/v1 展示风险等级、owner agent、证据要求和当前状态。">
+      <SectionCard title="Production Standard Compliance" description="按 specos-test-standard 展示风险等级、owner agent、证据要求和当前状态。">
         <div className="space-y-3">
           {(plan.standardRequirements ?? []).map((requirement) => {
             const matches = readiness.standardCompliance.filter((item) => item.requirementId === requirement.id);

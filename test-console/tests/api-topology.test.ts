@@ -2,7 +2,7 @@ import { buildApiTopologyTree, buildBusinessFlowMapFromPlan, buildScenarioChains
 
 describe("api topology tree", () => {
   it("builds stage -> scenario -> endpoint tree", async () => {
-    const { plan, latestRun } = await getSpecBundle("reward-order");
+    const { plan, latestRun } = await getSpecBundle("R002-goalspec-console/S01-evidence-console");
     const chains = buildScenarioChains(plan, latestRun!);
     const businessFlow = buildBusinessFlowMapFromPlan(plan, chains, latestRun!);
     const topology = buildApiTopologyTree(plan, latestRun!, businessFlow);

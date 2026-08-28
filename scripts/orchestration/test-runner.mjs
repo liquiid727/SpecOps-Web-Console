@@ -3,6 +3,24 @@ import path from "node:path";
 
 const rootDir = path.resolve(process.cwd());
 
+function resolveSelector(selector) {
+  const match = /^(R\d{3}-[a-z0-9-]+)\/(S\d{2}-[a-z0-9-]+)$/i.exec(selector);
+  if (!match) throw new Error(`Usage: ... <R###-slug/S##-slug> ...`);
+  const requirementDir = path.join(rootDir, ".requirements", "requirements", match[1]);
+  const specDir = path.join(requirementDir, "specs", match[2]);
+  return {
+    requirementId: match[1].slice(0, 4).toUpperCase(),
+    requirementDir: match[1],
+    specId: match[2],
+    specDir,
+    plansDir: path.join(specDir, "evidence", "plans"),
+    runsDir: path.join(specDir, "evidence", "artifacts"),
+    schedulesDir: path.join(specDir, "evidence", "schedules"),
+    indexPath: path.join(specDir, "evidence", "index.yaml"),
+    gatesDir: path.join(specDir, "evidence", "gates"),
+  };
+}
+
 async function loadJson(filePath) {
   const raw = await readFile(filePath, "utf8");
   return JSON.parse(raw);
@@ -161,13 +179,13 @@ function buildFlowResults(plan, items) {
   }));
 }
 
-function toResult(plan, runScope) {
+function toResult(plan, runScope, paths) {
   const runId = `run-${new Date().toISOString().replace(/[:.]/g, "-")}`;
   const isReadyRun = runScope === "ready";
   const apiItems = plan.endpoints.map((endpoint, index) => ({
     ...productionFields("api", isReadyRun || index !== 0, endpoint.priority === "P0" ? "blocking" : "warning"),
     runId,
-    specId: plan.specId,
+    specId: `${paths.requirementDir}/${paths.specId}`,
     specVersion: plan.specVersion,
     changeId: plan.changeId,
     testType: "api",
@@ -184,7 +202,7 @@ function toResult(plan, runScope) {
         : "happy/error/edge 全部通过",
     artifactRefs: [
       { type: "trace", path: `trace-api-${index + 1}` },
-      { type: "raw-report", path: `tests/results/${plan.specId}.${runId}.json` },
+      { type: "raw-report", path: path.relative(rootDir, path.join(paths.runsDir, `${plan.specId}.${runId}.json`)) },
     ],
     endpoint: {
       name: endpoint.name,
@@ -232,7 +250,7 @@ function toResult(plan, runScope) {
         : "页面提示文案正确，但错误码映射断言失败",
     artifactRefs: [
       { type: "trace", path: `trace-scenario-${index + 1}` },
-      { type: "raw-report", path: `tests/results/${plan.specId}.${runId}.json` },
+      { type: "raw-report", path: path.relative(rootDir, path.join(paths.runsDir, `${plan.specId}.${runId}.json`)) },
     ],
     evidence: {
       traceId: `trace-scenario-${index + 1}`,
@@ -261,7 +279,7 @@ function toResult(plan, runScope) {
     },
     artifactRefs: [
       { type: "trace", path: `trace-performance-${index + 1}` },
-      { type: "raw-report", path: `tests/results/${plan.specId}.${runId}.json` },
+      { type: "raw-report", path: path.relative(rootDir, path.join(paths.runsDir, `${plan.specId}.${runId}.json`)) },
     ],
   }));
 
@@ -285,7 +303,7 @@ function toResult(plan, runScope) {
     },
     artifactRefs: [
       { type: "trace", path: `trace-concurrency-${index + 1}` },
-      { type: "raw-report", path: `tests/results/${plan.specId}.${runId}.json` },
+      { type: "raw-report", path: path.relative(rootDir, path.join(paths.runsDir, `${plan.specId}.${runId}.json`)) },
     ],
   }));
 
@@ -315,7 +333,7 @@ function toResult(plan, runScope) {
     },
     environment: {
       id: "local-sample",
-      fixtureVersion: `${plan.specId}-fixture-v1`,
+      fixtureVersion: `${paths.specId}-fixture`,
       externalDependencyMode: "stubbed",
     },
     status: items.some((item) => item.status === "fail")
@@ -354,19 +372,51 @@ async function main() {
     throw new Error("Usage: node scripts/orchestration/test-runner.mjs <specId> [specVersion] [api|scenario|performance|concurrency|all|ready]");
   }
 
-  const planPath = path.join(rootDir, "tests", "plans", `${specId}.test-plan.json`);
+  const paths = resolveSelector(specId);
+  const planPath = path.join(paths.plansDir, `${paths.specId}.test-plan.json`);
   const plan = await loadJson(planPath);
 
   if (specVersion !== "latest" && plan.specVersion !== specVersion) {
     throw new Error(`Spec version mismatch: requested ${specVersion}, found ${plan.specVersion}`);
   }
 
-  const result = toResult(plan, runScope);
-  const outputDir = path.join(rootDir, "tests", "results");
+  const result = toResult(plan, runScope, paths);
+  await mkdir(paths.schedulesDir, { recursive: true });
+  const schedulePath = path.join(paths.schedulesDir, `${paths.specId}.${result.runId}.schedule.json`);
+  await writeFile(schedulePath, `${JSON.stringify({
+    selector: specId,
+    specVersion: plan.specVersion,
+    scope: runScope,
+    runId: result.runId,
+    scheduledAt: result.startedAt,
+  }, null, 2)}\n`, "utf8");
+  const outputDir = paths.runsDir;
   await mkdir(outputDir, { recursive: true });
   const outputPath = path.join(outputDir, `${specId}.${result.runId}.json`);
   await writeFile(outputPath, `${JSON.stringify(result, null, 2)}\n`, "utf8");
+  await updateEvidenceIndex(paths, outputPath, result.runId, schedulePath);
   console.log(outputPath);
+}
+
+async function updateEvidenceIndex(paths, outputPath, runId, schedulePath) {
+  let index;
+  try {
+    index = await loadJson(paths.indexPath);
+  } catch {
+    const raw = await readFile(paths.indexPath, "utf8");
+    index = Object.fromEntries(raw.split("\n").filter((line) => line.includes(":")).map((line) => {
+      const [key, ...value] = line.split(":");
+      return [key.trim(), value.join(":").trim()];
+    }));
+  }
+  index.standardVersion = "specos-test-standard";
+  index.runs = Array.isArray(index.runs) ? index.runs : [];
+  index.schedules = Array.isArray(index.schedules) ? index.schedules : [];
+  const relative = path.relative(rootDir, outputPath);
+  if (!index.runs.some((entry) => (entry.id ?? entry) === runId)) index.runs.push({ id: runId, path: relative });
+  const scheduleRelative = path.relative(rootDir, schedulePath);
+  if (!index.schedules.some((entry) => (entry.id ?? entry) === runId)) index.schedules.push({ id: runId, path: scheduleRelative });
+  await writeFile(paths.indexPath, `${Object.entries(index).map(([key, value]) => `${key}: ${Array.isArray(value) ? JSON.stringify(value) : value}`).join("\n")}\n`, "utf8");
 }
 
 main().catch((error) => {

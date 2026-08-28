@@ -21,8 +21,8 @@ describe("triggerTestRunAction", () => {
     const runRunnerMock = vi.fn().mockResolvedValue({ exitCode: 0, stdout: "ok", stderr: "" });
     const writeSessionMock = vi.fn().mockResolvedValue(undefined);
     const formData = new FormData();
-    formData.set("specId", "reward-order");
-    formData.set("specVersion", "1.2.0");
+    formData.set("specId", "R002-goalspec-console/S01-evidence-console");
+    formData.set("specVersion", "2.0.0");
     formData.set("runScope", "scenario");
 
     await triggerTestRunAction(formData, {
@@ -35,28 +35,28 @@ describe("triggerTestRunAction", () => {
 
     expect(runRunnerMock).toHaveBeenCalledWith(
       "node",
-      expect.arrayContaining(["reward-order", "1.2.0", "scenario"]),
+      expect.arrayContaining(["R002-goalspec-console/S01-evidence-console", "2.0.0", "scenario"]),
       expect.any(String),
     );
     expect(writeSessionMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        specId: "reward-order",
+        specId: "R002-goalspec-console/S01-evidence-console",
         scope: "scenario",
         status: "pass",
       }),
       expect.any(String),
     );
     expect(revalidatePathMock).toHaveBeenCalledWith("/");
-    expect(revalidatePathMock).toHaveBeenCalledWith("/spec/reward-order");
-    expect(redirectMock).toHaveBeenCalledWith("/spec/reward-order");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/spec/R002-goalspec-console/S01-evidence-console");
+    expect(redirectMock).toHaveBeenCalledWith("/spec/R002-goalspec-console/S01-evidence-console");
   });
 
   it("runs all developer test scopes in fixed order and records a session", async () => {
     const runRunnerMock = vi.fn().mockResolvedValue({ exitCode: 0, stdout: "ok", stderr: "" });
     const writeSessionMock = vi.fn().mockResolvedValue(undefined);
     const formData = new FormData();
-    formData.set("specId", "reward-order");
-    formData.set("specVersion", "1.2.0");
+    formData.set("specId", "R002-goalspec-console/S01-evidence-console");
+    formData.set("specVersion", "2.0.0");
     formData.set("runScope", "all");
 
     await triggerTestRunAction(formData, {
@@ -73,7 +73,7 @@ describe("triggerTestRunAction", () => {
       "scenario",
       "performance",
       "concurrency",
-      "reward-order-ready",
+      "evidence-console",
     ]);
     expect(writeSessionMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -94,8 +94,8 @@ describe("triggerTestRunAction", () => {
       .mockResolvedValueOnce({ exitCode: 1, stdout: "", stderr: "p95 exceeded" });
     const writeSessionMock = vi.fn().mockResolvedValue(undefined);
     const formData = new FormData();
-    formData.set("specId", "reward-order");
-    formData.set("specVersion", "1.2.0");
+    formData.set("specId", "R002-goalspec-console/S01-evidence-console");
+    formData.set("specVersion", "2.0.0");
     formData.set("runScope", "performance");
 
     await triggerTestRunAction(formData, {
@@ -114,6 +114,6 @@ describe("triggerTestRunAction", () => {
       }),
       expect.any(String),
     );
-    expect(redirectMock).toHaveBeenCalledWith("/spec/reward-order");
+    expect(redirectMock).toHaveBeenCalledWith("/spec/R002-goalspec-console/S01-evidence-console");
   });
 });

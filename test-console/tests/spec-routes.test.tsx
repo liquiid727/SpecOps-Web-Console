@@ -8,7 +8,7 @@ import ConcurrencyPage from "@/app/spec/[specId]/concurrency/page";
 import GatesPage from "@/app/spec/[specId]/gates/page";
 import SpecPage from "@/app/spec/[specId]/page";
 
-const params = Promise.resolve({ specId: "reward-order" });
+const params = Promise.resolve({ specId: "R002-goalspec-console/S01-evidence-console" });
 
 describe("spec test console routes", () => {
   it("renders the developer test loop homepage", async () => {
@@ -20,19 +20,17 @@ describe("spec test console routes", () => {
     expect(screen.getByText("Run Session Timeline")).toBeInTheDocument();
     expect(screen.getByText("Session State")).toBeInTheDocument();
     expect(screen.getByText("stale")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Test Plan" })).toHaveAttribute("href", "/spec/reward-order/plan");
-    expect(screen.getByRole("link", { name: "API Tests" })).toHaveAttribute("href", "/spec/reward-order/api");
-    expect(screen.getByRole("link", { name: "Scenario / E2E" })).toHaveAttribute("href", "/spec/reward-order/scenario");
-    expect(screen.getByRole("link", { name: "Performance" })).toHaveAttribute("href", "/spec/reward-order/performance");
-    expect(screen.getByRole("link", { name: "Concurrency" })).toHaveAttribute("href", "/spec/reward-order/concurrency");
-    expect(screen.getByRole("link", { name: "Gate Report" })).toHaveAttribute("href", "/spec/reward-order/gates");
+    expect(screen.getByRole("link", { name: "Test Plan" })).toHaveAttribute("href", "/spec/R002-goalspec-console/S01-evidence-console/plan");
+    expect(screen.getByRole("link", { name: "API Tests" })).toHaveAttribute("href", "/spec/R002-goalspec-console/S01-evidence-console/api");
+    expect(screen.getByRole("link", { name: "Scenario / E2E" })).toHaveAttribute("href", "/spec/R002-goalspec-console/S01-evidence-console/scenario");
+    expect(screen.getByRole("link", { name: "Performance" })).toHaveAttribute("href", "/spec/R002-goalspec-console/S01-evidence-console/performance");
+    expect(screen.getByRole("link", { name: "Concurrency" })).toHaveAttribute("href", "/spec/R002-goalspec-console/S01-evidence-console/concurrency");
+    expect(screen.getByRole("link", { name: "Gate Report" })).toHaveAttribute("href", "/spec/R002-goalspec-console/S01-evidence-console/gates");
     expect(screen.getByRole("option", { name: "All scopes" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Performance" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Concurrency" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Gate" })).toBeInTheDocument();
-    expect(screen.getByText("session-2026-05-27T00-05-00-000Z-stale")).toBeInTheDocument();
-    expect(screen.getByText("session-2026-05-27T00-03-00-000Z-failed")).toBeInTheDocument();
-    expect(screen.getByText("session-2026-05-27T00-00-00-000Z-partial")).toBeInTheDocument();
+    expect(screen.getByText("GoalSpec Evidence Console")).toBeInTheDocument();
   });
 
   it("renders the dedicated test plan route", async () => {
@@ -49,7 +47,7 @@ describe("spec test console routes", () => {
     render(page);
     expect(screen.getByText("API Test View")).toBeInTheDocument();
     expect(screen.getByText("Swagger-like endpoint visibility with SpecOS test semantics.")).toBeInTheDocument();
-    expect(screen.getAllByText(/owasp-api-top-10-2023/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/goalspec\.evidence\.index/).length).toBeGreaterThan(0);
   });
 
   it("renders the dedicated scenario route", async () => {

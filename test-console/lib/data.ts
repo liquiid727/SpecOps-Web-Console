@@ -14,8 +14,45 @@ import type {
 } from "@/lib/types";
 
 const repoRoot = path.resolve(process.cwd(), "..");
-const plansDir = path.join(repoRoot, "tests", "plans");
-const resultsDir = path.join(repoRoot, "tests", "results");
+const requirementsDir = process.env.NODE_ENV === "test"
+  ? path.join(process.cwd(), "tests", "fixtures", "requirements")
+  : path.join(repoRoot, ".requirements", "requirements");
+
+type EvidencePaths = {
+  requirementId: string;
+  specId: string;
+  root: string;
+  plans: string;
+  schedules: string;
+  runs: string;
+  gates: string;
+  artifacts: string;
+};
+
+function splitSpecSelector(selector: string): { requirementId: string; requirementDir: string; specId: string } {
+  const match = /^(R\d{3}-[a-z0-9-]+)\/(S\d{2}-[a-z0-9-]+)$/i.exec(selector.trim());
+  if (!match) throw new Error(`Invalid GoalSpec child selector: ${selector}`);
+  const requirementDir = match[1];
+  return { requirementId: requirementDir.slice(0, 4).toUpperCase(), requirementDir, specId: match[2] };
+}
+
+export function getEvidencePaths(selector: string): EvidencePaths {
+  const { requirementId, requirementDir: requirementName, specId } = splitSpecSelector(selector);
+  const requirementDir = path.join(requirementsDir, requirementName);
+  const specDir = path.join(requirementDir, "specs", specId);
+  const root = path.join(specDir, "evidence");
+  const relative = (value: string) => path.relative(repoRoot, value);
+  return {
+    requirementId,
+    specId,
+    root: relative(root),
+    plans: relative(path.join(root, "plans")),
+    schedules: relative(path.join(root, "schedules")),
+    runs: relative(path.join(root, "runs")),
+    gates: relative(path.join(root, "gates")),
+    artifacts: relative(path.join(root, "artifacts")),
+  };
+}
 
 async function readJsonFile<T>(filePath: string): Promise<T> {
   const raw = await fs.readFile(filePath, "utf8");
@@ -33,29 +70,47 @@ async function readJsonDirectory<T>(dirPath: string): Promise<T[]> {
 }
 
 export async function getAllTestPlans(): Promise<TestPlan[]> {
-  return readJsonDirectory<TestPlan>(plansDir);
+  const plans: TestPlan[] = [];
+  const requirementEntries = await fs.readdir(requirementsDir, { withFileTypes: true });
+  for (const requirement of requirementEntries.filter((entry) => entry.isDirectory() && /^R\d{3}-/.test(entry.name))) {
+    const specsDir = path.join(requirementsDir, requirement.name, "specs");
+    let specEntries;
+    try { specEntries = await fs.readdir(specsDir, { withFileTypes: true }); } catch { continue; }
+    for (const spec of specEntries.filter((entry) => entry.isDirectory() && /^S\d{2}-/.test(entry.name))) {
+      const dir = path.join(specsDir, spec.name, "evidence", "plans");
+      try {
+        plans.push(...(await readJsonDirectory<TestPlan>(dir)).map((plan) => ({
+          ...plan,
+          requirementId: requirement.name.slice(0, 4),
+          requirementDir: requirement.name,
+          selector: `${requirement.name}/${spec.name}`,
+          specId: `${requirement.name}/${spec.name}`,
+        })));
+      } catch { /* package has no generated plan yet */ }
+    }
+  }
+  return plans;
 }
 
 export async function getAllTestRuns(): Promise<TestRun[]> {
-  const entries = await fs.readdir(resultsDir, { withFileTypes: true });
-  const jsonFiles = entries
-    .filter((entry) =>
-      entry.isFile() &&
-      entry.name.endsWith(".json") &&
-      !entry.name.endsWith(".gate-report.json") &&
-      !entry.name.endsWith(".session.json"),
-    )
-    .map((entry) => path.join(resultsDir, entry.name));
-  const runs = await Promise.all(jsonFiles.map((filePath) => readJsonFile<TestRun>(filePath)));
+  const runs: TestRun[] = [];
+  for (const plan of await getAllTestPlans()) {
+    const specName = plan.selector?.split("/").at(-1);
+    if (!specName) continue;
+    const dir = path.join(requirementsDir, plan.requirementDir ?? "", "specs", specName, "evidence", "artifacts");
+    try { runs.push(...(await readJsonDirectory<TestRun>(dir)).filter((run) => run.items)); } catch { /* no evidence yet */ }
+  }
   return runs.sort((left, right) => right.endedAt.localeCompare(left.endedAt));
 }
 
 export async function getAllRunSessions(): Promise<RunSession[]> {
-  const entries = await fs.readdir(resultsDir, { withFileTypes: true });
-  const sessionFiles = entries
-    .filter((entry) => entry.isFile() && entry.name.endsWith(".session.json"))
-    .map((entry) => path.join(resultsDir, entry.name));
-  const sessions = await Promise.all(sessionFiles.map((filePath) => readJsonFile<RunSession>(filePath)));
+  const sessions: RunSession[] = [];
+  for (const plan of await getAllTestPlans()) {
+    const specName = plan.selector?.split("/").at(-1);
+    if (!specName) continue;
+    const dir = path.join(requirementsDir, plan.requirementDir ?? "", "specs", specName, "evidence", "runs");
+    try { sessions.push(...await readJsonDirectory<RunSession>(dir)); } catch { /* no sessions yet */ }
+  }
   return sessions.sort((left, right) => right.endedAt.localeCompare(left.endedAt));
 }
 
@@ -77,18 +132,20 @@ export async function getRunById(runId: string): Promise<TestRun | undefined> {
   return runs.find((run) => run.runId === runId);
 }
 
-export async function getSpecBundle(specId: string): Promise<{
+export async function getSpecBundle(selector: string): Promise<{
   plan?: TestPlan;
   latestRun?: TestRun;
   allRuns: TestRun[];
   allSessions: RunSession[];
 }> {
+  const parsed = splitSpecSelector(selector);
+  const canonical = `${parsed.requirementDir}/${parsed.specId}`;
   const [plans, runs, sessions] = await Promise.all([getAllTestPlans(), getAllTestRuns(), getAllRunSessions()]);
   return {
-    plan: plans.find((item) => item.specId === specId),
-    latestRun: runs.find((item) => item.specId === specId),
-    allRuns: runs.filter((item) => item.specId === specId),
-    allSessions: sessions.filter((item) => item.specId === specId),
+    plan: plans.find((item) => item.selector === canonical),
+    latestRun: runs.find((item) => item.specId === canonical),
+    allRuns: runs.filter((item) => item.specId === canonical),
+    allSessions: sessions.filter((item) => item.specId === canonical),
   };
 }
 
