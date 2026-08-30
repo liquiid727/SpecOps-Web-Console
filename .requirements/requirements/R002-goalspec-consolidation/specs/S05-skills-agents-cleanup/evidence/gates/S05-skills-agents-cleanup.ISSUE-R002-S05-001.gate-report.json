@@ -2,10 +2,8 @@
   "schemaVersion": "specos-test-standard",
   "selector": "R002-goalspec-consolidation/S05-skills-agents-cleanup",
   "changeId": "ISSUE-R002-S05-001",
-  "status": "blocked",
-  "checkedAt": "2026-08-30T15:36:36.686Z",
+  "status": "ready",
+  "checkedAt": "2026-08-30T16:18:19.100Z",
   "plan": ".requirements/requirements/R002-goalspec-consolidation/specs/S05-skills-agents-cleanup/evidence/plans/S05-skills-agents-cleanup.test-plan.json",
-  "issues": [
-    "latest normalized result is not release-ready"
-  ]
+  "issues": []
 }

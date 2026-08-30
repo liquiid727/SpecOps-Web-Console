@@ -1,0 +1,68 @@
+{
+  "runId": "S05-skills-agents-cleanup.2026-08-30T161738Z",
+  "specId": "SPEC-R002-S05",
+  "specVersion": "1.0.0",
+  "standardVersion": "specos-test-standard",
+  "changeId": "ISSUE-R002-S05-001",
+  "featureName": "Skills, Agents, and Cleanup",
+  "commit": "3885d5b0a2c79ce1b266ca60c587e51c3eaac072",
+  "status": "pass",
+  "releaseDecision": "ready",
+  "startedAt": "2026-08-30T16:17:33Z",
+  "endedAt": "2026-08-30T16:17:38Z",
+  "blockers": [],
+  "highRiskScenarios": [],
+  "coverageGaps": [],
+  "summary": {
+    "apiPassRate": 1,
+    "scenarioPassRate": 1,
+    "totalEndpoints": 0,
+    "totalScenarios": 3
+  },
+  "flowResults": [
+    {
+      "name": "GoalSpec workflow documentation",
+      "status": "pass",
+      "stages": [
+        {
+          "name": "Validate public project guidance",
+          "status": "pass",
+          "scenarios": [
+            {
+              "name": "Repository regression checks pass",
+              "status": "pass",
+              "steps": [
+                {"name": "Run npm test", "status": "pass", "summary": "14 workspace tests passed"},
+                {"name": "Run npm run build", "status": "pass"},
+                {"name": "Run npm --prefix test-console test", "status": "pass", "summary": "21 Test Console tests passed"}
+              ]
+            },
+            {
+              "name": "Removed workflow assets are absent",
+              "status": "pass",
+              "steps": [
+                {"name": "Check README links", "status": "pass"},
+                {"name": "Check removed asset paths", "status": "pass"},
+                {"name": "Scan active workflow paths", "status": "pass"}
+              ]
+            },
+            {
+              "name": "Global and repository skills match",
+              "status": "pass",
+              "steps": [
+                {"name": "Compare same-name global skills", "status": "pass", "summary": "All seven comparisons match"}
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "items": [
+    {"runId": "S05-skills-agents-cleanup.2026-08-30T161738Z", "specId": "SPEC-R002-S05", "specVersion": "1.0.0", "testType": "integration", "target": "npm test", "scenarioName": "Repository regression checks pass", "status": "pass", "durationMs": 1000, "summary": "14 workspace tests passed", "gateImpact": "blocking"},
+    {"runId": "S05-skills-agents-cleanup.2026-08-30T161738Z", "specId": "SPEC-R002-S05", "specVersion": "1.0.0", "testType": "integration", "target": "npm run build", "scenarioName": "Repository regression checks pass", "status": "pass", "durationMs": 1000, "summary": "catalog, core, and templates build passed", "gateImpact": "blocking"},
+    {"runId": "S05-skills-agents-cleanup.2026-08-30T161738Z", "specId": "SPEC-R002-S05", "specVersion": "1.0.0", "testType": "integration", "target": "npm --prefix test-console test", "scenarioName": "Repository regression checks pass", "status": "pass", "durationMs": 1000, "summary": "21 Test Console tests passed", "gateImpact": "blocking"},
+    {"runId": "S05-skills-agents-cleanup.2026-08-30T161738Z", "specId": "SPEC-R002-S05", "specVersion": "1.0.0", "testType": "integration", "target": "README links and active workflow scan", "scenarioName": "Removed workflow assets are absent", "status": "pass", "durationMs": 100, "summary": "Links resolve and no active note-it or legacy evidence path remains", "gateImpact": "blocking"},
+    {"runId": "S05-skills-agents-cleanup.2026-08-30T161738Z", "specId": "SPEC-R002-S05", "specVersion": "1.0.0", "testType": "integration", "target": "same-name global skill comparison", "scenarioName": "Global and repository skills match", "status": "pass", "durationMs": 100, "summary": "All seven same-name skills match", "gateImpact": "blocking"}
+  ]
+}

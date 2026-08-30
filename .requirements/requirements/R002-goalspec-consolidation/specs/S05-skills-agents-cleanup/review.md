@@ -5,8 +5,8 @@ source_spec: ./spec.md
 source_spec_version: 1.0.0
 source_spec_hash: 4b48bec2bcf86d651a3db8be4bc96bcde9d1095d1939b714bea2c47644e52565
 version: 1.0.0
-reviewed_revision: fa7715185b6b0d7c67c1d665e65c4be0dd4fb112
-status: open
+reviewed_revision: 3885d5b0a2c79ce1b266ca60c587e51c3eaac072
+status: resolved
 owner: reviewer
 ---
 
@@ -17,35 +17,35 @@ owner: reviewer
 ### REVIEW-R002-S05-001
 
 - Severity: P1
-- Status: open
+- Status: resolved
 - Source: active-tree scan
 - Covers: SPEC-R002-S05-002, SPEC-R002-S05-003, AC-R002-003
 - Owner: qa-agent
-- Evidence: ../evidence/artifacts/S05-skills-agents-cleanup.2026-08-30T153310Z.run.json; `docs/workflow.html:247`
-- Resolution: Remove the active `note-it` reference and rerun the static workflow-residue scan.
+- Evidence: ../evidence/artifacts/S05-skills-agents-cleanup.2026-08-30T161738Z.run.json; `docs/workflow.html:247`
+- Resolution: Removed the active `note-it` reference; the final active workflow-residue scan passed.
 
 ### REVIEW-R002-S05-002
 
 - Severity: P1
-- Status: open
+- Status: resolved
 - Source: active-tree scan
 - Covers: SPEC-R002-S05-003, AC-R002-003
 - Owner: qa-agent
-- Evidence: ../evidence/artifacts/S05-skills-agents-cleanup.2026-08-30T153310Z.run.json; `packages/core/src/artifacts.ts:2852,4183`; `test-console/app/runs/[runId]/page.tsx:41`
-- Resolution: Remove or migrate active `tests/plans` and `tests/results` contracts to child-package evidence paths, then rerun regression tests.
+- Evidence: ../evidence/artifacts/S05-skills-agents-cleanup.2026-08-30T161738Z.run.json; `packages/core/src/artifacts.ts:2852,4183`; `test-console/app/runs/[runId]/page.tsx:41`
+- Resolution: Migrated active generation, validation, UI copy, asset guidance, and ignore rules to child-package evidence paths; final regression tests and residue scan passed.
 
 ### REVIEW-R002-S05-003
 
 - Severity: P1
-- Status: open
+- Status: resolved
 - Source: global parity comparison
 - Covers: SPEC-R002-S05-004, AC-R002-005
 - Owner: qa-agent
-- Evidence: ../evidence/artifacts/S05-skills-agents-cleanup.2026-08-30T153310Z.run.json
-- Resolution: Align the six differing same-name user-global skills with the repository GoalSpec skills, with explicit approval for any global-file changes.
+- Evidence: ../evidence/artifacts/S05-skills-agents-cleanup.2026-08-30T161738Z.run.json
+- Resolution: Synchronized `prd`, `prd-to-spec`, `spec-to-test`, `to-issues`, `loop-it`, and `review-it`; all seven same-name comparisons now pass.
 
 ## Review Gate
 
-- [ ] No blocking finding remains open.
-- [ ] Every changed path traces to R002.
-- [ ] No compatibility behavior was reintroduced.
+- [x] No blocking finding remains open.
+- [x] Every changed path traces to R002.
+- [x] No compatibility behavior was reintroduced.

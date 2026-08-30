@@ -6,10 +6,10 @@ source_test: ./test.md
 source_review: ./review.md
 source_spec_version: 1.0.0
 source_test_version: 1.0.0
-decision: blocked
+decision: accepted
 qa_owner: qa-agent
-accepted_at:
-promotion: denied
+accepted_at: 2026-08-31
+promotion: allowed
 ---
 
 # QA Acceptance — S05 Skills, Agents, and Cleanup
@@ -19,34 +19,32 @@ promotion: denied
 | Evidence | Covers | Location | Result |
 |---|---|---|---|
 | S05 validation run | TEST-R002-S05-001, TEST-R002-S05-002, TEST-R002-S05-003 | ./evidence/artifacts/S05-skills-agents-cleanup.2026-08-30T153310Z.run.json | partial: regression/build/README links passed; release blocked |
+| S05 final validation run | TEST-R002-S05-001, TEST-R002-S05-002, TEST-R002-S05-003 | ./evidence/artifacts/S05-skills-agents-cleanup.2026-08-30T161738Z.run.json | pass |
 
 ## Acceptance Decision
 
 Decision:
-- blocked
+- accepted
 
 Blocking Gaps:
-- `docs/workflow.html` still contains an active `note-it` reference.
-- Active source still contains legacy `tests/plans` and `tests/results` references.
-- Six of seven same-name user-global skills differ from repository skills.
-- Review findings REVIEW-R002-S05-001 through REVIEW-R002-S05-003 remain open.
+- None
 
 Review Status:
-- blocked by three open P1 findings in `./review.md`.
+- REVIEW-R002-S05-001, REVIEW-R002-S05-002, and REVIEW-R002-S05-003 resolved.
 
 Residual Risk:
-- Contributors and Agent tooling can still discover conflicting legacy workflow terminology or paths.
+- None identified in the final validation scope.
 
 Waiver:
 - None
 
 Promotion Recommendation:
-- denied
+- allowed
 
 ## Spec Package Done Check
 
-- [ ] All required Issues are done.
-- [x] Test exit criteria are supported by normalized evidence, with blocking failures recorded.
-- [ ] Review blockers are resolved or explicitly waived.
+- [x] All required Issues are done.
+- [x] Test exit criteria are supported by normalized evidence.
+- [x] Review blockers are resolved or explicitly waived.
 - [x] No unexplained Spec Deviation remains.
-- [ ] Mapped PRD Acceptance Criteria are verified.
+- [x] Mapped PRD Acceptance Criteria are verified.
