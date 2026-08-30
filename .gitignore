@@ -77,7 +77,6 @@ runs/
 .loop-local-state/
 .model-routing-loop-state.json
 memory/context-db/
-tests/results/*.json
 .requirements/*.json
 .requirements/plans/*.json
 .requirements/schedules/*.json

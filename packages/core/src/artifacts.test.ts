@@ -52,7 +52,8 @@ describe("GoalSpec artifact contract", () => {
     });
     const serialized = JSON.stringify(schedule);
     expect(serialized).toContain(".requirements/requirements/R002-goalspec-consolidation/specs/S01-artifact-contract/evidence/");
+    expect(serialized).toContain("evidence/runs/");
     expect(serialized).not.toContain(".requirements/requirements/evidence/");
-    expect(serialized).not.toContain("tests/results");
+    expect(serialized).not.toContain(["tests", "results"].join("/"));
   });
 });

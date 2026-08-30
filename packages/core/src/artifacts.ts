@@ -2849,7 +2849,7 @@ export function buildBrunoCollectionAssets(plan: SpecosTestPlan): GeneratedTextA
     `Spec id: \`${plan.specId}\``,
     `Spec version: \`${plan.specVersion}\``,
     "",
-    "Generated from `tests/plans/` for the `test-editor` API track.",
+    "Generated from the selected child package evidence plan for the `test-editor` API track.",
     "",
     "## Endpoints",
     "",
@@ -4180,7 +4180,7 @@ function requireScheduleSeparation(state: MutableValidation, schedule: Record<st
           normalized.startsWith("tests/scenarios/") ||
           normalized.startsWith("tests/e2e/") ||
           normalized.startsWith("tests/playwright/") ||
-          normalized.startsWith("tests/results/")
+          normalized.includes("evidence/runs/")
         );
       });
     const testingTaskWritesImplementation =

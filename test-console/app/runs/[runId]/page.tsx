@@ -38,7 +38,7 @@ export default async function RunPage({
 
       {isNewestRun ? (
         <div className="rounded-xl border border-emerald-900/50 bg-emerald-950/30 p-4 text-sm text-emerald-100">
-          这是本次新生成结果，已写入 `tests/results/` 并成为当前最新 run。
+              这是本次新生成结果，已写入选中 Spec Package 的 `evidence/artifacts/` 并成为当前最新 run。
         </div>
       ) : null}
 
