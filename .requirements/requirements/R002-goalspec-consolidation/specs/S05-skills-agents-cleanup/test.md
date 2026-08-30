@@ -5,7 +5,7 @@ test_spec_id: TEST-R002-S05
 source_prd: ../../prd.md
 source_spec: ./spec.md
 source_spec_version: 1.0.0
-source_spec_hash: pending-final-verification
+source_spec_hash: 4b48bec2bcf86d651a3db8be4bc96bcde9d1095d1939b714bea2c47644e52565
 version: 1.0.0
 status: approved
 owner: qa-agent
@@ -20,6 +20,7 @@ owner: qa-agent
 | REQ-R002-006 | SPEC-R002-S05-001 | TEST-R002-S05-001 | Integration | normalized result + command log |
 | REQ-R002-006 | SPEC-R002-S05-002 | TEST-R002-S05-002 | Integration | normalized result + command log |
 | REQ-R002-006 | SPEC-R002-S05-003 | TEST-R002-S05-003 | Integration | normalized result + command log |
+| REQ-R002-006, REQ-R002-007 | SPEC-R002-S05-004 | TEST-R002-S05-003 | Integration | normalized result + command log |
 
 ## TEST-R002-S05-001 — Skill pressure scenarios preserve GoalSpec traceability
 

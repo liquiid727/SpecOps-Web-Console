@@ -1,0 +1,70 @@
+{
+  "runId": "S05-skills-agents-cleanup.2026-08-30T153310Z",
+  "specId": "SPEC-R002-S05",
+  "specVersion": "1.0.0",
+  "standardVersion": "specos-test-standard",
+  "changeId": "ISSUE-R002-S05-001",
+  "featureName": "Skills, Agents, and Cleanup",
+  "commit": "fa7715185b6b0d7c67c1d665e65c4be0dd4fb112",
+  "status": "pass",
+  "releaseDecision": "blocked",
+  "startedAt": "2026-08-30T15:33:10Z",
+  "endedAt": "2026-08-30T15:33:10Z",
+  "blockers": [
+    "docs/workflow.html still contains an active note-it reference",
+    "Active source contains legacy tests/plans or tests/results references",
+    "Six of seven same-name user-global skills differ from repository skills"
+  ],
+  "highRiskScenarios": ["Removed workflow assets are absent", "Global and repository skills match"],
+  "coverageGaps": [],
+  "summary": {
+    "apiPassRate": 1,
+    "scenarioPassRate": 0.3333333333,
+    "totalEndpoints": 0,
+    "totalScenarios": 3
+  },
+  "flowResults": [
+    {
+      "name": "GoalSpec workflow documentation",
+      "status": "blocked",
+      "stages": [
+        {
+          "name": "Validate public project guidance",
+          "status": "blocked",
+          "scenarios": [
+            {
+              "name": "Repository regression checks pass",
+              "status": "pass",
+              "steps": [
+                {"name": "Run npm test", "status": "pass"},
+                {"name": "Run npm run build", "status": "pass"}
+              ]
+            },
+            {
+              "name": "Removed workflow assets are absent",
+              "status": "blocked",
+              "steps": [
+                {"name": "Check README links", "status": "pass"},
+                {"name": "Check removed asset paths", "status": "pass"},
+                {"name": "Scan active workflow paths", "status": "blocked", "summary": "note-it and legacy flat evidence references remain"}
+              ]
+            },
+            {
+              "name": "Global and repository skills match",
+              "status": "blocked",
+              "steps": [
+                {"name": "Compare same-name global skills", "status": "blocked", "summary": "prd, prd-to-spec, spec-to-test, to-issues, loop-it, and review-it differ"}
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "items": [
+    {"runId": "S05-skills-agents-cleanup.2026-08-30T153310Z", "specId": "SPEC-R002-S05", "specVersion": "1.0.0", "testType": "integration", "target": "npm test", "scenarioName": "Repository regression checks pass", "status": "pass", "durationMs": 3000, "summary": "14 workspace tests passed", "gateImpact": "blocking"},
+    {"runId": "S05-skills-agents-cleanup.2026-08-30T153310Z", "specId": "SPEC-R002-S05", "specVersion": "1.0.0", "testType": "integration", "target": "npm run build", "scenarioName": "Repository regression checks pass", "status": "pass", "durationMs": 1000, "summary": "catalog, core, and templates build passed", "gateImpact": "blocking"},
+    {"runId": "S05-skills-agents-cleanup.2026-08-30T153310Z", "specId": "SPEC-R002-S05", "specVersion": "1.0.0", "testType": "integration", "target": "README links and active workflow scan", "scenarioName": "Removed workflow assets are absent", "status": "blocked", "durationMs": 100, "summary": "README links pass; active workflow residue remains", "gateImpact": "blocking"},
+    {"runId": "S05-skills-agents-cleanup.2026-08-30T153310Z", "specId": "SPEC-R002-S05", "specVersion": "1.0.0", "testType": "integration", "target": "same-name global skill comparison", "scenarioName": "Global and repository skills match", "status": "blocked", "durationMs": 100, "summary": "six of seven comparisons differ", "gateImpact": "blocking"}
+  ]
+}

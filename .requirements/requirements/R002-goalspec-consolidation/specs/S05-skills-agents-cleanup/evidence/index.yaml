@@ -1,9 +1,28 @@
 standardVersion: specos-test-standard
 requirement: R002
 spec_package: S05
-updated_at: 2026-08-26
-plans: []
+updated_at: 2026-08-30
+plans:
+  - id: S05-skills-agents-cleanup.test-plan
+    type: test-plan
+    path: ./plans/S05-skills-agents-cleanup.test-plan.json
+    covers: [TEST-R002-S05-001, TEST-R002-S05-002, TEST-R002-S05-003]
 schedules: []
-runs: []
-gates: []
-artifacts: []
+runs:
+  - id: S05-skills-agents-cleanup.2026-08-30T153310Z
+    type: normalized-result
+    path: ./artifacts/S05-skills-agents-cleanup.2026-08-30T153310Z.run.json
+    result: blocked
+    covers: [TEST-R002-S05-001, TEST-R002-S05-002, TEST-R002-S05-003]
+    commit: fa7715185b6b0d7c67c1d665e65c4be0dd4fb112
+gates:
+  - id: S05-skills-agents-cleanup.ISSUE-R002-S05-001
+    type: gate-report
+    path: ./gates/S05-skills-agents-cleanup.ISSUE-R002-S05-001.gate-report.json
+    result: blocked
+    covers: [TEST-R002-S05-001, TEST-R002-S05-002, TEST-R002-S05-003]
+artifacts:
+  - id: S05-skills-agents-cleanup.2026-08-30T153310Z
+    type: normalized-result
+    path: ./artifacts/S05-skills-agents-cleanup.2026-08-30T153310Z.run.json
+    result: blocked

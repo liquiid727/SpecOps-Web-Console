@@ -1,0 +1,80 @@
+{
+  "specId": "SPEC-R002-S05",
+  "specVersion": "1.0.0",
+  "standardVersion": "specos-test-standard",
+  "changeId": "ISSUE-R002-S05-001",
+  "featureName": "Skills, Agents, and Cleanup",
+  "source": "approved-spec",
+  "riskTier": "P0",
+  "qualityProfile": "agent-workflow",
+  "flows": [
+    {
+      "name": "GoalSpec workflow documentation",
+      "stages": [
+        {
+          "name": "Validate public project guidance",
+          "scenarioNames": [
+            "Repository regression checks pass",
+            "Removed workflow assets are absent",
+            "Global and repository skills match"
+          ],
+          "stepNames": [
+            "Run npm test",
+            "Run npm run build",
+            "Check README links and workflow residue",
+            "Compare same-name global skills"
+          ]
+        }
+      ]
+    }
+  ],
+  "endpoints": [],
+  "scenarios": [
+    {
+      "name": "Repository regression checks pass",
+      "priority": "P0",
+      "branches": ["happy", "error"],
+      "preconditions": ["Dependencies are installed"],
+      "expectedResults": ["Workspace tests and build complete successfully"],
+      "steps": ["Run npm test", "Run npm run build"]
+    },
+    {
+      "name": "Removed workflow assets are absent",
+      "priority": "P0",
+      "branches": ["happy", "error"],
+      "preconditions": ["Repository is checked out at the reviewed revision"],
+      "expectedResults": ["Removed active assets are absent and README links resolve"],
+      "steps": ["Check README links", "Scan active workflow paths"]
+    },
+    {
+      "name": "Global and repository skills match",
+      "priority": "P0",
+      "branches": ["happy", "error"],
+      "preconditions": ["Same-name skills exist in both locations"],
+      "expectedResults": ["Each same-name skill has identical content"],
+      "steps": ["Compare same-name global skills"]
+    }
+  ],
+  "performanceTargets": [],
+  "concurrencyInvariants": [],
+  "standardRequirements": [
+    {
+      "id": "std.p0.workflow",
+      "layer": "integration",
+      "requiredFor": ["P0"],
+      "ownerAgent": "qa-agent",
+      "gateImpact": "blocking",
+      "appliesTo": ["Repository regression checks pass", "Removed workflow assets are absent", "Global and repository skills match"],
+      "requiredEvidence": ["normalized-result", "command-log"]
+    }
+  ],
+  "releaseGates": [
+    {
+      "id": "release-p0",
+      "type": "release",
+      "requiredTestTypes": ["integration"],
+      "blocking": true,
+      "evidenceRequired": ["normalized-result", "command-log"]
+    }
+  ]
+}

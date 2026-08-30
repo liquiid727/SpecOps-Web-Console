@@ -6,7 +6,7 @@ kind: implementation
 track: implementation
 primary_spec: SPEC-R002-S05-001
 source_spec_version: 1.0.0
-source_spec_hash: pending-final-verification
+source_spec_hash: 4b48bec2bcf86d651a3db8be4bc96bcde9d1095d1939b714bea2c47644e52565
 status: in-progress
 priority: P0
 owner: qa-agent
@@ -53,13 +53,13 @@ Deliver the skills, agents, and cleanup portion of the GoalSpec consolidation.
 ## Completion Record
 
 Status: in-progress
-Implemented By:
+Implemented By: liquiid
 Completed At:
-PR / Commit:
-Changed Files:
-Tests Executed:
-Evidence References:
-Design Decisions:
-Tradeoffs:
+PR / Commit: 0909d672, fa771518
+Changed Files: readme.md; prior S05 implementation files remain in 8588ace4
+Tests Executed: npm test; npm run build; README link check; active workflow residue scan; global skill parity comparison
+Evidence References: ../evidence/artifacts/S05-skills-agents-cleanup.2026-08-30T153310Z.run.json
+Design Decisions: Split repository guidance into project delivery model and contributor entrypoint commits; preserve the GoalSpec package as the source of truth.
+Tradeoffs: Documentation commits are locally complete, but the full S05 package remains blocked by active legacy references and global skill drift.
 Spec Deviation: None
-Open Questions: None
+Open Questions: QA follow-up must remove active note-it/flat-evidence references and resolve user-global skill parity before promotion.
