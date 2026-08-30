@@ -73,16 +73,17 @@ SpecOS 仍处于原型演进阶段。当前仓库已提供 GoalSpec 规范与模
 - 通过 `rules/`、`skills/`、`ai/agents/` 和 `assets/` 组合项目的 AI 协作基线。
 - 由 `spec-web-ui` 处理资产配置，由目标项目仓库持有需求生命周期的规范化真相。
 
-## Quick Start
+## 快速开始
 
-### 1. Install and build
+根工作区使用 npm workspaces。安装依赖、构建共享包并运行工作区测试：
 
 ```bash
-npm install
-npm run build
+make install
+make build
+make test
 ```
 
-### 2. Run the web workspace
+启动配置资产工作台：
 
 ```bash
 cd spec-web-ui
@@ -90,44 +91,43 @@ npm install
 npm run dev
 ```
 
-Then open [http://localhost:3000](http://localhost:3000).
+随后访问 [http://localhost:3000](http://localhost:3000)。在 `spec-web-ui` 依赖已安装的情况下，也可以从仓库根目录执行 `make dev`。
 
-### 4. Run Code: Bugrail
-
-Bugrail lives in a separate repository. From a sibling checkout:
+测试控制台可单独启动：
 
 ```bash
-cd ../bugrail
-make init
-make dev
+cd test-console
+npm install
+npm run dev
 ```
 
-See [liquiid727/bugrail](https://github.com/liquiid727/bugrail) for desktop
-builds and upstream CodeG sync.
+关于应用职责、运行模式与部署边界，分别见 [spec-web-ui README](spec-web-ui/README.md) 和 [test-console README](test-console/README.md)。
 
-## Repository Shape
+## 从哪里开始
+
+首次参与项目时，按以下顺序了解仓库：
+
+1. [AGENTS.md](AGENTS.md)：项目意图、工作边界和验证要求。
+2. [.rules/project.md](.rules/project.md) 与 [rules/README.md](rules/README.md)：Agent 与工程治理规则。
+3. [GoalSpec 工作流](docs/spec-modes/GoalSpec/README.md)：需求、Spec、Issue、证据和验收的规范。
+4. [design/README.md](design/README.md)：稳定平台和系统设计的边界。
+5. [.requirements/README.md](.requirements/README.md)：需求 Workspace 模板与示例。
+
+所有有意义的变更都应能追溯到设计文档、PRD、Spec Package、规则、评审或证据。实现、测试和验收应引用同一组稳定 ID；无法覆盖的链路需要明确记录为假设或后续工作，而不是被静默跳过。
+
+## 仓库地图
 
 ```text
-packages/catalog/    catalog values, queries, and registry configuration
-packages/templates/  bootstrap template source of truth
-spec-web-ui/         asset and local configuration workbench
-test-console/        normalized test-plan and result console
-rules/               reusable engineering governance
-assets/              reusable role, team, skill, and template sources
-ai/agents/           agent role definitions
-docs/spec-modes/     GoalSpec (Agent-Native SDLC) delivery guide
-.requirements/       requirement packages (requirements/, templates/, examples/, skills/)
-design/              canonical platform design documents
+ai/                 Agent 角色、提示词、评审者与工作流
+assets/             Catalog 可消费的可复用工程资产
+design/             平台和系统级长期设计
+docs/spec-modes/    GoalSpec（Agent-Native SDLC）规范
+packages/           Catalog、核心能力与项目模板工作区
+rules/              可复用工程与交付治理规则
+scripts/            检查和测试编排脚本
+skills/             仓库内可复用 Agent 技能
+spec-web-ui/        AI 工程配置资产工作台
+test-console/       GoalSpec 验证证据控制台
+.requirements/      PRD Workspace、模板与示例
+.agents/            Agent 路由与角色注册表
 ```
-
-## For Contributors
-
-Start with:
-
-- [AGENTS.md](AGENTS.md)
-- [rules/README.md](rules/README.md)
-- [GoalSpec (Agent-Native SDLC) workflow](docs/spec-modes/GoalSpec/README.md)
-- [.requirements/ index](.requirements/README.md)
-- [spec-web-ui/README.md](spec-web-ui/README.md)
-
-Keep changes traceable to a design doc, root PRD, child Spec Package, rule, review, or evidence artifact. All new work uses the GoalSpec package layout.
