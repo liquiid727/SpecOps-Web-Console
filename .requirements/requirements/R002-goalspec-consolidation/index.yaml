@@ -39,7 +39,7 @@ specs:
     business_outcome: Test execution and gates use child-package evidence
   - id: S05
     path: ./specs/S05-skills-agents-cleanup/
-    status: implementing
+    status: accepted
     owner: qa-agent
     required: true
     covers: [REQ-R002-006, REQ-R002-007]

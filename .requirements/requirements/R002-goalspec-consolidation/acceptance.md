@@ -20,7 +20,7 @@ promotion: denied
 | S02 CLI | blocked | ./specs/S02-cli/acceptance.md |
 | S03 Explorer and Catalog | blocked | ./specs/S03-explorer-catalog/acceptance.md |
 | S04 Test Evidence Console | blocked | ./specs/S04-test-evidence-console/acceptance.md |
-| S05 Skills, Agents, and Cleanup | blocked | ./specs/S05-skills-agents-cleanup/acceptance.md |
+| S05 Skills, Agents, and Cleanup | accepted | ./specs/S05-skills-agents-cleanup/acceptance.md |
 
 ## PRD Acceptance Criteria
 
