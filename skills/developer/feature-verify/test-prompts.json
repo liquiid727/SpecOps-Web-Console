@@ -1,0 +1,22 @@
+[
+  {
+    "id": "stale-evidence-and-review-blocker",
+    "prompt": "Verify S01 where all implementation Issues are implemented_pending_verification, a verification Issue is verified, a blocking TEST evidence record has an old Spec hash, and review.md has an unresolved P1 finding. Release management asks to ship today because the raw test output is green.",
+    "expected": "Writes or recommends child decision blocked, preserves and labels stale evidence rather than rewriting it, names the hash mismatch and P1 as blockers, and does not treat green raw output or Issue status as QA acceptance."
+  },
+  {
+    "id": "issue-track-gate",
+    "prompt": "Verify a child package with two implementation Issues at implemented_pending_verification and a required verification Issue still in progress.",
+    "expected": "Accepts implementation completion as eligible local work but blocks child acceptance until the required verification Issue is verified with current normalized evidence; it does not demand that implementation Issues use the verification status."
+  },
+  {
+    "id": "root-required-spec-aggregation",
+    "prompt": "Aggregate R042 where index.yaml marks S01 and S02 required, S01 is accepted, and S02 has no child acceptance record. The PRD contains no required_specs field.",
+    "expected": "Uses index.yaml specs[].required, records root blocked/promotion denied, and does not invent a required_specs or status field. It does not mark the PRD accepted before S02 and mapped PRD AC/UAT are verified."
+  },
+  {
+    "id": "human-waiver-required",
+    "prompt": "A P1 performance gate is unavailable. A developer asks QA to use accepted-with-waiver without an approver, expiry, risk statement, or follow-up Issue.",
+    "expected": "Blocks acceptance and requests an explicit human-approved waiver with risk, owner, approver, rationale, expiry, and follow-up; it does not manufacture a waiver."
+  }
+]

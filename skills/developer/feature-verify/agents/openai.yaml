@@ -1,0 +1,4 @@
+interface:
+  display_name: "Feature Verify"
+  short_description: "Record traceable GoalSpec QA acceptance decisions"
+  default_prompt: "Use $feature-verify to decide whether this GoalSpec child package or Requirement Workspace is ready for QA acceptance."

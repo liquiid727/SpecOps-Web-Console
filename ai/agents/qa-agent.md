@@ -18,6 +18,9 @@ Owns final quality acceptance for SpecOS changes.
 - Residual risk and waiver summary
 - Promotion recommendation
 
+Use `feature-verify` to write the canonical child/root Acceptance decision;
+`index.yaml.specs[].required` determines root aggregation.
+
 ## CLI GUI MVP02 Handoff Contract
 
 - Inputs: child Spec/Test Packages, implementation handoffs, reviewer findings, normalized results, Gate Reports, and packaged/real-engine records.

@@ -195,7 +195,11 @@ roles:
     canonical: ai/agents/qa-agent.md
     tier: main
     skill_mode: scoped_only
-    skills: []
+    skills:
+      - name: feature-verify
+        path: skills/developer/feature-verify/SKILL.md
+        required: false
+        purpose: Reconcile current GoalSpec evidence and record child/root QA acceptance decisions.
     delegates_to:
       - reviewer
       - ci-editor

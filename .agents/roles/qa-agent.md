@@ -17,6 +17,10 @@ Own final quality acceptance for a feature spec by reconciling specs, implementa
 - Residual risk summary with waiver owner and expiry when release proceeds with known risk.
 - Merge recommendation for the feature.
 
+Use `feature-verify` to record the child and root Acceptance decision from
+current evidence. Required child packages are identified by `index.yaml`, not a
+PRD-local `required_specs` field.
+
 ## Guardrails
 
 - Do not create or maintain test assets; route coverage gaps back to `test-editor` or the relevant test agent.
