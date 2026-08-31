@@ -1,8 +1,8 @@
 # Developer Skills
 
-这里集中存放 SpecOS 项目可复用的开发人员通用 Skill。当前共 29 个，覆盖需求分析、架构设计、编码测试、评审交付和技术写作等场景。
+这里集中存放 SpecOS 项目可复用的开发人员通用 Skill。当前共 30 个，覆盖需求分析、架构设计、编码测试、QA 验收、评审交付和技术写作等场景。
 
-> **本仓库的现行研发工作流是 GoalSpec（Agent-Native SDLC），统一入口为 `/requirement-package` skill（`.claude/skills/requirement-package/SKILL.md`）**：一个需求一个 Requirement Workspace，根目录为 `.requirements/requirements/R0NN-<slug>/`，下挂 `specs/S0N-<slug>/`，Issue 位于 child package 的 `issues/ISSUE-R0NN-S0N-NNN-<slug>.md`。稳定 ID 串联 REQ→SPEC→TEST→ISSUE。下面的 `prd` / `prd-to-spec` / `spec-to-test` / `to-issues` / `loop-it` 是这条链路的能力组件，不是旧目录的默认入口。
+> **本仓库的现行研发工作流是 GoalSpec（Agent-Native SDLC），统一入口为 `/requirement-package` skill（`.claude/skills/requirement-package/SKILL.md`）**：一个需求一个 Requirement Workspace，根目录为 `.requirements/requirements/R0NN-<slug>/`，下挂 `specs/S0N-<slug>/`，Issue 位于 child package 的 `issues/ISSUE-R0NN-S0N-NNN-<slug>.md`。稳定 ID 串联 REQ→SPEC→TEST→ISSUE。`prd` / `prd-to-spec` / `spec-to-test` / `to-issues` / `loop-it` / `feature-verify` 是这条链路的能力组件，不是旧目录的默认入口。
 
 每个 Skill 都是独立目录，入口为 `skills/developer/<skill-name>/SKILL.md`。项目路由不会自动加载整个目录；需要使用某个 Skill 时，应在 `.agents/manifest.yaml` 对应角色中显式声明，避免所有角色共享过多上下文。
 
@@ -29,8 +29,8 @@ R0NN/prd.md + index.yaml
                             -> S0N/evidence/
   -> loop-it
   -> review.md / Completion Record
-  -> child acceptance.md
-  -> root acceptance.md
+  -> feature-verify -> child acceptance.md -> root acceptance.md
+  -> ship-it
 ```
 
 主链路产物的存放位置由 `.specos/manifest.yaml` `artifacts` 统一声明（需求包 → `.requirements/requirements/R0NN-<slug>/`，模板 → `.requirements/templates/`），解析顺序与自定义协议见 `rules/shared/artifact-locations.md`。
@@ -43,7 +43,8 @@ R0NN/prd.md + index.yaml
 | `prd-to-spec` | 已接受根 PRD Workspace | `specs/S0N/spec.md` | 只定义 child 系统契约，不生成 Test Design。 |
 | `spec-to-test` | 已批准 child Spec | 同目录 `test.md` | 绑定精确 Spec 版本，不写执行结果。 |
 | `to-issues` | Approved child Spec 或 Test Design | 同目录 `issues/ISSUE-*.md` | 实现和验证分轨，不创建根 issue 文件。 |
-| `loop-it` | 已批准的本地 Issue 选择 | 代码、Completion Record、evidence、checkpoint | 依赖、证据、评审不满足时不得 ship。 |
+| `loop-it` | 已批准的本地 Issue 选择 | 代码、Completion Record、evidence、checkpoint | 实现轨只跑定向验证；验证轨负责正式证据与 Gate。 |
+| `feature-verify` | 当前 child package 或完成的 root Workspace | child/root `acceptance.md` | 只根据版本当前的 Evidence、Review 和 AC 写 QA 决策；不实现或改测试。 |
 | `ship-it` | 已通过评审的交付物 | Commit、PR、合并和 Issue 关闭 | 属于远端变更操作，不得绕过测试和评审关卡。 |
 
 Child Spec Package 批准后，实现轨和验证轨可以并行准备：
@@ -63,7 +64,7 @@ Approved child Spec v1.2
         └── concurrency / security
 ```
 
-测试设计、数据、Mock、API Collection、场景和 k6 模型可以与实现同步准备；依赖可部署目标的真实执行需要等待测试环境就绪。两条轨道最终在测试证据、`review-it` 和 `ship-it` 汇合。Child Spec 版本变化后，引用旧版本的 Test Design 必须标记为 `stale`。
+测试设计、数据、Mock、API Collection、场景和 k6 模型可以与实现同步准备；依赖可部署目标的真实执行需要等待测试环境就绪。两条轨道最终在测试证据、`review-it`、`feature-verify` 和 `ship-it` 汇合。Child Spec 版本变化后，引用旧版本的 Test Design 必须标记为 `stale`。
 
 ### 替代入口
 
@@ -123,10 +124,16 @@ R0NN/S0N implementation / verification Issues
       ├── 检查 Test Design 版本和独立验证证据
       ├── review-it
       ├── 更新 Issue Completion Record
+      ├── feature-verify
       └── ship-it
 ```
 
 `loop-it` 不生成 PRD、Spec 或 Test Design，也不能绕过批准、测试和评审。需求仍在变化时，应先返回 `prd` 或 `prd-to-spec`；QA 决策必须由 `feature-verify` 写入 child/root `acceptance.md`。
+
+执行 implementation Issue 时，`loop-it` 只运行 Issue `Validation` 中声明的
+变更范围命令，并在完成后标记为 `implemented_pending_verification`。`test.md`
+的完整场景、归一化 evidence 与 release Gate 由 verification Issue 和 QA 轨道
+负责；它们不会因为实现 Issue 已完成而被跳过。
 
 ### 按角色加载
 
@@ -139,7 +146,8 @@ R0NN/S0N implementation / verification Issues
 | `implementation-agent` | `karpathy-guidelines`、`diagnosing-bugs`、`tdd`、`refactor` |
 | `testing-agent` / `test-editor` | `spec-to-test` |
 | `reviewer` | `review-it`、`smell` |
-| `qa-agent` / `deployment-agent` | `review-it`、`ship-it` |
+| `qa-agent` | `feature-verify`、`review-it` |
+| `deployment-agent` | `review-it`、`ship-it` |
 | `execution-editor` | `loop-it` |
 
 显式绑定可以避免一个角色同时承担需求、架构、实现、测试和发布职责，也能减少无关 Skill 占用上下文。新增 Skill 时，先判断它属于主链路、替代入口、阶段辅助还是流程执行器，再决定应该绑定到哪些角色。
@@ -155,6 +163,7 @@ R0NN/S0N implementation / verification Issues
 | [`code-to-spec`](./code-to-spec/SKILL.md) | 从代码、配置和测试反向提取完整 SPEC。 | 接手遗留项目、补齐规格、理解一个缺少文档的现有系统。 |
 | [`to-issues`](./to-issues/SKILL.md) | 将 Approved child Spec 或 Test Design 拆成相互隔离的实现或验证 Issue。 | 规格已确认，需要分别进入实现轨道或独立测试轨道。 |
 | [`loop-it`](./loop-it/SKILL.md) | 按依赖顺序循环实现 Issue，并串联评审、记录、提交和恢复检查点。 | Issue 体系已经稳定，希望自动推进一批任务；不适合需求仍频繁变化时使用。 |
+| [`feature-verify`](./feature-verify/SKILL.md) | 汇总当前 Issue、Evidence、Review 和 AC，写入 child/root QA 验收决策。 | 实现和验证已完成，需要判断一个 Spec 或整个需求能否接受、豁免或阻断。 |
 | [`review-it`](./review-it/SKILL.md) | 检查工作区改动、分支差异和测试结果，完成代码评审收口。 | 功能实现结束、提交或合并前，需要发现回归风险和遗漏。 |
 | [`ship-it`](./ship-it/SKILL.md) | 通过 GitHub CLI 完成提交、推送、创建或合并 PR、关闭 Issue。 | 代码和验证均已完成，准备正式交付；属于会改变远端状态的操作。 |
 | [`handoff`](./handoff/SKILL.md) | 将当前对话和工作状态压缩为下一位 Agent 可接手的交接文档。 | 会话即将结束、任务跨人或跨 Agent 转交、需要保留关键上下文。 |

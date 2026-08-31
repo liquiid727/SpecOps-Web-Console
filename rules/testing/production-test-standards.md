@@ -43,6 +43,10 @@ Normalized `evidence/runs/*.json` artifacts must include:
 
 ## Pipeline Gates
 
+- `loop-it` implementation execution is local change validation, not a PR or
+  release gate: it runs only the focused commands declared by its Issue.
+  Test Design coverage, normalized evidence, and risk gates remain owned by
+  verification Issues and QA.
 - PR gates must run changed-scope unit tests and critical-path checks. `agent-workflow` changes must additionally run the planned 20–50-case smoke Eval.
 - Post-merge or scheduled gates must run the applicable full regression suite, full Agent Eval, contract checks, and performance-baseline comparison. A baseline regression must remain visible to QA even when it is configured as non-blocking.
 - Pre-production or canary gates must record release scope, online sampled-evaluation results, and any trajectory anomaly alerts. Missing required evidence blocks promotion for P0/P1 changes.

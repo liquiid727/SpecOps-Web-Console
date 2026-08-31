@@ -73,6 +73,10 @@ The document must include:
   TEST;
 - test data, environment assumptions, cleanup/isolation, entry/exit criteria,
   risk tier, and CI/CD Gate Matrix;
+- explicit test scope, regression scope, flaky classification policy, and the
+  command/runner, commit, timestamp, artifact, and source-binding metadata
+  required in each Evidence record; an `EV-*` identifier is optional and never
+  replaces `evidence/index.yaml` registration;
 - applicable happy path, negative, authorization, state transition, invariant,
   retry/duplicate, concurrency, external failure, audit/observability, and
   exploratory cases;

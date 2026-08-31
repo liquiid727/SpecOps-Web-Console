@@ -16,7 +16,10 @@ A. implementation Issues from an approved specs/S0N-<slug>/spec.md
 B. verification Issues from an approved specs/S0N-<slug>/test.md
 ```
 
-Read in order: root `prd.md` and `index.yaml`, selected child `spec.md`, selected child `test.md` when present, relevant rules/design, existing dependencies, and current review/evidence/acceptance records. A PRD-only fallback requires explicit user approval and must record incomplete technical/test traceability.
+Read in order: root `prd.md` and `index.yaml`, selected child `spec.md`, its
+approved child `test.md`, relevant rules/design, existing dependencies, and
+current review/evidence/acceptance records. Both tracks preserve the Test
+Design binding; the track determines what gets executed.
 
 Reject draft or stale source artifacts for release-bound Issues.
 
@@ -76,6 +79,7 @@ Require these sections:
 ## Scope
 ### Must
 ### Must Not
+## Expected Areas (conditional)
 ## Tasks
 ## Validation
 ## Dependencies
@@ -83,18 +87,33 @@ Require these sections:
 ## Completion Record
 ```
 
-Implementation Issues MUST include an explicit code-and-unit-test task (or a
-written `N/A` rationale). Verification Issues MUST identify the test assets,
-runner scope, normalized evidence, and `evidence/index.yaml` registration they
-own. Add an Acceptance Criteria section with observable Given/When/Then results.
+Implementation Issues MUST declare the smallest focused validation commands for
+their changed scope. They MUST include a code-and-unit-test task when a suitable
+code-level seam exists, or a written `N/A` rationale when it does not.
+Implementation validation MUST NOT silently expand into full regression,
+performance, concurrency, E2E, or a release Gate.
+
+Expected Areas may name likely files or components to orient execution. They
+are not implementation authority: a material architecture deviation blocks the
+Issue and returns to Spec review rather than being silently absorbed.
+
+Verification Issues MUST identify the test assets, runner scope, normalized
+evidence, and `evidence/index.yaml` registration they own. They execute the
+Test Design's formal scenarios and release-gate checks. Add an Acceptance
+Criteria section with observable Given/When/Then results.
 
 For AI-generated test drafts, include the human reviewer and review decision in
 the Issue or Completion Record. A draft is not evidence until the review is
 complete and the resulting run is normalized.
 
-Implementation Issues may include implementation-coupled unit tests but must not claim independent QA acceptance. Verification Issues own test assets, execution, and evidence; they must not silently modify production behavior.
-Planned `TEST-*` coverage is not execution evidence. Required Evidence is
-satisfied only by a normalized run/artifact registered in `evidence/index.yaml`.
+Implementation Issues may include implementation-coupled unit tests but must
+not claim independent QA acceptance. Their Completion Record records focused
+validation and uses `N/A — verification Issue owns release evidence` unless
+the approved Issue explicitly requires implementation evidence. Verification
+Issues own test assets, formal execution, and normalized evidence; they must
+not silently modify production behavior. Planned `TEST-*` coverage is not
+execution evidence. A verification Issue's Required Evidence is satisfied only
+by a normalized run/artifact registered in `evidence/index.yaml`.
 
 The Completion Record must eventually contain changed files, tests executed, evidence references, commit/PR, design decisions, tradeoffs, open questions, and any Spec Deviation. It is the only implementation-note record; do not create a separate notes document. `Issue Done` is not child QA acceptance or root Requirement Done.
 

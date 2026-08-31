@@ -34,11 +34,16 @@
 
 - PRD 1:N Spec Package；Spec Package 1:N Issue。
 - 每个 Issue 有一个 primary_spec；跨 Spec 只用 covers 显式引用。
-- test.md 描述计划，不写最终执行结果；证据在所属 Spec Package 的 evidence/。
+- spec.md 是系统行为契约，不写 TEST ID、测试数据、覆盖矩阵或执行结果；
+  test.md 描述独立验证计划，证据在所属 Spec Package 的 evidence/。
+- implementation Issue 只运行其声明的变更范围验证；完整测试证据与 Gate 由
+  verification Issue 和 QA 负责。
 - Spec Package acceptance.md 记录 QA 的 accepted、blocked 或
   accepted-with-waiver 决策。
 - 根 acceptance.md 汇总所有 required Spec Package 与 PRD AC/UAT。
 - ID 是永久锚点，不复用、不重排。
+- `EV-R0NN-S0N-NNN` 可在需要稳定跨文档引用时使用；每份正式证据仍必须登记
+  在 `evidence/index.yaml`。
 
 ## 使用
 

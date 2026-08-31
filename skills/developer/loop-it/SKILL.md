@@ -29,7 +29,7 @@ Stop before writes when any of these fail:
 
 1. Git repository exists and the working tree is clean, or the user explicitly chose a safe recovery action.
 2. The selected Issue exists and has `kind`, `track`, `requirement`, `spec_package`, `primary_spec`, `source_spec_version`, and `depends_on`.
-3. The root PRD and `index.yaml`, child `spec.md`, and child `test.md` (when required by the track) exist.
+3. The root PRD and `index.yaml`, child `spec.md`, and approved child `test.md` exist.
 4. Root/child source artifacts are approved and the Issue is not bound to a stale Spec/Test version.
 5. `.loop-local-state/` is ignored by Git. Checkpoints never enter an Issue commit.
 
@@ -81,24 +81,57 @@ The canonical Issue status remains:
 todo → in-progress → implemented_pending_verification → verified
 ```
 
-`implemented_pending_verification` means code and implementation-coupled tests are complete; it never means the Spec Package is accepted. Update the checkpoint after every transition. Preserve a corrupt checkpoint and ask whether to resume or start a new selection.
+`implemented_pending_verification` means code and the Issue-declared focused
+validation are complete; it never means the Test Design, Spec Package, or
+Requirement is accepted. Update the checkpoint after every transition. Preserve
+a corrupt checkpoint and ask whether to resume or start a new selection.
 
 ## Single-Issue loop
 
 1. Prepare an isolated branch only after the preconditions pass.
 2. Read the complete parent chain and Issue contract.
 3. Implement only the Issue's Must scope. Do not rewrite PRD/Spec or weaken tests.
-4. Run required implementation tests and the Issue validation commands.
-5. Write or reference execution evidence under the owning child package's `evidence/{plans,schedules,runs,gates,artifacts}/` and register it in `evidence/index.yaml`. Every blocking result must identify TEST, SPEC/version, ISSUE, commit, environment, time, and result.
-6. Update the Issue Completion Record with changed files, tests, evidence, commit, design decisions, deviations, tradeoffs, open questions, and Spec Deviation.
+4. For `track: implementation`, run only the focused, changed-scope commands
+   declared in the Issue `Validation` section. Do not automatically run the
+   Test Design coverage matrix, full regression, performance, concurrency,
+   E2E, or release Gate. Add or update a code-coupled unit test only when the
+   Issue declares a suitable seam; otherwise record the required `N/A` rationale.
+5. For `track: verification`, execute the assigned Test Design scenarios,
+   write or reference normalized evidence under the owning child package's
+   `evidence/{plans,schedules,runs,gates,artifacts}/`, and register it in
+   `evidence/index.yaml`. Every blocking result must identify TEST,
+   SPEC/version, ISSUE, commit, environment, time, and result.
+6. Update the Issue Completion Record with changed files, tests, evidence,
+   commit, design decisions, deviations, tradeoffs, open questions, and Spec
+   Deviation. An implementation Issue without explicitly required evidence
+   records `N/A — verification Issue owns release evidence`.
    Do not create a separate implementation-notes file such as `docs/issue#*.html`.
 7. Run `/review-it`; record findings and resolutions in the child `review.md`. Unresolved blocking findings stop the loop.
-8. Ship only when the Issue's gates pass. In local mode, commit only the listed Issue files and use a fast-forward merge when explicitly authorized. In remote mode, use `/ship-it` only when explicitly authorized.
+8. An implementation Issue may commit after its declared focused validation and
+   review pass, with canonical status `implemented_pending_verification`. A
+   verification Issue may advance to `verified` only when its required evidence
+   and gates pass. In local mode, commit only the listed Issue files and use a
+   fast-forward merge when explicitly authorized. In remote mode, use `/ship-it`
+   only when explicitly authorized.
 9. Never write child or root QA acceptance from this loop. `feature-verify` owns `specs/S0N/acceptance.md` and root `acceptance.md`.
+
+If execution discovers a conflict with the approved Spec or project
+architecture, mark the run blocked and record the conflict as a finding or Spec
+Deviation. Do not resolve it by silently changing implementation, parent
+contracts, tests, or recorded evidence; the parent Spec revision marks bound
+Test Designs and Issues stale before a new execution selection begins.
 
 ## Safety gates
 
-Never ship when:
+Never advance an implementation Issue to `implemented_pending_verification` when:
+
+- the source Spec/Test is stale or unapproved;
+- a required dependency is not complete;
+- a review blocker is unresolved;
+- the Completion Record is incomplete;
+- the working tree contains unrelated changes.
+
+Never advance a verification Issue to `verified`, or QA to acceptance, when:
 
 - the source Spec/Test is stale or unapproved;
 - a required dependency is not complete;

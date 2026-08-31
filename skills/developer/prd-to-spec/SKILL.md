@@ -73,6 +73,13 @@ Each behavior must map to at least one `REQ-R001-NNN` and define:
 - side effects and observability fields, metrics, traces, and alerts;
 - risk tier, required evidence, gate impact, and acceptance mapping to `AC-R001-NNN`.
 
+The child Spec also records repository-grounded context (relevant modules,
+interfaces, data, conventions, and constraints) plus applicable data/interface,
+security, performance, compatibility, migration, rollback, and implementation
+constraints. State `Not applicable` with rationale for a conditional section.
+It MUST NOT duplicate TEST IDs, test data, coverage matrices, Issue lists, or
+execution results; those belong to `test.md`, `issues/`, and `evidence/`.
+
 When the PRD or package includes Agent behavior, add the conditional Agent
 Behavior Contract with success metrics, Dataset/sample version, passing
 threshold, retained trajectory fields, anomaly signals, automatic degradation,

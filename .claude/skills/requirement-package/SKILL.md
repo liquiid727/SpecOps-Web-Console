@@ -73,11 +73,15 @@ issue-generate
   → skills/developer/to-issues/SKILL.md
 issue-execute
   → skills/developer/loop-it/SKILL.md
+feature-verify
+  → skills/developer/feature-verify/SKILL.md
 ```
 
 All components MUST preserve the same `R0NN`, `S0N`, `SPEC-R0NN-S0N-NNN`,
-`TEST-R0NN-S0N-NNN`, and `ISSUE-R0NN-S0N-NNN` identifiers. They MUST write only
-to the canonical child package paths.
+`TEST-R0NN-S0N-NNN`, and `ISSUE-R0NN-S0N-NNN` identifiers. `EV-R0NN-S0N-NNN`
+is optional for a stable evidence citation; `evidence/index.yaml` remains the
+required evidence index. Components MUST write only to canonical child package
+paths.
 
 The generator chain also preserves `source_*` path, stable ID, version, and
 hash bindings. File paths use `source_spec` / `source_test`; stable anchors use
@@ -103,6 +107,12 @@ observability, risk/gate impact, and AC mapping. Agent behaviors additionally
 declare metrics, Dataset/version, thresholds, trajectory signals, degradation,
 and human handoff conditions.
 
+Spec generation also records repository-grounded modules, interfaces, data,
+conventions, and applicable security, performance, compatibility, migration,
+rollback, and implementation constraints. A Spec does not contain TEST IDs,
+test data, coverage matrices, Issue lists, or execution results; those belong
+to test.md, issues/, and evidence/.
+
 Do not split by code directories. Split by independent business outcome, Actor,
 lifecycle, authorization boundary, risk profile or acceptance result.
 
@@ -120,6 +130,11 @@ exploratory cases. Every P0/P1 REQ, SPEC, and applicable BR/INV/EDGE/AC needs
 TEST coverage. Agent packages add the PR smoke/full Eval and online sampling
 plan; ordinary packages mark it not applicable.
 
+The Test Design also declares its scope, regression scope, flaky policy, and
+the version/hash, command or runner, commit, environment, timestamp, result,
+and artifact metadata required in formal evidence. `EV-*` may be used as an
+optional stable citation, but never replaces `evidence/index.yaml`.
+
 Execution outputs are stored or referenced in the same child
 `evidence/{plans,schedules,runs,gates,artifacts}/` directories and registered in
 `evidence/index.yaml`; acceptance.md is the only QA Gate decision record.
@@ -130,10 +145,13 @@ Generate one issues/ISSUE-*.md file per independently completable work item.
 Every file MUST name exactly one primary_spec and its covers IDs.
 
 Before execution read: root prd.md and index.yaml, selected child spec.md,
-test.md, the Issue file, then required review/evidence/acceptance records and
-actual code context. Record changed files, tests, evidence references, design
-decisions, deviations, tradeoffs, open questions, and Spec Deviation in the
-Issue Completion Record.
+the approved test.md, the Issue file, then required review/evidence/acceptance
+records and actual code context. Implementation Issues run only their declared
+changed-scope validation and become `implemented_pending_verification`; they do
+not execute the Test Design's full matrix or release Gate. Verification Issues
+own formal Test Design execution, normalized evidence, and Gate results. Record
+changed files, tests, evidence references, design decisions, deviations,
+tradeoffs, open questions, and Spec Deviation in the Issue Completion Record.
 
 ## feature-verify
 
@@ -145,9 +163,12 @@ Verify one child Spec Package first:
     AND Actual Behavior == Spec
     AND mapped AC verified
 
-Record accepted, blocked or accepted-with-waiver only in the child acceptance.md.
-Then aggregate all required child decisions and PRD AC/UAT in the root
-acceptance.md. Issue Done is never QA acceptance or Requirement Done.
+Use `index.yaml.specs[].required` to evaluate child QA decisions. Record
+accepted, blocked, or accepted-with-waiver only in the child acceptance.md;
+the child template has no `status` field. Then aggregate all required child
+decisions and PRD AC/UAT in root acceptance.md. A root may be recorded blocked,
+but it cannot be accepted until every required child is accepted or
+human-waived. Issue Done is never QA acceptance or Requirement Done.
 
 ## Prohibitions
 

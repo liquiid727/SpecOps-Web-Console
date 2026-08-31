@@ -44,7 +44,7 @@ The root `prd.md` frontmatter must contain:
 id: R001
 title: <Requirement Title>
 type: feature # feature | change | bug | refactor
-status: draft # draft | review | approved | implementing | done
+status: draft # draft | review | approved | implementing | accepted | blocked | done
 priority: P1
 owner: <owner>
 ```
@@ -59,6 +59,9 @@ The body must define:
   thresholds, trajectory observability, automatic degradation, and human
   handoff conditions; ordinary requirements explicitly record `Not applicable`;
 - a **Spec Package Decomposition** with `S01`, `S02`, each covering explicit REQs and naming an independent business outcome;
+- applicable UX, non-functional goals, constraints, risks, and child-package
+  dependencies; write `Not applicable` with a rationale where a conditional
+  section does not apply;
 - Open Questions and whether each one blocks approval.
 
 `type: feature` describes the kind of requirement. It is not a substitute for a child `S01` Spec Package.
@@ -80,6 +83,7 @@ specs:
   - id: S01
     path: ./specs/S01-login/
     status: draft
+    depends_on: []
     covers: [REQ-R001-001]
 ```
 

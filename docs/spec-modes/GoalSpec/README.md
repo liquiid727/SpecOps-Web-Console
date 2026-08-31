@@ -3,7 +3,7 @@
 > 本仓库使用 GoalSpec，以一个 PRD Workspace 为根，包含多个
 > 独立交付的 Spec Package；稳定 ID 贯穿产品、系统、测试、执行和验收。
 
-规范全文：agent-native-sdlc-standard.md。
+规范全文：[SpecOS Requirement Workspace Template Standard v1.0](agent-native-sdlc-standard.md)。
 
 ## 1. 核心模型
 
@@ -54,6 +54,7 @@ PRD 负责产品行为、范围、业务规则和跨 Spec 的验收条件。每�
 | Test | TEST-R0NN-S0N-NNN | 验证场景 |
 | Issue | ISSUE-R0NN-S0N-NNN | 执行工作单 |
 | Review Finding | REVIEW-R0NN-S0N-NNN | 审查发现 |
+| Evidence（可选） | EV-R0NN-S0N-NNN | 跨文档稳定引用 |
 
 ID 不复用、不重排。每个 Issue MUST 声明一个 primary_spec；跨 Spec 关系通过
 covers 显式表示。
@@ -75,7 +76,9 @@ covers 显式表示。
 
 ## 5. QA 与 Done
 
-- Issue Done：代码、关联测试、证据齐全，且没有未解释的 Spec Deviation。
+- Implementation Issue Done：代码、声明的局部验证与 Completion Record 齐全，且
+  没有未解释的 Spec Deviation；它进入 `implemented_pending_verification`。
+- Verification Issue Done：正式测试、归一化证据和所需 Gate 均已完成。
 - Spec Package Accepted：所有必要 Issue 完成，测试 Exit Criteria 有证据支持，
   Review 阻塞项已解决或获豁免，且 QA acceptance.md 给出明确决策。
 - Requirement Done：所有 required Spec Package 已接受，PRD AC 已验证，
