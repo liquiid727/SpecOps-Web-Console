@@ -41,8 +41,8 @@ Blocking Open Questions:
 - None
 
 Residual Risk:
-- The working tree has not been committed or merged; the acceptance evidence
-  is tied to `working-tree@85690a48` plus the current changes.
+- Local delivery commit `b15c17b2` includes the reviewed working tree. It has
+  not been pushed to a remote.
 
 Waiver:
 - None

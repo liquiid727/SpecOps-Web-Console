@@ -52,7 +52,7 @@ and entrypoint resolution behavior is exclusively GoalSpec-native.
 Status: complete
 Implemented By: liquiid
 Completed At: 2026-08-30
-PR / Commit: working-tree@85690a48
+PR / Commit: b15c17b2 (local delivery)
 Changed Files: packages/cli; packages/templates/{fullstack,spec-only}/.specos/manifest.yaml; package-lock.json
 Tests Executed: npm test; npm run build; npm test --workspace @specos/cli; `npx --no-install specos check`
 Evidence References: ../evidence/artifacts/S02-cli.2026-08-30T165500Z.run.json; ../evidence/gates/S02-cli.R002.gate-report.json

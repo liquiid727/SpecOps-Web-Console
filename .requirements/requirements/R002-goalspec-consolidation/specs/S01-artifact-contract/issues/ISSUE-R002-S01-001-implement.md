@@ -51,7 +51,7 @@ Deliver the artifact contract portion of the GoalSpec consolidation.
 Status: complete
 Implemented By: liquiid
 Completed At: 2026-08-30
-PR / Commit: bec4ea3b; verification working-tree@85690a48
+PR / Commit: bec4ea3b; verification working-tree@85690a48; local delivery b15c17b2
 Changed Files: packages/core/src/artifacts.ts; packages/templates/{fullstack,spec-only}/.specos/manifest.yaml
 Tests Executed: npm test; npm run build; GoalSpec template and gate checks
 Evidence References: ../evidence/artifacts/S01-artifact-contract.2026-08-30T165500Z.run.json; ../evidence/gates/S01-artifact-contract.R002.gate-report.json

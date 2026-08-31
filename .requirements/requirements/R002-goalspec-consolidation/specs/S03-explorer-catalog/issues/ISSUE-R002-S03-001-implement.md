@@ -54,7 +54,7 @@ Deliver the explorer and catalog portion of the GoalSpec consolidation.
 Status: complete
 Implemented By: liquiid
 Completed At: 2026-08-30
-PR / Commit: 77538fb4; verification working-tree@85690a48
+PR / Commit: 77538fb4; verification working-tree@85690a48; local delivery b15c17b2
 Changed Files: assets/README.md; assets/agents/roles; assets/templates/specs; packages/catalog; spec-web-ui/app; spec-web-ui/components; spec-web-ui/features; spec-web-ui/lib; spec-web-ui/tests
 Tests Executed: npm --prefix spec-web-ui run test; npm --prefix spec-web-ui run build; npm test
 Evidence References: ../evidence/artifacts/S03-explorer-catalog.2026-08-30T165500Z.run.json; ../evidence/gates/S03-explorer-catalog.R002.gate-report.json
