@@ -60,6 +60,7 @@ directions:
     skills:
       - skill-prd-to-spec
       - skill-to-issues
+      - skill-dg-piagent
 
   operations:
     label: 运维

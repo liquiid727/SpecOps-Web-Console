@@ -117,6 +117,10 @@ roles:
         path: skills/developer/karpathy-guidelines/SKILL.md
         required: false
         purpose: Keep implementation changes small, explicit, and verifiable.
+      - name: dg-piagent
+        path: assets/skills/dg-piagent/SKILL.md
+        required: false
+        purpose: Build agents, tools, extensions, and integrations with the pi-agent SDK.
       - name: diagnosing-bugs
         path: skills/developer/diagnosing-bugs/SKILL.md
         required: false
@@ -386,6 +390,10 @@ roles:
         path: skills/developer/karpathy-guidelines/SKILL.md
         required: false
         purpose: Keep applied changes small, explicit, and verifiable.
+      - name: dg-piagent
+        path: assets/skills/dg-piagent/SKILL.md
+        required: false
+        purpose: Apply focused pi-agent SDK implementation changes.
     context_includes:
       - .rules/project.md
       - docs/spec-modes/

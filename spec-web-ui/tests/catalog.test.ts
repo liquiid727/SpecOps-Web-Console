@@ -190,6 +190,25 @@ describe("loadCatalogAssets", () => {
     expect(skill?.sourcePath).toBe("assets/skills/ddd-layering-governance/SKILL.md");
   });
 
+  it("maps the pi-agent SDK skill into the developer skill library", async () => {
+    const catalog = await loadCatalogAssets();
+    const skill = catalog.find((asset) => asset.id === "skill-dg-piagent");
+
+    expect(skill).toMatchObject({
+      type: "skill",
+      direction: "backend",
+      categories: ["backend"],
+      sourcePath: "assets/skills/dg-piagent/SKILL.md"
+    });
+    expect(skill?.files).toHaveLength(65);
+    expect(skill?.contentFiles?.["skills/developer/dg-piagent/SKILL.md"]).toBe(
+      "assets/skills/dg-piagent/SKILL.md"
+    );
+    expect(skill?.contentFiles?.["skills/developer/dg-piagent/references/sdk_doc/04-events.md"]).toBe(
+      "assets/skills/dg-piagent/references/sdk_doc/04-events.md"
+    );
+  });
+
   it("loads spec and agent template assets from directory-backed manifests", async () => {
     const catalog = await loadCatalogAssets();
     const specTemplate = catalog.find((asset) => asset.id === "template-feature-draft");
