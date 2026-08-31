@@ -16,26 +16,33 @@ riskTier: P1 # P0 | P1 | P2
 
 # Test Design — S01 <Spec Package Name>
 
-## 0. Coverage Matrix
+## 1. Purpose and Scope
 
-| Requirement | Spec | Test | Category | Level | Required Evidence | Gate Impact |
-|---|---|---|---|---|---|---|
-| REQ-R001-001 | SPEC-R001-S01-001 | TEST-R001-S01-001 | Happy path | Integration | normalized result + trace | blocking |
+This document defines how to prove that the approved Spec is implemented. It
+does not contain execution results; those belong in `./evidence/`.
 
-> This is a verification design. Execution outcomes belong in
-> `./evidence/{plans,schedules,runs,gates,artifacts}/` and are referenced by
-> `acceptance.md`; do not write final PASS/FAIL results here.
+### In Scope
+- ...
 
-## 1. Test Data and Environment
+### Out of Scope
+- ...
 
-- Fixture / seed: ...
+## 2. Coverage Matrix
+
+| Requirement | Spec | Test | Category / level | Required Evidence | Gate Impact |
+|---|---|---|---|---|---|
+| REQ-R001-001 | SPEC-R001-S01-001 | TEST-R001-S01-001 | Happy / integration | normalized result + trace | blocking |
+
+## 3. Test Environment and Data
+
+- Fixture / seed / accounts: ...
 - Dependency mode: real | containerized | stubbed | recorded
-- Environment and configuration: ...
-- Cleanup / isolation: ...
-- PII and secrets handling: ...
+- Environment, feature flags, and configuration: ...
+- Isolation and cleanup: ...
+- PII / secrets handling: ...
 - Baseline or commit under test: ...
 
-## 2. Test Scenarios
+## 4. Test Scenarios
 
 ### TEST-R001-S01-001 <Happy Path>
 
@@ -44,10 +51,11 @@ Covers:
 - SPEC-R001-S01-001
 - AC-R001-001
 
-Category: Happy path
-Level: Integration
-Required Evidence: normalized result + trace
-Gate Impact: blocking
+Category / Level:
+- Happy path / integration
+
+Required Evidence / Gate Impact:
+- normalized result + trace / blocking
 
 Given:
 - ...
@@ -56,9 +64,8 @@ When:
 - ...
 
 Then:
-- ...
 - Observable assertion: ...
-- Error / side-effect assertion: ...
+- Error or side-effect assertion: ...
 
 ### TEST-R001-S01-002 <Negative / Invariant>
 
@@ -66,58 +73,50 @@ Covers:
 - INV-R001-001
 - SPEC-R001-S01-001
 
-Category: Negative / Invariant
-Level: Integration
-Required Evidence: normalized result + log
-Gate Impact: blocking
+Given / When / Then:
+- Given: ...
+- When: ...
+- Then: operation fails with ...; state remains valid; no illegal side effect occurs.
 
-Given:
+## 5. Required Coverage and Regression
+
+Applicable coverage (mark `Not applicable` with rationale where not needed):
+- Unit, integration, contract, E2E/manual, regression, failure injection.
+- Authorization, invalid input, missing/corrupted data, retry/duplicate, timeout,
+  dependency failure, interruption, concurrency, audit/observability.
+- Security, performance, compatibility, migration, and exploratory cases.
+
+Regression scope:
 - ...
 
-When:
-- ...
+## 6. Evidence, Gates, and Flaky Policy
 
-Then:
-- Operation fails with: ...
-- System state remains valid: ...
-- No illegal side effect occurs: ...
+Every execution record must identify TEST/SPEC/ISSUE IDs, source Spec
+version/hash, commit, environment, timestamp, runner or command, result,
+artifact paths, and flaky classification. An optional `EV-R001-S01-001` may be
+used when a stable cross-document evidence reference is useful.
 
-## 3. CI/CD Gate Matrix
+| Stage | Scope | Required Checks | Evidence | Blocking |
+|---|---|---|---|---|
+| PR | changed scope | unit + critical path | gate report | yes |
+| Merge / nightly | full scope | regression + contract + performance baseline | normalized run | P0/P1 |
+| Pre-production | release scope | applicable canary / online evaluation | promotion evidence | P0/P1 |
 
-| Stage | Scope | Required Checks | Agent Eval | Evidence | Blocking |
-|---|---|---|---|---|---|
-| PR | changed scope | unit + critical path | N/A or 20–50 smoke cases | gate report | yes |
-| Merge / nightly | full scope | regression + contract + performance baseline | N/A or full Eval | normalized run | P0/P1 |
-| Pre-production / canary | release scope | sampled online evaluation + trajectory alerts | when applicable | promotion evidence | P0/P1 |
-| Production | live traffic | trace + metrics + logs + degradation/handoff | when applicable | incident/runtime evidence | policy-defined |
+Flaky result policy:
+- Preserve every attempt, classify flaky, and create/follow an Issue; a retry
+  alone does not turn a blocking failure into PASS.
 
-## 4. Agent Eval Plan (conditional)
+## 7. Agent Eval Plan (conditional)
 
-> Include when `qualityProfile: agent-workflow` or the Spec declares Agent
-> behavior; otherwise write `Not applicable`.
+- Not applicable | PR smoke dataset/cases, full dataset, metrics/thresholds,
+  online sampling, trajectory alerts, degradation assertion, handoff owner, and
+  human review of AI-generated cases: ...
 
-- PR smoke dataset / cases (20–50): ...
-- Merge / nightly full dataset: ...
-- Success metrics and thresholds: ...
-- Online sampling method and rate: ...
-- Trajectory fields and anomaly alerts: ...
-- Automatic degradation assertion: ...
-- Human handoff assertion and owner: ...
-- Human reviewer for AI-generated cases: ...
+## 8. Exit Criteria
 
-## 5. QA Exploratory Cases
-
-- External failure, timeout, cancellation: ...
-- Retry, duplicate, and re-entry: ...
-- Permission / tenant boundary: ...
-- Empty, loading, or recovery state: ...
-- For Agent behavior, adversarial or low-confidence inputs: ...
-
-## 6. Exit Criteria
-
-- [ ] Every P0/P1 mapped REQ and SPEC has one or more TEST mappings.
-- [ ] Every applicable BR, INV, EDGE, and AC has a verification method.
-- [ ] Required automated, contract, performance, Agent Eval, and exploratory checks are identified or marked not applicable with rationale.
-- [ ] Evidence type and gate impact are explicit for every blocking test.
-- [ ] AI-generated case drafts have human coverage and assertion review.
-- [ ] Test Design is bound to the exact approved Spec version and hash.
+- [ ] Every P0/P1 mapped REQ and SPEC has scenario coverage.
+- [ ] Applicable BR, INV, EDGE, and AC have a verification method.
+- [ ] Required blocking tests pass with current, normalized evidence.
+- [ ] Regression and applicable security/performance/compatibility checks pass.
+- [ ] Evidence is bound to the current Spec version/hash and commit.
+- [ ] No unresolved P0/P1 defect remains.

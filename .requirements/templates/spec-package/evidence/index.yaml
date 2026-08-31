@@ -1,4 +1,4 @@
-standardVersion: specos-test-standard
+standardVersion: specos-test-standard/v2
 requirement: R001
 spec_package: S01
 updated_at: YYYY-MM-DD

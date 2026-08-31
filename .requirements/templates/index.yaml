@@ -16,6 +16,7 @@ specs:
     status: draft # draft | review | approved | implementing | accepted | blocked
     owner: <owner>
     required: true
+    depends_on: []
     covers:
       - REQ-R001-001
     business_outcome: <independently deliverable outcome>

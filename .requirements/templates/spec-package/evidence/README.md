@@ -11,10 +11,15 @@ Every evidence record MUST identify:
 - artifact location for report, trace, screenshot, video, or log;
 - retry and flaky classification when relevant.
 
+`evidence_id: EV-R0NN-S0N-NNN` is optional. Use it when another artifact needs
+a stable evidence reference; path, run ID, and `evidence/index.yaml` remain the
+canonical index for every record.
+
 Use one record per evidence item. A minimal record contains:
 
 ```yaml
 test_id: TEST-R001-S01-001
+evidence_id: EV-R001-S01-001 # optional
 spec_id: SPEC-R001-S01-001
 issue_id: ISSUE-R001-S01-001
 source_spec_version: 1.0.0

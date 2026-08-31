@@ -14,11 +14,32 @@ promotion: denied # allowed | denied
 
 # QA Acceptance — S01 <Spec Package Name>
 
+## Version Binding
+
+| Artifact | Version / revision |
+|---|---|
+| PRD | <version> |
+| Spec | <version and hash> |
+| Test Design | <version and bound Spec hash> |
+| Implementation / verification commit | <commit> |
+
+## Issue Status
+
+| Issue | Kind | Status | Completion Record |
+|---|---|---|---|
+| ISSUE-R001-S01-001 | implementation | pending | ./issues/... |
+
 ## Evidence Manifest
 
 | Evidence | Covers | Location | Result |
 |---|---|---|---|
 | ... | TEST-R001-S01-001 | ./evidence/... | pending |
+
+## Requirement Coverage
+
+| Requirement | Spec | Test | Evidence | Result |
+|---|---|---|---|---|
+| REQ-R001-001 | SPEC-R001-S01-001 | TEST-R001-S01-001 | ./evidence/... | pending |
 
 ## Acceptance Decision
 
@@ -35,7 +56,7 @@ Residual Risk:
 - ...
 
 Waiver:
-- None | owner / expiry / approved-by / rationale
+- None | risk / owner / expiry / approved-by / rationale / follow-up Issue
 
 Promotion Recommendation:
 - denied
@@ -47,3 +68,4 @@ Promotion Recommendation:
 - [ ] Review blockers are resolved or explicitly waived.
 - [ ] No unexplained Spec Deviation remains.
 - [ ] Mapped PRD Acceptance Criteria are verified.
+- [ ] Evidence matches the current Spec version/hash and tested commit.

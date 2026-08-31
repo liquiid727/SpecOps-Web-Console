@@ -18,6 +18,12 @@ owner: <reviewer>
 |---|---|---|---|---|---|---|---|
 | REVIEW-R001-S01-001 | P1 | open | code-review | SPEC-R001-S01-001 | <owner> | ... | ... |
 
+## Review Context
+
+- Reviewed revision: <commit-or-immutable-revision>
+- Related SPEC / TEST / ISSUE IDs: ...
+- Review scope: correctness | security | performance | maintainability | test | spec-deviation
+
 ## Review Gate
 
 - [ ] No blocking finding remains open.

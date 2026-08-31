@@ -37,7 +37,8 @@ depends_on: []
 ### Must
 
 - ...
-- 代码与关联单元测试在同一变更中提交；如不适用，记录理由。
+- 为本次变更声明最小、定向的验证命令；若存在合适的代码级接缝，添加或更新关联单元测试。
+- 若单元测试不适用，记录 `N/A` 理由；不得以此替代 verification Issue 的正式验证。
 
 ### Must Not
 
@@ -47,21 +48,27 @@ depends_on: []
 - 不进行无关重构。
 - 不把 AI 生成的测试草稿未经人工审核直接作为 Gate Evidence。
 
+## Expected Areas (conditional)
+
+- src/... | tests/... | Not applicable
+- Significant architectural deviation MUST block and return to Spec review.
+
 ## Implementation Context
 
 执行前 MUST 按顺序读取：
 
 1. 根 `prd.md` 和 `index.yaml`。
 2. 本目录的 `spec.md`。
-3. 本目录的 `test.md`（verification Issue 必须读取）。
+3. 本目录的已批准 `test.md`（实现与验证 Issue 都必须读取，以保持版本追溯）。
 4. 本 Issue、`review.md`、`evidence/` 和 `acceptance.md`。
 5. 真实 Codebase、Architecture 和 Existing Tests。
 
 ## Tasks
 
 - [ ] ...
-- [ ] 添加或更新关联单元测试。
-- [ ] 生成并登记所需执行证据。
+- [ ] 运行 `## Validation` 中声明的定向验证命令。
+- [ ] 添加或更新关联单元测试；不适用时记录 `N/A` 理由。
+- [ ] 若 `kind: verification`，生成并登记所需执行证据。
 - [ ] 对 AI 生成的用例草稿完成人工审核（适用时）。
 
 ## Acceptance Criteria
@@ -71,10 +78,13 @@ depends_on: []
 
 ## Validation
 
-- [ ] TEST-R001-S01-001
-- [ ] Existing regression tests
-- [ ] Evidence written or referenced under `../evidence/`
-- [ ] Evidence is normalized and registered in `evidence/index.yaml`
+> implementation Issue 只列出本次变更需要的快速、定向验证；不得自动扩展为
+> 全量回归、性能、并发或 Gate。verification Issue 按绑定的 `test.md` 执行正式
+> 场景与 Gate。
+
+- [ ] <implementation: changed-scope unit / lint / build / smoke command>
+- [ ] <verification: TEST-R001-S01-001 and its required runner scope>
+- [ ] <verification only: evidence normalized and registered in `evidence/index.yaml`>
 - [ ] No unexplained Spec Deviation
 
 ## Dependencies
@@ -88,6 +98,10 @@ Blocks:
 - ...
 
 ## Required Evidence
+
+> Required only for `kind: verification`, unless the approved Issue explicitly
+> declares implementation evidence. Otherwise write `N/A — verification Issue
+> owns release evidence` in the Completion Record.
 
 - Evidence type: <normalized-result | report | trace | screenshot | log | gate-report>
 - Gate impact: blocking | warning | informational

@@ -11,33 +11,38 @@ updated_at: YYYY-MM-DD
 affects: []
 ---
 
-# PRD — <Requirement Title>
+# PRD — R001 <Requirement Title>
 
-## 1. Background
+## 1. Summary
 
-为什么现在需要这个需求？
-当前用户、业务或系统遇到了什么问题？
+用 3–8 句话说明用户问题、现在需要解决的原因，以及系统最终提供的能力。
 
-## 2. Goals
+## 2. Background
 
-- G-R001-001: ...
-- G-R001-002: ...
+### Current Situation
+- ...
 
-## 3. Non-Goals
+### Problem
+- ...
+
+### Why Now
+- ...
+
+## 3. Goals
+
+### G-R001-001 <Goal>
+- User / business outcome: ...
+- Success signal: ...
+
+## 4. Non-Goals
 
 - NG-R001-001: ...
 
-## 4. Actors
+## 5. Actors and Scope
 
-### ACT-R001-001 <Actor>
-
-允许：
-- ...
-
-禁止：
-- ...
-
-## 5. Scope
+| Actor | Description | Allowed / forbidden boundary |
+|---|---|---|
+| ACT-R001-001 <Actor> | ... | ... |
 
 ### In Scope
 - ...
@@ -45,19 +50,22 @@ affects: []
 ### Out of Scope
 - ...
 
-## 6. User / Business Flow
+## 6. User / Business Scenarios
 
-### FLOW-R001-001 <Flow Name>
+### FLOW-R001-001 <Scenario Name>
 
-```text
-Actor
-  ↓
-Action
-  ↓
-System Behavior
-  ↓
-Outcome
-```
+Actor:
+- ...
+
+Preconditions:
+- ...
+
+Flow:
+1. ...
+2. ...
+
+Expected Outcome:
+- ...
 
 ## 7. Functional Requirements
 
@@ -65,95 +73,91 @@ Outcome
 
 System MUST ...
 
-Actor:
+User Value:
 - ...
 
 Trigger:
 - ...
 
-Expected:
-- ...
-
 Observable Result:
 - ...
 
+Priority:
+- Must | Should | Could
+
 Agent Behavior Contract (conditional):
-- Success metric(s): ...
-- Dataset / sampled-input source and version: ...
-- Passing threshold: ...
-- Trajectory fields and anomaly signals: ...
-- Automatic degradation and human handoff threshold: ...
+- Success metric(s): Not applicable | ...
+- Dataset / sampled-input source and version: Not applicable | ...
+- Passing threshold: Not applicable | ...
+- Trajectory fields, degradation, and human handoff: Not applicable | ...
 
-### REQ-R001-002 <Requirement Name>
-
-...
-
-## 8. Business Rules
+## 8. Business Rules, Lifecycle, and Edges
 
 - BR-R001-001: ...
-- BR-R001-002: ...
-
-## 9. Lifecycle / State Expectations
-
-如适用：
-
-```text
-PENDING
-├── APPROVED
-├── REJECTED
-└── CANCELLED
-```
-
-## 10. Edge Cases
+- INV-R001-001: System MUST NOT ...
 
 | ID | Case | Expected Behavior |
 |---|---|---|
 | EDGE-R001-001 | ... | ... |
 
-## 11. Invariants / Forbidden Behavior
+Lifecycle (conditional):
+- Not applicable | `STATE_A → STATE_B`; invalid transition: ...
 
-- INV-R001-001: System MUST NOT ...
-- INV-R001-002: System MUST ...
+## 9. UX, Non-Functional Goals, and Constraints
 
-## 12. Acceptance Criteria
+UX / interaction (conditional):
+- Not applicable | users can observe ..., failures show reason and recovery ...
+
+| Area | Requirement or `Not applicable` with rationale |
+|---|---|
+| Performance | ... |
+| Reliability | ... |
+| Security / privacy | ... |
+| Accessibility | ... |
+| Compatibility / migration | ... |
+
+Constraints:
+- ...
+
+## 10. Acceptance Criteria
 
 - AC-R001-001: Given ..., When ..., Then ...
 - AC-R001-002: Given ..., When ..., Then ...
 
-> For Agent behavior, each applicable AC must also identify the success metric,
-> Dataset/sample version, passing threshold, and human handoff condition. For
-> ordinary behavior, record `Not applicable` rather than inventing an Agent
-> evaluation requirement.
-
-## 13. Spec Package Decomposition
+## 11. Spec Package Decomposition
 
 ### S01 <Spec Package Name>
 
 Covers:
 - REQ-R001-001
-- REQ-R001-002
+- AC-R001-001
 
 Business Outcome:
 - ...
+
+Dependencies:
+- None | S0N
 
 Path:
 - ./specs/S01-<slug>/
 
-### S02 <Spec Package Name>
+Required:
+- true
 
-Covers:
-- REQ-R001-003
+## 12. Risks and Open Questions
 
-Business Outcome:
-- ...
-
-Path:
-- ./specs/S02-<slug>/
-
-## 14. Open Questions
+| Risk | Impact | Probability | Mitigation |
+|---|---|---|---|
+| ... | ... | ... | ... |
 
 | ID | Question | Blocking | Decision / Approver | Status |
 |---|---|---|---|---|
 | Q-R001-001 | ... | true | ... | open |
 
-> Open Question 未确认前，Agent MUST NOT 自行作为已确认需求实现。
+## 13. PRD Ready Check
+
+- [ ] Goals, non-goals, actors, scope, REQ, BR/INV/EDGE, and AC are explicit.
+- [ ] Every requirement and acceptance criterion has an observable result.
+- [ ] S0N packages have independent business outcomes and known dependencies.
+- [ ] Applicable technical/product constraints are stated; inapplicable areas have a rationale.
+- [ ] No blocking Open Question remains.

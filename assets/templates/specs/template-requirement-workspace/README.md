@@ -33,6 +33,7 @@ R0NN/
 | Test | `TEST-R0NN-S0N-NNN` |
 | Issue | `ISSUE-R0NN-S0N-NNN` |
 | Review Finding | `REVIEW-R0NN-S0N-NNN` |
+| Evidence (optional) | `EV-R0NN-S0N-NNN` |
 
 IDs are permanent anchors. Do not reuse, renumber, or silently change their
 meaning after approval. `primary_spec` is the single owner of an Issue;
@@ -41,7 +42,8 @@ meaning after approval. `primary_spec` is the single owner of an Issue;
 ## State boundaries
 
 - `prd.md` and `index.yaml` describe product and package lifecycle.
-- `spec.md` describes the executable contract.
+- `spec.md` describes the executable system contract; it does not contain TEST
+  IDs, test data, coverage matrices, or execution results.
 - `test.md` describes planned verification, never final results.
 - `issues/*.md` describes executable work and its Completion Record.
 - `evidence/` stores immutable execution results.
@@ -62,9 +64,16 @@ There is no legacy template path. New work uses the v2 root files and one
 - Test scenarios must name setup/data/environment, concrete Given/When/Then
   assertions, evidence, and gate impact. `test.md` never contains final
   execution results.
-- Implementation Issues include code and unit-test work; verification Issues
-  own independent test assets and normalized evidence. Every Issue has one
-  `primary_spec` and executable Acceptance Criteria.
+- Implementation Issues include code changes plus only the focused validation
+  they declare. Verification Issues own independent test assets, normalized
+  evidence, and release-gate execution. Every Issue has one `primary_spec` and
+  executable Acceptance Criteria.
 - Agent sections are conditional. Include Agent metrics, Dataset/version,
   thresholds, trajectory signals, degradation, and human handoff only when the
   PRD/Spec declares Agent behavior or `qualityProfile: agent-workflow`.
+- Core product traceability and acceptance fields are mandatory. Performance,
+  security, migration, compatibility, dependency, and other conditional
+  sections must be completed when applicable or state `Not applicable` with a
+  rationale.
+- `EV-*` is optional; `evidence/index.yaml`, run IDs, and immutable paths are
+  still required for all formal evidence.

@@ -12,6 +12,12 @@ promotion: denied # allowed | denied
 
 # Requirement Acceptance — <Requirement Title>
 
+## Acceptance Scope and Version
+
+- PRD version: <version>
+- Product approver: <owner>
+- UAT scope: ...
+
 ## Required Spec Package Decisions
 
 | Spec Package | Covers | Decision | Acceptance Record |
@@ -23,6 +29,15 @@ promotion: denied # allowed | denied
 | Acceptance Criterion | Evidence / Spec Acceptance | Result |
 |---|---|---|
 | AC-R001-001 | ... | pending |
+
+## Non-Functional Acceptance (conditional)
+
+| Area | Result | Evidence / rationale |
+|---|---|---|
+| Performance | Not applicable | ... |
+| Security | Not applicable | ... |
+| Compatibility / migration | Not applicable | ... |
+| UX / accessibility | Not applicable | ... |
 
 ## Product / UAT Decision
 
@@ -36,7 +51,7 @@ Residual Risk:
 - ...
 
 Waiver:
-- None | owner / expiry / approved-by / rationale
+- None | risk / owner / expiry / approved-by / rationale / follow-up Issue
 
 ## Requirement Done Check
 
