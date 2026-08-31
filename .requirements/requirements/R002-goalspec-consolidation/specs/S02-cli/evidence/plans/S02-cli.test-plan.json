@@ -1,0 +1,15 @@
+{
+  "standardVersion": "specos-test-standard",
+  "requirement": "R002",
+  "specPackage": "S02",
+  "specId": "SPEC-R002-S02",
+  "specVersion": "1.0.0",
+  "testSpecId": "TEST-R002-S02",
+  "testSpecVersion": "1.0.0",
+  "sourceSpecHash": "3829f6b78dd9bf9d888e8c8ccd86e78bf2685667fc329b55e834dbd3e32787eb",
+  "tests": [
+    {"id": "TEST-R002-S02-001", "category": "initialization/intake", "level": "integration", "requiredEvidence": ["normalized-result", "command-log"], "gateImpact": "blocking"},
+    {"id": "TEST-R002-S02-002", "category": "selector/gate", "level": "integration", "requiredEvidence": ["normalized-result", "command-log"], "gateImpact": "blocking"},
+    {"id": "TEST-R002-S02-003", "category": "entrypoint-resolution", "level": "integration", "requiredEvidence": ["normalized-result", "command-log"], "gateImpact": "blocking"}
+  ]
+}

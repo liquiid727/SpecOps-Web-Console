@@ -1,9 +1,32 @@
 standardVersion: specos-test-standard
 requirement: R002
 spec_package: S03
-updated_at: 2026-08-26
-plans: []
-schedules: []
-runs: []
-gates: []
-artifacts: []
+updated_at: 2026-08-30
+plans:
+  - id: S03-explorer-catalog.test-plan
+    type: test-plan
+    path: ./plans/S03-explorer-catalog.test-plan.json
+    covers: [TEST-R002-S03-001, TEST-R002-S03-002, TEST-R002-S03-003]
+schedules:
+  - id: S03-explorer-catalog.2026-08-30T165500Z
+    type: schedule
+    path: ./schedules/S03-explorer-catalog.2026-08-30T165500Z.schedule.json
+    covers: [TEST-R002-S03-001, TEST-R002-S03-002, TEST-R002-S03-003]
+runs:
+  - id: S03-explorer-catalog.2026-08-30T165500Z
+    type: normalized-result
+    path: ./artifacts/S03-explorer-catalog.2026-08-30T165500Z.run.json
+    result: passed
+    covers: [TEST-R002-S03-001, TEST-R002-S03-002, TEST-R002-S03-003]
+    commit: working-tree@85690a48
+gates:
+  - id: S03-explorer-catalog.R002
+    type: gate-report
+    path: ./gates/S03-explorer-catalog.R002.gate-report.json
+    result: passed
+    covers: [TEST-R002-S03-001, TEST-R002-S03-002, TEST-R002-S03-003]
+artifacts:
+  - id: S03-explorer-catalog.2026-08-30T165500Z
+    type: normalized-result
+    path: ./artifacts/S03-explorer-catalog.2026-08-30T165500Z.run.json
+    result: passed

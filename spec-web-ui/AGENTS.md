@@ -9,7 +9,7 @@ This file applies to all files under `spec-web-ui/`.
 - Use `.agents/roles/ui-design-agent.md` as the shared UI role prompt, and read `.agents/modes/<mode>/roles/ui-design-agent.md` when a project mode introduces UI-specific delivery differences.
 - Use `.codex/skills/specos-ui-design/SKILL.md` when changing screens, layouts, components, copy hierarchy, or handoff notes in this frontend project.
 - Use `.codex/skills/specos-ui-design/SKILL.md` for SpecOS configuration pages, policy editors, switchboards, tables, and dangerous operations.
-- Keep UI work traceable to `rules/frontend/react-workbench-delivery.md`, `rules/ui/design-governance.md`, `rules/ui/pencil-prototype-ui.md`, a platform design doc under `design/`, or a Requirement Package under `.requirements/requirements/R0NN-<slug>/` (prd.md / spec.md / test.md / issues.md).
+- Keep UI work traceable to `rules/frontend/react-workbench-delivery.md`, `rules/ui/design-governance.md`, `rules/ui/pencil-prototype-ui.md`, a platform design doc under `design/`, or a Requirement Package under `.requirements/requirements/R0NN-<slug>/` (prd.md / index.yaml / specs/S0N-<slug>/spec.md / test.md / issues/ISSUE-*.md).
 
 ## Frontend Delivery Rules
 

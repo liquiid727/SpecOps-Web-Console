@@ -1,3 +1,4 @@
+schemaVersion: specos/goalspec
 project:
   name: specos-spec-only
   type: spec-only

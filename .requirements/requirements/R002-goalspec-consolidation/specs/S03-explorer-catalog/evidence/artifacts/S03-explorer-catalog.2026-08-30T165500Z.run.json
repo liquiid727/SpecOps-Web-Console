@@ -1,0 +1,30 @@
+{
+  "runId": "S03-explorer-catalog.2026-08-30T165500Z",
+  "standardVersion": "specos-test-standard",
+  "requirement": "R002",
+  "specPackage": "S03",
+  "specId": "SPEC-R002-S03",
+  "specVersion": "1.0.0",
+  "testSpecId": "TEST-R002-S03",
+  "testSpecVersion": "1.0.0",
+  "sourceSpecHash": "4efcf69fd703693cc7cf332cafe5f71d1416940d404581503a4da3e6c0cd5d56",
+  "changeId": "R002",
+  "commit": "working-tree@85690a48",
+  "featureName": "Explorer and Catalog",
+  "runner": {"name": "npm", "command": "npm --prefix spec-web-ui run test && npm --prefix spec-web-ui run build", "exitCode": 0},
+  "environment": {"id": "local-working-tree", "node": "25.6.0", "dependencyMode": "installed"},
+  "status": "pass",
+  "releaseDecision": "ready",
+  "startedAt": "2026-08-30T16:50:47Z",
+  "endedAt": "2026-08-30T16:50:51Z",
+  "blockers": [],
+  "highRiskScenarios": [],
+  "coverageGaps": [],
+  "summary": {"apiPassRate": 1, "scenarioPassRate": 1, "totalEndpoints": 0, "totalScenarios": 3, "testFiles": 21, "tests": 71, "build": "passed"},
+  "items": [
+    {"testId": "TEST-R002-S03-001", "target": "Requirement explorer", "status": "pass", "summary": "Workspace, child package, issue, and evidence data render from GoalSpec paths", "gateImpact": "blocking"},
+    {"testId": "TEST-R002-S03-002", "target": "Requirement routes", "status": "pass", "summary": "Empty, loading, success, and invalid-package states are covered", "gateImpact": "blocking"},
+    {"testId": "TEST-R002-S03-003", "target": "Catalog identity", "status": "pass", "summary": "Catalog tests pass with GoalSpec asset identities", "gateImpact": "blocking"},
+    {"testId": "REGRESSION-R002-S03-UI", "target": "spec-web-ui", "status": "pass", "summary": "21 test files and 71 tests passed; production build passed", "gateImpact": "blocking"}
+  ]
+}

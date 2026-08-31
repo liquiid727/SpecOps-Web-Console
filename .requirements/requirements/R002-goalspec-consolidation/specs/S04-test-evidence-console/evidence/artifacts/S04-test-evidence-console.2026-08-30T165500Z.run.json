@@ -1,0 +1,30 @@
+{
+  "runId": "S04-test-evidence-console.2026-08-30T165500Z",
+  "standardVersion": "specos-test-standard",
+  "requirement": "R002",
+  "specPackage": "S04",
+  "specId": "SPEC-R002-S04",
+  "specVersion": "1.0.0",
+  "testSpecId": "TEST-R002-S04",
+  "testSpecVersion": "1.0.0",
+  "sourceSpecHash": "3287e23f473cdd127cd6e4fdb0b322b4fb2fa7674ea44d0de7aade6024ee166d",
+  "changeId": "R002",
+  "commit": "working-tree@85690a48",
+  "featureName": "Test Evidence Console",
+  "runner": {"name": "npm", "command": "npm --prefix test-console run test && npm --prefix test-console run build", "exitCode": 0},
+  "environment": {"id": "local-working-tree", "node": "25.6.0", "dependencyMode": "installed"},
+  "status": "pass",
+  "releaseDecision": "ready",
+  "startedAt": "2026-08-30T17:00:28Z",
+  "endedAt": "2026-08-30T17:00:34Z",
+  "blockers": [],
+  "highRiskScenarios": [],
+  "coverageGaps": [],
+  "summary": {"apiPassRate": 1, "scenarioPassRate": 1, "totalEndpoints": 0, "totalScenarios": 3, "testFiles": 7, "tests": 21, "build": "passed"},
+  "items": [
+    {"testId": "TEST-R002-S04-001", "target": "GoalSpec evidence fixture", "status": "pass", "summary": "Console loads plans, runs, sessions, and package evidence", "gateImpact": "blocking"},
+    {"testId": "TEST-R002-S04-002", "target": "Test runner actions", "status": "pass", "summary": "Runner actions write normalized runs and schedules under child evidence", "gateImpact": "blocking"},
+    {"testId": "TEST-R002-S04-003", "target": "Scoped gate and console routes", "status": "pass", "summary": "Gate and route behavior ignores evidence from other packages", "gateImpact": "blocking"},
+    {"testId": "REGRESSION-R002-S04-CONSOLE", "target": "test-console", "status": "pass", "summary": "21 tests passed; production build passed", "gateImpact": "blocking"}
+  ]
+}

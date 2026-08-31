@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "specos-test-standard",
+  "selector": "R002-goalspec-consolidation/S04-test-evidence-console",
+  "changeId": "R002",
+  "status": "ready",
+  "checkedAt": "2026-08-31T08:33:13.357Z",
+  "plan": ".requirements/requirements/R002-goalspec-consolidation/specs/S04-test-evidence-console/evidence/plans/S04-test-evidence-console.test-plan.json",
+  "issues": []
+}

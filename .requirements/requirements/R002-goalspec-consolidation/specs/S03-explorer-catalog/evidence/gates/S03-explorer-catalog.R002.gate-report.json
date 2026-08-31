@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "specos-test-standard",
+  "selector": "R002-goalspec-consolidation/S03-explorer-catalog",
+  "changeId": "R002",
+  "status": "ready",
+  "checkedAt": "2026-08-31T08:33:13.316Z",
+  "plan": ".requirements/requirements/R002-goalspec-consolidation/specs/S03-explorer-catalog/evidence/plans/S03-explorer-catalog.test-plan.json",
+  "issues": []
+}

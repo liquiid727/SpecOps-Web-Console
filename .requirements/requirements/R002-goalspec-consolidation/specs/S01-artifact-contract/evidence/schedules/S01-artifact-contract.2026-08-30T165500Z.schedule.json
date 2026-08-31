@@ -1,0 +1,8 @@
+{
+  "selector": "R002-goalspec-consolidation/S01-artifact-contract",
+  "specVersion": "1.0.0",
+  "runId": "S01-artifact-contract.2026-08-30T165500Z",
+  "scheduledAt": "2026-08-30T16:55:00Z",
+  "executionMode": "test-after-execution",
+  "environment": "local-working-tree"
+}

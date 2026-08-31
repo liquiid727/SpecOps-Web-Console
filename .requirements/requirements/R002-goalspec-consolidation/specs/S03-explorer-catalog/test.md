@@ -5,7 +5,7 @@ test_spec_id: TEST-R002-S03
 source_prd: ../../prd.md
 source_spec: ./spec.md
 source_spec_version: 1.0.0
-source_spec_hash: pending-final-verification
+source_spec_hash: 4efcf69fd703693cc7cf332cafe5f71d1416940d404581503a4da3e6c0cd5d56
 version: 1.0.0
 status: approved
 owner: implementation-agent

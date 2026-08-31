@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "specos-test-standard",
+  "selector": "R002-goalspec-consolidation/S02-cli",
+  "changeId": "R002",
+  "status": "ready",
+  "checkedAt": "2026-08-31T08:33:13.276Z",
+  "plan": ".requirements/requirements/R002-goalspec-consolidation/specs/S02-cli/evidence/plans/S02-cli.test-plan.json",
+  "issues": []
+}

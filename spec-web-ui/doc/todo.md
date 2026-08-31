@@ -1,7 +1,7 @@
 spec UI
 这个是个面向内部的工具站点，你可以理解为一个 spec kit / asset workbench。
 
-它维护平时积累的 spec 模板、agent 模板、workflow 模板、skill 内容、rules 和 test patterns。它不承载某个目标项目的需求生命周期；目标项目自己的需求流程仍然在目标项目仓库里走 `.requirements/` 的 Requirement Package 模型（`.requirements/requirements/R0NN-<slug>/{prd.md, spec.md, test.md, issues.md}`，沿 prd-author → spec-generate → issue-execute → feature-verify 推进）。
+它维护平时积累的 spec 模板、agent 模板、workflow 模板、skill 内容、rules 和 test patterns。它不承载某个目标项目的需求生命周期；目标项目自己的需求流程仍然在目标项目仓库里走 `.requirements/` 的 Requirement Package 模型（`.requirements/requirements/R0NN-<slug>/{prd.md, index.yaml, specs/S0N-<slug>/{spec.md, test.md, issues/ISSUE-*.md}}`，沿 prd-author → spec-generate → issue-execute → feature-verify 推进）。
 
 UI spec：
 

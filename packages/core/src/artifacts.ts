@@ -2334,7 +2334,7 @@ function nextStepForRequest(kind: RequestKind, needsDraft: boolean, needsChangeP
     return "Create or update the Requirement Package `.requirements/requirements/R0NN-<slug>/prd.md` with raw request, assumptions, and open questions.";
   }
   if (needsChangePackage) {
-    return "Attach the request to a Requirement Package `.requirements/requirements/R0NN-<slug>/` (prd.md -> spec.md -> test.md -> issues.md) before implementation, testing, or release gates.";
+    return "Attach the request to a Requirement Package `.requirements/requirements/R0NN-<slug>/` (prd.md -> index.yaml -> specs/S0N-<slug>/spec.md -> test.md -> issues/ISSUE-R0NN-S0N-NNN-<slug>.md) before implementation, testing, or release gates.";
   }
   if (kind === "review") {
     return "Run the reviewer role against the active change, rules, tests, and validation evidence.";

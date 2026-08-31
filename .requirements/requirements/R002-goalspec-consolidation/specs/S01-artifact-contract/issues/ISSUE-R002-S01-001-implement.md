@@ -6,8 +6,8 @@ kind: implementation
 track: implementation
 primary_spec: SPEC-R002-S01-001
 source_spec_version: 1.0.0
-source_spec_hash: pending-final-verification
-status: in-progress
+source_spec_hash: f6c96c872ccd5fc89ce41b978744e99557475a73d4066615364672987a18ef09
+status: verified
 priority: P0
 owner: architecture-agent
 depends_on: []
@@ -41,21 +41,21 @@ Deliver the artifact contract portion of the GoalSpec consolidation.
 
 ## Validation
 
-- [ ] TEST-R002-S01-001
-- [ ] TEST-R002-S01-002
-- [ ] Existing regression tests
-- [ ] Static workflow-residue scan
+- [x] TEST-R002-S01-001
+- [x] TEST-R002-S01-002
+- [x] Existing regression tests
+- [x] Static workflow-residue scan
 
 ## Completion Record
 
-Status: in-progress
-Implemented By:
-Completed At:
-PR / Commit:
-Changed Files:
-Tests Executed:
-Evidence References:
-Design Decisions:
-Tradeoffs:
+Status: complete
+Implemented By: liquiid
+Completed At: 2026-08-30
+PR / Commit: bec4ea3b; verification working-tree@85690a48
+Changed Files: packages/core/src/artifacts.ts; packages/templates/{fullstack,spec-only}/.specos/manifest.yaml
+Tests Executed: npm test; npm run build; GoalSpec template and gate checks
+Evidence References: ../evidence/artifacts/S01-artifact-contract.2026-08-30T165500Z.run.json; ../evidence/gates/S01-artifact-contract.R002.gate-report.json
+Design Decisions: Keep only schemaVersion, requirementsDir, and templatesDir in the manifest artifact contract; co-locate evidence under each child package.
+Tradeoffs: Evidence was recorded against the current working tree because no new commit was created during this closeout.
 Spec Deviation: None
 Open Questions: None

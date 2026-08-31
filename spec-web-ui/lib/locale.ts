@@ -117,8 +117,8 @@ export const localeCopy = {
           {
             name: "Spec Agent",
             role: "维护 Requirement Package 的契约链路",
-            description: "按 prd-author → prd-review → spec-generate → spec-review → spec-test-generate → issue-generate 推进，产出并回写 prd.md / spec.md / test.md / issues.md。",
-            points: [".requirements/requirements/R001-<slug>/prd.md（REQ-R001-001）", "spec.md（SPEC-R001-F01-001）+ test.md（TEST-R001-F01-001）", "issues.md（ISSUE-R001-001）与 review gate"]
+            description: "按 prd-author → prd-review → spec-generate → spec-review → spec-test-generate → issue-generate 推进，产出并回写 prd.md / index.yaml / specs/S0N-<slug>/{spec.md, test.md, issues/ISSUE-*.md}。",
+            points: [".requirements/requirements/R001-<slug>/prd.md + index.yaml（REQ-R001-001）", "specs/S01-<slug>/spec.md（SPEC-R001-S01-001）+ test.md（TEST-R001-S01-001）", "specs/S01-<slug>/issues/ISSUE-R001-S01-001-<slug>.md 与 review gate"]
           },
           {
             name: "Execution Agent",
@@ -290,8 +290,8 @@ export const localeCopy = {
           {
             name: "Spec Agent",
             role: "Maintain the Requirement Package contract chain",
-            description: "Runs prd-author → prd-review → spec-generate → spec-review → spec-test-generate → issue-generate, producing and updating prd.md / spec.md / test.md / issues.md.",
-            points: [".requirements/requirements/R001-<slug>/prd.md (REQ-R001-001)", "spec.md (SPEC-R001-F01-001) + test.md (TEST-R001-F01-001)", "issues.md (ISSUE-R001-001) and review gates"]
+            description: "Runs prd-author → prd-review → spec-generate → spec-review → spec-test-generate → issue-generate, producing and updating prd.md / index.yaml / specs/S0N-<slug>/{spec.md, test.md, issues/ISSUE-*.md}.",
+            points: [".requirements/requirements/R001-<slug>/prd.md + index.yaml (REQ-R001-001)", "specs/S01-<slug>/spec.md (SPEC-R001-S01-001) + test.md (TEST-R001-S01-001)", "specs/S01-<slug>/issues/ISSUE-R001-S01-001-<slug>.md and review gates"]
           },
           {
             name: "Execution Agent",

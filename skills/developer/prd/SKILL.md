@@ -19,7 +19,7 @@ Use the repository's canonical workspace:
 └── specs/
 ```
 
-Never create root `spec.md`, `test.md`, or `issues.md`; those responsibilities
+Never create root `spec.md`, `test.md`, or a root issue file; those responsibilities
 belong to child Spec Packages.
 
 Resolve the root from `.specos/manifest.yaml` and the GoalSpec rules. `R0NN` is

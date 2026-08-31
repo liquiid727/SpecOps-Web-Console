@@ -1,0 +1,29 @@
+{
+  "runId": "S01-artifact-contract.2026-08-30T165500Z",
+  "standardVersion": "specos-test-standard",
+  "requirement": "R002",
+  "specPackage": "S01",
+  "specId": "SPEC-R002-S01",
+  "specVersion": "1.0.0",
+  "testSpecId": "TEST-R002-S01",
+  "testSpecVersion": "1.0.0",
+  "sourceSpecHash": "f6c96c872ccd5fc89ce41b978744e99557475a73d4066615364672987a18ef09",
+  "changeId": "R002",
+  "commit": "working-tree@85690a48",
+  "featureName": "Artifact Contract",
+  "runner": {"name": "npm", "command": "npm test", "exitCode": 0},
+  "environment": {"id": "local-working-tree", "node": "25.6.0", "dependencyMode": "installed"},
+  "status": "pass",
+  "releaseDecision": "ready",
+  "startedAt": "2026-08-30T16:50:35Z",
+  "endedAt": "2026-08-30T16:50:37Z",
+  "blockers": [],
+  "highRiskScenarios": [],
+  "coverageGaps": [],
+  "summary": {"apiPassRate": 1, "scenarioPassRate": 1, "totalEndpoints": 0, "totalScenarios": 2, "workspaceTests": 18, "coreTests": 9, "cliTests": 4, "catalogTests": 5},
+  "items": [
+    {"testId": "TEST-R002-S01-001", "target": "validateManifest", "status": "pass", "summary": "GoalSpec manifest accepts canonical fields and rejects unknown fields", "gateImpact": "blocking"},
+    {"testId": "TEST-R002-S01-002", "target": "buildSpecChangeTestSchedule", "status": "pass", "summary": "Evidence paths remain inside the selected child package", "gateImpact": "blocking"},
+    {"testId": "REGRESSION-R002-WORKSPACE", "target": "npm test", "status": "pass", "summary": "18 workspace tests passed", "gateImpact": "blocking"}
+  ]
+}

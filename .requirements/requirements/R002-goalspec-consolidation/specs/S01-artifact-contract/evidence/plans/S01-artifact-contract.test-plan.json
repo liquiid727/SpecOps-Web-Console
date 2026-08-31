@@ -1,0 +1,14 @@
+{
+  "standardVersion": "specos-test-standard",
+  "requirement": "R002",
+  "specPackage": "S01",
+  "specId": "SPEC-R002-S01",
+  "specVersion": "1.0.0",
+  "testSpecId": "TEST-R002-S01",
+  "testSpecVersion": "1.0.0",
+  "sourceSpecHash": "f6c96c872ccd5fc89ce41b978744e99557475a73d4066615364672987a18ef09",
+  "tests": [
+    {"id": "TEST-R002-S01-001", "category": "negative/invariant", "level": "integration", "requiredEvidence": ["normalized-result", "command-log"], "gateImpact": "blocking"},
+    {"id": "TEST-R002-S01-002", "category": "happy-path", "level": "integration", "requiredEvidence": ["normalized-result", "command-log"], "gateImpact": "blocking"}
+  ]
+}

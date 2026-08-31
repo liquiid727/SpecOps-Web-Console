@@ -1,9 +1,32 @@
 standardVersion: specos-test-standard
 requirement: R002
 spec_package: S02
-updated_at: 2026-08-26
-plans: []
-schedules: []
-runs: []
-gates: []
-artifacts: []
+updated_at: 2026-08-30
+plans:
+  - id: S02-cli.test-plan
+    type: test-plan
+    path: ./plans/S02-cli.test-plan.json
+    covers: [TEST-R002-S02-001, TEST-R002-S02-002, TEST-R002-S02-003]
+schedules:
+  - id: S02-cli.2026-08-30T165500Z
+    type: schedule
+    path: ./schedules/S02-cli.2026-08-30T165500Z.schedule.json
+    covers: [TEST-R002-S02-001, TEST-R002-S02-002, TEST-R002-S02-003]
+runs:
+  - id: S02-cli.2026-08-30T165500Z
+    type: normalized-result
+    path: ./artifacts/S02-cli.2026-08-30T165500Z.run.json
+    result: passed
+    covers: [TEST-R002-S02-001, TEST-R002-S02-002, TEST-R002-S02-003]
+    commit: working-tree@85690a48
+gates:
+  - id: S02-cli.R002
+    type: gate-report
+    path: ./gates/S02-cli.R002.gate-report.json
+    result: passed
+    covers: [TEST-R002-S02-001, TEST-R002-S02-002, TEST-R002-S02-003]
+artifacts:
+  - id: S02-cli.2026-08-30T165500Z
+    type: normalized-result
+    path: ./artifacts/S02-cli.2026-08-30T165500Z.run.json
+    result: passed

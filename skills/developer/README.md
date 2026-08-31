@@ -42,7 +42,7 @@ R0NN/prd.md + index.yaml
 | `prd` | 原始需求、产品目标 | `R0NN/prd.md`、`index.yaml`、根验收草稿 | 不确定实现架构，不生成 child Spec 或 Issue。 |
 | `prd-to-spec` | 已接受根 PRD Workspace | `specs/S0N/spec.md` | 只定义 child 系统契约，不生成 Test Design。 |
 | `spec-to-test` | 已批准 child Spec | 同目录 `test.md` | 绑定精确 Spec 版本，不写执行结果。 |
-| `to-issues` | Approved child Spec 或 Test Design | 同目录 `issues/ISSUE-*.md` | 实现和验证分轨，不创建根 `issues.md`。 |
+| `to-issues` | Approved child Spec 或 Test Design | 同目录 `issues/ISSUE-*.md` | 实现和验证分轨，不创建根 issue 文件。 |
 | `loop-it` | 已批准的本地 Issue 选择 | 代码、Completion Record、evidence、checkpoint | 依赖、证据、评审不满足时不得 ship。 |
 | `ship-it` | 已通过评审的交付物 | Commit、PR、合并和 Issue 关闭 | 属于远端变更操作，不得绕过测试和评审关卡。 |
 

@@ -5,7 +5,7 @@ test_spec_id: TEST-R002-S01
 source_prd: ../../prd.md
 source_spec: ./spec.md
 source_spec_version: 1.0.0
-source_spec_hash: pending-final-verification
+source_spec_hash: f6c96c872ccd5fc89ce41b978744e99557475a73d4066615364672987a18ef09
 version: 1.0.0
 status: approved
 owner: architecture-agent

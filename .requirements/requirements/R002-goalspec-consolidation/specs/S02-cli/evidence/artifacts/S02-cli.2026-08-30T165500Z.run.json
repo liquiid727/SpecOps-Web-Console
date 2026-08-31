@@ -1,0 +1,30 @@
+{
+  "runId": "S02-cli.2026-08-30T165500Z",
+  "standardVersion": "specos-test-standard",
+  "requirement": "R002",
+  "specPackage": "S02",
+  "specId": "SPEC-R002-S02",
+  "specVersion": "1.0.0",
+  "testSpecId": "TEST-R002-S02",
+  "testSpecVersion": "1.0.0",
+  "sourceSpecHash": "3829f6b78dd9bf9d888e8c8ccd86e78bf2685667fc329b55e834dbd3e32787eb",
+  "changeId": "R002",
+  "commit": "working-tree@85690a48",
+  "featureName": "GoalSpec CLI",
+  "runner": {"name": "vitest", "command": "npm test --workspace @specos/cli && npx --no-install specos check", "exitCode": 0},
+  "environment": {"id": "local-working-tree", "node": "25.6.0", "dependencyMode": "installed"},
+  "status": "pass",
+  "releaseDecision": "ready",
+  "startedAt": "2026-08-30T17:02:36Z",
+  "endedAt": "2026-08-30T17:02:39Z",
+  "blockers": [],
+  "highRiskScenarios": [],
+  "coverageGaps": [],
+  "summary": {"apiPassRate": 1, "scenarioPassRate": 1, "totalEndpoints": 0, "totalScenarios": 3, "testFiles": 1, "tests": 4, "build": "passed", "check": "SPECOS_CHECK_OK"},
+  "items": [
+    {"testId": "TEST-R002-S02-001", "target": "init/intake", "status": "pass", "summary": "Fresh templates validate as GoalSpec and intake creates R/S workspace roots", "gateImpact": "blocking"},
+    {"testId": "TEST-R002-S02-002", "target": "test/gate selectors", "status": "pass", "summary": "Canonical child selectors resolve evidence and legacy flat selectors fail explicitly", "gateImpact": "blocking"},
+    {"testId": "TEST-R002-S02-003", "target": "resolve entrypoints", "status": "pass", "summary": "Workspace, issue, design, workflow, and template paths resolve under their canonical roots", "gateImpact": "blocking"},
+    {"testId": "REGRESSION-R002-S02-CLI", "target": "npx --no-install specos check", "status": "pass", "summary": "Manifest, artifact directories, and workflow definitions validate", "gateImpact": "blocking"}
+  ]
+}

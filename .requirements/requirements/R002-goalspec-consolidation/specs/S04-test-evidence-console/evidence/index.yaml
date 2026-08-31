@@ -1,9 +1,32 @@
 standardVersion: specos-test-standard
 requirement: R002
 spec_package: S04
-updated_at: 2026-08-26
-plans: []
-schedules: []
-runs: []
-gates: []
-artifacts: []
+updated_at: 2026-08-30
+plans:
+  - id: S04-test-evidence-console.test-plan
+    type: test-plan
+    path: ./plans/S04-test-evidence-console.test-plan.json
+    covers: [TEST-R002-S04-001, TEST-R002-S04-002, TEST-R002-S04-003]
+schedules:
+  - id: S04-test-evidence-console.2026-08-30T165500Z
+    type: schedule
+    path: ./schedules/S04-test-evidence-console.2026-08-30T165500Z.schedule.json
+    covers: [TEST-R002-S04-001, TEST-R002-S04-002, TEST-R002-S04-003]
+runs:
+  - id: S04-test-evidence-console.2026-08-30T165500Z
+    type: normalized-result
+    path: ./artifacts/S04-test-evidence-console.2026-08-30T165500Z.run.json
+    result: passed
+    covers: [TEST-R002-S04-001, TEST-R002-S04-002, TEST-R002-S04-003]
+    commit: working-tree@85690a48
+gates:
+  - id: S04-test-evidence-console.R002
+    type: gate-report
+    path: ./gates/S04-test-evidence-console.R002.gate-report.json
+    result: passed
+    covers: [TEST-R002-S04-001, TEST-R002-S04-002, TEST-R002-S04-003]
+artifacts:
+  - id: S04-test-evidence-console.2026-08-30T165500Z
+    type: normalized-result
+    path: ./artifacts/S04-test-evidence-console.2026-08-30T165500Z.run.json
+    result: passed

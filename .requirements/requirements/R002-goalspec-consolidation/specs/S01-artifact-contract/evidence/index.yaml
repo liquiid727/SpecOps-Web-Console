@@ -1,9 +1,32 @@
 standardVersion: specos-test-standard
 requirement: R002
 spec_package: S01
-updated_at: 2026-08-26
-plans: []
-schedules: []
-runs: []
-gates: []
-artifacts: []
+updated_at: 2026-08-30
+plans:
+  - id: S01-artifact-contract.test-plan
+    type: test-plan
+    path: ./plans/S01-artifact-contract.test-plan.json
+    covers: [TEST-R002-S01-001, TEST-R002-S01-002]
+schedules:
+  - id: S01-artifact-contract.2026-08-30T165500Z
+    type: schedule
+    path: ./schedules/S01-artifact-contract.2026-08-30T165500Z.schedule.json
+    covers: [TEST-R002-S01-001, TEST-R002-S01-002]
+runs:
+  - id: S01-artifact-contract.2026-08-30T165500Z
+    type: normalized-result
+    path: ./artifacts/S01-artifact-contract.2026-08-30T165500Z.run.json
+    result: passed
+    covers: [TEST-R002-S01-001, TEST-R002-S01-002]
+    commit: working-tree@85690a48
+gates:
+  - id: S01-artifact-contract.R002
+    type: gate-report
+    path: ./gates/S01-artifact-contract.R002.gate-report.json
+    result: passed
+    covers: [TEST-R002-S01-001, TEST-R002-S01-002]
+artifacts:
+  - id: S01-artifact-contract.2026-08-30T165500Z
+    type: normalized-result
+    path: ./artifacts/S01-artifact-contract.2026-08-30T165500Z.run.json
+    result: passed

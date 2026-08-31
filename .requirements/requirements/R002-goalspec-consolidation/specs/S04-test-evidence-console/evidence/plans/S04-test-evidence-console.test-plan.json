@@ -1,0 +1,15 @@
+{
+  "standardVersion": "specos-test-standard",
+  "requirement": "R002",
+  "specPackage": "S04",
+  "specId": "SPEC-R002-S04",
+  "specVersion": "1.0.0",
+  "testSpecId": "TEST-R002-S04",
+  "testSpecVersion": "1.0.0",
+  "sourceSpecHash": "3287e23f473cdd127cd6e4fdb0b322b4fb2fa7674ea44d0de7aade6024ee166d",
+  "tests": [
+    {"id": "TEST-R002-S04-001", "category": "happy-path", "level": "integration", "requiredEvidence": ["normalized-result", "command-log"], "gateImpact": "blocking"},
+    {"id": "TEST-R002-S04-002", "category": "evidence-write", "level": "integration", "requiredEvidence": ["normalized-result", "command-log"], "gateImpact": "blocking"},
+    {"id": "TEST-R002-S04-003", "category": "package-isolation", "level": "integration", "requiredEvidence": ["normalized-result", "command-log"], "gateImpact": "blocking"}
+  ]
+}
