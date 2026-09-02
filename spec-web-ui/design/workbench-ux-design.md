@@ -25,7 +25,7 @@ It helps developers discover, select, and assemble the reusable assets needed to
 - test patterns
 - project conventions
 
-It is not the requirement intake surface for a target project. A concrete project's requirement lifecycle belongs in that target repository, usually through a `.requirements/` Requirement Package (`.requirements/requirements/R0NN-<slug>/{prd.md, index.yaml, specs/S0N-<slug>/{spec.md, test.md, issues/ISSUE-*.md}}`) alongside `design/` and review notes. `spec-web-ui` may export assets into that repository, but it should not become the source of truth for `PRD -> Spec -> Spec-Test -> Issues -> Issue execution -> Feature Verify`.
+It is not the requirement intake surface for a target project. A concrete project's requirement lifecycle belongs in that target repository, usually through a `.requirements/` Requirement Package (`.requirements/requirements/R0NN-<slug>/{prd.md, index.yaml, specs/S0N-<slug>/{spec.md, test.md, issues/ISSUE-*.md}}`) alongside `design/` and review notes. `spec-web-ui` may export assets into that repository, but it should not become the source of truth for `PRD -> Spec Review -> Test Design -> Test Review -> Issues -> Issue execution / Independent Verification -> Feature Verify`.
 
 The product is not a general admin dashboard. It should not make users feel they are managing a large back office system. Its main job is to help a developer answer:
 

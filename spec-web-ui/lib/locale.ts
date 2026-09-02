@@ -111,25 +111,25 @@ export const localeCopy = {
         eyebrow: "$ cat .requirements/requirements/R001-decision-api/spec.md",
         title: "Agent-Native SDLC 工作流",
         description: "一个需求 = 一个 Requirement Package。所有契约（PRD、Spec、Test、Issues）在同一目录落盘，ID 从 REQ 到 SPEC / TEST / ISSUE 永久锚定。Agent 沿 8 个 mode 的链路推进，执行与验证始终可追踪、可回溯。",
-        stages: ["需求 / Idea", "PRD", "Spec", "Spec-Test", "Issues", "Issue 执行", "Feature Verify", "Done"],
-        gate: "PRD 与 Spec 必须先通过 review 才能进入下游；Spec 与代码冲突时执行 agent 必须 STOP 并记录 Deviation 退回 Spec Review，不得静默改写产品语义。",
+        stages: ["需求 / Idea", "PRD", "Spec", "Test Design", "Issues", "Issue 执行", "Feature Verify", "Done"],
+        gate: "PRD、Spec 和 Test Design 必须分别通过 review 才能进入下游；实现 Agent 的本地单元测试不替代独立验证。Spec 与代码冲突时执行 agent 必须 STOP 并记录 Deviation 退回 Spec Review，不得静默改写产品语义。",
         tracks: [
           {
             name: "Spec Agent",
             role: "维护 Requirement Package 的契约链路",
-            description: "按 prd-author → prd-review → spec-generate → spec-review → spec-test-generate → issue-generate 推进，产出并回写 prd.md / index.yaml / specs/S0N-<slug>/{spec.md, test.md, issues/ISSUE-*.md}。",
+            description: "按 prd-author → prd-review → spec-generate → spec-review → spec-test-generate → test-review → issue-generate 推进；Spec 与 Test Design 均批准后才进入实现或独立验证执行。产出并回写 prd.md / index.yaml / specs/S0N-<slug>/{spec.md, test.md, issues/ISSUE-*.md}。",
             points: [".requirements/requirements/R001-<slug>/prd.md + index.yaml（REQ-R001-001）", "specs/S01-<slug>/spec.md（SPEC-R001-S01-001）+ test.md（TEST-R001-S01-001）", "specs/S01-<slug>/issues/ISSUE-R001-S01-001-<slug>.md 与 review gate"]
           },
           {
             name: "Execution Agent",
             role: "按 Issue 实现，不擅改产品意图",
-            description: "执行前必读 prd / spec / test 与代码库；只改本 Issue 范围并写 Completion Record；Spec 与代码冲突时 STOP 记录 Deviation。",
+            description: "执行前必读 prd / spec / test 与代码库；只改本 Issue 范围并写 Completion Record；可写实现耦合的单元测试，但不拥有独立场景结果或发布结论。Spec 与代码冲突时 STOP 记录 Deviation。",
             points: ["遍历 ## ISSUE-R001-001 执行", "写 **Status:** 与 ### Completion Record", "实现耦合的单元测试"]
           },
           {
             name: "Verify Agent",
             role: "独立验证与追踪矩阵",
-            description: "跑 test.md 的 Exit Criteria（E2E / 场景 / API / UI），核对 Requirement|Spec|Test|Issue 的可追踪关系，收敛到 feature-verify gate。",
+            description: "由独立测试职责跑 test.md 的 Exit Criteria（E2E / 场景 / API / UI），核对 Requirement|Spec|Test|Issue 的可追踪关系，收敛到 feature-verify gate。",
             points: ["test.md 全场景覆盖（P0/P1 REQ）", "feature-verify 关卡", "traceability.md"]
           }
         ]
@@ -284,25 +284,25 @@ export const localeCopy = {
         title: "Agent-Native SDLC workflow",
         description:
           "One requirement = one Requirement Package. All contracts (PRD, Spec, Test, Issues) live in the same directory, with IDs anchored permanently from REQ through SPEC/TEST/ISSUE. Agents advance along an 8-mode chain, so execution and verification stay traceable end to end.",
-        stages: ["Idea", "PRD", "Spec", "Spec-Test", "Issues", "Issue execution", "Feature verify", "Done"],
-        gate: "PRD and Spec must pass review before downstream work. On a spec/code conflict the execution agent must STOP, record a Deviation, and hand back to Spec Review — never silently rewrite product intent.",
+        stages: ["Idea", "PRD", "Spec", "Test Design", "Issues", "Issue execution", "Feature verify", "Done"],
+        gate: "PRD, Spec, and Test Design must each pass review before downstream work. Implementation-local unit tests do not replace independent verification. On a spec/code conflict the execution agent must STOP, record a Deviation, and hand back to Spec Review — never silently rewrite product intent.",
         tracks: [
           {
             name: "Spec Agent",
             role: "Maintain the Requirement Package contract chain",
-            description: "Runs prd-author → prd-review → spec-generate → spec-review → spec-test-generate → issue-generate, producing and updating prd.md / index.yaml / specs/S0N-<slug>/{spec.md, test.md, issues/ISSUE-*.md}.",
+            description: "Runs prd-author → prd-review → spec-generate → spec-review → spec-test-generate → test-review → issue-generate; implementation and independent verification start only after both Spec and Test Design are approved. Produces and updates prd.md / index.yaml / specs/S0N-<slug>/{spec.md, test.md, issues/ISSUE-*.md}.",
             points: [".requirements/requirements/R001-<slug>/prd.md + index.yaml (REQ-R001-001)", "specs/S01-<slug>/spec.md (SPEC-R001-S01-001) + test.md (TEST-R001-S01-001)", "specs/S01-<slug>/issues/ISSUE-R001-S01-001-<slug>.md and review gates"]
           },
           {
             name: "Execution Agent",
             role: "Deliver issues without rewriting product intent",
-            description: "Reads prd / spec / test and the codebase before executing; touches only the current Issue scope and writes a Completion Record; STOPs with a Deviation on spec/code conflicts.",
+            description: "Reads prd / spec / test and the codebase before executing; touches only the current Issue scope and writes a Completion Record; may add implementation-coupled unit tests but owns no independent scenario result or release decision. STOPs with a Deviation on spec/code conflicts.",
             points: ["execute ## ISSUE-R001-001", "write **Status:** and ### Completion Record", "implementation-coupled unit tests"]
           },
           {
             name: "Verify Agent",
             role: "Run isolated verification and the traceability matrix",
-            description: "Runs test.md Exit Criteria (E2E / scenario / API / UI) and checks the Requirement|Spec|Test|Issue trace links, converging at the feature-verify gate.",
+            description: "The independent testing track runs test.md Exit Criteria (E2E / scenario / API / UI) and checks the Requirement|Spec|Test|Issue trace links, converging at the feature-verify gate.",
             points: ["test.md full coverage (P0/P1 REQs)", "feature-verify gate", "traceability.md"]
           }
         ]

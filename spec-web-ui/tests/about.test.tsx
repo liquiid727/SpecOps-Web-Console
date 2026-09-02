@@ -15,7 +15,9 @@ describe("AboutPage", () => {
     render(await AboutPage());
 
     expect(screen.getByRole("heading", { name: "Agent-Native SDLC 工作流" })).toBeInTheDocument();
+    expect(screen.getByText("Test Design")).toBeInTheDocument();
     expect(screen.getByText("Execution Agent")).toBeInTheDocument();
+    expect(screen.getByText(/spec-review → spec-test-generate → test-review → issue-generate/)).toBeInTheDocument();
     expect(screen.getByText("实现耦合的单元测试")).toBeInTheDocument();
     expect(screen.getByText(/E2E \/ 场景 \/ API \/ UI/)).toBeInTheDocument();
     expect(screen.getByText("Feature Verify")).toBeInTheDocument();

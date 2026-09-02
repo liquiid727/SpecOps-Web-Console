@@ -4,7 +4,7 @@
 
 它的核心价值不是做一个普通后台，也不是把所有 workflow 都塞进 UI 里执行，而是沉淀、浏览、选择和组合开发人员日常高频使用的 AI 工程资产，让项目可以快速建立自己的规则、Agent 能力、测试规范和交付结构。
 
-它也不是单个目标项目的需求状态系统。具体项目的 Agent-Native SDLC 生命周期（一个需求 = 一个 Requirement Package：`.requirements/requirements/R0NN-<slug>/{prd.md, index.yaml, specs/S0N-<slug>/{spec.md, test.md, issues/ISSUE-*.md}}`，沿 prd-author → spec-generate → issue-execute → feature-verify 推进）应留在目标项目仓库内；`spec-web-ui` 可以只读展示这些 Markdown 包及其派生门禁，但不持有或复制目标项目的规范化需求真相。
+它也不是单个目标项目的需求状态系统。具体项目的 Agent-Native SDLC 生命周期（一个需求 = 一个 Requirement Package：`.requirements/requirements/R0NN-<slug>/{prd.md, index.yaml, specs/S0N-<slug>/{spec.md, test.md, issues/ISSUE-*.md}}`，沿 prd-author → spec-generate → spec-review → spec-test-generate → test-review → issue-generate → issue-execute → feature-verify 推进）应留在目标项目仓库内；`spec-web-ui` 可以只读展示这些 Markdown 包及其派生门禁，但不持有或复制目标项目的规范化需求真相。
 
 ## 核心定位
 
