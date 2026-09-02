@@ -6,7 +6,7 @@ Scope: PRD / Spec / Spec-Test / Issue / Review / Evidence / Acceptance
 ## 1. Core flow and ownership
 
 ```text
-PRD → Spec Packages → Issues → Loop It → Evidence → Spec Acceptance → PRD Acceptance
+PRD → Spec Packages → Test Design → Issues → Loop It → Evidence → Spec Acceptance → PRD Acceptance
 ```
 
 One Requirement Workspace (`R0NN`) records one user or business need. Its PRD
@@ -110,6 +110,12 @@ scenarios; defines scope, environment, fixture/seed data, isolation, concrete
 Given/When/Then assertions, failure assertions, required evidence, gate impact,
 regression scope, flaky handling, and exit criteria.
 
+Test Design generation is the required handoff after child Spec approval and
+before Issue generation. Implementation Issues and verification Issues both
+consume the current approved Test Design; they remain separate execution
+tracks, and implementation-coupled unit tests never replace independent
+verification evidence.
+
 It selects applicable unit, integration, contract, E2E, security, performance,
 compatibility, failure-injection, and exploratory coverage. It never records
 final PASS/FAIL results. Execution output is immutable evidence under the same
@@ -151,7 +157,7 @@ Loop It. Historical evidence remains bound to its original version and commit.
 | PRD Ready | product scope/AC/decomposition clear; no blocking question |
 | Spec Ready | system contract and conditional technical constraints explicit |
 | Test Ready | current Spec binding, coverage and exit criteria approved |
-| Issue Ready | bounded scope, current bindings, dependencies and validation explicit |
+| Issue Ready | current approved Spec and Test Design bindings, bounded scope, dependencies and validation explicit |
 | Issue Done | local work and Completion Record complete; not a QA decision |
 | Spec Accepted | required Issues complete, evidence supports exit criteria, review resolved/waived, mapped AC verified |
 | Requirement Done | required Specs accepted, PRD AC/UAT accepted, no blocking question |

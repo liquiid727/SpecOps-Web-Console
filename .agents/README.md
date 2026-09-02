@@ -129,7 +129,7 @@ Nested dispatch follows this contract:
 SpecOS now routes work through this model:
 
 ```text
-PRD Workspace -> Child Spec/Test/Issues -> Implementation -> Evidence/Review -> QA Acceptance -> Ship
+PRD Workspace -> Approved Child Spec -> Approved Test Design -> Issues -> Implementation / Independent Verification -> Evidence/Review -> QA Acceptance -> Ship
 ```
 
 Canonical storage targets:

@@ -9,11 +9,13 @@ Create one local Issue file per independently completable work item. The Issue b
 
 ## Inputs
 
-Choose exactly one track:
+Choose exactly one track after the child Spec and its Test Design have both
+been approved:
 
 ```text
-A. implementation Issues from an approved specs/S0N-<slug>/spec.md
-B. verification Issues from an approved specs/S0N-<slug>/test.md
+A. implementation Issues, bound to the approved specs/S0N-<slug>/spec.md and
+   its approved Test Design
+B. verification Issues from the approved specs/S0N-<slug>/test.md
 ```
 
 Read in order: root `prd.md` and `index.yaml`, selected child `spec.md`, its
@@ -134,7 +136,7 @@ The Completion Record must eventually contain changed files, tests executed, evi
 
 ```text
 approved S0N/spec.md
-  ├── /to-issues (implementation)
-  └── approved S0N/test.md → /to-issues (verification)
-       → /loop-it
+  → approved S0N/test.md
+  → /to-issues (implementation or verification)
+  → /loop-it
 ```

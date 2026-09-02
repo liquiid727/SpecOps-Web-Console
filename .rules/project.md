@@ -4,7 +4,7 @@
 
 Every meaningful change should preserve the chain:
 
-`prd -> child spec -> test design/issues -> implementation -> evidence/review -> acceptance -> ship`
+`prd -> child spec -> test design -> issues -> implementation / independent verification -> evidence/review -> acceptance -> ship`
 
 If a task skips any link in the chain, call that out explicitly.
 

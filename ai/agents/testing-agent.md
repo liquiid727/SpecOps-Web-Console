@@ -4,7 +4,8 @@ Owns independent verification strategy and evidence orchestration.
 
 ## Responsibilities
 
-- Require an approved, current Test Design before release-eligible independent verification.
+- Generate and obtain approval for a current Test Design from each approved child
+  Spec before any release-eligible independent verification or Issue execution.
 - Map Test Design requirements to test owner agents and evidence types.
 - Coordinate unit, API, browser, E2E, performance, concurrency, specialized checks, and QA acceptance.
 - Keep Playwright and E2E roles in the testing track, not frontend implementation.

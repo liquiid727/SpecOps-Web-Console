@@ -17,7 +17,10 @@ Input must be an approved root Workspace:
 └── index.yaml
 ```
 
-For each approved decomposition entry, write exactly one child package:
+For each approved decomposition entry, write exactly one child package. The
+package skeleton may be copied from the canonical template, so `test.md` and
+other package files can exist as placeholders, but this skill only fills the
+child `spec.md`.
 
 ```text
 .requirements/requirements/R0NN-<slug>/specs/S0N-<slug>/
@@ -107,6 +110,8 @@ Approval freezes the source version used by `spec-to-test` and `to-issues`. When
 ```text
 approved R0NN PRD
   → S0N/spec.md
-  ├── /spec-to-test → S0N/test.md
-  └── /to-issues (implementation) → S0N/issues/ISSUE-R0NN-S0N-NNN.md
+   └── /spec-to-test → S0N/test.md
+       → test review / approval
+       → /to-issues (implementation or verification)
+          → S0N/issues/ISSUE-R0NN-S0N-NNN.md
 ```

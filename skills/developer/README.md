@@ -42,29 +42,31 @@ R0NN/prd.md + index.yaml
 | `prd` | 原始需求、产品目标 | `R0NN/prd.md`、`index.yaml`、根验收草稿 | 不确定实现架构，不生成 child Spec 或 Issue。 |
 | `prd-to-spec` | 已接受根 PRD Workspace | `specs/S0N/spec.md` | 只定义 child 系统契约，不生成 Test Design。 |
 | `spec-to-test` | 已批准 child Spec | 同目录 `test.md` | 绑定精确 Spec 版本，不写执行结果。 |
-| `to-issues` | Approved child Spec 或 Test Design | 同目录 `issues/ISSUE-*.md` | 实现和验证分轨，不创建根 issue 文件。 |
+| `to-issues` | Approved child Spec + approved Test Design | 同目录 `issues/ISSUE-*.md` | 实现和验证分轨，不创建根 issue 文件；两轨都必须绑定当前 Test Design。 |
 | `loop-it` | 已批准的本地 Issue 选择 | 代码、Completion Record、evidence、checkpoint | 实现轨只跑定向验证；验证轨负责正式证据与 Gate。 |
 | `feature-verify` | 当前 child package 或完成的 root Workspace | child/root `acceptance.md` | 只根据版本当前的 Evidence、Review 和 AC 写 QA 决策；不实现或改测试。 |
-| `ship-it` | 已通过评审的交付物 | Commit、PR、合并和 Issue 关闭 | 属于远端变更操作，不得绕过测试和评审关卡。 |
+| `ship-it` | 已通过评审的交付物或无 Issue 的本地变更 | CI Record、Commit、PR、合并和 Issue 关闭 | 属于远端变更操作，不得绕过测试和评审关卡。 |
 
-Child Spec Package 批准后，实现轨和验证轨可以并行准备：
+Child Spec Package 批准后，先由独立测试职责生成并批准 Test Design；随后实现轨和验证轨可以并行执行：
 
 ```text
 Approved child Spec v1.2
-├── 实现轨
-│   └── implementation Issues
-│       ├── implementation
-│       └── implementation-coupled unit tests
-└── 验证轨
-    └── Test Design v1.x (source: child Spec v1.2)
-        ├── API contract
-        ├── scenario orchestration
-        ├── UI / E2E
-        ├── performance / load / stress / spike / soak
-        └── concurrency / security
+└── independent Test Design v1.x (source: child Spec v1.2)
+    ├── API contract
+    ├── scenario orchestration
+    ├── UI / E2E
+    ├── performance / load / stress / spike / soak
+    ├── concurrency / security
+    └── Test Design approved
+        ├── 实现轨 → implementation Issues → implementation-coupled unit tests
+        └── 验证轨 → verification Issues → independent execution and evidence
 ```
 
-测试设计、数据、Mock、API Collection、场景和 k6 模型可以与实现同步准备；依赖可部署目标的真实执行需要等待测试环境就绪。两条轨道最终在测试证据、`review-it`、`feature-verify` 和 `ship-it` 汇合。Child Spec 版本变化后，引用旧版本的 Test Design 必须标记为 `stale`。
+Test Design、数据、Mock、API Collection、场景和 k6 模型可以在实现开始前准备；
+依赖可部署目标的真实执行需要等待测试环境就绪。实现轨的单元测试只验证局部
+实现，不等于独立测试；验证轨负责正式场景执行、归一化证据和 Gate。两条轨道最终
+在测试证据、`review-it`、`feature-verify` 和 `ship-it` 汇合。Child Spec 版本变化
+后，引用旧版本的 Test Design 必须标记为 `stale`。
 
 ### 替代入口
 
@@ -75,7 +77,7 @@ Approved child Spec v1.2
 | 只有零散想法 | `prd -> prd-to-spec` |
 | 已有 PRD，需要先讨论方案理由和取舍 | `prd -> to-design -> prd-to-spec` |
 | 已有代码但没有可信 Spec | `code-to-spec -> 人工校对并批准 child Spec -> spec-to-test` |
-| 已有 Approved child Spec，但缺少独立测试体系 | `spec-to-test -> verification Issues` |
+| 已有 Approved child Spec，但缺少独立测试体系 | `spec-to-test -> test review -> verification Issues` |
 | 已有 Test Design，需要实施具体测试资产 | `to-issues -> 对应测试执行角色` |
 
 `code-to-spec` 产生的是对当前系统行为的观察结果。代码与产品意图冲突时，需要先处理差异并批准 child Spec 基线，不能直接把当前代码当成测试期望。
@@ -141,7 +143,7 @@ R0NN/S0N implementation / verification Issues
 
 | 角色 | 典型 Skill |
 | --- | --- |
-| `spec-editor` | `prd`、`prd-to-spec`、`spec-to-test`、`to-issues`、`code-to-spec` |
+| `spec-editor` | `prd`、`prd-to-spec`、`to-issues`、`code-to-spec` |
 | `architecture-agent` | `domain-modeling`、`codebase-design`、`design-an-interface` |
 | `implementation-agent` | `karpathy-guidelines`、`diagnosing-bugs`、`tdd`、`refactor` |
 | `testing-agent` / `test-editor` | `spec-to-test` |
@@ -161,11 +163,11 @@ R0NN/S0N implementation / verification Issues
 | [`prd-to-spec`](./prd-to-spec/SKILL.md) | 将 PRD 转换为一个或多个模块化、可版本化的 child Spec Package。 | 需求已确认，需要判断单 Spec 或多 Spec，并形成稳定实现契约。 |
 | [`spec-to-test`](./spec-to-test/SKILL.md) | 从 Approved child Spec 生成独立、版本绑定的 Test Design。 | 接口、场景和性能契约已经审查通过，需要准备独立测试体系或为旧项目补测。 |
 | [`code-to-spec`](./code-to-spec/SKILL.md) | 从代码、配置和测试反向提取完整 SPEC。 | 接手遗留项目、补齐规格、理解一个缺少文档的现有系统。 |
-| [`to-issues`](./to-issues/SKILL.md) | 将 Approved child Spec 或 Test Design 拆成相互隔离的实现或验证 Issue。 | 规格已确认，需要分别进入实现轨道或独立测试轨道。 |
+| [`to-issues`](./to-issues/SKILL.md) | 将已批准 Spec/Test Design 拆成相互隔离的实现或验证 Issue。 | Spec 与 Test Design 都已批准，需要分别进入实现轨道或独立测试轨道。 |
 | [`loop-it`](./loop-it/SKILL.md) | 按依赖顺序循环实现 Issue，并串联评审、记录、提交和恢复检查点。 | Issue 体系已经稳定，希望自动推进一批任务；不适合需求仍频繁变化时使用。 |
 | [`feature-verify`](./feature-verify/SKILL.md) | 汇总当前 Issue、Evidence、Review 和 AC，写入 child/root QA 验收决策。 | 实现和验证已完成，需要判断一个 Spec 或整个需求能否接受、豁免或阻断。 |
 | [`review-it`](./review-it/SKILL.md) | 检查工作区改动、分支差异和测试结果，完成代码评审收口。 | 功能实现结束、提交或合并前，需要发现回归风险和遗漏。 |
-| [`ship-it`](./ship-it/SKILL.md) | 通过 GitHub CLI 完成提交、推送、创建或合并 PR、关闭 Issue。 | 代码和验证均已完成，准备正式交付；属于会改变远端状态的操作。 |
+| [`ship-it`](./ship-it/SKILL.md) | 在 GoalSpec 或 Standalone 上下文中执行 CI、提交、推送、创建或合并 PR、关闭 Issue。 | 代码和验证均已完成，准备正式交付；属于会改变远端状态的操作。 |
 | [`handoff`](./handoff/SKILL.md) | 将当前对话和工作状态压缩为下一位 Agent 可接手的交接文档。 | 会话即将结束、任务跨人或跨 Agent 转交、需要保留关键上下文。 |
 
 ## 架构、领域与方案设计

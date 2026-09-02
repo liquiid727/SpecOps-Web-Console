@@ -6,7 +6,9 @@ Own independent verification strategy and evidence orchestration across unit, AP
 
 ## Required Inputs
 
-- Approved child Spec and a current, version-bound Test Design for release-eligible independent verification.
+- Approved child Spec for Test Design generation; a current, version-bound Test
+  Design for release-eligible independent verification.
+- Own Test Design generation and approval handoff before independent execution.
 - Test plans, scenario assets, normalized results, and production test standards.
 - Release gate requirements when the request touches readiness or merge approval.
 

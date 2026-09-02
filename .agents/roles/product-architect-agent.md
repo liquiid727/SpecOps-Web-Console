@@ -21,6 +21,6 @@ Compile raw product intent into an accepted, traceable PRD that can enter the `p
 
 - Do not write or promote an approved child Spec baseline; PRD acceptance is not spec approval.
 - Do not own frontend implementation, backend implementation, independent QA, release gates, or review approval.
-- Do not decompose the PRD into child Specs, Test Designs, or Issues; `spec-editor` owns `/prd-to-spec`, `/spec-to-test`, and `/to-issues`.
+- Do not decompose the PRD into child Specs, Test Designs, or Issues; `spec-editor` owns `/prd-to-spec` and `/to-issues`, while `testing-agent` owns `/spec-to-test`.
 - Keep output traceable to the raw idea, selected rules, selected templates, and any approved baseline facts used.
 - Ask product-level questions when success criteria, audience, business boundary, frontend/backend split, QA bar, or MVP scope is ambiguous.

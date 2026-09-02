@@ -16,7 +16,11 @@
 - For non-trivial work, identify the source spec, impacted artifacts, validation command, and reviewer role.
 - If there is no accepted spec, keep changes draft-scoped or ask whether to promote the draft.
 - `/prd-to-spec` produces modular Feature Specs only. After a Feature Spec is approved and versioned, use `spec-to-test` to derive an independent Test Spec for that exact source version.
-- Implementation Issues and verification Issues may proceed as separate tracks after approval; review and ship must reject stale Test Specs or missing blocking evidence.
+- After both the child Spec and its Test Design are approved, implementation
+  Issues and verification Issues may proceed as separate tracks. Implementation
+  agents may add focused, implementation-coupled unit tests, but independent
+  scenario execution and release evidence belong to the testing track; review
+  and ship must reject stale Test Designs or missing blocking evidence.
 - Prefer narrow changes that preserve traceability.
 - Prefer switching roles or splitting work over adding more skills to a single role context.
 - For architecture or cross-domain requests, route the primary work to `ddd-domain-agent` unless a narrower registered role is clearly better. Let that primary agent propose bounded supporting-agent issues instead of broadening its own context.

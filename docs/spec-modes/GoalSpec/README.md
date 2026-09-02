@@ -61,7 +61,7 @@ covers 显式表示。
 
 ## 4. 交付链路
 
-    Idea → PRD → N × Spec Package → N × Issue
+    Idea → PRD → N × Spec Package → N × Test Design → N × Issue
          → Evidence + Review → Spec QA Acceptance
          → PRD AC / UAT Acceptance → Ship
 
@@ -73,6 +73,10 @@ covers 显式表示。
 | issue-generate | 同目录 issues/ISSUE-*.md |
 | issue-execute | 代码、Issue Completion Record、evidence/ |
 | feature-verify | 子 acceptance.md，再聚合根 acceptance.md |
+
+`spec-test-generate` 必须在 child Spec 通过 review 后执行；`test.md` 通过
+Test Design review 后，才能生成实现或验证 Issue。实现轨可以编写实现耦合的
+单元测试，但不得把这些测试当作独立验证或 QA 证据。
 
 ## 5. QA 与 Done
 

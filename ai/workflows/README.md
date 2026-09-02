@@ -24,8 +24,9 @@ A PRD is not an approved Spec baseline, and an Issue Done is not QA acceptance.
 
 The main chain also defines the operating quality pipeline:
 
-    PRD / Spec testable acceptance
-    → code + unit tests in the same change
+    PRD / Spec / Test Design testable acceptance
+    → implementation and verification tracks
+    → code + focused unit tests in the implementation change
     → PR gate: unit + critical path + Agent smoke Eval (when applicable)
     → post-merge / nightly: regression + full Eval + contract + performance
     → pre-production: canary + sampled evaluation + trajectory alerts
@@ -34,6 +35,10 @@ The main chain also defines the operating quality pipeline:
 
 - PRD and Spec define testable functional AC. Agent workflows additionally
   declare success metrics, Eval data, thresholds, and handoff conditions.
+- The approved Test Design is the independent verification contract. It is
+  generated after Spec approval and before Issues are generated; implementation
+  unit tests are useful local checks but do not satisfy the independent test
+  or release-evidence gate.
 - AI may draft cases and analyze failures; a human owner reviews them before
   they become test evidence or influence a release gate.
 - The detailed lifecycle and Gate requirements live in
@@ -42,8 +47,10 @@ The main chain also defines the operating quality pipeline:
   `rules/testing/production-test-standards.md`.
 
 - product-architect-agent owns raw idea → root PRD.
-- spec-editor owns PRD → child Spec Packages and Issue generation.
-- testing-agent owns independent verification strategy and evidence gaps.
+- spec-editor owns PRD → child Spec Packages and the bounded Issue generation
+  handoff after Test Design approval.
+- testing-agent/test-editor owns independent Test Design generation, verification
+  strategy and evidence gaps.
 - qa-agent owns child/root acceptance decisions after test, review and gate
   evidence exist.
 

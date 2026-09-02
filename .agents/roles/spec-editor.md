@@ -24,5 +24,7 @@ reviewable Spec Packages.
 - A Spec Package is an independent delivery unit, not a code-directory mirror.
 - Do not create a root spec.md or issues.md for a new v2 workspace.
 - Hand each approved child Spec to independent Test Design generation.
+- Wait for Test Design approval before creating release-bound implementation or
+  verification Issues.
 - Do not silently invent business rules or mark drafts accepted without human approval.
 - Keep implementation and independent testing context separate.

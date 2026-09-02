@@ -25,7 +25,8 @@ findings, rejects false positives and produces one actionable recommendation.
     Idea
     → R0NN root PRD
     → S01/S02 child Spec Packages
-    → child Test Design and Issue files
+    → approved child Test Designs
+    → implementation / verification Issue files
     → Code + Evidence + Review
     → child QA acceptance
     → root PRD acceptance
@@ -37,6 +38,12 @@ stage-appropriate review.md, evidence/ and acceptance.md records.
 
 The workspace remains co-located under one R0NN directory and does not
 assume PRD 1:1 Spec or Spec 1:1 Issue.
+
+The handoff is ordered: `spec-editor` produces a child Spec and stops for Spec
+approval; `testing-agent`/`test-editor` derives and reviews the independent Test
+Design; only then may implementation and verification Issues be generated.
+Implementation-owned unit tests remain focused local checks and cannot be used
+as the independent verification result.
 
 ## Main Agent Ownership
 

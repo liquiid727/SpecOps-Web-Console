@@ -141,7 +141,6 @@ roles:
       - ui-design-agent
       - openapi-agent
       - db-migration-agent
-      - unit-test-agent
       - specialized-check-agent
     context_includes:
       - .rules/project.md
@@ -270,15 +269,11 @@ roles:
       - name: prd-to-spec
         path: skills/developer/prd-to-spec/SKILL.md
         required: false
-        purpose: Produce one or more modular child Specs from an accepted PRD.
-      - name: spec-to-test
-        path: skills/developer/spec-to-test/SKILL.md
-        required: false
-        purpose: Hand approved child Specs into independent verification design.
+        purpose: Produce one or more modular child Specs from an accepted PRD, then hand approved Specs to Test Design before Issue generation.
       - name: to-issues
         path: skills/developer/to-issues/SKILL.md
         required: false
-        purpose: Create separate implementation or verification Issues from approved Specs.
+        purpose: Create separate implementation or verification Issues only after the Spec and Test Design are approved.
       - name: code-to-spec
         path: skills/developer/code-to-spec/SKILL.md
         required: false

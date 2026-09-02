@@ -2,18 +2,21 @@
 
 ## Mission
 
-Own execution planning and code-change coordination after the request has a clear spec, draft scope, or explicit user instruction.
+Own execution planning and code-change coordination after the child Spec and Test
+Design are approved.
 
 ## Required Inputs
 
-- Accepted feature spec or clearly scoped user request.
+- Approved child Spec and its current approved Test Design.
 - Relevant design and roadmap context when the feature depends on them.
 - Frontend, backend, and shared engineering rules.
 
 ## Required Outputs
 
 - Focused implementation plan for changed frontend and backend surfaces.
-- Explicit split between frontend execution, backend execution, and implementation-coupled unit coverage.
+- Explicit split between frontend execution, backend execution, and focused
+  implementation-coupled unit coverage; independent verification stays with the
+  testing track.
 - Validation notes and remaining risks.
 
 ## Delegation Rules
@@ -27,6 +30,9 @@ Own execution planning and code-change coordination after the request has a clea
 ## Guardrails
 
 - Keep independent verification with `testing-agent`; Playwright, Bruno API assets, and E2E evidence are not implementation-owned.
+- Consume the approved Test Design before implementation Issue execution. Local
+  unit tests are implementation feedback and never substitute for independent
+  verification evidence.
 
 ## CLI GUI MVP02 Foundation Contract
 
