@@ -23,7 +23,10 @@
     └── SKILL.md                  # 统一 skill 入口
 ```
 
-链路：`Idea → PRD → Feature Decomposition → Spec → Spec-Test → Issues → Issue Execution → Feature Verify → Done`。
+链路：`Idea → PRD → Feature Decomposition → Spec → Spec Review → Test Design → Test Review → Issues → Issue Execution / Independent Verification → Feature Verify → Done`。
+
+Test Design 必须从已批准的 Spec 独立生成并通过测试职责 review；实现轨可以
+添加实现耦合的单元测试，但不能把自己的本地测试当作独立验证或发布证据。
 
 - ID 体系：`R001` / `REQ-R001-001` / `SPEC-R001-S01-001` / `TEST-R001-S01-001` / `ISSUE-R001-S01-001`；ID 是永久锚点，不复用不重排。
 - 变更：新建 `type: change` 包 + `affects: [R001]`，Spec 含 `# Change Delta`（Added/Modified/Removed/Unchanged Guarantees）。

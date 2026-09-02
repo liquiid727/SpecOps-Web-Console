@@ -4,15 +4,16 @@ inputs:
   - .requirements
 outputs:
   - .requirements
-  - tests
 gates:
   - PRD accepted by human
   - design updated or confirmed
-  - Spec and Test recorded in the Requirement Package
-  - Issues generated in the Requirement Package
+  - child Spec generated in the Requirement Package
+  - child Spec reviewed and approved by human
+  - independent Test Design generated from the approved child Spec
+  - Test Design reviewed and approved by the testing owner
+  - implementation and verification Issues generated as separate tracks
   - implementation handoff prepared
-  - test plan reviewed by human
-  - tests generated
-  - tests executed
+  - focused implementation validation completed
+  - independent Test Design scenarios executed
   - report reviewed
   - ci gate passed

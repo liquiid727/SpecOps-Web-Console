@@ -9,7 +9,10 @@ Treat specs, rules, tests, and generated artifacts as one traceable delivery cha
 3. Read the Requirement Package index in `.requirements/README.md`.
 4. Read stable platform and system design from `design/`.
 5. Implement from the active Requirement Workspace under `.requirements/requirements/R0NN-<slug>/`, reading `prd.md` -> `index.yaml` -> selected `specs/S0N-<slug>/spec.md` -> `test.md` -> one `issues/ISSUE-*.md`.
-6. Keep test evidence in `tests/`, rules in `rules/`, and agent responsibilities in `ai/agents/`.
+6. Generate and approve the child Test Design before assigning implementation or
+   verification Issues. Keep formal test evidence under the owning child
+   package's `evidence/`; implementation-local unit checks do not replace
+   independent verification.
 
 ## Coordinator And Dispatch
 
@@ -28,3 +31,5 @@ Treat specs, rules, tests, and generated artifacts as one traceable delivery cha
 - Keep generated artifacts traceable to a Requirement Package.
 - Cover empty, loading, success, and failure states for user-facing flows.
 - Record assumptions when a requirement is ambiguous.
+- Keep implementation execution and independent testing in separate tracks;
+  the implementation agent cannot approve its own release evidence.
