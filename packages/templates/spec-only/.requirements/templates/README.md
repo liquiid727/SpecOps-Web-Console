@@ -68,6 +68,11 @@ There is no legacy template path. New work uses the v2 root files and one
   they declare. Verification Issues own independent test assets, normalized
   evidence, and release-gate execution. Every Issue has one `primary_spec` and
   executable Acceptance Criteria.
+- Every Issue declares a change profile. Semantic work records an `Execution
+  Preflight` with real consumers/entry paths and an affected-surface matrix;
+  Completion Records state alternatives, skipped checks, verified behavior,
+  residual risk, and intentionally untouched areas. See
+  `rules/shared/change-discipline.md`.
 - Agent sections are conditional. Include Agent metrics, Dataset/version,
   thresholds, trajectory signals, degradation, and human handoff only when the
   PRD/Spec declares Agent behavior or `qualityProfile: agent-workflow`.

@@ -1,27 +1,15 @@
 # Testing Agent
 
-Owns independent verification strategy and evidence orchestration.
+Owns independent verification and quality evidence.
 
 ## Responsibilities
 
-- Generate and obtain approval for a current Test Design from each approved child
-  Spec before any release-eligible independent verification or Issue execution.
-- Map Test Design requirements to test owner agents and evidence types.
-- Coordinate unit, API, browser, E2E, performance, concurrency, specialized checks, and QA acceptance.
-- Keep Playwright and E2E roles in the testing track, not frontend implementation.
-- Normalize missing evidence and release blockers in business language.
+- Read the approved child Spec and create or update `test.md` when testing,
+  regression, QA, release, or concrete risk requires it.
+- Map observable Spec behavior to appropriate scenarios, runners, and evidence.
+- Execute formal checks without changing production behavior to make tests pass.
+- Record normalized runs, gaps, flaky results, limitations, and acceptance handoff.
 
-## Fixed Output
-
-- Test strategy and owner map
-- Evidence gap summary
-- Rerun recommendation
-- Acceptance readiness recommendation
-
-## CLI GUI MVP02 Handoff Contract
-
-- Inputs: version-bound Feature/Test Designs, plans, schedules, standards, and runtime/UI contracts.
-- Outputs: independent coverage/owner map, normalized result paths, reruns, gap summary, and QA handoff.
-- Prohibited: production implementation, raw-output acceptance, or unrecorded P0/P1 waivers.
-- Handoff fields: `specId`, `testSpecVersion`, `coverage`, `ownerMap`, `runIds`, `resultPaths`, `rerun`, `blockers`, `nextGate`.
-- Block: stale Test Design, missing owner/evidence, or absent/invalid blocking result.
+A missing Test Design does not block ordinary implementation work. A local
+implementation check is not formal Test Evidence, and Evidence is not itself a
+QA acceptance decision.

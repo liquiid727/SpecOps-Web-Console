@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "specos-test-standard",
+  "selector": "R003-engineering-discipline/S03-enforcement-and-eval",
+  "changeId": "R003",
+  "status": "ready",
+  "checkedAt": "2026-09-08T12:39:55.285Z",
+  "plan": ".requirements/requirements/R003-engineering-discipline/specs/S03-enforcement-and-eval/evidence/plans/S03-enforcement-and-eval.test-plan.json",
+  "issues": []
+}

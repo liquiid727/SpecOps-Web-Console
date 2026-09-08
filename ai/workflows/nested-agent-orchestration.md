@@ -12,12 +12,17 @@ skills, ownership and outputs in .agents/manifest.yaml.
 
 ## Roles
 
-SpecOS uses pola as coordinator; it routes to one main agent
+SpecOS uses Fairy as coordinator; it routes to one main agent
 (architecture-agent, implementation-agent, testing-agent or qa-agent), which
 opens registered specialists on demand.
 
+Use host-side delegation only for independent, bounded workstreams where it
+offers a clear benefit. Select concurrency within the host's limits and the
+task's needs; no minimum worker count is required. A single agent may perform
+the selected role's work when delegation adds no value or is unavailable.
+
 Each specialist task names its role, exact source rule or artifact, owned
-surfaces, narrow question, expected short output and non-goals. pola merges
+surfaces, narrow question, expected short output and non-goals. Fairy merges
 findings, rejects false positives and produces one actionable recommendation.
 
 ## Canonical Artifact Flow
@@ -41,7 +46,7 @@ assume PRD 1:1 Spec or Spec 1:1 Issue.
 
 The handoff is ordered: `spec-editor` produces a child Spec and stops for Spec
 approval; `testing-agent`/`test-editor` derives and reviews the independent Test
-Design; only then may implementation and verification Issues be generated.
+Design; only then may implementation and verification work be generated.
 Implementation-owned unit tests remain focused local checks and cannot be used
 as the independent verification result.
 
@@ -54,7 +59,7 @@ as the independent verification result.
 
 ## Output Shape
 
-pola returns the source artifacts, selected main/specialist
+Fairy returns the source artifacts, selected main/specialist
 roles, actionable findings, rejected findings, required preconditions,
 validation/acceptance gates and Sync Handoff status.
 

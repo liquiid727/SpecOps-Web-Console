@@ -32,21 +32,22 @@ calling_convention:
     - selected skills
     - selected context_includes
   routing_rules:
-    - Only load the selected role's role_prompt, canonical, skills, and context_includes.
+    - Load the selected role's role_prompt and canonical; select optional skills and context files by the current task. Directory context includes are discovery scopes, not recursive preload requirements.
     - Do not preload repository or external skills unless they are declared on the selected role.
     - Prefer switching agents or splitting issues over broadening one agent's skill set.
     - Roles with empty skills run as role-and-rules-only agents.
     - Do not invent ad-hoc roles; main primary and specialist agents must be registered in this manifest.
-    - "User-facing routing targets only tier: main agents: architecture-agent, implementation-agent, testing-agent, and qa-agent; pola coordinates across them."
+    - "User-facing routing targets only tier: main agents: architecture-agent, implementation-agent, testing-agent, and qa-agent; Fairy coordinates across them."
     - "Roles with tier: specialist are never default entrypoints; open them as on-demand subagents through their managed_by main agent."
     - Treat route-request and classify-request as routing previews, not agent execution.
     - route-request and classify-request expose the GoalSpec v2 role prompt and context load order.
-    - For nested host-side dispatch, use pola as coordinator and follow ai/workflows/nested-agent-orchestration.md.
+    - For nested host-side dispatch, use Fairy as coordinator and follow ai/workflows/nested-agent-orchestration.md.
     - Route raw idea, one-line requirement, and product intake requests to architecture-agent, which opens product-architect-agent for /prd before spec-editor runs /prd-to-spec.
+    - When an approved PRD has durable cross-requirement design tradeoffs, architecture-agent or spec-editor may use /to-design before /prd-to-spec; ordinary requirements do not require a design document.
     - Shared prompts are the complete GoalSpec v2 behavior; no mode overlay is loaded.
 
 coordinator:
-  name: pola
+  name: Fairy
   tier: coordinator
   purpose: Classify the request, route it to one of the four main agents, merge specialist reports, and keep the final answer as one consolidated recommendation.
   routes_to:
@@ -59,8 +60,8 @@ coordinator:
     - routing preview and dispatch boundaries
     - report merge and final synthesis
   constraints:
-    - pola is not a dispatchable execution role.
-    - Cross-main handoffs go through pola, not direct main-to-main delegation.
+    - Fairy is not a dispatchable execution role.
+    - Cross-main handoffs go through Fairy, not direct main-to-main delegation.
 
 roles:
   architecture-agent:
@@ -69,6 +70,10 @@ roles:
     tier: main
     skill_mode: scoped_only
     skills:
+      - name: to-design
+        path: skills/developer/to-design/SKILL.md
+        required: false
+        purpose: Record durable architecture alternatives, rationale, and compatibility before a child Spec fixes the implementation contract.
       - name: codebase-design
         path: skills/developer/codebase-design/SKILL.md
         required: false
@@ -266,14 +271,18 @@ roles:
         path: skills/developer/prd/SKILL.md
         required: false
         purpose: Produce accepted PRDs with stable requirements and scope classification.
+      - name: to-design
+        path: skills/developer/to-design/SKILL.md
+        required: false
+        purpose: Turn an approved PRD into a reviewable design proposal when durable cross-requirement tradeoffs need a canonical owner.
       - name: prd-to-spec
         path: skills/developer/prd-to-spec/SKILL.md
         required: false
-        purpose: Produce one or more modular child Specs from an accepted PRD, then hand approved Specs to Test Design before Issue generation.
+        purpose: Produce or revise child Specs from an accepted PRD or Issue entry; approved Specs directly guide implementation.
       - name: to-issues
         path: skills/developer/to-issues/SKILL.md
         required: false
-        purpose: Create separate implementation or verification Issues only after the Spec and Test Design are approved.
+        purpose: Capture precise bugs, regressions, and local changes as root Issue entries; reuse an existing Spec or hand off for Spec definition.
       - name: code-to-spec
         path: skills/developer/code-to-spec/SKILL.md
         required: false

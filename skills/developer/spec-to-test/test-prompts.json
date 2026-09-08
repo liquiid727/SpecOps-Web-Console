@@ -32,7 +32,7 @@
   {
     "id": "conditional-agent-eval",
     "prompt": "Generate Test Designs for one ordinary API behavior and one Agent workflow with a versioned Dataset, trajectory logging, and human handoff threshold.",
-    "expected": "Marks Agent Eval not applicable for the ordinary API behavior; for the Agent workflow, includes PR 20–50 smoke cases, merge/nightly full Eval, metrics, thresholds, online sampling, trajectory alerts, degradation, handoff, and human review of AI-generated cases."
+    "expected": "Marks Agent Eval not applicable for the ordinary API behavior; for the Agent workflow, justifies PR smoke selection size by changed behaviors, risk, dataset diversity and required confidence; includes merge/nightly full Eval, metrics, thresholds, online sampling, trajectory alerts, degradation, handoff, and human review. Preserves counts and gates in existing approved plans unless an authorized revision changes them."
   },
   {
     "id": "incomplete-spec-blocked",

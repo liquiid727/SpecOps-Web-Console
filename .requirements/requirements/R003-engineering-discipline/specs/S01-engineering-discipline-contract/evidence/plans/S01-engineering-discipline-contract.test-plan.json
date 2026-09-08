@@ -1,0 +1,17 @@
+{
+  "standardVersion": "specos-test-standard",
+  "requirement": "R003",
+  "specPackage": "S01",
+  "specId": "SPEC-R003-S01",
+  "specVersion": "1.0.0",
+  "testSpecId": "TEST-R003-S01",
+  "testSpecVersion": "1.0.0",
+  "sourceSpecHash": "600922fc4505f551952502c6be4f5379aa568df6c45dfe4756201f9b49c0071d",
+  "tests": [
+    {"id": "TEST-R003-S01-001", "category": "contract", "level": "node", "gateImpact": "blocking"},
+    {"id": "TEST-R003-S01-002", "category": "contract", "level": "node", "gateImpact": "blocking"},
+    {"id": "TEST-R003-S01-003", "category": "contract", "level": "node", "gateImpact": "blocking"},
+    {"id": "TEST-R003-S01-004", "category": "review", "level": "manual", "gateImpact": "blocking"},
+    {"id": "TEST-R003-S01-005", "category": "contract", "level": "node", "gateImpact": "blocking"}
+  ]
+}

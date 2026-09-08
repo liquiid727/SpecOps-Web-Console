@@ -1,6 +1,6 @@
 ---
 name: prd
-description: Use when turning a raw product idea, change request, bug, or refactor proposal into an accepted GoalSpec PRD Workspace.
+description: Use when turning a product idea or broad product change into an accepted GoalSpec PRD Workspace. Route precise bugs, regressions, and local changes to to-issues.
 ---
 
 # PRD — GoalSpec
@@ -19,8 +19,9 @@ Use the repository's canonical workspace:
 └── specs/
 ```
 
-Never create root `spec.md`, `test.md`, or a root issue file; those responsibilities
-belong to child Spec Packages.
+This skill writes `prd.md`. The peer root `issue.md` belongs to `to-issues`
+for precise bugs, regressions, and local changes. Specs and Test Designs belong
+to child Spec Packages; do not create root `spec.md` or `test.md`.
 
 Resolve the root from `.specos/manifest.yaml` and the GoalSpec rules. `R0NN` is
 permanent: allocate the next unused numeric ID, and never reuse or renumber an
@@ -88,6 +89,12 @@ specs:
 ```
 
 Root `acceptance.md` starts as a draft and is only completed after all required child packages are accepted and PRD AC/UAT is verified.
+
+## Proportional scope
+
+Use one coherent product outcome per workspace. A single child package is valid; do not manufacture packages for each actor, screen, acceptance criterion, or technical layer. Keep traceability IDs without duplicating the same narrative across documents. Reuse approved decisions and ask only unresolved blocking questions; approval already given for the same unchanged scope need not be requested again.
+
+A separate `to-design` document is optional when a substantial unresolved architectural decision merits it. Routine implementation details belong in the child Spec. Updating these Skills does not authorize changing existing workspaces.
 
 ## Quality gate
 

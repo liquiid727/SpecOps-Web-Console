@@ -4,10 +4,11 @@
 
 - Respond in Chinese unless the user asks otherwise.
 - Treat SpecOS as a spec-driven orchestration project, not only a frontend app.
-- Use `pola` as the coordinator identity when managing multi-agent work.
+- Use `Fairy` as the coordinator identity when managing multi-agent work.
 - Read root `AGENTS.md` before making repository changes.
+- This file is selected by the SpecOS prompt assembly in `.agents/manifest.yaml`; it is not a standalone Codex auto-loaded instruction file.
 - Use `.agents/manifest.yaml` to choose role context for multi-step work.
-- When a role is selected, only load that role's `role_prompt`, `canonical`, declared `skills`, and `context_includes`.
+- When a role is selected, load its `role_prompt`, `canonical`, and the skills and context needed for the current task. A declared optional skill is available, not automatically required; directory entries are discovery scopes, not instructions to read every file.
 - Do not expand repository-local or external skills unless they are bound to the selected role or explicitly requested by the user.
 - Use `.rules/project.md` as the compact rule entrypoint.
 
@@ -17,24 +18,29 @@
 - If there is no accepted spec, keep changes draft-scoped or ask whether to promote the draft.
 - `/prd-to-spec` produces modular Feature Specs only. After a Feature Spec is approved and versioned, use `spec-to-test` to derive an independent Test Spec for that exact source version.
 - After both the child Spec and its Test Design are approved, implementation
-  Issues and verification Issues may proceed as separate tracks. Implementation
+  Issues and verification work may proceed as separate tracks. Implementation
   agents may add focused, implementation-coupled unit tests, but independent
-  scenario execution and release evidence belong to the testing track; review
-  and ship must reject stale Test Designs or missing blocking evidence.
+  scenario execution and release evidence belong to the testing track. Implementation
+  checkpoint review checks current bindings, code, focused tests and closeout; it
+  does not wait for evidence assigned to later verification work. Verification
+  closeout checks its required evidence; QA acceptance and ship reject stale Test
+  Designs or missing blocking delivery evidence. Never promote a scoped review
+  into a package acceptance decision.
 - Prefer narrow changes that preserve traceability.
 - Prefer switching roles or splitting work over adding more skills to a single role context.
-- For architecture or cross-domain requests, route the primary work to `ddd-domain-agent` unless a narrower registered role is clearly better. Let that primary agent propose bounded supporting-agent issues instead of broadening its own context.
+- For architecture or cross-domain requests, use `architecture-agent` as the primary role. It may open `ddd-domain-agent` or other registered specialists when independent work would help.
 - Treat `route-request` and `classify-request` as routing previews only. Host-side subagent execution is responsible for actually starting agents and merging their reports.
 
 ## Requirement Intake
 
 - For non-trivial or ambiguous requests, prefer running or mentally applying `route-request --request "<text>"` before choosing role context.
-- For any new requirement, feature request, behavior change, UI flow, API change, test asset, workflow, or agent/rule change, use `.prd/requirement-intake-flow.md` as the default intake process.
+- For new product requirements and delivery changes, use `docs/spec-modes/GoalSpec/README.md` and `.requirements/README.md` as the intake entrypoints.
 - Classify the request before editing as one of: raw requirement, draft-only, active change, implementation, test, review, acceptance, or tooling/configuration.
-- If the request is raw or draft-only, first preserve it under `.prd/` or explicitly state why the current work is only exploratory.
-- Do not implement against a raw requirement when a normalized change package is needed; first create or identify `.features/changes/<change-id>/` and use `.features/current/` as the accepted baseline.
-- For implementation and testing, work from `.features/current/` plus the active `.features/changes/<change-id>/` package, then keep generated artifacts traceable to that change.
-- Do not promote content into `.features/current/` until implementation, tests, review, and acceptance evidence exist.
+- For explanation, inspection, review-only, or diagnosis-only requests, read relevant sources and report findings without changing artifacts. Tooling/configuration maintenance authorized by the user may trace to that request and the governing rule; do not manufacture a product Requirement Workspace for it.
+- For a raw or exploratory requirement, return a draft proposal or preserve an explicitly requested draft in the applicable Requirement Workspace. Do not mark it approved without approval.
+- When a normalized delivery package is needed, create or identify `.requirements/requirements/R0NN-<slug>/` and read its root `prd.md` and `index.yaml`.
+- For implementation and independent verification, select the owning `specs/S0N-<slug>/`, read its approved `spec.md`, current `test.md`, and relevant `issues/ISSUE-*.md`, and keep outputs in the owning package.
+- Record delivery review and QA acceptance in the existing `review.md`, `evidence/`, and `acceptance.md` chain. Never infer acceptance from implementation or local tests alone.
 - In final summaries for requirement work, name the draft or change id, impacted artifacts, validation evidence, assumptions, and any skipped link in the chain.
 
 ## Validation Hints

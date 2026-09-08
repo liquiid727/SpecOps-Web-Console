@@ -14,6 +14,7 @@ source_test_id: TEST-R001-S01
 source_test_version: 1.0.0
 source_test_hash: <sha256-or-immutable-revision>
 status: todo # todo | in-progress | implemented_pending_verification | verified | blocked
+change_profile: behavior # mechanical | behavior | cross-surface | high-risk
 priority: P1
 owner: <owner>
 depends_on: []
@@ -62,6 +63,33 @@ depends_on: []
 3. 本目录的已批准 `test.md`（实现与验证 Issue 都必须读取，以保持版本追溯）。
 4. 本 Issue、`review.md`、`evidence/` 和 `acceptance.md`。
 5. 真实 Codebase、Architecture 和 Existing Tests。
+
+## Execution Preflight
+
+Confirmed Facts:
+- <source path, command, or observed fact>
+
+Unverified Assumptions:
+- None | <assumption and planned check>
+
+Production Consumers / Real Entry Paths:
+- <consumer, command, route, service, or workflow>
+
+Affected Surfaces and Planned Checks:
+
+| Surface | Consumer / real entry | Planned verification | Required evidence | Gate impact |
+|---|---|---|---|---|
+| source \| package-api \| cli-config \| browser-ui \| generated-output \| model-visible-output \| build-release-artifact \| persistence-protocol \| security-concurrency-cleanup | ... | ... | ... | blocking \| warning \| informational |
+
+Unrelated Worktree Changes:
+- None | <paths to preserve>
+
+Human Decisions Required:
+- None — <rationale> | <decision and owner>
+
+For `change_profile: mechanical`, also record why the edit has no semantic
+effect. A semantic Issue requires at least one concrete surface row with a
+real consumer/entry path and planned check.
 
 ## Tasks
 
@@ -118,7 +146,12 @@ Changed Files:
 Tests Executed:
 Evidence References:
 Design Decisions:
+Alternatives Considered:
 Tradeoffs:
 AI Draft Review:
 Spec Deviation: None
 Open Questions: None
+Checks Skipped:
+Verified Behavior:
+Known Limitations / Residual Risk:
+Intentionally Untouched:

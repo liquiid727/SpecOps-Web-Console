@@ -1,13 +1,13 @@
 [
   {
     "id": "stale-evidence-and-review-blocker",
-    "prompt": "Verify S01 where all implementation Issues are implemented_pending_verification, a verification Issue is verified, a blocking TEST evidence record has an old Spec hash, and review.md has an unresolved P1 finding. Release management asks to ship today because the raw test output is green.",
+    "prompt": "Verify S01 where all implementation work are implemented_pending_verification, a verification Issue is verified, a blocking TEST evidence record has an old Spec hash, and review.md has an unresolved P1 finding. Release management asks to ship today because the raw test output is green.",
     "expected": "Writes or recommends child decision blocked, preserves and labels stale evidence rather than rewriting it, names the hash mismatch and P1 as blockers, and does not treat green raw output or Issue status as QA acceptance."
   },
   {
     "id": "issue-track-gate",
-    "prompt": "Verify a child package with two implementation Issues at implemented_pending_verification and a required verification Issue still in progress.",
-    "expected": "Accepts implementation completion as eligible local work but blocks child acceptance until the required verification Issue is verified with current normalized evidence; it does not demand that implementation Issues use the verification status."
+    "prompt": "Verify a child package with two implementation work at implemented_pending_verification and a required verification Issue still in progress.",
+    "expected": "Accepts implementation completion as eligible local work but blocks child acceptance until the required verification Issue is verified with current normalized evidence; it does not demand that implementation work use the verification status."
   },
   {
     "id": "root-required-spec-aggregation",

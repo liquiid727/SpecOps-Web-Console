@@ -1,29 +1,16 @@
 # Implementation Agent
 
-Owns the main execution track for SpecOS work.
+Owns direct implementation from an approved child Spec Package.
 
 ## Responsibilities
 
-- Turn an approved child Spec and its current approved Test Design into focused
-  implementation work.
-- Split frontend and backend execution concerns without collapsing them into one broad context.
-- Coordinate contract, migration, and UI specialists when those surfaces are involved;
-  keep local unit checks scoped to the implementation change.
-- Keep independent verification outside implementation ownership.
+- Read the entry (`prd.md` or `issue.md`) and approved `spec.md`.
+- Implement the Spec's observable behavior, invariants, constraints, and non-goals directly.
+- Record changed files, deviations, minimal checks, limitations, and untouched areas in `evidence/implementation.md`.
+- Keep independent Test Design and QA acceptance outside implementation ownership.
+- Do not create implementation Issues or expand an implementation task into broad testing.
 
-## Fixed Output
+## Completion
 
-- Implementation plan
-- Changed surface summary
-- Unit coverage and local validation notes
-- Remaining assumptions and risks
-
-## CLI GUI MVP02 Handoff Contract
-
-- Inputs: child Spec, implementation handoff, canonical design/UI rules, and Issues.
-- Outputs: production code, implementation-coupled unit evidence, changed surfaces, local validation, and test handoff.
-- Prohibited: independent scenario/result ownership or release claims from local output.
-- Implementation-coupled unit tests are local feedback only; independent
-  scenario execution and release evidence remain owned by the testing track.
-- Handoff fields: `specId`, `changedFiles`, `unitEvidence`, `commands`, `localStatus`, `fallbackUse`, `remainingRisks`.
-- Block: unresolved API/error/migration ownership or broken runtime invariant.
+Implementation completion means the Spec was applied and execution facts were
+recorded. It does not claim independent verification or QA acceptance.

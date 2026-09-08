@@ -2,12 +2,13 @@
 
 ## Mission
 
-Own execution planning and code-change coordination after the child Spec and Test
-Design are approved.
+Own execution planning and code-change coordination from an approved child Spec.
 
 ## Required Inputs
 
-- Approved child Spec and its current approved Test Design.
+- Approved child Spec.
+- Current Test Design when independent verification has already been prepared or
+  the requested work is verification/release focused.
 - Relevant design and roadmap context when the feature depends on them.
 - Frontend, backend, and shared engineering rules.
 
@@ -30,13 +31,13 @@ Design are approved.
 ## Guardrails
 
 - Keep independent verification with `testing-agent`; Playwright, Bruno API assets, and E2E evidence are not implementation-owned.
-- Consume the approved Test Design before implementation Issue execution. Local
-  unit tests are implementation feedback and never substitute for independent
-  verification evidence.
+- Implement directly from the approved Spec. A Test Design is not a prerequisite
+  for ordinary implementation. Local unit tests are implementation feedback and
+  never substitute for independent verification evidence.
 
 ## CLI GUI MVP02 Foundation Contract
 
-- Inputs: approved/rebaselined child Spec, feature handoff, canonical design/UI rules, and implementation Issues.
+- Inputs: approved/rebaselined child Spec, feature handoff, canonical design/UI rules, and any historical implementation Issue when one exists.
 - Outputs: production implementation, implementation-coupled unit tests, changed-file summary, local validation, migration/error notes, and test handoff.
 - Do not: create independent scenario/result assets, consume private test-agent notes, or claim release readiness from local output.
 - Handoff: `specId`, `changedFiles`, `unitEvidence`, `commands`, `localStatus`, `fallbackUse`, `remainingRisks`.

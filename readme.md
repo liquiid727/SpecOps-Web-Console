@@ -30,19 +30,19 @@ SpecOS 关注以下问题：
 SpecOS 使用 [GoalSpec](docs/spec-modes/GoalSpec/README.md) 作为唯一的 Agent-Native SDLC 标准。一个需求对应一个 PRD Workspace；Workspace 中的每个 Spec Package 都可以独立实现、验证、评审和验收。
 
 ```text
-PRD Workspace -> Spec Packages -> Test Design -> Issue Files
--> Evidence / Review -> QA Acceptance -> PRD Acceptance -> Ship
+PRD or Issue entry -> Spec Packages -> Implementation
+-> Independent Test -> Evidence / Review -> QA Acceptance -> PRD/Issue Acceptance -> Ship
 ```
 
 稳定的需求链路如下：
 
 ```text
 .requirements/requirements/R0NN-<slug>/
-├── prd.md + index.yaml + acceptance.md
+├── prd.md or issue.md + index.yaml + acceptance.md
 └── specs/S0N-<slug>/
-    ├── spec.md + test.md + issues/
+    ├── spec.md + optional test.md
     ├── review.md + acceptance.md
-    └── evidence/
+    └── evidence/ (including implementation.md)
 ```
 
 `design/` 保存平台或系统级的长期设计决策；`.requirements/` 保存一次需求的可执行交付记录。完整目录、ID 与验收规则见 [GoalSpec 标准](docs/spec-modes/GoalSpec/agent-native-sdlc-standard.md) 和 [.requirements 使用说明](.requirements/README.md)。

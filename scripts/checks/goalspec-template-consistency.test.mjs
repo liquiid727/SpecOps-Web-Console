@@ -23,6 +23,9 @@ test("GoalSpec template mirrors match canonical sources", async () => {
     [".requirements/templates/README.md", "assets/templates/specs/template-requirement-workspace/README.md"],
     [".requirements/templates/README.md", "packages/templates/fullstack/.requirements/templates/README.md"],
     [".requirements/templates/README.md", "packages/templates/spec-only/.requirements/templates/README.md"],
+    [".requirements/templates/issue.md", "assets/templates/specs/template-requirement-workspace/issue.md"],
+    [".requirements/templates/issue.md", "packages/templates/fullstack/.requirements/templates/issue.md"],
+    [".requirements/templates/issue.md", "packages/templates/spec-only/.requirements/templates/issue.md"],
     [".requirements/templates/spec-package/spec.md", "assets/templates/specs/template-spec-package/spec.md"],
     [".requirements/templates/spec-package/test.md", "assets/templates/specs/template-spec-package/test.md"],
     [".requirements/templates/spec-package/spec.md", "packages/templates/fullstack/.requirements/templates/spec-package/spec.md"],
@@ -38,6 +41,9 @@ test("GoalSpec template mirrors match canonical sources", async () => {
     [".requirements/templates/spec-package/evidence/README.md", "assets/templates/specs/template-spec-package/evidence-README.md"],
     [".requirements/templates/spec-package/evidence/README.md", "packages/templates/fullstack/.requirements/templates/spec-package/evidence/README.md"],
     [".requirements/templates/spec-package/evidence/README.md", "packages/templates/spec-only/.requirements/templates/spec-package/evidence/README.md"],
+    [".requirements/templates/spec-package/evidence/implementation.md", "assets/templates/specs/template-spec-package/implementation-evidence.md"],
+    [".requirements/templates/spec-package/evidence/implementation.md", "packages/templates/fullstack/.requirements/templates/spec-package/evidence/implementation.md"],
+    [".requirements/templates/spec-package/evidence/implementation.md", "packages/templates/spec-only/.requirements/templates/spec-package/evidence/implementation.md"],
     [".requirements/templates/spec-package/evidence/index.yaml", "packages/templates/fullstack/.requirements/templates/spec-package/evidence/index.yaml"],
     [".requirements/templates/spec-package/evidence/index.yaml", "packages/templates/spec-only/.requirements/templates/spec-package/evidence/index.yaml"],
     [".requirements/templates/spec-package/issues/ISSUE-R001-S01-001-example.md", "assets/templates/specs/template-issue/issue.example.md"],
@@ -54,18 +60,19 @@ test("GoalSpec templates expose executable contract fields", async () => {
   const spec = await read(".requirements/templates/spec-package/spec.md");
   const testDesign = await read(".requirements/templates/spec-package/test.md");
   const issue = await read(".requirements/templates/spec-package/issues/ISSUE-R001-S01-001-example.md");
+  const evidence = await read(".requirements/templates/spec-package/evidence/README.md");
   const templateGuide = await read(".requirements/templates/README.md");
   const prdSkill = await read("skills/developer/prd/SKILL.md");
   const loopIt = await read("skills/developer/loop-it/SKILL.md");
   const featureVerify = await read("skills/developer/feature-verify/SKILL.md");
 
-  for (const field of ["Existing System Analysis", "Public Seam", "Error Semantics", "Observability", "Risk and Gate Impact", "Technical Constraints", "Not applicable"]) {
+  for (const field of ["Existing System Analysis", "Public Seam", "Error Semantics", "Observability", "Risk and Gate Impact", "Technical Constraints", "Decision Ownership", "Not applicable"]) {
     assert.match(spec, new RegExp(field));
   }
-  for (const field of ["source_spec_id", "source_spec_hash", "qualityProfile", "riskTier", "Test Environment and Data", "Evidence, Gates, and Flaky Policy", "Agent Eval Plan", "Given:", "When:", "Then:"]) {
+  for (const field of ["source_spec_id", "source_spec_hash", "qualityProfile", "riskTier", "Test Environment and Data", "Affected Observable Surfaces", "Evidence, Gates, and Flaky Policy", "Agent Eval Plan", "Given:", "When:", "Then:"]) {
     assert.match(testDesign, new RegExp(field.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")));
   }
-  for (const field of ["source_spec_id", "source_test_id", "source_test_hash", "Expected Areas", "Acceptance Criteria", "Required Evidence", "AI Draft Review"]) {
+  for (const field of ["source_spec_id", "source_test_id", "source_test_hash", "change_profile", "Execution Preflight", "Affected Surfaces and Planned Checks", "Alternatives Considered", "Checks Skipped", "Verified Behavior", "Intentionally Untouched", "Expected Areas", "Acceptance Criteria", "Required Evidence", "AI Draft Review"]) {
     assert.match(issue, new RegExp(field));
   }
 
@@ -74,11 +81,17 @@ test("GoalSpec templates expose executable contract fields", async () => {
   assert.match(issue, /implementation Issue 只列出本次变更需要的快速、定向验证/);
   assert.match(issue, /verification only: evidence normalized and registered/);
   assert.match(templateGuide, /EV-\*/);
+  assert.match(templateGuide, /Execution\s+Preflight/);
+  assert.match(testDesign, /build-release-artifact/);
+  assert.match(issue, /security-concurrency-cleanup/);
+  for (const field of ["consumer_entry", "run_id", "service_id", "session_id", "trace_id"]) {
+    assert.match(evidence, new RegExp(field));
+  }
   assert.match(loopIt, /run only the focused, changed-scope commands/);
   assert.match(loopIt, /verification Issue may advance to `verified` only/i);
   assert.match(featureVerify, /index\.yaml.*required/i);
-  assert.match(featureVerify, /implemented_pending_verification/);
-  assert.match(featureVerify, /source_spec_version/);
+  assert.match(featureVerify, /implementation evidence identifies the current revision/);
+  assert.match(featureVerify, /Spec version\/hash binding is current/);
   assert.match(featureVerify, /accepted-with-waiver/);
   assert.match(featureVerify, /MUST NOT invent a `status` field/);
   assert.match(prdSkill, /accepted \| blocked/);

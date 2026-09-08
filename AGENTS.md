@@ -8,11 +8,15 @@ SpecOS is a Spec-Driven AI IDE. Agents must treat specs, rules, tests, and gener
 
 Read context in this order before changing behavior:
 
+Use the entries below as a precedence and discovery guide. Read the relevant
+files for the task; do not preload whole directories for simple questions or
+local changes.
+
 1. `README.md` or `readme.md` for product intent.
 2. `rules/` and `.rules/` for engineering governance.
 3. `docs/spec-modes/GoalSpec/` for the Agent-Native SDLC standard.
 4. `design/` for stable platform and system design truth.
-5. `.requirements/` for active Requirement Workspaces: read root `prd.md` and `index.yaml`, then the selected `specs/S0N-<slug>/spec.md` → `test.md` → `issues/ISSUE-*.md` → `review.md` / `evidence/` / `acceptance.md`.
+5. `.requirements/` for active Requirement Workspaces: read root `prd.md` and `index.yaml`, then the selected `specs/S0N-<slug>/spec.md` → optional `test.md` → `review.md` / `evidence/` / `acceptance.md`. For a bug workspace, read root `issue.md` as the peer entry to `prd.md`.
 6. `ai/agents/` and `.agents/` for role-specific responsibilities.
 
 ## Required Workflow
@@ -27,20 +31,20 @@ Read context in this order before changing behavior:
 
 ## Coordinator And Dispatch
 
-- The default coordinator name is `pola`.
-- `pola` classifies the user request, chooses the main primary role from `.agents/manifest.yaml`, and keeps the final answer as one consolidated recommendation instead of a dump of independent agent notes.
+- The default coordinator name is `Fairy`.
+- `Fairy` classifies the user request, chooses the main primary role from `.agents/manifest.yaml`, and keeps the final answer as one consolidated recommendation instead of a dump of independent agent notes.
 - `AGENTS.md` defines project-level behavior and safety rules. It must not become the full agent registry.
 - `.agents/manifest.yaml` is the only source of truth for available agent roles, prompt assembly, scoped skills, context includes, ownership, and outputs.
 - `route-request` and `classify-request` are deterministic routing previews. They return `primaryAgent`, `supportingAgents`, rules, skills, and required context, but they do not execute agents by themselves.
-- Concrete multi-agent execution belongs to the host agent system or workflow runner. When the host supports subagents, `pola` may start 2 to 4 narrowly scoped specialist subagents and then judge which findings are actionable.
-- Nested dispatch is allowed only through registered roles. User-routable main roles (`tier: main`) are the four domain leads: `architecture-agent`, `implementation-agent`, `testing-agent`, and `qa-agent`; `pola` is the coordinator above them and is never a dispatch target.
+- Concrete multi-agent execution belongs to the host agent system or workflow runner. `Fairy` delegates when independent, bounded workstreams offer a clear benefit; choose concurrency within host limits and task needs, with no minimum agent count. Fairy judges which findings are actionable.
+- Nested dispatch is allowed only through registered roles. User-routable main roles (`tier: main`) are the four domain leads: `architecture-agent`, `implementation-agent`, `testing-agent`, and `qa-agent`; `Fairy` is the coordinator above them and is never a dispatch target.
 - Every other registered role is `tier: specialist` with a `managed_by` main agent. Specialists (product intake, spec, domain, API, migration, UI design, frontend/backend, focused editors, unit/browser/E2E/performance/concurrency tests, CI, deployment, review) are opened on demand as subagents by their managing main agent, never pre-dispatched as user entrypoints.
 - `deployment-agent` is a specialist managed by `qa-agent`; release and deployment readiness decisions belong to `qa-agent`.
 
 ## Repository Boundaries
 
 - Artifact locations are declared once in `.specos/manifest.yaml` `artifacts`; see `rules/shared/artifact-locations.md` for the resolution order and customization protocol.
-- `.requirements/`: Requirement Workspace root. `requirements/R0NN-<slug>/` holds root `prd.md` / `index.yaml` / `acceptance.md`; each `specs/S0N-<slug>/` holds `spec.md`, `test.md`, one-file-per-Issue, review, acceptance, and evidence.
+- `.requirements/`: Requirement Workspace root. `requirements/R0NN-<slug>/` holds root `prd.md` or `issue.md`, `index.yaml`, and `acceptance.md`; each `specs/S0N-<slug>/` holds `spec.md`, optional independent `test.md`, review, acceptance, and evidence. Existing `issues/` records are historical compatibility artifacts.
 - `rules/`: canonical reusable rule documents.
 - `.rules/`: agent-facing rule index and execution policy.
 - `ai/`: prompt, workflow, agent, and reviewer assets for SpecOS orchestration.

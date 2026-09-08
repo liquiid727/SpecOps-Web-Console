@@ -1,6 +1,6 @@
 ---
 name: design-an-interface
-description: Generate multiple radically different interface designs for a module using parallel sub-agents. Use when user wants to design an API, explore interface options, compare module shapes, or mentions "design it twice".
+description: Compare meaningfully different module or API interface designs when the user requests alternatives or an unresolved interface tradeoff needs exploration. Use parallel agents when beneficial; simple API edits do not require this workflow.
 ---
 
 # Design an Interface
@@ -19,11 +19,13 @@ Before designing, understand:
 - [ ] Any constraints? (performance, compatibility, existing patterns)
 - [ ] What should be hidden inside vs exposed?
 
-Ask: "What does this module need to do? Who will use it?"
+Use the request and existing callers to answer these questions. Ask only when missing information would materially change the design.
 
-### 2. Generate Designs (Parallel Sub-Agents)
+### 2. Generate Designs
 
-Spawn 3+ sub-agents simultaneously using Task tool. Each must produce a **radically different** approach.
+Choose the number of alternatives from the real tradeoffs and the user's request. For a small interface, compare the alternatives directly. Delegate independent design explorations only when the extra perspective justifies the work, using the current host's available agent tools and registered roles where required. Respect concurrency limits and support single-agent execution when delegation is unavailable or unnecessary.
+
+Each alternative should differ in a caller-visible decision, not merely naming. The constraints below are examples to select from, not a required agent roster.
 
 ```
 Prompt template for each sub-agent:
@@ -69,7 +71,7 @@ Discuss trade-offs in prose, not tables. Highlight where designs diverge most.
 
 ### 5. Synthesize
 
-Often the best design combines insights from multiple options. Ask:
+Recommend the best fit and explain any unresolved tradeoff. Ask only if the user must choose a product constraint that cannot be inferred:
 
 - "Which design best fits your primary use case?"
 - "Any elements from other designs worth incorporating?"

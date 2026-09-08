@@ -8,6 +8,7 @@ SKILL_DIR="$(dirname "$SCRIPT_DIR")"
 
 MODE="auto"
 BASE="origin/main"
+BASE_EXPLICIT=false
 TESTS=""
 DRY_RUN=false
 AGENT="auto"
@@ -49,7 +50,7 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --mode) MODE="$2"; shift 2 ;;
         --agent) AGENT="$2"; shift 2 ;;
-        --base) BASE="$2"; shift 2 ;;
+        --base) BASE="$2"; BASE_EXPLICIT=true; shift 2 ;;
         --parallel-tests) TESTS="$2"; shift 2 ;;
         --dry-run) DRY_RUN=true; shift ;;
         --help) usage ;;
@@ -103,9 +104,9 @@ review_cmd_for() {
             ;;
         codex)
             if [[ "$mode" == "local" ]]; then
-                echo "codex review"
+                echo "codex review --uncommitted"
             else
-                echo "codex review $diff_file"
+                printf 'codex review --base %q\n' "$BASE"
             fi
             ;;
         claude|*)
@@ -134,7 +135,7 @@ fi
 
 # --- Check for PR base ---
 if [[ "$REVIEW_MODE" == "branch" ]]; then
-    if command -v gh &>/dev/null; then
+    if ! $BASE_EXPLICIT && command -v gh &>/dev/null; then
         PR_BASE=$(gh pr view --json baseRefName --jq .baseRefName 2>/dev/null || echo "")
         if [[ -n "$PR_BASE" ]]; then
             BASE="origin/$PR_BASE"

@@ -42,7 +42,13 @@ does not contain execution results; those belong in `./evidence/`.
 - PII / secrets handling: ...
 - Baseline or commit under test: ...
 
-## 4. Test Scenarios
+## 4. Affected Observable Surfaces
+
+| Surface | Consumer / real entry | Planned verification | Required evidence | Gate impact |
+|---|---|---|---|---|
+| source \| package-api \| cli-config \| browser-ui \| generated-output \| model-visible-output \| build-release-artifact \| persistence-protocol \| security-concurrency-cleanup | ... | ... | ... | blocking \| warning \| informational |
+
+## 5. Test Scenarios
 
 ### TEST-R001-S01-001 <Happy Path>
 
@@ -78,7 +84,7 @@ Given / When / Then:
 - When: ...
 - Then: operation fails with ...; state remains valid; no illegal side effect occurs.
 
-## 5. Required Coverage and Regression
+## 6. Required Coverage and Regression
 
 Applicable coverage (mark `Not applicable` with rationale where not needed):
 - Unit, integration, contract, E2E/manual, regression, failure injection.
@@ -89,7 +95,7 @@ Applicable coverage (mark `Not applicable` with rationale where not needed):
 Regression scope:
 - ...
 
-## 6. Evidence, Gates, and Flaky Policy
+## 7. Evidence, Gates, and Flaky Policy
 
 Every execution record must identify TEST/SPEC/ISSUE IDs, source Spec
 version/hash, commit, environment, timestamp, runner or command, result,
@@ -106,13 +112,13 @@ Flaky result policy:
 - Preserve every attempt, classify flaky, and create/follow an Issue; a retry
   alone does not turn a blocking failure into PASS.
 
-## 7. Agent Eval Plan (conditional)
+## 8. Agent Eval Plan (conditional)
 
 - Not applicable | PR smoke dataset/cases, full dataset, metrics/thresholds,
   online sampling, trajectory alerts, degradation assertion, handoff owner, and
   human review of AI-generated cases: ...
 
-## 8. Exit Criteria
+## 9. Exit Criteria
 
 - [ ] Every P0/P1 mapped REQ and SPEC has scenario coverage.
 - [ ] Applicable BR, INV, EDGE, and AC have a verification method.

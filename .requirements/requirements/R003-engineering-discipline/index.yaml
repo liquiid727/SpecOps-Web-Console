@@ -1,0 +1,55 @@
+id: R003
+title: Cross-Surface Engineering Discipline
+type: change
+version: 1.0.0
+status: accepted
+owner: pola
+source_prd: ./prd.md
+source_prd_version: 1.0.0
+updated_at: 2026-09-05
+
+# Aggregate only: child packages own their own contract, test, Issue, review,
+# evidence, and QA decision.
+specs:
+  - id: S01
+    path: ./specs/S01-engineering-discipline-contract/
+    status: accepted
+    owner: architecture-agent
+    required: true
+    depends_on: []
+    covers:
+      - REQ-R003-001
+      - REQ-R003-002
+      - REQ-R003-003
+      - REQ-R003-004
+      - REQ-R003-005
+    business_outcome: Canonical rules and templates express one engineering-discipline contract
+
+  - id: S02
+    path: ./specs/S02-workflow-integration/
+    status: accepted
+    owner: implementation-agent
+    required: true
+    depends_on:
+      - S01
+    covers:
+      - REQ-R003-001
+      - REQ-R003-002
+      - REQ-R003-003
+      - REQ-R003-004
+      - REQ-R003-005
+    business_outcome: Execution and review workflows apply the contract without a second state machine
+
+  - id: S03
+    path: ./specs/S03-enforcement-and-eval/
+    status: accepted
+    owner: testing-agent
+    required: true
+    depends_on:
+      - S01
+      - S02
+    covers:
+      - REQ-R003-003
+      - REQ-R003-005
+      - REQ-R003-006
+    business_outcome: Deterministic fixtures and checks enforce blocking discipline requirements

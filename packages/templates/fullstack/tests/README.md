@@ -11,8 +11,7 @@ The authoritative verification contract for a requirement is the `test.md` insid
   prd.md
   specs/S01-<slug>/
     spec.md
-    test.md    <- verification contract (TEST-R001-S01-###, exit criteria)
-    issues/
+    test.md    <- optional verification contract (TEST-R001-S01-###, exit criteria)
 ```
 
 The owning Spec Package `evidence/` holds generated and executed artifacts:
@@ -41,14 +40,19 @@ Production runs must also include `standardVersion`, `qualityProfile`, item-leve
 
 ## Agent Isolation
 
-For an active Requirement Package, record `test-plan` and `test-schedule` artifacts under the selected child package's `evidence/` directory before assigning implementation and verification issues.
+For an active Requirement Package, record `test-plan` and `test-schedule`
+artifacts under the selected child package's `evidence/` directory before
+formal independent verification begins. They are not prerequisites for ordinary
+implementation from the approved Spec.
 
 The generated schedule records two separate tracks:
 
 - `execution`: implementation-only work, owned by the execution agent.
 - `testing`: spec-and-contract-only work, owned by test agents.
 
-Execution issues may write implementation-coupled unit tests under existing module-local test paths. Independent verification assets belong under the owning package's `evidence/` tree.
+Implementation may write implementation-coupled unit tests under existing
+module-local test paths. Independent verification assets belong under the owning
+package's `evidence/` tree.
 
 ## API Execution
 

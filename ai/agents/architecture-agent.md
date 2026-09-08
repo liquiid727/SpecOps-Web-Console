@@ -15,7 +15,7 @@ Owns the main architecture track for SpecOS work.
 - Architecture recommendation
 - Specialist delegation map
 - Preconditions and open questions
-- False-positive or out-of-scope findings rejected by `pola`
+- False-positive or out-of-scope findings rejected by `Fairy`
 
 ## CLI GUI MVP02 Handoff Contract
 

@@ -1,0 +1,16 @@
+{
+  "standardVersion": "specos-test-standard",
+  "requirement": "R003",
+  "specPackage": "S03",
+  "specId": "SPEC-R003-S03",
+  "specVersion": "1.0.0",
+  "testSpecId": "TEST-R003-S03",
+  "testSpecVersion": "1.0.0",
+  "sourceSpecHash": "c93c94715da4f71578c7241e3ff3d39e0b49137b8705d500bfc3376257b2db00",
+  "tests": [
+    {"id": "TEST-R003-S03-001", "category": "cli", "level": "node", "gateImpact": "blocking"},
+    {"id": "TEST-R003-S03-002", "category": "fixture", "level": "node", "gateImpact": "blocking"},
+    {"id": "TEST-R003-S03-003", "category": "fixture", "level": "node", "gateImpact": "blocking"},
+    {"id": "TEST-R003-S03-004", "category": "fixture", "level": "node", "gateImpact": "blocking"}
+  ]
+}

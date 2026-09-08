@@ -30,7 +30,7 @@ Production `evidence/plans/*.test-plan.json` artifacts must include:
 For `agent-workflow` profiles, plans must also include:
 
 - an Eval dataset or sampled-input source, its version, and the success metrics and thresholds derived from the PRD/Spec;
-- a PR smoke-Eval selection of 20–50 cases, plus the full-Eval selection used after merge or on a scheduled run;
+- a PR smoke-Eval selection justified by changed behaviors, risk coverage, dataset diversity and required confidence, plus the full-Eval selection used after merge or on a scheduled run. Record selection size, rationale and passing thresholds in the approved plan; there is no universal case count;
 - trajectory fields to retain, anomaly signals, and the automatic-degradation and human-handoff thresholds when the Agent can affect users, data, spend, or external systems.
 
 ## Required Result Evidence
@@ -43,11 +43,37 @@ Normalized `evidence/runs/*.json` artifacts must include:
 
 ## Pipeline Gates
 
+### Evidence handoff contract
+
+Use [Verification Evidence Handoff](../../ai/workflows/verification-evidence-handoff.md)
+to package runs. A prose summary or a total such as “46 tests passed” is a
+navigation aid, not a normalized result or proof of Test Design coverage.
+Each claimed TEST/requirement mapping must point to an observed assertion and
+its retained report. Reusing one run across packages is allowed only with
+explicit per-package mappings; repeating the run totals does not add coverage.
+
+Keep execution outcome, evidence quality, coverage completeness, and gate
+decision separate. A successful focused run may leave package coverage partial.
+List every required unexecuted or blocked TEST with its owner, reason, gate
+impact and next action. Waivers cite the existing approved acceptance record;
+they do not turn an unexecuted test into a pass.
+
+The producing verification owner checks reference resolution, source/worktree
+identity and coverage before QA handoff. Missing raw artifacts or an unknown
+tested revision must remain explicit limitations. An acceptance citation alone
+cannot turn a summary or raw log into normalized evidence.
+
+Loop checkpoints may reference immutable run IDs and paths for resumption.
+Formal evidence must remain usable without the local checkpoint; it must not
+depend on an ignored `.loop-local-state/` file as its only proof. Retain only
+the relevant execution identity and artifact references, not private checkpoint
+contents or machine-specific paths.
+
 - `loop-it` implementation execution is local change validation, not a PR or
   release gate: it runs only the focused commands declared by its Issue.
   Test Design coverage, normalized evidence, and risk gates remain owned by
   verification Issues and QA.
-- PR gates must run changed-scope unit tests and critical-path checks. `agent-workflow` changes must additionally run the planned 20–50-case smoke Eval.
+- PR gates must run changed-scope unit tests and critical-path checks. `agent-workflow` changes must additionally run the approved plan's risk-justified smoke Eval. Existing approved plans retain their declared counts and gates until an authorized plan revision; this policy does not retroactively waive them.
 - Post-merge or scheduled gates must run the applicable full regression suite, full Agent Eval, contract checks, and performance-baseline comparison. A baseline regression must remain visible to QA even when it is configured as non-blocking.
 - Pre-production or canary gates must record release scope, online sampled-evaluation results, and any trajectory anomaly alerts. Missing required evidence blocks promotion for P0/P1 changes.
 - Production signals must retain correlated trace, metric, and log references. Incidents or abnormal Agent outcomes must produce a tracked follow-up that adds reproducible samples to the controlled dataset or test suite.

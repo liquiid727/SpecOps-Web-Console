@@ -26,7 +26,13 @@ Define release checks that ensure generated artifacts still match feature-spec d
 
 - Run or validate API P0 evidence, scenario P0 evidence, and affected UI state evidence.
 - Run `node scripts/checks/spec-test-gates.mjs <specId>`.
+- For selected packages that use `change_profile`, run `node scripts/checks/engineering-discipline.mjs <R0NN-slug/S0N-slug> --phase closeout` before acceptance; it validates Issue closeout fields but does not replace evidence or QA gates.
 - Block on P0/P1 API/scenario failure, missing normalized result, missing trace/raw-report evidence, spec version mismatch, or unclassified flaky P0 evidence.
+- Reconcile the [evidence handoff](../../ai/workflows/verification-evidence-handoff.md)
+  coverage matrix with the approved Test Design, including required tests absent
+  from runner output. Verify referenced artifacts and assertion mappings; a
+  summary, copied run totals, or loop checkpoint cannot satisfy this check.
+  Record manual verification where the CLI does not enforce these requirements.
 
 ### Release Gate
 

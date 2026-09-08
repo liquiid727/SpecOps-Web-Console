@@ -1,0 +1,31 @@
+{
+  "runId": "S01-engineering-discipline-contract.2026-09-06T002435Z",
+  "standardVersion": "specos-test-standard",
+  "requirement": "R003",
+  "specPackage": "S01",
+  "specId": "SPEC-R003-S01",
+  "specVersion": "1.0.0",
+  "testSpecId": "TEST-R003-S01",
+  "testSpecVersion": "1.0.0",
+  "sourceSpecHash": "600922fc4505f551952502c6be4f5379aa568df6c45dfe4756201f9b49c0071d",
+  "changeId": "R003",
+  "commit": "working-tree@3a525cad",
+  "runner": {"name": "node", "command": "node --test scripts/checks/goalspec-template-consistency.test.mjs", "exitCode": 0},
+  "environment": {"id": "local-working-tree", "node": "v25.6.0", "dependencyMode": "installed"},
+  "surface": "generated-output",
+  "consumer_entry": "canonical templates and declared mirrors",
+  "run_id": "S01-engineering-discipline-contract.2026-09-06T002435Z",
+  "status": "pass",
+  "releaseDecision": "ready",
+  "startedAt": "2026-09-06T00:24:35+08:00",
+  "endedAt": "2026-09-06T00:24:36+08:00",
+  "blockers": [],
+  "coverageGaps": [],
+  "items": [
+    {"testId": "TEST-R003-S01-001", "status": "pass", "summary": "Change-profile and mechanical-rationale template contract is present.", "gateImpact": "blocking"},
+    {"testId": "TEST-R003-S01-002", "status": "pass", "summary": "Execution Preflight template contract is present.", "gateImpact": "blocking"},
+    {"testId": "TEST-R003-S01-003", "status": "pass", "summary": "Surface and provenance fields are present in test/evidence templates.", "gateImpact": "blocking"},
+    {"testId": "TEST-R003-S01-004", "status": "pass", "summary": "Review record confirms singular decision ownership and no Note tree.", "gateImpact": "blocking"},
+    {"testId": "TEST-R003-S01-005", "status": "pass", "summary": "Honest-closeout template fields are present without QA-state changes.", "gateImpact": "blocking"}
+  ]
+}

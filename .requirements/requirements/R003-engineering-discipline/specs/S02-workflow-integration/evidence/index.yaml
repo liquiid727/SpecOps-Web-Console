@@ -1,0 +1,33 @@
+standardVersion: specos-test-standard/v2
+requirement: R003
+spec_package: S02
+updated_at: 2026-09-06
+plans:
+  - id: S02-workflow-integration.test-plan
+    type: test-plan
+    path: ./plans/S02-workflow-integration.test-plan.json
+    covers: [TEST-R003-S02-001, TEST-R003-S02-002, TEST-R003-S02-003, TEST-R003-S02-004]
+schedules: []
+runs:
+  - id: S02-workflow-integration.2026-09-06T002435Z
+    type: normalized-result
+    path: ./artifacts/S02-workflow-integration.2026-09-06T002435Z.run.json
+    result: passed
+    covers: [TEST-R003-S02-001, TEST-R003-S02-002, TEST-R003-S02-003, TEST-R003-S02-004]
+    commit: working-tree@3a525cad
+gates:
+  - id: S02-workflow-integration.R003
+    type: gate-report
+    path: ./gates/S02-workflow-integration.R003.gate-report.json
+    result: ready
+    covers: [TEST-R003-S02-001, TEST-R003-S02-002, TEST-R003-S02-003, TEST-R003-S02-004]
+  - id: S02-workflow-integration.closeout
+    type: engineering-discipline
+    path: ./gates/engineering-discipline.closeout.json
+    result: ready
+    covers: [ISSUE-R003-S02-001, ISSUE-R003-S02-002]
+artifacts:
+  - id: S02-workflow-integration.2026-09-06T002435Z
+    type: normalized-result
+    path: ./artifacts/S02-workflow-integration.2026-09-06T002435Z.run.json
+    result: passed

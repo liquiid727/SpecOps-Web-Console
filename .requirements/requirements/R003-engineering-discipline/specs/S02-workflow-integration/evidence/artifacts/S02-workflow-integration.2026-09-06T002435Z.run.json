@@ -1,0 +1,30 @@
+{
+  "runId": "S02-workflow-integration.2026-09-06T002435Z",
+  "standardVersion": "specos-test-standard",
+  "requirement": "R003",
+  "specPackage": "S02",
+  "specId": "SPEC-R003-S02",
+  "specVersion": "1.0.0",
+  "testSpecId": "TEST-R003-S02",
+  "testSpecVersion": "1.0.0",
+  "sourceSpecHash": "1667af6ca078bff579cd40d2fc41d9982fd0d0b3800724e4d6357f4f4549c19d",
+  "changeId": "R003",
+  "commit": "working-tree@3a525cad",
+  "runner": {"name": "manual+node", "command": "workflow ownership review; node scripts/checks/engineering-discipline.mjs R003-engineering-discipline/S02-workflow-integration", "exitCode": 0},
+  "environment": {"id": "local-working-tree", "node": "v25.6.0", "dependencyMode": "installed"},
+  "surface": "generated-output",
+  "consumer_entry": "Loop It, Review It, Sync Handoff, Ship It CI Record",
+  "run_id": "S02-workflow-integration.2026-09-06T002435Z",
+  "status": "pass",
+  "releaseDecision": "ready",
+  "startedAt": "2026-09-06T00:24:35+08:00",
+  "endedAt": "2026-09-06T00:24:37+08:00",
+  "blockers": [],
+  "coverageGaps": [],
+  "items": [
+    {"testId": "TEST-R003-S02-001", "status": "pass", "summary": "Loop It requires preflight before writes without a new status machine.", "gateImpact": "blocking"},
+    {"testId": "TEST-R003-S02-002", "status": "pass", "summary": "Review and closeout distinguish real-entry evidence from QA acceptance.", "gateImpact": "blocking"},
+    {"testId": "TEST-R003-S02-003", "status": "pass", "summary": "Decision ownership remains in PRD/Spec/design, Completion Record, review, and acceptance respectively.", "gateImpact": "blocking"},
+    {"testId": "TEST-R003-S02-004", "status": "pass", "summary": "Sync Handoff carries profile and consumer facts without creating approval state.", "gateImpact": "blocking"}
+  ]
+}

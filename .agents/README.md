@@ -17,7 +17,7 @@ GoalSpec v2 role prompts live under `.agents/roles/`.
 
 SpecOS uses a five-tier top structure: one coordinator plus four user-routable main agents (`tier: main`). All other roles are `tier: specialist` and are opened on demand as subagents by their `managed_by` main agent.
 
-- Coordinator (not dispatchable): `pola` — request intake, routing preview, report merge
+- Coordinator (not dispatchable): `Fairy` — request intake, routing preview, report merge
 - Architecture and spec impact: `architecture-agent`
 - Implementation execution: `implementation-agent`
 - Independent verification: `testing-agent`
@@ -104,11 +104,11 @@ This reuses `validateExecutionPlanOutput(...)` from `@specos/core`.
 
 If another host surface needs the same projections without shelling out to the CLI, use `buildValidatedRouteRequestOutput(...)` from `@specos/core` when you want a preview payload that has already passed the same projection checks as the CLI. For stable consumer-side validation, use `buildRouteRequestOutputSchema(...)`, `buildHostPromptAssemblySchema(...)`, `buildDispatchPromptEnvelopeSchema(...)`, `buildPrimaryDispatchPromptEnvelopeSchema(...)`, `buildSpecialistDispatchPromptEnvelopeSchema(...)`, `buildExecutionPlanOutputSchema(...)`, `validateRouteRequestOutput(...)`, `validateExecutionPlanOutput(...)`, `validateHostPromptAssembly(...)`, `validateAgentExecutionPlan(...)`, `validateDispatchPromptEnvelope(...)`, `validatePrimaryDispatchPromptEnvelope(...)`, or `validateSpecialistDispatchPromptEnvelope(...)`. All schema helpers return the shared `ArtifactShapeSchema` shape, with an `artifact` discriminator and the relevant top-level field lists.
 
-For host runtimes that need a reusable execution object instead of a preview, use `buildValidatedAgentExecutionPlan(...)` from `@specos/core`. It wraps `buildAgentExecutionPlan(...)`, then validates the resulting route, prompt assembly, and dispatch envelopes before the host starts any agent. Use `buildSpecialistDispatchPlan(...)` when the host already has an execution plan and only needs 2 to 4 dispatchable specialist issues. Each dispatch task now includes `dispatchPromptEnvelope`, which is the host-ready prompt payload for a subagent. Use `buildHostPromptAssembly(...)` as the lower-level helper when the host already has a selected role set and only needs prompt/context assembly.
+For host runtimes that need a reusable execution object instead of a preview, use `buildValidatedAgentExecutionPlan(...)` from `@specos/core`. It wraps `buildAgentExecutionPlan(...)`, then validates the resulting route, prompt assembly, and dispatch envelopes before the host starts any agent. Use `buildSpecialistDispatchPlan(...)` when the host already has an execution plan and needs bounded specialist-task suggestions. Its numeric defaults constrain the preview; the host still decides whether the task benefits from delegation. Each dispatch task includes `dispatchPromptEnvelope`, which is the host-ready prompt payload for a subagent. Use `buildHostPromptAssembly(...)` as the lower-level helper when the host already has a selected role set and only needs prompt/context assembly.
 
 ## Nested Dispatch
 
-`pola` is the coordinator for multi-agent work. The coordinator owns request intake, route preview, task boundaries, report merge, false-positive filtering, and the final consolidated recommendation.
+`Fairy` is the coordinator for multi-agent work. The coordinator owns request intake, route preview, task boundaries, report merge, false-positive filtering, and the final consolidated recommendation.
 
 Nested dispatch follows this contract:
 
@@ -116,13 +116,13 @@ Nested dispatch follows this contract:
 - The primary agent receives only its declared role prompt, canonical prompt, skills, and context includes.
 - The primary agent may propose bounded specialist-agent issues when the work crosses ownership boundaries.
 - Supporting agents must also be registered in `.agents/manifest.yaml`; do not invent ad-hoc roles inside a task.
-- For architecture, domain-boundary, and cross-surface risk work, use `architecture-agent` as the primary role. It manages `product-architect-agent`, `spec-editor`, `ddd-domain-agent`, `openapi-agent`, and `db-migration-agent`, and may ask for focused input from other domains through `pola`.
+- For architecture, domain-boundary, and cross-surface risk work, use `architecture-agent` as the primary role. It manages `product-architect-agent`, `spec-editor`, `ddd-domain-agent`, `openapi-agent`, and `db-migration-agent`, and may ask for focused input from other domains through `Fairy`.
 - For implementation work, use `implementation-agent` as the primary role. It manages `frontend-agent`, `backend-agent`, `implementation-editor`, `ui-design-agent`, and `execution-editor`.
 - For independent verification, use `testing-agent` as the primary role. It manages `test-editor`, `unit-test-agent`, `playwright-test-agent`, `e2e-test-agent`, `performance-test-agent`, `concurrency-test-agent`, and `specialized-check-agent`. `playwright-test-agent` belongs here as a browser/UI verification specialist, not under frontend implementation.
 - For QA acceptance, release, and deployment readiness, use `qa-agent` as the primary role. It manages `reviewer`, `ci-editor`, and `deployment-agent`.
 - Specialist issues carry `managedBy` and `activation: "on-demand"`: the managing main agent opens a specialist subagent only when the bounded question requires it, instead of pre-dispatching every registered specialist.
-- Runtime execution is outside this directory. Host systems may run 2 to 4 subagents in parallel, but this repository only defines the routing contract, prompt assembly, and expected outputs.
-- The final output should be one actionable synthesis from `pola`, not a concatenation of every subagent report.
+- Runtime execution is outside this directory. Hosts choose whether and how much to delegate based on independent work, expected benefit, and available concurrency. Numeric suggestions from route previews are planning hints, not a requirement to launch that many agents.
+- The final output should be one actionable synthesis from `Fairy`, not a concatenation of every subagent report.
 
 ## Canonical Lifecycle
 
@@ -186,14 +186,14 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-  A["User request"] --> B["pola coordinator"]
+  A["User request"] --> B["Fairy coordinator"]
   B --> C["route-request / classify-request preview"]
   C --> D["Main primary agent from manifest"]
   D --> E{"Need bounded support?"}
   E -->|No| F["Primary role output"]
   E -->|Yes| G["2-4 on-demand specialist subagents opened by the managing main agent"]
   G --> H["Short scoped findings"]
-  F --> I["pola synthesis"]
+  F --> I["Fairy synthesis"]
   H --> I
   I --> J["Actionable recommendation / execution plan"]
 ```
@@ -236,4 +236,4 @@ Role prompts should reference those surfaces through `.agents/manifest.yaml` `co
 - Every output must include open questions when information is missing.
 - Role work should be narrow, reviewable, and safe to compose with other agents.
 - Semantic changes that affect specs, rules, agents, skills, workflows, tests, checks, or release evidence must include a `Sync Handoff` following `ai/workflows/sync-handoff-gateway.md` before CI, PR, release, or promotion claims.
-- `pola` owns the final sync judgment and should reject false-positive neighbor updates instead of forwarding every local subagent concern.
+- `Fairy` owns the final sync judgment and should reject false-positive neighbor updates instead of forwarding every local subagent concern.

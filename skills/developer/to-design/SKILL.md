@@ -25,11 +25,13 @@ If the team just needs the concrete contract to code against, use `/prd-to-spec`
 
 ---
 
+This is an optional decision workflow, not a mandatory stage for every PRD or Issue. Reuse accepted architecture decisions; do not generate a separate document per screen, TEST, or implementation task. Scale the analysis to unresolved risks and tradeoffs without weakening approval of material decisions.
+
 ## The Job
 
 1. **Locate input** — find or receive the PRD (or idea)
 2. **Analyze context (optional)** — scan the codebase for existing patterns, constraints, and prior art
-3. **Surface the decisions** — identify the real design forks and ask clarifying questions (max 3-5)
+3. **Surface the decisions** — identify the real design forks and ask clarifying questions (only unresolved blocking decisions)
 4. **Generate the design doc** — following the structure and writing style below
 5. **Review** — present for feedback, especially on the Rationale and Compatibility sections
 6. **Save** — write to the agreed location
@@ -190,20 +192,14 @@ Present the doc and steer feedback to the sections that matter most:
 - Background：痛点是否用具体例子讲清，而不是形容词？
 - 文风：标题是否是"结论"而非名词？有没有无主语的被动腔？
 
-回复 OK 保存，或给出修改意见。
+若已授权写入，保存草稿并报告待评审决策；否则提供草稿供确认。保存不代表设计获得批准。
 ```
 
 ---
 
 ## Step 6: Save
 
-```
-设计文档保存到哪里？
-
-A. tasks/design-[feature-name].md（紧挨 PRD，推荐）
-B. docs/design/[feature-name].md
-C. 自定义路径：[指定]
-```
+Resolve the destination from the user's explicit path and project artifact-location rules. In SpecOS, use the canonical `design/` location for stable system design and link the owning Requirement. Reuse an existing design document when authorized; do not create parallel truth in `tasks/` or `docs/design/`. Ask only if the destination or overwrite authority is genuinely unresolved.
 
 ---
 
@@ -266,10 +262,12 @@ A good design doc should pass these checks:
 ## Relationship to Other Skills
 
 ```
-/prd  →  /to-design  →  /prd-to-spec  →  /goal  →  /review-it  →  /ship-it
- │            │               │              │
- │ 需求(what) │ 决策与取舍     │ 实现契约(how) │ 编码
- │            │ (why/which)   │
+/prd or /to-issues → /prd-to-spec (create/revise Spec when needed)
+                          ↑
+/to-design (optional decision input)
+approved Spec → implementation → evidence → /review-it → /feature-verify
+             ↘ /spec-to-test → independent verification ↗
+accepted package → /ship-it (only when authorized)
 ```
 
 - **/prd** 产出 PRD（本 skill 的输入）

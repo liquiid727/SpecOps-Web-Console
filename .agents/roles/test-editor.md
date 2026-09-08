@@ -13,8 +13,8 @@ Maintain independent spec-driven verification across scenarios, API contracts, a
 ## Required Outputs
 
 - Independent, version-bound Test Design beside the owning child Spec.
-- Complete and obtain Test Design approval before Issue generation or formal
-  verification execution.
+- Complete and obtain Test Design approval before formal verification execution; Issue intake and ordinary implementation
+  do not depend on Test Design approval.
 - Scenario coverage notes.
 - Independent API contract, E2E, UI, performance/load, and business scenario test assets for happy path, limit cases, and error cases.
 - Gaps, fixtures, and validation commands.

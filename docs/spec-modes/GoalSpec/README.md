@@ -1,103 +1,90 @@
 # GoalSpec — Agent-Native SDLC
 
-> 本仓库使用 GoalSpec，以一个 PRD Workspace 为根，包含多个
-> 独立交付的 Spec Package；稳定 ID 贯穿产品、系统、测试、执行和验收。
+> GoalSpec treats requirements, contracts, implementation, independent testing,
+> evidence, review, and acceptance as one traceable delivery chain.
 
-规范全文：[SpecOS Requirement Workspace Template Standard v1.0](agent-native-sdlc-standard.md)。
+Canonical standard: [SpecOS GoalSpec Requirement Workspace Standard](agent-native-sdlc-standard.md).
 
-## 1. 核心模型
+## Core model
 
-    PRD Workspace (R001)
-    ├── S01 Spec Package
-    │   ├── Spec
-    │   ├── Test Design
-    │   ├── N Issue files
-    │   ├── Review
-    │   ├── Evidence
-    │   └── QA Acceptance
-    └── S02 Spec Package
-        └── ...
+```text
+PRD or Issue entry → Spec Package → Implementation
+                  ↘ Test → Evidence / Review → Acceptance
+```
 
-PRD 负责产品行为、范围、业务规则和跨 Spec 的验收条件。每个 Spec Package
-负责一个可独立交付与验收的系统结果。Issue 是一个 Spec Package 内最小的
-执行单元，而不是整个 PRD 的共享章节。
+A PRD records a planned product or business outcome. A root Issue records a
+precise bug, regression, or local change. They are peer entry artifacts, not
+execution task lists. The child Spec is the executable system contract and may
+be implemented directly. Test is an independent verification design produced
+when testing, QA, regression, release, or risk requires it.
 
-## 2. 目录结构
+## Canonical workspace
 
-    .requirements/
-    ├── requirements/
-    │   └── R0NN-<slug>/
-    │       ├── prd.md
-    │       ├── index.yaml
-    │       ├── acceptance.md
-    │       └── specs/S01-<slug>/
-    │           ├── spec.md
-    │           ├── test.md
-    │           ├── issues/ISSUE-R0NN-S01-001-<slug>.md
-    │           ├── review.md
-    │           ├── acceptance.md
-    │           └── evidence/
-    ├── templates/
-    └── examples/
+```text
+.requirements/requirements/R0NN-<slug>/
+├── prd.md OR issue.md
+├── index.yaml                 # entry_kind: prd | issue
+├── acceptance.md
+└── specs/S01-<slug>/
+    ├── spec.md
+    ├── test.md                # optional independent verification design
+    ├── review.md
+    ├── acceptance.md
+    └── evidence/
+        ├── implementation.md
+        ├── index.yaml
+        └── plans/ runs/ gates/ artifacts/
+```
 
-根目录四件套（prd.md/spec.md/test.md/issues.md）仅用于读取历史证据。
-新需求必须使用上述 Workspace 结构。
+Existing `specs/*/issues/ISSUE-*.md` files remain readable as historical
+delivery records. New work does not create implementation Issues merely to
+split a Spec. When a change begins as a precise bug or local request, use the
+root `issue.md` entry.
 
-## 3. ID 规范
+## Stable identifiers
 
-| 类别 | 格式 | 作用 |
-|---|---|---|
-| Requirement Workspace | R0NN | PRD 根 |
-| Product Requirement | REQ-R0NN-NNN | 产品需求 |
-| Spec Package | S0N | 包内交付单元 |
-| Contract Behavior | SPEC-R0NN-S0N-NNN | 系统契约 |
-| Test | TEST-R0NN-S0N-NNN | 验证场景 |
-| Issue | ISSUE-R0NN-S0N-NNN | 执行工作单 |
-| Review Finding | REVIEW-R0NN-S0N-NNN | 审查发现 |
-| Evidence（可选） | EV-R0NN-S0N-NNN | 跨文档稳定引用 |
-
-ID 不复用、不重排。每个 Issue MUST 声明一个 primary_spec；跨 Spec 关系通过
-covers 显式表示。
-
-## 4. 交付链路
-
-    Idea → PRD → N × Spec Package → N × Test Design → N × Issue
-         → Evidence + Review → Spec QA Acceptance
-         → PRD AC / UAT Acceptance → Ship
-
-| Stage | 输出 |
+| Artifact | Identifier |
 |---|---|
-| prd-author / prd-review | 根 prd.md |
-| spec-generate / spec-review | specs/S0N-<slug>/spec.md |
-| spec-test-generate | 同目录 test.md |
-| issue-generate | 同目录 issues/ISSUE-*.md |
-| issue-execute | 代码、Issue Completion Record、evidence/ |
-| feature-verify | 子 acceptance.md，再聚合根 acceptance.md |
+| Requirement Workspace | `R0NN` |
+| Product requirement | `REQ-R0NN-NNN` |
+| Spec Package | `S0N` |
+| Contract behavior | `SPEC-R0NN-S0N-NNN` |
+| Test scenario | `TEST-R0NN-S0N-NNN` |
+| Root Issue entry | `ISSUE-R0NN` or repository-defined local suffix |
+| Review finding | `REVIEW-R0NN-S0N-NNN` |
+| Evidence reference | `EV-R0NN-S0N-NNN` |
 
-`spec-test-generate` 必须在 child Spec 通过 review 后执行；`test.md` 通过
-Test Design review 后，才能生成实现或验证 Issue。实现轨可以编写实现耦合的
-单元测试，但不得把这些测试当作独立验证或 QA 证据。
+IDs are stable and are not reused or reordered. Evidence binds the entry,
+Spec version, revision, environment, result, and available correlation IDs.
 
-## 5. QA 与 Done
+## Delivery lifecycle
 
-- Implementation Issue Done：代码、声明的局部验证与 Completion Record 齐全，且
-  没有未解释的 Spec Deviation；它进入 `implemented_pending_verification`。
-- Verification Issue Done：正式测试、归一化证据和所需 Gate 均已完成。
-- Spec Package Accepted：所有必要 Issue 完成，测试 Exit Criteria 有证据支持，
-  Review 阻塞项已解决或获豁免，且 QA acceptance.md 给出明确决策。
-- Requirement Done：所有 required Spec Package 已接受，PRD AC 已验证，
-  无阻塞 Open Question，且完成产品/UAT 决策。
+Use `prd` for product requirements and `to-issues` for precise bugs,
+regressions, and local changes. A bug covered by an existing approved Spec can
+proceed to authorized repair against that contract. Use `prd-to-spec` when the
+contract is missing or changes; a small repair does not require a duplicate Spec.
 
-QA decision 只能是 accepted、blocked 或 accepted-with-waiver。test.md 只写
-验证设计；实际结果和证据在 evidence/ 并由 acceptance.md 引用。
+1. Accept a PRD or root Issue entry.
+2. Produce independently deliverable child Specs only where ownership,
+   lifecycle, or acceptance differs.
+3. Implement directly from the approved Spec and record implementation facts
+   plus the smallest relevant checks in `evidence/implementation.md`.
+4. Independently design and execute `test.md` when verification is required;
+   store normalized results and artifacts under `evidence/`.
+5. Reconcile implementation evidence, verification evidence, and review
+   findings before QA/product acceptance.
 
-## 6. Change / Delta
+`Implementation Complete`, `Evidence Ready`, and `Accepted` are separate
+states. Passing a local check or completing a historical Issue never creates a
+QA decision. Only acceptance records may declare `accepted`, `blocked`, or
+`accepted-with-waiver`.
 
-Change 仍然是一个新的 R0NN Workspace，PRD 声明 type: change 和 affects。
-受影响 Spec Package 的 spec.md 必须包含 Added、Modified、Removed 与
-Unchanged Guarantees；不受影响行为不得被静默重写。
+## Change handling
 
-## 7. 示例与工具范围
+When approved public behavior changes, revise and version the owning Spec and
+mark affected Test/Evidence bindings stale. A root Issue may reference an
+existing Spec Package, but it never becomes a competing behavioral contract.
 
-templates/ 是新建 Workspace 的唯一模板源。R000 示例已经采用该结构。
-所有入口均使用 GoalSpec；仓库不提供旧布局模板、兼容读取或迁移路径。
+Templates under `.requirements/templates/` are the canonical source for new
+workspaces. Historical R002/R003 packages and child Issue files are not
+retroactively migrated.

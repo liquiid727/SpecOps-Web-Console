@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "specos-engineering-discipline/v1",
+  "selector": "R003-engineering-discipline/S02-workflow-integration",
+  "phase": "closeout",
+  "checkedAt": "2026-09-08T12:57:52.543Z",
+  "status": "ready",
+  "issues": [
+    {
+      "id": "ISSUE-R003-S02-001",
+      "path": ".requirements/requirements/R003-engineering-discipline/specs/S02-workflow-integration/issues/ISSUE-R003-S02-001-integrate-workflows.md",
+      "changeProfile": "cross-surface"
+    },
+    {
+      "id": "ISSUE-R003-S02-002",
+      "path": ".requirements/requirements/R003-engineering-discipline/specs/S02-workflow-integration/issues/ISSUE-R003-S02-002-verify-workflows.md",
+      "changeProfile": "cross-surface"
+    }
+  ],
+  "surfaceCounts": {
+    "source": 2,
+    "package-api": 0,
+    "cli-config": 2,
+    "browser-ui": 0,
+    "generated-output": 2,
+    "model-visible-output": 0,
+    "build-release-artifact": 0,
+    "persistence-protocol": 0,
+    "security-concurrency-cleanup": 0
+  },
+  "errors": []
+}

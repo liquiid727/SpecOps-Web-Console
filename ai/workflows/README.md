@@ -1,59 +1,36 @@
 # Workflows
 
-Use this directory for orchestration flows connecting prompts, roles, review
-stages and execution gates.
+SpecOS uses peer requirement entries and a direct Spec execution flow:
 
-## PRD To Ship Main Chain
+```text
+PRD or Issue entry
+  → approved Spec Package
+  → direct implementation
+  → optional independent Test Design
+  → Evidence / Review
+  → QA or product Acceptance
+```
 
-The GoalSpec chain is:
+A PRD is a broad product entry. An Issue is a precise bug, regression, or local
+change entry. They are not implementation task queues. A child Spec owns the
+executable contract; implementation reads it directly. `test.md` is an
+independent verification design and is not a prerequisite for ordinary
+implementation. `evidence/implementation.md` records implementation facts and
+minimal checks; formal runs, gaps, review, and acceptance evidence live under
+the same package.
 
-    PRD Workspace
-    → N × Approved Spec Package
-    → N × Test Design
-    → N × Issue files
-    → implementation / evidence / review
-    → child QA acceptance
-    → root PRD AC/UAT acceptance
-    → ship
+Implementation is the default mode. Do not add broad tests or repeat checks
+without a failure, new change, concrete risk, or explicit request for testing,
+QA, regression, release, or production readiness.
 
-The root lives at .requirements/requirements/R0NN-<slug>/. Each child Spec
-Package owns spec.md, test.md, issues/, review.md, acceptance.md and evidence/.
-A PRD is not an approved Spec baseline, and an Issue Done is not QA acceptance.
+- `product-architect-agent`: raw idea or product entry → PRD.
+- `to-issues` (owned by `spec-editor`): precise bug, regression, or local change
+  → root `issue.md` and index entry → reuse the approved Spec or define/revise
+  the contract → implementation → evidence and acceptance.
+- `spec-editor`: PRD/Issue entry → child Spec Packages.
+- `implementation-agent`: direct execution from approved Spec.
+- `testing-agent` / `test-editor`: independent Test Design and verification.
+- `qa-agent`: review evidence and record acceptance decisions.
 
-## Quality Delivery Pipeline
-
-The main chain also defines the operating quality pipeline:
-
-    PRD / Spec / Test Design testable acceptance
-    → implementation and verification tracks
-    → code + focused unit tests in the implementation change
-    → PR gate: unit + critical path + Agent smoke Eval (when applicable)
-    → post-merge / nightly: regression + full Eval + contract + performance
-    → pre-production: canary + sampled evaluation + trajectory alerts
-    → production: observability + degradation / human handoff
-    → incident learning: dataset and test-case updates
-
-- PRD and Spec define testable functional AC. Agent workflows additionally
-  declare success metrics, Eval data, thresholds, and handoff conditions.
-- The approved Test Design is the independent verification contract. It is
-  generated after Spec approval and before Issues are generated; implementation
-  unit tests are useful local checks but do not satisfy the independent test
-  or release-evidence gate.
-- AI may draft cases and analyze failures; a human owner reviews them before
-  they become test evidence or influence a release gate.
-- The detailed lifecycle and Gate requirements live in
-  `docs/spec-modes/GoalSpec/agent-native-sdlc-standard.md`; evidence, Eval,
-  CI, and quality-platform rules live in
-  `rules/testing/production-test-standards.md`.
-
-- product-architect-agent owns raw idea → root PRD.
-- spec-editor owns PRD → child Spec Packages and the bounded Issue generation
-  handoff after Test Design approval.
-- testing-agent/test-editor owns independent Test Design generation, verification
-  strategy and evidence gaps.
-- qa-agent owns child/root acceptance decisions after test, review and gate
-  evidence exist.
-
-Artifact root locations come from .specos/manifest.yaml and
-rules/shared/artifact-locations.md. Legacy root four-file packages remain
-read-only evidence.
+Historical Issue-loop records remain readable but are not required for new
+Spec execution.

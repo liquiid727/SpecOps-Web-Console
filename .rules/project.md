@@ -4,7 +4,7 @@
 
 Every meaningful change should preserve the chain:
 
-`prd -> child spec -> test design -> issues -> implementation / independent verification -> evidence/review -> acceptance -> ship`
+`prd|issue -> child spec -> implementation -> test -> evidence/review -> acceptance -> ship`
 
 If a task skips any link in the chain, call that out explicitly.
 
@@ -13,10 +13,11 @@ If a task skips any link in the chain, call that out explicitly.
 - Identify whether the request is draft, spec, implementation, test, CI, or review work.
 - Locate the closest source of truth before editing.
 - Read `docs/spec-modes/GoalSpec/` and the active Requirement Workspace when delivery state affects the task.
-- Use `.requirements/requirements/R0NN-<slug>/` as the single source of truth: root `prd.md` / `index.yaml`, then one selected `specs/S0N-<slug>/` with `spec.md`, `test.md`, `issues/ISSUE-*.md`, `review.md`, `evidence/`, and `acceptance.md`.
+- Use `.requirements/requirements/R0NN-<slug>/` as the single source of truth. A workspace is entered by `prd.md` for a planned requirement or `issue.md` for a precise bug/local change; `index.yaml` records `entry_kind: prd|issue`. Each selected Spec Package contains `spec.md`, optional independent `test.md`, `review.md`, `evidence/`, and `acceptance.md`. New work does not require implementation Issue files.
 - Read `design/` as the stable platform and architecture truth.
-- Keep implementation decisions in Issue Completion Records and all test plans, schedules, runs, gates, and artifacts under the owning child package `evidence/` directory.
+- Keep implementation facts, minimal checks, deviations, and residual risk in `evidence/implementation.md`; keep formal test plans/runs/gates/artifacts under the owning child package `evidence/` directory.
 - Record assumptions when the source of truth is incomplete.
+- Classify semantic work under [Cross-Surface Change Discipline](../rules/shared/change-discipline.md). A preflight and honest closeout belong in the implementation evidence; do not turn ordinary implementation into a second task decomposition.
 
 ## Artifact Rules
 
@@ -38,6 +39,7 @@ If a task skips any link in the chain, call that out explicitly.
 - Prefer feature-sliced specs over broad subsystem specs.
 - Keep generated outputs deterministic and reviewable.
 - Protect human-authored drafts, review notes, reports, and task files from accidental overwrite.
+- Keep decision ownership singular: PRD/Spec/design for product or system decisions, `issue.md` for bug facts and reproduction, `evidence/implementation.md` for execution facts, `review.md` for findings, and `acceptance.md` for QA decisions.
 
 ## Validation Rules
 
@@ -45,3 +47,4 @@ If a task skips any link in the chain, call that out explicitly.
 - For `spec-web-ui/`, validate with `npm run test` and `npm run build` when frontend behavior changes.
 - For documentation and rules, validate by checking links, names, and consistency with the affected workflow.
 - If validation is not run, state the reason and the exact command that should be run next.
+- Evidence for a semantic change must identify the observed surface and consumer/entry path; record known limitations and intentionally untouched areas before closeout.

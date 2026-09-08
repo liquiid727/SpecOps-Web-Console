@@ -3,10 +3,12 @@ requirement: R001
 spec_package: S01
 spec_id: SPEC-R001-S01
 title: <Spec Package Name>
+source_entry: ../../prd.md
+source_entry_kind: prd
 source_prd: ../../prd.md
 source_prd_version: 1.0.0
 version: 1.0.0
-status: draft # draft | review | approved | implementing | accepted | blocked
+status: draft # draft | review | approved | implementing | implemented_pending_verification | accepted | blocked
 owner: <owner>
 qualityProfile: <backend-api | frontend-ui | fullstack-flow | data-migration | agent-workflow>
 riskTier: P1 # P0 | P1 | P2
@@ -123,7 +125,13 @@ Required for `type: change`; otherwise write `Not applicable`.
 ### Unchanged Guarantees
 - ...; verification method: ...
 
-## 8. Spec Ready Check
+## 8. Decision Ownership (conditional)
+
+- Canonical owner: PRD | Spec | stable design | Issue Completion Record | review.md | acceptance.md
+- Decision or `Not applicable` with rationale: ...
+- Alternatives that need a human decision: None | ...
+
+## 9. Spec Ready Check
 
 - [ ] Each behavior maps to REQ and AC with a public seam and observable result.
 - [ ] State, data, errors, authorization, side effects, observability, and applicable constraints are explicit.

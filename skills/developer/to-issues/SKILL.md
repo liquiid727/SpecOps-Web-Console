@@ -1,142 +1,65 @@
 ---
 name: to-issues
-description: Use when decomposing an approved GoalSpec child Spec or Test Design into independently completable implementation or verification Issues.
+description: Use when turning a precise bug, regression, or local change request into a concise peer Requirement Issue that can be specified and resolved.
 ---
 
-# Spec to Issues — GoalSpec
+# Requirement Issue Intake — GoalSpec
 
-Create one local Issue file per independently completable work item. The Issue belongs to exactly one child Spec Package and must remain traceable to the root Requirement, contract behavior, Test Design, and evidence gate.
+PRD and Issue are peer requirement entries. Use this skill for a concrete bug,
+regression, or narrowly stated local change. Do not use it to split an approved
+Spec into implementation or verification tasks; implementation follows the
+Spec directly and testing is owned by `test.md` and its evidence.
 
 ## Inputs
 
-Choose exactly one track after the child Spec and its Test Design have both
-been approved:
-
-```text
-A. implementation Issues, bound to the approved specs/S0N-<slug>/spec.md and
-   its approved Test Design
-B. verification Issues from the approved specs/S0N-<slug>/test.md
-```
-
-Read in order: root `prd.md` and `index.yaml`, selected child `spec.md`, its
-approved child `test.md`, relevant rules/design, existing dependencies, and
-current review/evidence/acceptance records. Both tracks preserve the Test
-Design binding; the track determines what gets executed.
-
-Reject draft or stale source artifacts for release-bound Issues.
+Read repository rules, the root `index.yaml`, existing `prd.md` or `issue.md`,
+relevant Spec/design, actual code and tests, and current evidence. If the
+request is a broad product outcome, hand it to `prd` instead. If behavior is
+already specified, record the Issue as a defect against that Spec and request a
+Spec revision when the contract must change.
 
 ## Canonical output
 
-Write only inside the selected child package:
+For new work, write the root entry:
 
 ```text
-.requirements/requirements/R0NN-<slug>/specs/S0N-<slug>/issues/
-└── ISSUE-R0NN-S0N-NNN-<slug>.md
+.requirements/requirements/R0NN-<slug>/issue.md
 ```
 
-A remote GitHub/iCafe Issue may be an external projection, but the local file remains the canonical source.
+Set `index.yaml` `entry_kind: issue`. A root Issue uses stable `ISSUE-R0NN`
+identity; do not create `specs/*/issues/ISSUE-*` implementation files for new
+work. Existing child Issue files are historical and must not be rewritten.
 
-Start from `.requirements/templates/spec-package/issues/ISSUE-R001-S01-001-example.md`, rename the file with the real stable ID and slug, and preserve its frontmatter contract.
+Use the configured requirements directory and Issue template when available.
+Record `source_entry: ./issue.md`; do not leave a dangling `source_prd` binding
+copied from a PRD template. For a repair covered by an existing approved Spec,
+link that Spec and its evidence location and proceed under repair authorization.
+Create or revise a Spec through `prd-to-spec` only when behavior is unspecified
+or the contract changes; do not manufacture a duplicate Spec for a small bug.
 
-## Issue identity and frontmatter
+## Required contract
 
-Allocate the next unused sequence within the child Spec Package. IDs are permanent and are never reused or renumbered:
+The Issue must state only the precise facts needed to create or select a Spec:
 
-```yaml
-id: ISSUE-R001-S01-001
-requirement: R001
-spec_package: S01
-kind: implementation # implementation | verification
-track: implementation # implementation | verification
-status: todo # todo | in-progress | implemented_pending_verification | verified | blocked
-primary_spec: SPEC-R001-S01-001
-source_spec: ../spec.md
-source_spec_id: SPEC-R001-S01-001
-source_spec_version: 1.0.0
-source_spec_hash: <sha256-or-immutable-revision>
-source_test: ../test.md
-source_test_id: TEST-R001-S01
-source_test_version: 1.0.0
-source_test_hash: <sha256-or-immutable-revision>
-priority: P1
-owner: <owner>
-depends_on: []
-```
+- Problem and reproduction / trigger
+- Actual and expected behavior
+- Affected consumer, entry path, and impact
+- Scope and explicit non-goals
+- Existing Spec reference, if any
+- Decisions or information still required
+- Proposed resolution evidence location
 
-Every Issue must have exactly one `primary_spec`. Cross-package references go in `covers` and do not change the owning directory.
-
-## Issue body contract
-
-Require these sections:
-
-```markdown
-# ISSUE-R001-S01-001 — <Title>
-
-## Covers
-- REQ-R001-001
-- SPEC-R001-S01-001
-- TEST-R001-S01-001
-
-## Goal
-## Scope
-### Must
-### Must Not
-## Expected Areas (conditional)
-## Tasks
-## Validation
-## Dependencies
-## Required Evidence
-## Completion Record
-```
-
-Implementation Issues MUST declare the smallest focused validation commands for
-their changed scope. They MUST include a code-and-unit-test task when a suitable
-code-level seam exists, or a written `N/A` rationale when it does not.
-Implementation validation MUST NOT silently expand into full regression,
-performance, concurrency, E2E, or a release Gate.
-
-Expected Areas may name likely files or components to orient execution. They
-are not implementation authority: a material architecture deviation blocks the
-Issue and returns to Spec review rather than being silently absorbed.
-
-Verification Issues MUST identify the test assets, runner scope, normalized
-evidence, and `evidence/index.yaml` registration they own. They execute the
-Test Design's formal scenarios and release-gate checks. Add an Acceptance
-Criteria section with observable Given/When/Then results.
-
-For AI-generated test drafts, include the human reviewer and review decision in
-the Issue or Completion Record. A draft is not evidence until the review is
-complete and the resulting run is normalized.
-
-Implementation Issues may include implementation-coupled unit tests but must
-not claim independent QA acceptance. Their Completion Record records focused
-validation and uses `N/A — verification Issue owns release evidence` unless
-the approved Issue explicitly requires implementation evidence. Verification
-Issues own test assets, formal execution, and normalized evidence; they must
-not silently modify production behavior. Planned `TEST-*` coverage is not
-execution evidence. A verification Issue's Required Evidence is satisfied only
-by a normalized run/artifact registered in `evidence/index.yaml`.
-
-The Completion Record must eventually contain changed files, tests executed, evidence references, commit/PR, design decisions, tradeoffs, open questions, and any Spec Deviation. It is the only implementation-note record; do not create a separate notes document. `Issue Done` is not child QA acceptance or root Requirement Done.
-
-## Decomposition rules
-
-- Split by independently completable vertical behavior, not by document heading or technical layer.
-- Keep implementation and verification tracks separate.
-- Make `depends_on` explicit; detect missing, duplicate, or circular ownership before writing.
-- Include acceptance criteria that are observable and executable.
-- Reject an Issue when its source Spec/Test is draft, stale, superseded, or
-  version/hash mismatched for a release-bound track.
-- Split independent public behaviors, risk profiles, or verification owners
-  into separate Issues; do not create one omnibus Issue spanning unrelated
-  SPECs or mix implementation and verification tracks.
-- Present the Issue table and dependency order for user approval before creating external Issues.
+Do not add architecture decisions, implementation task lists, test matrices, or
+completion records here. Put technical behavior and invariants in `spec.md`;
+put independent scenarios in `test.md`; put commands, runs, limitations, and
+quality conclusions in `evidence/`.
 
 ## Handoff
 
 ```text
-approved S0N/spec.md
-  → approved S0N/test.md
-  → /to-issues (implementation or verification)
-  → /loop-it
+PRD or Issue entry → approved child Spec → direct implementation
+                   ↘ independent Test Design → verification Evidence
 ```
+
+An Issue is resolved only after the affected Spec and evidence/acceptance
+records are updated. It does not itself mean implemented, tested, or accepted.

@@ -5,6 +5,8 @@ description: Use when deriving an independent verification design from an approv
 
 # Spec to Test — GoalSpec
 
+Design the Test Design for the [Verification Evidence Handoff](../../ai/workflows/verification-evidence-handoff.md): every TEST needs an observable assertion, owner, evidence type and gate impact, including how not-run and blocked cases are recorded.
+
 Create the verification contract for one child Spec Package. This skill designs coverage and evidence requirements; it does not execute tests, write implementation tests, or record final PASS/FAIL results.
 
 ## Canonical input and output
@@ -83,7 +85,7 @@ The document must include:
 - a clear distinction between implementation-coupled tests and independent API, scenario, UI/E2E, performance, security, or concurrency evidence.
 
 For Agent behavior or `qualityProfile: agent-workflow`, add an Agent Eval Plan
-with the 20–50-case PR smoke selection, merge/nightly full dataset, metrics,
+with a risk- and dataset-justified PR smoke selection, merge/nightly full dataset, metrics,
 thresholds, online sampling, trajectory alerts, degradation and handoff
 assertions, and the human reviewer for AI-generated cases. Otherwise write
 `Not applicable`.
@@ -95,6 +97,16 @@ Test Design can be approved.
 Do not use generic placeholders such as "controlled fixture" or "public
 interface exercised" without naming the fixture, command/API/route, input,
 expected output, and failure behavior.
+
+## Verification layers and reusable evidence
+
+Distinguish focused implementation checks, package behavior verification, and integrated Foundation/release gates. For each gate, declare its owner, execution phase, scope and invalidating inputs. Follow mandatory project gate rules; where shared gates are allowed, reference one integrated run instead of requiring each package to rerun an identical full suite.
+
+Preserve a result and traceable mapping for every required TEST. One normalized run may cover multiple TESTs and Issues; register references according to the evidence schema rather than duplicating raw output. Reuse requires unchanged relevant source/worktree, command/configuration, dependencies and environment, not just a matching commit label.
+
+Keep scenarios at observable behavior/risk boundaries. Parameterized cases and shared setup may cover related assertions without a separate workflow or artifact for each assertion. Size datasets and repeated runs from risks and required confidence, not a universal count. Do not omit required negative, security, concurrency or release checks.
+
+Record failure handling: production defects return to authorized implementation, test defects require contract-grounded correction, and environment failures block only dependent checks. A failed or pending required gate is never a pass. Changes to these generation guidelines do not alter existing approved Test Designs.
 
 ## Version gate
 
@@ -109,7 +121,7 @@ document to the new Spec version/hash, and leave historical evidence unchanged.
 ```text
 approved S0N/spec.md
   → S0N/test.md
-  → /to-issues (verification)
+  → testing-agent executes the selected verification scope
   → S0N/evidence/
   → S0N/acceptance.md
 ```

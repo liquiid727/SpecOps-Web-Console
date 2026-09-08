@@ -1,0 +1,33 @@
+standardVersion: specos-test-standard/v2
+requirement: R003
+spec_package: S01
+updated_at: 2026-09-06
+plans:
+  - id: S01-engineering-discipline-contract.test-plan
+    type: test-plan
+    path: ./plans/S01-engineering-discipline-contract.test-plan.json
+    covers: [TEST-R003-S01-001, TEST-R003-S01-002, TEST-R003-S01-003, TEST-R003-S01-004, TEST-R003-S01-005]
+schedules: []
+runs:
+  - id: S01-engineering-discipline-contract.2026-09-06T002435Z
+    type: normalized-result
+    path: ./artifacts/S01-engineering-discipline-contract.2026-09-06T002435Z.run.json
+    result: passed
+    covers: [TEST-R003-S01-001, TEST-R003-S01-002, TEST-R003-S01-003, TEST-R003-S01-004, TEST-R003-S01-005]
+    commit: working-tree@3a525cad
+gates:
+  - id: S01-engineering-discipline-contract.R003
+    type: gate-report
+    path: ./gates/S01-engineering-discipline-contract.R003.gate-report.json
+    result: ready
+    covers: [TEST-R003-S01-001, TEST-R003-S01-002, TEST-R003-S01-003, TEST-R003-S01-004, TEST-R003-S01-005]
+  - id: S01-engineering-discipline-contract.closeout
+    type: engineering-discipline
+    path: ./gates/engineering-discipline.closeout.json
+    result: ready
+    covers: [ISSUE-R003-S01-001, ISSUE-R003-S01-002]
+artifacts:
+  - id: S01-engineering-discipline-contract.2026-09-06T002435Z
+    type: normalized-result
+    path: ./artifacts/S01-engineering-discipline-contract.2026-09-06T002435Z.run.json
+    result: passed

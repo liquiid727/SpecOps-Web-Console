@@ -1,184 +1,103 @@
-# SpecOS Requirement Workspace Template Standard
+# SpecOS GoalSpec Requirement Workspace Standard
 
-Version: 1.0
-Scope: PRD / Spec / Spec-Test / Issue / Review / Evidence / Acceptance
+Version: 2.0
+Scope: PRD / Issue / Spec / Test / Evidence / Review / Acceptance
 
-## 1. Core flow and ownership
+## 1. Core model
 
 ```text
-PRD → Spec Packages → Test Design → Issues → Loop It → Evidence → Spec Acceptance → PRD Acceptance
+PRD or Issue entry → Spec Package → Implementation
+                  ↘ Test → Evidence / Review → Acceptance
 ```
 
-One Requirement Workspace (`R0NN`) records one user or business need. Its PRD
-is the product contract; each child Spec Package (`S0N`) is an independently
-deliverable and independently acceptable system result.
+PRD and Issue are peer entry artifacts. A PRD captures a planned product or
+business requirement. An Issue captures a precise bug, regression, or local
+change with reproduction and expected behavior. Neither is an execution task
+list. A Spec is the executable system contract; implementation follows it
+directly. Test is an independent verification design. Evidence records facts,
+results, quality limitations, and links needed for acceptance.
 
-| Artifact | Question it answers | Owns |
-|---|---|---|
-| PRD | Why is this needed and what outcome is required? | user/business goals, scope, REQ, rules, AC, package decomposition |
-| Spec | How must this result fit the real project? | executable system contract |
-| Spec-Test | How do we objectively prove the contract? | verification design, evidence and gate requirements |
-| Issue | What is the next bounded unit of work? | implementation or verification work and completion record |
-| Evidence | What happened in a real execution? | immutable run facts and artifacts |
-| Acceptance | Can this package or requirement advance? | QA/product decision, risk and waiver |
+| Artifact | Owns |
+|---|---|
+| PRD | product outcome, scope, requirements, acceptance, decomposition |
+| Issue | precise defect/change, reproduction, impact, expected result |
+| Spec | executable behavior, constraints, invariants, technical boundaries |
+| Test | independent scenarios, checks, fixtures, exit criteria |
+| Evidence | implementation facts, commands/results, formal runs, risks, quality conclusion |
+| Review | findings and required changes |
+| Acceptance | QA/product decision and waiver |
 
-Lower layers MUST NOT silently redefine approved higher-layer behavior. When
-implementation reality conflicts with an approved Spec, block the affected
-Issue, record a finding or Spec Deviation, revise the Spec, and mark bound Test
-Designs and Issues stale before resuming.
+Do not create implementation Issues merely to split a Spec. Existing
+`specs/*/issues/` files are historical records and remain readable; new work
+uses the entry `issue.md` when the change begins as a bug or precise local
+request.
 
 ## 2. Canonical workspace
 
-The path root is configured by `.specos/manifest.yaml`. New work uses:
-
 ```text
 .requirements/requirements/R0NN-<slug>/
-├── prd.md
-├── index.yaml
+├── prd.md OR issue.md
+├── index.yaml                 # entry_kind: prd | issue
 ├── acceptance.md
 └── specs/S0N-<slug>/
     ├── spec.md
-    ├── test.md
-    ├── issues/ISSUE-R0NN-S0N-NNN-<slug>.md
+    ├── test.md                 # independent verification, may be drafted later
     ├── review.md
     ├── acceptance.md
     └── evidence/
+        ├── implementation.md  # execution facts and minimal checks
+        ├── index.yaml
+        ├── plans/ runs/ gates/ artifacts/
 ```
 
-`index.yaml` aggregates child package path, status, ownership, dependency,
-required flag, covered REQs, and business outcome. A child package owns its
-Spec, Test Design, Issues, evidence, review, and QA decision. Do not create a
-root `spec.md`, `test.md`, or `issues.md` for new work.
+A bug may reference an existing Spec Package. If behavior changes, revise and
+version the Spec; do not make the Issue a competing contract.
 
-## 3. Stable traceability
+## 3. Traceability and ownership
 
-| Layer | Format |
-|---|---|
-| Workspace | `R0NN` |
-| Product requirement | `REQ-R0NN-NNN` |
-| Business rule / invariant / edge | `BR-` / `INV-` / `EDGE-R0NN-NNN` |
-| Acceptance criterion | `AC-R0NN-NNN` |
-| Contract behavior | `SPEC-R0NN-S0N-NNN` |
-| Test scenario | `TEST-R0NN-S0N-NNN` |
-| Issue | `ISSUE-R0NN-S0N-NNN` |
-| Review finding | `REVIEW-R0NN-S0N-NNN` |
-| Optional evidence anchor | `EV-R0NN-S0N-NNN` |
+Use stable `R0NN`, `REQ-*`, `SPEC-*`, `TEST-*`, `EV-*`, `REVIEW-*`, and
+`AC-*` identifiers. A root Issue uses `ISSUE-R0NN` (or a repository-prescribed
+local suffix) and is recorded in `index.yaml`; it is not a child implementation
+unit. Evidence must identify the applicable entry, Spec version, commit or
+revision, environment, command/runner, result, and remaining risk.
 
-IDs are permanent after approval. Every Issue has exactly one `primary_spec`;
-cross-package references belong in `covers`, never in a second owning package.
-Evidence remains addressable by `evidence/index.yaml` and its artifact path or
-run ID. `EV-*` is optional and is used only where a stable cross-document
-reference is useful.
+## 4. Workflow
 
-## 4. PRD: product contract
+1. Accept a PRD or Issue entry and record its scope.
+2. Produce one or more independently deliverable child Specs only where
+   ownership, lifecycle, or acceptance genuinely differs.
+3. Implement directly from the approved Spec. Preserve its goal, invariants,
+   non-goals, and observable completion conditions.
+4. During ordinary development, record implementation facts and only the
+   smallest directly relevant check in `evidence/implementation.md`.
+5. Generate and run `test.md` independently when testing, regression, QA,
+   release, or risk requires it. Test work must not silently change production
+   behavior.
+6. Aggregate implementation and verification evidence, review findings, and
+   acceptance decisions. Evidence does not itself equal acceptance.
 
-PRD answers **why** and **what**, not which store, component, directory, or
-database abstraction to create. It MUST define Background, Goals, Non-Goals,
-Actors, Scope, user/business flows, stable REQ/BR/INV/EDGE/AC IDs, and a
-decomposition into independently valuable `S0N` packages.
+Implementation mode is the default. Do not add tests or broaden validation
+just because code changed. After a relevant minimal check passes, stop unless
+there is a failure, a new change, or a concrete unresolved concern. Explicit
+requests for testing, QA, regression, release, or production readiness switch
+the task to verification-focused work.
 
-Every REQ and AC names an observable result. PRD-ready work has resolved
-blocking questions, clear boundaries, verifiable acceptance criteria, and a
-package decomposition with explicit dependencies. Non-functional goals,
-constraints, risks, lifecycle, and UX requirements are required when
-applicable; otherwise record `Not applicable` with a reason.
+## 5. Spec contract
 
-## 5. Spec: repository-grounded implementation contract
+A child Spec must define observable seams, Given/When/Then behavior, state and
+error semantics, authorization, side effects, observability, constraints,
+invariants, non-goals, risk, and acceptance mapping. It must not contain
+execution results or duplicate Test/Evidence records. Approved public behavior
+changes increment the Spec version and may stale related Test and Evidence.
 
-A Spec is written after reading the PRD, repository, architecture, existing
-code, interfaces, data, and conventions. It describes one independent business
-outcome, not a frontend/backend/database directory.
+## 6. Readiness and acceptance
 
-Every `SPEC-*` maps to one or more REQs and defines a public seam, observable
-Given/When/Then behavior, authorization, state transitions, data semantics,
-error behavior, idempotency/concurrency, side effects, observability, risk and
-AC mapping. Applicable sections cover relevant modules, data/API or IPC/CLI
-contracts, security, performance, compatibility, migration, rollback, and
-implementation constraints. Mark an inapplicable conditional section `Not
-applicable` with its rationale.
+`PRD/Issue Ready` means the entry has a clear outcome or reproducible defect.
+`Spec Ready` means implementation can proceed without inventing behavior.
+`Implementation Complete` means the Spec was applied and facts were recorded;
+it is not QA acceptance. `Evidence Ready` means required verification facts and
+limitations are addressable. `Accepted` is recorded only in acceptance files
+by the QA/product owner.
 
-`spec.md` does **not** contain test IDs, test data, coverage matrices, Issue
-lists, or execution results. Those are owned by `test.md`, `issues/`, and
-`evidence/` respectively. For change PRDs, each affected Spec includes Added,
-Modified, Removed, and testable Unchanged Guarantees.
-
-## 6. Spec-Test and evidence
-
-`test.md` is a verification design bound to the exact approved Spec
-version/hash. It maps required REQ/SPEC/BR/INV/EDGE/AC behavior to `TEST-*`
-scenarios; defines scope, environment, fixture/seed data, isolation, concrete
-Given/When/Then assertions, failure assertions, required evidence, gate impact,
-regression scope, flaky handling, and exit criteria.
-
-Test Design generation is the required handoff after child Spec approval and
-before Issue generation. Implementation Issues and verification Issues both
-consume the current approved Test Design; they remain separate execution
-tracks, and implementation-coupled unit tests never replace independent
-verification evidence.
-
-It selects applicable unit, integration, contract, E2E, security, performance,
-compatibility, failure-injection, and exploratory coverage. It never records
-final PASS/FAIL results. Execution output is immutable evidence under the same
-child package and is registered in `evidence/index.yaml`. Each evidence record
-identifies related TEST/SPEC/ISSUE IDs, source version/hash, commit, environment,
-time, command or runner, result, artifacts, and flaky classification.
-
-## 7. Issues and Loop It
-
-Issues are one-file, independently understandable, independently executable,
-reviewable units. Split by independent vertical behavior, risk profile, or
-verification owner; do not create omnibus Issues by document heading or code
-layer.
-
-Implementation Issues own code, suitable code-coupled tests, and only the
-focused validation commands declared in their `Validation` section. They may
-reach `implemented_pending_verification`; they do not claim formal QA
-acceptance or run the full Test Design by default.
-
-Verification Issues own formal Test Design execution, normalized evidence,
-`evidence/index.yaml` registration, and release-gate results. They do not
-silently modify production behavior; a discovered defect returns as a new or
-reopened implementation Issue.
-
-Loop It executes approved, version-current Issues in dependency order. It reads
-the parent chain, validates dependencies and source bindings, executes only the
-Issue's Must scope, records the Completion Record, runs review, and stops for
-unresolved blockers. It never redesigns PRD/Spec/Test Design or writes QA
-acceptance decisions.
-
-## 8. Versioning, readiness, and done
-
-Approved changes to public Spec behavior increment the Spec version and mark
-bound Test Designs and Issues stale or superseded. A stale Issue MUST NOT enter
-Loop It. Historical evidence remains bound to its original version and commit.
-
-| Gate | Required condition |
-|---|---|
-| PRD Ready | product scope/AC/decomposition clear; no blocking question |
-| Spec Ready | system contract and conditional technical constraints explicit |
-| Test Ready | current Spec binding, coverage and exit criteria approved |
-| Issue Ready | current approved Spec and Test Design bindings, bounded scope, dependencies and validation explicit |
-| Issue Done | local work and Completion Record complete; not a QA decision |
-| Spec Accepted | required Issues complete, evidence supports exit criteria, review resolved/waived, mapped AC verified |
-| Requirement Done | required Specs accepted, PRD AC/UAT accepted, no blocking question |
-
-QA decisions are only `accepted`, `blocked`, or `accepted-with-waiver`. A waiver
-names its risk, owner, approver, rationale, expiry, and follow-up when needed.
-
-## 9. Source order
-
-```text
-Approved latest PRD / Change Requirement
-↓
-Approved child Spec
-↓
-Architecture / ADR
-↓
-Actual Code
-↓
-Existing Tests
-```
-
-Before a new Issue, read repository rules and relevant design, then root
-`prd.md`/`index.yaml`, child `spec.md`, approved `test.md`, Issue, current
-review/evidence/acceptance records, and actual code/tests.
+Historical R002/R003 packages are not migrated by this standard. New tooling
+must not require legacy implementation Issue files for ordinary Spec work.

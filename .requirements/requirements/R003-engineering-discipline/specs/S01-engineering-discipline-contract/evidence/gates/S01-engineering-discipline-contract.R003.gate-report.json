@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "specos-test-standard",
+  "selector": "R003-engineering-discipline/S01-engineering-discipline-contract",
+  "changeId": "R003",
+  "status": "ready",
+  "checkedAt": "2026-09-08T12:39:54.781Z",
+  "plan": ".requirements/requirements/R003-engineering-discipline/specs/S01-engineering-discipline-contract/evidence/plans/S01-engineering-discipline-contract.test-plan.json",
+  "issues": []
+}

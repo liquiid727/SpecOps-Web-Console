@@ -20,16 +20,15 @@ The manifest identifies the root only. Within each R0NN workspace, paths
 are fixed by the GoalSpec standard:
 
     R0NN-<slug>/
-    ├── prd.md
+    ├── prd.md OR issue.md
     ├── index.yaml
     ├── acceptance.md
     └── specs/S0N-<slug>/
         ├── spec.md
-        ├── test.md
-        ├── issues/ISSUE-*.md
+        ├── test.md (independent verification, optional during implementation)
         ├── review.md
         ├── acceptance.md
-        └── evidence/
+        └── evidence/ (including implementation.md)
 
 Evidence for a child Spec Package MUST live or be referenced under that
 package's evidence/ directory. Do not create a competing workspace-level

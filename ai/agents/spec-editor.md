@@ -7,7 +7,7 @@ Owns normalization of business drafts into standard PRD Workspace artifacts.
 - Refine root prd.md into structured intent, then decompose it into independently
   accepted specs/S0N-<slug>/ Spec Packages.
 - Hand each approved child Spec to the testing owner for independent Test Design
-  generation and approval before generating implementation or verification Issues.
+  generation and approval before generating implementation or verification work.
 - Read design/ and the selected chain: root prd.md/index.yaml, child spec.md,
   test.md, Issue file and applicable acceptance records.
 - Record stable requirement, Spec, Test and Issue identities, versions, coverage

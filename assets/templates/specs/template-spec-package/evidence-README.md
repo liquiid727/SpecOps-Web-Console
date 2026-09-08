@@ -1,36 +1,13 @@
-# Evidence — S01 <Spec Package Name>
+# Evidence
 
-Store or reference immutable execution evidence here, grouped by run or gate.
+Evidence is the verification and quality record for this Spec Package.
 
-Every evidence record MUST identify:
+- `implementation.md` records what implementation changed, minimal checks,
+  deviations, skipped checks, limitations, and intentionally untouched areas.
+- `plans/`, `runs/`, `gates/`, and `artifacts/` hold independent Test Design
+  execution and normalized outputs.
+- `index.yaml` makes evidence addressable and binds it to `consumer_entry`, Spec
+  version, revision, environment, result, and available correlation identifiers
+  (`run_id`, `service_id`, `session_id`, and `trace_id`).
 
-- related `TEST-*`, `SPEC-*`, and `ISSUE-*` IDs;
-- source Spec version/hash and commit;
-- execution environment and timestamp;
-- result: passed | failed | blocked | flaky;
-- artifact location for report, trace, screenshot, video, or log;
-- retry and flaky classification when relevant.
-
-`evidence_id: EV-R0NN-S0N-NNN` is optional. Use it when another artifact needs
-a stable evidence reference; path, run ID, and `evidence/index.yaml` remain the
-canonical index for every record.
-
-Use one record per evidence item. A minimal record contains:
-
-```yaml
-test_id: TEST-R001-S01-001
-evidence_id: EV-R001-S01-001 # optional
-spec_id: SPEC-R001-S01-001
-issue_id: ISSUE-R001-S01-001
-source_spec_version: 1.0.0
-source_spec_hash: <sha256>
-commit: <commit-sha>
-environment: <environment>
-executed_at: YYYY-MM-DDThh:mm:ssZ
-result: passed
-artifact: ./run-<id>/report.json
-flake: none
-```
-
-Raw output becomes QA-gate evidence only when the owning `acceptance.md`
-references it with a result and scope.
+Evidence supports review and acceptance; it does not itself make a QA decision.

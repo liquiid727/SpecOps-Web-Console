@@ -1,0 +1,16 @@
+{
+  "standardVersion": "specos-test-standard",
+  "requirement": "R003",
+  "specPackage": "S02",
+  "specId": "SPEC-R003-S02",
+  "specVersion": "1.0.0",
+  "testSpecId": "TEST-R003-S02",
+  "testSpecVersion": "1.0.0",
+  "sourceSpecHash": "1667af6ca078bff579cd40d2fc41d9982fd0d0b3800724e4d6357f4f4549c19d",
+  "tests": [
+    {"id": "TEST-R003-S02-001", "category": "workflow-contract", "level": "manual", "gateImpact": "blocking"},
+    {"id": "TEST-R003-S02-002", "category": "workflow-contract", "level": "manual", "gateImpact": "blocking"},
+    {"id": "TEST-R003-S02-003", "category": "review", "level": "manual", "gateImpact": "blocking"},
+    {"id": "TEST-R003-S02-004", "category": "workflow-contract", "level": "manual", "gateImpact": "blocking"}
+  ]
+}
